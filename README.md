@@ -53,4 +53,14 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 
 ## Status
 
-Scaffolding in place. Implementation, PRD, tests, and CI are coming next per plan.
+Release branch open for v0.4.0-alpha: see PR https://github.com/flyingrobots/go-redis-work-queue/pull/1
+
+Promotion gates and confidence summary (details in docs/15_promotion_checklists.md):
+- Alpha → Beta: overall confidence ~0.85 (functional/observability/CI strong; perf and coverage improvements planned)
+- Beta → RC: overall confidence ~0.70 (needs controlled perf run, chaos tests, soak)
+- RC → GA: overall confidence ~0.70 (release flow ready; soak and rollback rehearsal pending)
+
+Evidence artifacts (docs/evidence/):
+- ci_run.json (CI URL), bench.json (throughput/latency), metrics_before/after.txt, config.alpha.yaml
+
+To reproduce evidence locally, see docs/evidence/README.md.
