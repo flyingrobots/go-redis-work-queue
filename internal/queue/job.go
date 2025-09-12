@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package queue
 
 import (
@@ -42,4 +43,3 @@ func UnmarshalJob(s string) (Job, error) {
     err := json.Unmarshal([]byte(s), &j)
     return j, err
 }
-

@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package obs
 
 import (
@@ -38,4 +39,3 @@ func StartQueueLengthUpdater(ctx context.Context, cfg *config.Config, rdb *redis
         }
     }()
 }
-

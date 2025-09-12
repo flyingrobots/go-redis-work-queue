@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package obs
 
 import (
@@ -36,4 +37,3 @@ func StartHTTPServer(cfg *config.Config, readiness func(context.Context) error) 
     go func() { _ = srv.ListenAndServe() }()
     return srv
 }
-

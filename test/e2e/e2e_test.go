@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package e2e
 
 import (
@@ -59,4 +60,3 @@ func TestE2E_WorkerCompletesJobWithRealRedis(t *testing.T) {
         t.Fatalf("expected completed 1, got %d", n)
     }
 }
-

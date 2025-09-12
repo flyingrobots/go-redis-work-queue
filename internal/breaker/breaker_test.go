@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package breaker
 
 import (
@@ -18,4 +19,3 @@ func TestBreakerTransitions(t *testing.T) {
     cb.Record(true)
     if cb.State() != Closed { t.Fatal("expected closed after probe success") }
 }
-
