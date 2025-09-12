@@ -15,7 +15,9 @@ func TestBreakerTransitions(t *testing.T) {
     if cb.State() != Open { t.Fatal("expected open") }
     if cb.Allow() != false { t.Fatal("should not allow until cooldown") }
     time.Sleep(250 * time.Millisecond)
+    // Half-open should allow exactly one probe
     if cb.Allow() != true { t.Fatal("should allow probe in half-open") }
+    if cb.Allow() != false { t.Fatal("should block additional probes in half-open") }
     cb.Record(true)
     if cb.State() != Closed { t.Fatal("expected closed after probe success") }
 }

@@ -1,4 +1,5 @@
 // Copyright 2025 James Ross
+// Copyright 2025 James Ross
 package breaker
 
 import (
@@ -29,6 +30,7 @@ type CircuitBreaker struct {
     minSamples      int
     lastTransition  time.Time
     results         []result
+    halfOpenInFlight bool
 }
 
 func New(window time.Duration, cooldown time.Duration, failureThresh float64, minSamples int) *CircuitBreaker {
@@ -47,11 +49,17 @@ func (cb *CircuitBreaker) Allow() bool {
         if time.Since(cb.lastTransition) >= cb.cooldown {
             cb.state = HalfOpen
             cb.lastTransition = time.Now()
-            return true // allow a probe
+            cb.halfOpenInFlight = false
+            // allow exactly one probe once we enter HalfOpen; next branch handles flag
+            cb.halfOpenInFlight = true
+            return true
         }
         return false
     case HalfOpen:
-        // allow one probe at a time; simplistic approach
+        if cb.halfOpenInFlight {
+            return false
+        }
+        cb.halfOpenInFlight = true
         return true
     default:
         return true
@@ -102,6 +110,8 @@ func (cb *CircuitBreaker) Record(ok bool) {
         } else {
             cb.state = Open
         }
+        // the single probe completed; allow a future probe after cooldown or next Allow
+        cb.halfOpenInFlight = false
         cb.lastTransition = now
     case Open:
         // handled in Allow()

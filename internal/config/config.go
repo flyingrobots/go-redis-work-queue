@@ -40,6 +40,7 @@ type Worker struct {
     CompletedList         string        `mapstructure:"completed_list"`
     DeadLetterList        string        `mapstructure:"dead_letter_list"`
     BRPopLPushTimeout     time.Duration `mapstructure:"brpoplpush_timeout"`
+    BreakerPause          time.Duration `mapstructure:"breaker_pause"`
 }
 
 type Producer struct {
@@ -102,6 +103,7 @@ func defaultConfig() *Config {
             CompletedList:         "jobqueue:completed",
             DeadLetterList:        "jobqueue:dead_letter",
             BRPopLPushTimeout:     1 * time.Second,
+            BreakerPause:          100 * time.Millisecond,
         },
         Producer: Producer{
             ScanDir:          "./data",
@@ -157,6 +159,7 @@ func Load(path string) (*Config, error) {
     v.SetDefault("worker.completed_list", def.Worker.CompletedList)
     v.SetDefault("worker.dead_letter_list", def.Worker.DeadLetterList)
     v.SetDefault("worker.brpoplpush_timeout", def.Worker.BRPopLPushTimeout)
+    v.SetDefault("worker.breaker_pause", def.Worker.BreakerPause)
 
     v.SetDefault("producer.scan_dir", def.Producer.ScanDir)
     v.SetDefault("producer.include_globs", def.Producer.IncludeGlobs)
