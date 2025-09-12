@@ -56,6 +56,7 @@ circuit_breaker:
 observability:
   metrics_port: int
   log_level: string
+  queue_sample_interval: duration
   tracing: { enabled: bool, endpoint: string }
 ```
 
@@ -118,4 +119,3 @@ Validation rules:
 ## Logging and Tracing
 - Logs are JSON with keys: `level`, `ts`, `msg`, `trace_id`, `span_id`, `job_id`, `queue`, `worker_id`.
 - Tracing: create a span per job processing; propagate `trace_id/span_id` if present; otherwise create new.
-
