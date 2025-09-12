@@ -154,3 +154,52 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
     }
     return res, nil
 }
+
+// PurgeAll deletes common test keys used by this system, including
+// priority queues, completed/dead_letter, rate limiter key, and
+// per-worker processing lists and heartbeats. Returns number of keys deleted.
+func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
+    var deleted int64
+    // Explicit keys
+    keys := []string{
+        cfg.Worker.Queues["high"], cfg.Worker.Queues["low"],
+        cfg.Worker.CompletedList, cfg.Worker.DeadLetterList,
+    }
+    if cfg.Producer.RateLimitKey != "" {
+        keys = append(keys, cfg.Producer.RateLimitKey)
+    }
+    // Dedup
+    uniq := map[string]struct{}{}
+    ek := make([]string, 0, len(keys))
+    for _, k := range keys {
+        if k == "" { continue }
+        if _, ok := uniq[k]; ok { continue }
+        uniq[k] = struct{}{}
+        ek = append(ek, k)
+    }
+    if len(ek) > 0 {
+        n, err := rdb.Del(ctx, ek...).Result()
+        if err != nil { return deleted, err }
+        deleted += n
+    }
+    // Patterns: processing lists and heartbeats
+    patterns := []string{
+        "jobqueue:worker:*:processing",
+        "jobqueue:processing:worker:*",
+    }
+    for _, pat := range patterns {
+        var cursor uint64
+        for {
+            keys, cur, err := rdb.Scan(ctx, cursor, pat, 500).Result()
+            if err != nil { return deleted, err }
+            cursor = cur
+            if len(keys) > 0 {
+                n, err := rdb.Del(ctx, keys...).Result()
+                if err != nil { return deleted, err }
+                deleted += n
+            }
+            if cursor == 0 { break }
+        }
+    }
+    return deleted, nil
+}
