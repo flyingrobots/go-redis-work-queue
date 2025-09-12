@@ -114,3 +114,18 @@ To reproduce evidence locally, see docs/evidence/README.md.
 ## Testing
 
 See docs/testing-guide.md for a package-by-package overview and copy/paste commands to run individual tests or the full suite with the race detector.
+
+## Contributing / Docs Linting
+
+- Enable Git hooks (auto-fix Markdown on commit):
+```bash
+make hooks
+```
+
+- Run Markdown lint locally (optional):
+```bash
+# Using Node (autofix staged files happens on commit via hook)
+npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+```
+
+- CI runs markdownlint on every PR and on pushes to `main`.
