@@ -21,6 +21,8 @@ import (
     "go.uber.org/zap"
 )
 
+var version = "dev"
+
 func main() {
     var role string
     var configPath string
@@ -32,6 +34,7 @@ func main() {
     var benchRate int
     var benchPriority string
     var benchTimeout time.Duration
+    var showVersion bool
     fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
     fs.StringVar(&role, "role", "all", "Role to run: producer|worker|all|admin")
     fs.StringVar(&configPath, "config", "config/config.yaml", "Path to YAML config")
@@ -39,11 +42,17 @@ func main() {
     fs.StringVar(&adminQueue, "queue", "", "Queue alias or full key for admin peek (high|low|completed|dead_letter|jobqueue:...)")
     fs.IntVar(&adminN, "n", 10, "Number of items for admin peek")
     fs.BoolVar(&adminYes, "yes", false, "Automatic yes to prompts (dangerous operations)")
+    fs.BoolVar(&showVersion, "version", false, "Print version and exit")
     fs.IntVar(&benchCount, "bench-count", 1000, "Admin bench: number of jobs")
     fs.IntVar(&benchRate, "bench-rate", 500, "Admin bench: enqueue rate jobs/sec")
     fs.StringVar(&benchPriority, "bench-priority", "low", "Admin bench: priority/queue alias")
     fs.DurationVar(&benchTimeout, "bench-timeout", 60*time.Second, "Admin bench: timeout to wait for completion")
     _ = fs.Parse(os.Args[1:])
+
+    if showVersion {
+        fmt.Println(version)
+        return
+    }
 
     // Load configuration
     cfg, err := config.Load(configPath)
