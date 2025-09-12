@@ -23,9 +23,11 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 - Or run producer only: ./bin/job-queue-system --role=producer --config=config/config.yaml
 - Or run worker only: ./bin/job-queue-system --role=worker --config=config/config.yaml
 - Admin commands:
-  - Stats: ./bin/job-queue-system --role=admin --admin-cmd=stats --config=config/config.yaml
-  - Peek:  ./bin/job-queue-system --role=admin --admin-cmd=peek --queue=low --n=10 --config=config/config.yaml
-  - Purge DLQ: ./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
+ - Stats: ./bin/job-queue-system --role=admin --admin-cmd=stats --config=config/config.yaml
+ - Peek:  ./bin/job-queue-system --role=admin --admin-cmd=peek --queue=low --n=10 --config=config/config.yaml
+ - Purge DLQ: ./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
+  - Purge all (test keys): ./bin/job-queue-system --role=admin --admin-cmd=purge-all --yes --config=config/config.yaml
+  - Stats (keys): ./bin/job-queue-system --role=admin --admin-cmd=stats-keys --config=config/config.yaml
  - Version: ./bin/job-queue-system --version
 
 ### Metrics
