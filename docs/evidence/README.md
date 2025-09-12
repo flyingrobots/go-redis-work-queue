@@ -7,15 +7,40 @@
 
 Reproduce locally
 
-1) Ensure Redis is running on `localhost:6379` (e.g., `docker run -p 6379:6379 redis:7-alpine`)
-2) Build binary: `make build`
-3) Start worker: `./bin/job-queue-system --role=worker --config=docs/evidence/config.alpha.yaml`
-4) In another terminal, run bench: `./bin/job-queue-system --role=admin --config=docs/evidence/config.alpha.yaml --admin-cmd=bench --bench-count=1000 --bench-rate=500 --bench-priority=low --bench-timeout=60s`
-5) Capture metrics: `curl -sS localhost:9191/metrics | head -n 200 > docs/evidence/metrics_after.txt`
+1) Ensure Redis is running on localhost:6379
+```bash
+docker run -p 6379:6379 --rm --name jobq-redis redis:7-alpine
+```
+
+2) Build the binary
+```bash
+make build
+```
+
+3) Start worker
+```bash
+./bin/job-queue-system --role=worker --config=docs/evidence/config.alpha.yaml
+```
+
+4) In another terminal, run bench
+```bash
+./bin/job-queue-system --role=admin --config=docs/evidence/config.alpha.yaml \
+  --admin-cmd=bench --bench-count=1000 --bench-rate=500 \
+  --bench-priority=low --bench-timeout=60s
+```
+
+5) Capture metrics
+```bash
+curl -sS localhost:9191/metrics | head -n 200 > docs/evidence/metrics_after.txt
+```
 
 Important notes
 - The admin `bench` command enqueues jobs directly (it does LPUSH), so `jobs_produced_total` will remain 0 in this harness; use `jobs_consumed_total`/`jobs_completed_total` and queue lengths to assess throughput and progress.
-- To avoid stale backlog affecting evidence, clear test keys before running a bench: `redis-cli DEL jobqueue:high_priority jobqueue:low_priority jobqueue:completed jobqueue:dead_letter` and `redis-cli KEYS 'jobqueue:worker:*:processing' | xargs -n 50 redis-cli DEL`.
+- To avoid stale backlog affecting evidence, clear test keys before running a bench:
+```bash
+redis-cli DEL jobqueue:high_priority jobqueue:low_priority jobqueue:completed jobqueue:dead_letter
+redis-cli KEYS 'jobqueue:worker:*:processing' | xargs -n 50 redis-cli DEL
+```
 - The metrics port in this harness is `9191` (see `observability.metrics_port` in config.alpha.yaml). Ensure your curl commands match this port.
 
 Notes

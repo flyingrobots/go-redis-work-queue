@@ -17,14 +17,23 @@ This guide provides a reproducible method to measure throughput and latency, and
 - Metrics are exposed at `/metrics`; verify `jobs_completed_total`, `job_processing_duration_seconds`, and `queue_length{queue}`.
 
 ## Baseline Procedure
-1) Start Redis (e.g., docker run -p 6379:6379 redis:7-alpine)
+1) Start Redis
+```bash
+docker run --rm -d --name jobq-redis -p 6379:6379 redis:7-alpine
+```
 2) Copy `config/config.example.yaml` to `config/config.yaml` and set:
    - `worker.count`: 16 on a 4 vCPU node (adjust as needed)
    - `redis.addr`: "localhost:6379"
-3) In one shell, run the worker:
-   - `./bin/job-queue-system --role=worker --config=config/config.yaml`
-4) In another shell, run the bench (enqueue and wait for completion):
-   - `./bin/job-queue-system --role=admin --admin-cmd=bench --bench-count=2000 --bench-rate=1000 --bench-priority=low --bench-timeout=60s`
+3) In one shell, run the worker
+```bash
+./bin/job-queue-system --role=worker --config=config/config.yaml
+```
+4) In another shell, run the bench (enqueue and wait for completion)
+```bash
+./bin/job-queue-system --role=admin --admin-cmd=bench \
+  --bench-count=2000 --bench-rate=1000 \
+  --bench-priority=low --bench-timeout=60s
+```
 5) Record the JSON result and capture Prometheus metrics (if scraping locally, curl /metrics).
 
 ## Tuning Levers
@@ -37,4 +46,3 @@ This guide provides a reproducible method to measure throughput and latency, and
 ## Expected Results
 - On a 4 vCPU node, `bench-count=2000`, `bench-rate=1000` should achieve ≥1k jobs/min throughput, with p95 latency < 2s for small files (<1MB).
 - If results fall short, see tuning levers and ensure host/Redis are not CPU or I/O bound.
-

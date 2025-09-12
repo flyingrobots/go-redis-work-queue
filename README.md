@@ -17,18 +17,51 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 
 ### Build and run
 
-- Copy config/config.example.yaml to config/config.yaml and adjust as needed
-- Build (Go 1.25+): make build
-- Run all-in-one: ./bin/job-queue-system --role=all --config=config/config.yaml
-- Or run producer only: ./bin/job-queue-system --role=producer --config=config/config.yaml
-- Or run worker only: ./bin/job-queue-system --role=worker --config=config/config.yaml
-- Admin commands:
- - Stats: ./bin/job-queue-system --role=admin --admin-cmd=stats --config=config/config.yaml
- - Peek:  ./bin/job-queue-system --role=admin --admin-cmd=peek --queue=low --n=10 --config=config/config.yaml
- - Purge DLQ: ./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
-  - Purge all (test keys): ./bin/job-queue-system --role=admin --admin-cmd=purge-all --yes --config=config/config.yaml
-  - Stats (keys): ./bin/job-queue-system --role=admin --admin-cmd=stats-keys --config=config/config.yaml
- - Version: ./bin/job-queue-system --version
+- Copy example config
+```bash
+cp config/config.example.yaml config/config.yaml
+```
+
+- Build (Go 1.25+)
+```bash
+make build
+```
+
+- Run all-in-one
+```bash
+./bin/job-queue-system --role=all --config=config/config.yaml
+```
+
+- Run producer only
+```bash
+./bin/job-queue-system --role=producer --config=config/config.yaml
+```
+
+- Run worker only
+```bash
+./bin/job-queue-system --role=worker --config=config/config.yaml
+```
+
+- Admin commands
+```bash
+# Stats
+./bin/job-queue-system --role=admin --admin-cmd=stats --config=config/config.yaml
+
+# Peek
+./bin/job-queue-system --role=admin --admin-cmd=peek --queue=low --n=10 --config=config/config.yaml
+
+# Purge DLQ
+./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
+
+# Purge all (test keys)
+./bin/job-queue-system --role=admin --admin-cmd=purge-all --yes --config=config/config.yaml
+
+# Stats (keys)
+./bin/job-queue-system --role=admin --admin-cmd=stats-keys --config=config/config.yaml
+
+# Version
+./bin/job-queue-system --version
+```
 
 ### Metrics
 
@@ -49,9 +82,20 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 
 ### Docker
 
-- Build: docker build -t job-queue-system:latest .
-- Run: docker run --rm -p 9090:9090 --env-file env.list job-queue-system:latest --role=all
-- Compose: see deploy/docker-compose.yml for multi-service setup (redis + worker/producer/all-in-one)
+- Build
+```bash
+docker build -t job-queue-system:latest .
+```
+
+- Run
+```bash
+docker run --rm -p 9090:9090 --env-file env.list job-queue-system:latest --role=all
+```
+
+- Compose
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+```
 
 ## Status
 
