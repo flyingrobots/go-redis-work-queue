@@ -42,7 +42,7 @@ circuit_breaker:
 observability:
   metrics_port: 9090
   log_level: "info"
+  queue_sample_interval: 2s
   tracing:
     enabled: false
     endpoint: ""
-
