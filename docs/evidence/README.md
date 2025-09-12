@@ -20,3 +20,21 @@ Important notes
 
 Notes
 - The simple latency reported in `bench.json` is measured by comparing current time to each job's creation_time after completion sampling and is a coarse approximation. For precise latency distributions, prefer Prometheus histogram `job_processing_duration_seconds` and compute quantiles there.
+
+Automated harness
+
+- A convenience script `docs/evidence/run_bench.sh` automates the above steps.
+- Default params: COUNT=1000, RATE=500, PRIORITY=low, CONFIG=docs/evidence/config.alpha.yaml, PURGE=1.
+- Example:
+
+```bash
+bash docs/evidence/run_bench.sh
+# or override
+COUNT=2000 RATE=1000 PRIORITY=low bash docs/evidence/run_bench.sh
+```
+
+Outputs are written under `docs/evidence/run_YYYYmmdd_HHMMSS/`:
+- worker.log, worker.pid
+- metrics_before.txt, metrics_after.txt
+- stats_before.json, stats_after.json
+- bench.json

@@ -39,7 +39,7 @@ func main() {
     fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
     fs.StringVar(&role, "role", "all", "Role to run: producer|worker|all|admin")
     fs.StringVar(&configPath, "config", "config/config.yaml", "Path to YAML config")
-    fs.StringVar(&adminCmd, "admin-cmd", "", "Admin command: stats|peek|purge-dlq|purge-all|bench")
+    fs.StringVar(&adminCmd, "admin-cmd", "", "Admin command: stats|peek|purge-dlq|purge-all|bench|stats-keys")
     fs.StringVar(&adminQueue, "queue", "", "Queue alias or full key for admin peek (high|low|completed|dead_letter|jobqueue:...)")
     fs.IntVar(&adminN, "n", 10, "Number of items for admin peek")
     fs.BoolVar(&adminYes, "yes", false, "Automatic yes to prompts (dangerous operations)")
@@ -174,6 +174,11 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
     case "bench":
         res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchTimeout)
         if err != nil { logger.Fatal("admin bench error", obs.Err(err)) }
+        b, _ := json.MarshalIndent(res, "", "  ")
+        fmt.Println(string(b))
+    case "stats-keys":
+        res, err := admin.StatsKeys(ctx, cfg, rdb)
+        if err != nil { logger.Fatal("admin stats-keys error", obs.Err(err)) }
         b, _ := json.MarshalIndent(res, "", "  ")
         fmt.Println(string(b))
     default:
