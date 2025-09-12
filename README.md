@@ -15,6 +15,23 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 - Ensure Redis is available (e.g., Docker container redis:latest on port 6379)
 - Follow the instructions in the PRD to run in producer, worker, or all-in-one modes
 
+### Build and run
+
+- Copy config/config.example.yaml to config/config.yaml and adjust as needed
+- Build: make build
+- Run all-in-one: ./bin/job-queue-system --role=all --config=config/config.yaml
+- Or run producer only: ./bin/job-queue-system --role=producer --config=config/config.yaml
+- Or run worker only: ./bin/job-queue-system --role=worker --config=config/config.yaml
+
+### Metrics
+
+- Prometheus metrics exposed at http://localhost:9090/metrics by default
+
+### Docker
+
+- Build: docker build -t job-queue-system:latest .
+- Run: docker run --rm -p 9090:9090 --env-file env.list job-queue-system:latest --role=all
+
 ## Status
 
 Scaffolding in place. Implementation, PRD, tests, and CI are coming next per plan.
