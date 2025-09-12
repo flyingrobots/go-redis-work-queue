@@ -27,6 +27,7 @@ A single, multi-role Go binary that implements a robust file-processing job queu
 - role=producer: scans a directory and enqueues jobs with priority, rate-limited via Redis.
 - role=worker: runs N worker goroutines consuming jobs by priority, with processing lists and heartbeats.
 - role=all: runs both producer and worker in one process for development or small deployments.
+- role=admin: provides operational commands: `stats` (print queue/processing/heartbeat counts), `peek` (inspect queue tail items), and `purge-dlq` (clear dead-letter queue with `--yes`).
 
 ## Configuration
 All parameters are set via YAML with env var overrides. Example:
@@ -115,7 +116,7 @@ Job payload JSON:
 ### Producer
 - Scan directory recursively using include/exclude globs.
 - Determine priority by extension list.
-- Rate limiting: INCR rate_limit_key; if first increment, set EX=1; if value > rate_limit_per_sec, sleep until window rolls over (or backoff) before enqueueing more.
+- Rate limiting: INCR rate_limit_key; if first increment, set EX=1; if value > rate_limit_per_sec, `TTL`-based precise sleep (with jitter) until window reset before enqueueing more.
 - LPUSH job JSON to priority queue.
 
 ### Worker Fetch
