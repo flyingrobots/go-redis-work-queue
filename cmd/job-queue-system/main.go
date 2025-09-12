@@ -49,13 +49,17 @@ func main() {
         defer func() { _ = tp.Shutdown(context.Background()) }()
     }
 
-    // Metrics server
-    metricsSrv := obs.StartMetricsServer(cfg)
-    defer func() { _ = metricsSrv.Shutdown(context.Background()) }()
-
     // Redis client
     rdb := redisclient.New(cfg)
     defer rdb.Close()
+
+    // HTTP server: metrics, healthz, readyz
+    readyCheck := func(c context.Context) error {
+        _, err := rdb.Ping(c).Result()
+        return err
+    }
+    httpSrv := obs.StartHTTPServer(cfg, readyCheck)
+    defer func() { _ = httpSrv.Shutdown(context.Background()) }()
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
@@ -75,6 +79,9 @@ func main() {
         case <-time.After(5 * time.Second):
         }
     }()
+
+    // Background metrics: queue lengths
+    obs.StartQueueLengthUpdater(ctx, cfg, rdb, logger)
 
     switch role {
     case "producer":
@@ -107,4 +114,3 @@ func main() {
         logger.Fatal("unknown role", obs.String("role", role))
     }
 }
-
