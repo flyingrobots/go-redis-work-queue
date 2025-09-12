@@ -18,7 +18,7 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 ### Build and run
 
 - Copy config/config.example.yaml to config/config.yaml and adjust as needed
-- Build: make build
+- Build (Go 1.24+): make build
 - Run all-in-one: ./bin/job-queue-system --role=all --config=config/config.yaml
 - Or run producer only: ./bin/job-queue-system --role=producer --config=config/config.yaml
 - Or run worker only: ./bin/job-queue-system --role=worker --config=config/config.yaml
