@@ -15,9 +15,12 @@ Day-2 operations guide: deploy, scale, monitor, recover, and release/rollback pr
 - [Release and Rollback](#release-and-rollback)
 
 ## Deployment
-- Docker: `docker build -t job-queue-system:local .` then run with flags.
-- docker-compose: see `deploy/docker-compose.yml` (services: redis, app-all, app-worker, app-producer).
-- Container image: `ghcr.io/<owner>/<repo>:<tag>` published on git tags (see release workflow).
+- Docker build
+```bash
+docker build -t job-queue-system:local .
+```
+- docker-compose: see `deploy/docker-compose.yml` (services: redis, app-all, app-worker, app-producer)
+- Container image: `ghcr.io/<owner>/<repo>:<tag>` published on git tags (see release workflow)
 
 ## Configuration
 - Primary: `config/config.yaml` (see `config/config.example.yaml`).
@@ -36,14 +39,24 @@ Day-2 operations guide: deploy, scale, monitor, recover, and release/rollback pr
 - Pooling: tune `redis.pool_size_multiplier`, `min_idle_conns` for throughput and latency.
 
 ## Common Operations
-- Inspect stats:
-  `./job-queue-system --role=admin --admin-cmd=stats --config=config.yaml`
-- Peek queue items:
-  `./job-queue-system --role=admin --admin-cmd=peek --queue=high --n=20 --config=config.yaml`
-- Purge dead-letter queue:
-  `./job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config.yaml`
-- Benchmark throughput/latency:
-  `./job-queue-system --role=admin --admin-cmd=bench --bench-count=2000 --bench-rate=1000 --bench-priority=low --bench-timeout=60s`
+- Inspect stats
+```bash
+./job-queue-system --role=admin --admin-cmd=stats --config=config.yaml
+```
+- Peek queue items
+```bash
+./job-queue-system --role=admin --admin-cmd=peek --queue=high --n=20 --config=config.yaml
+```
+- Purge dead-letter queue
+```bash
+./job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config.yaml
+```
+- Benchmark throughput/latency
+```bash
+./job-queue-system --role=admin --admin-cmd=bench \
+  --bench-count=2000 --bench-rate=1000 \
+  --bench-priority=low --bench-timeout=60s
+```
 
 ## Troubleshooting
 - High failures / breaker open:
@@ -65,4 +78,3 @@ Day-2 operations guide: deploy, scale, monitor, recover, and release/rollback pr
   3) Verify `/healthz` and `/readyz` return 200.
   4) Check metrics: `circuit_breaker_state=0`, `jobs_failed_total` steady, `queue_length` normalized.
   5) If DLQ large, export/inspect before purge.
-

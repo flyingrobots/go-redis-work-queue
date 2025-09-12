@@ -26,7 +26,9 @@ Stages (GitHub Actions):
 - Prod: managed Redis or self-hosted cluster; binary orchestrated via systemd/K8s.
 
 Config overrides via env vars. Example:
-`WORKER_COUNT=32 REDIS_ADDR=redis:6379 ./job-queue-system --role=worker --config=config.yaml`
+```bash
+WORKER_COUNT=32 REDIS_ADDR=redis:6379 ./job-queue-system --role=worker --config=config.yaml
+```
 
 ## Rollback Procedures
 1) Identify the target rollback version (last known-good tag).
@@ -42,4 +44,3 @@ Config overrides via env vars. Example:
   - `rate(jobs_failed_total[5m]) > 0.1 * rate(jobs_consumed_total[5m])` → CRITICAL
   - `queue_length{queue="jobqueue:dead_letter"} > 100` → WARN
   - `/readyz` non-200 for > 30s → CRITICAL
-
