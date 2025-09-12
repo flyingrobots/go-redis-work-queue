@@ -8,12 +8,12 @@ redis:
   max_retries: 3
 
 worker:
-  count: 16
+  count: 8
   heartbeat_ttl: 30s
   max_retries: 3
   backoff:
-    base: 500ms
-    max: 10s
+    base: 100ms
+    max: 2s
   priorities: ["high", "low"]
   queues:
     high: "jobqueue:high_priority"
@@ -30,7 +30,7 @@ producer:
   exclude_globs: ["**/*.tmp", "**/.DS_Store"]
   default_priority: "low"
   high_priority_exts: [".pdf", ".docx", ".xlsx", ".zip"]
-  rate_limit_per_sec: 100
+  rate_limit_per_sec: 1000
   rate_limit_key: "jobqueue:rate_limit:producer"
 
 circuit_breaker:
@@ -40,7 +40,7 @@ circuit_breaker:
   min_samples: 20
 
 observability:
-  metrics_port: 9090
+  metrics_port: 9191
   log_level: "info"
   queue_sample_interval: 2s
   tracing:
