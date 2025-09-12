@@ -27,6 +27,15 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 
 - Prometheus metrics exposed at http://localhost:9090/metrics by default
 
+### Health and Readiness
+
+- Liveness: http://localhost:9090/healthz returns 200 when the process is up
+- Readiness: http://localhost:9090/readyz returns 200 only when Redis is reachable
+
+### Priority Fetching
+
+- Workers emulate prioritized multi-queue blocking fetch by looping priorities (e.g., high then low) and issuing `BRPOPLPUSH` per-queue with a short timeout (default 1s). This preserves atomic move semantics within each queue, prefers higher priority at sub-second granularity, and avoids job loss. Lower-priority jobs may incur up to the timeout in extra latency when higher-priority queues are empty.
+
 ### Docker
 
 - Build: docker build -t job-queue-system:latest .

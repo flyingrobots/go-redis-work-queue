@@ -60,7 +60,8 @@ func (p *Producer) Run(ctx context.Context) error {
         if err != nil { continue }
         prio := p.priorityForExt(filepath.Ext(f))
         id := randID()
-        j := queue.NewJob(id, f, fi.Size(), prio, "", "")
+        traceID, spanID := randTraceAndSpan()
+        j := queue.NewJob(id, f, fi.Size(), prio, traceID, spanID)
         payload, _ := j.Marshal()
         key := p.cfg.Worker.Queues[prio]
         if key == "" { key = p.cfg.Worker.Queues[p.cfg.Producer.DefaultPriority] }
@@ -103,4 +104,12 @@ func randID() string {
     var b [16]byte
     _, _ = rand.Read(b[:])
     return hex.EncodeToString(b[:])
+}
+
+func randTraceAndSpan() (string, string) {
+    var tb [16]byte
+    var sb [8]byte
+    _, _ = rand.Read(tb[:])
+    _, _ = rand.Read(sb[:])
+    return hex.EncodeToString(tb[:]), hex.EncodeToString(sb[:])
 }

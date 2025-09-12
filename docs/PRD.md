@@ -120,7 +120,7 @@ Job payload JSON:
 
 ### Worker Fetch
 - Unique worker ID: "hostname-PID-idx" for each goroutine.
-- Atomically move a job from a priority queue to the worker processing list using BRPOPLPUSH with per-priority 1s timeout in order (high then low). This emulates multi-queue prioritization while preserving atomic move semantics for each queue.
+- Prioritized fetch: loop priorities in order (e.g., high then low) and call `BRPOPLPUSH` per-queue with a short timeout (default 1s). Guarantees atomic move per-queue, priority preference within timeout granularity, and no job loss. Tradeoff: lower-priority jobs may wait up to the timeout when higher-priority queues are empty.
 - On receipt, SET heartbeat key to job JSON with EX=heartbeat_ttl.
 
 ### Processing
@@ -142,12 +142,12 @@ Job payload JSON:
 - HalfOpen: probe with a single job; on success -> Closed; on failure -> Open.
 
 ## Observability
-- Metrics server on /metrics (Prometheus). Key metrics:
+- HTTP server exposes `/metrics`, `/healthz`, and `/readyz`. Key metrics:
   - Counter: jobs_produced_total, jobs_consumed_total, jobs_completed_total, jobs_failed_total, jobs_retried_total, jobs_dead_letter_total
   - Histogram: job_processing_duration_seconds
   - Gauges: queue_length{queue=...}, worker_active, circuit_breaker_state (0=Closed,1=HalfOpen,2=Open)
 - Logging (zap): structured, includes trace_id/span_id when present
-- Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process
+- Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process. Job `trace_id`/`span_id` are propagated as remote parent when present.
 
 ## CLI
 - --role=producer|worker|all
@@ -182,4 +182,3 @@ Job payload JSON:
 2) Core implementation (config, producer, worker, reaper, breaker, observability)
 3) Tests and CI/CD (GitHub Actions)
 4) Dockerfile and examples
-

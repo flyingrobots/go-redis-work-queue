@@ -121,6 +121,9 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
         _ = w.rdb.Del(ctx, hbKey).Err()
         return false
     }
+    // Start span with job's TraceID/SpanID when available
+    ctx, span := obs.ContextWithJobSpan(ctx, job)
+    defer span.End()
 
     // Simulated processing: sleep based on filesize
     dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
@@ -138,7 +141,7 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
         _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
         _ = w.rdb.Del(ctx, hbKey).Err()
         obs.JobsCompleted.Inc()
-        w.log.Info("job completed", obs.String("id", job.ID))
+        w.log.Info("job completed", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
         return true
     }
 
@@ -158,7 +161,7 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
         _ = w.rdb.LPush(ctx, srcQueue, payload2).Err()
         _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
         _ = w.rdb.Del(ctx, hbKey).Err()
-        w.log.Warn("job retried", obs.String("id", job.ID), obs.Int("retries", job.Retries))
+        w.log.Warn("job retried", obs.String("id", job.ID), obs.Int("retries", job.Retries), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
         return false
     }
 
@@ -167,7 +170,7 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
     _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
     _ = w.rdb.Del(ctx, hbKey).Err()
     obs.JobsDeadLetter.Inc()
-    w.log.Error("job dead-lettered", obs.String("id", job.ID))
+    w.log.Error("job dead-lettered", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
     return false
 }
 

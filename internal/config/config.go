@@ -67,6 +67,7 @@ type Observability struct {
     MetricsPort int      `mapstructure:"metrics_port"`
     LogLevel    string   `mapstructure:"log_level"`
     Tracing     Tracing  `mapstructure:"tracing"`
+    QueueSampleInterval time.Duration `mapstructure:"queue_sample_interval"`
 }
 
 type Config struct {
@@ -120,6 +121,7 @@ func defaultConfig() *Config {
             MetricsPort: 9090,
             LogLevel:    "info",
             Tracing:     Tracing{Enabled: false},
+            QueueSampleInterval: 2 * time.Second,
         },
     }
 }
@@ -172,6 +174,7 @@ func Load(path string) (*Config, error) {
     v.SetDefault("observability.log_level", def.Observability.LogLevel)
     v.SetDefault("observability.tracing.enabled", def.Observability.Tracing.Enabled)
     v.SetDefault("observability.tracing.endpoint", def.Observability.Tracing.Endpoint)
+    v.SetDefault("observability.queue_sample_interval", def.Observability.QueueSampleInterval)
 
     // Optional file read
     if _, err := os.Stat(path); err == nil {
@@ -184,6 +187,36 @@ func Load(path string) (*Config, error) {
     if err := v.Unmarshal(&cfg); err != nil {
         return nil, fmt.Errorf("unmarshal config: %w", err)
     }
+    if err := Validate(&cfg); err != nil {
+        return nil, err
+    }
     return &cfg, nil
 }
 
+// Validate checks config constraints and returns an error on invalid settings.
+func Validate(cfg *Config) error {
+    if cfg.Worker.Count < 1 {
+        return fmt.Errorf("worker.count must be >= 1")
+    }
+    if len(cfg.Worker.Priorities) == 0 {
+        return fmt.Errorf("worker.priorities must be non-empty")
+    }
+    for _, p := range cfg.Worker.Priorities {
+        if _, ok := cfg.Worker.Queues[p]; !ok {
+            return fmt.Errorf("worker.queues missing entry for priority %q", p)
+        }
+    }
+    if cfg.Worker.HeartbeatTTL < 5*time.Second {
+        return fmt.Errorf("worker.heartbeat_ttl must be >= 5s")
+    }
+    if cfg.Worker.BRPopLPushTimeout <= 0 || cfg.Worker.BRPopLPushTimeout > cfg.Worker.HeartbeatTTL/2 {
+        return fmt.Errorf("worker.brpoplpush_timeout must be >0 and <= heartbeat_ttl/2")
+    }
+    if cfg.Producer.RateLimitPerSec < 0 {
+        return fmt.Errorf("producer.rate_limit_per_sec must be >= 0")
+    }
+    if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
+        return fmt.Errorf("observability.metrics_port must be 1..65535")
+    }
+    return nil
+}

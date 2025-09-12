@@ -54,6 +54,8 @@ func init() {
 }
 
 // StartMetricsServer exposes /metrics and returns a server for controlled shutdown.
+// StartMetricsServer is retained for compatibility but consider using StartHTTPServer
+// which also registers health endpoints.
 func StartMetricsServer(cfg *config.Config) *http.Server {
     mux := http.NewServeMux()
     mux.Handle("/metrics", promhttp.Handler())
