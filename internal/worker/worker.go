@@ -129,13 +129,15 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 
     // Simulated processing: sleep based on filesize
     dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
+    canceled := false
     select {
     case <-ctx.Done():
+        canceled = true
     case <-time.After(dur):
     }
 
-    // For demonstration, consider processing success unless filename contains "fail"
-    success := !strings.Contains(strings.ToLower(job.FilePath), "fail")
+    // For demonstration, consider processing success unless canceled or filename contains "fail"
+    success := !canceled && !strings.Contains(strings.ToLower(job.FilePath), "fail")
 
     if success {
         // complete
