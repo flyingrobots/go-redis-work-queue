@@ -3,9 +3,11 @@
 - Last updated: 2025-09-12
 
 ## Executive Summary
+
 Milestones define concrete deliverables with success criteria, dependencies, and decision gates. These map to the alpha, beta, RC, and GA releases.
 
 ## Table of Contents
+
 - [Milestone List](#milestone-list)
 - [Dependencies](#dependencies)
 - [Go/No-Go Decision Gates](#gono-go-decision-gates)
@@ -35,14 +37,15 @@ Milestones define concrete deliverables with success criteria, dependencies, and
    - Success: zero P0/P1 issues; CI green across matrix
 
 ## Dependencies
+
 - 2 depends on 1 (observability requires validated config and endpoints)
 - 5 depends on 4 (perf needs stabilized limiter and tools)
 - 6 depends on 5 (chaos built on validated e2e)
 - 7 depends on 6 (GA after RC validation)
 
 ## Go/No-Go Decision Gates
+
 - Alpha (2025-09-26): must meet milestone 1–3 success criteria.
 - Beta (2025-10-10): limiter behavior validated, admin tools safe; perf doc drafted.
 - RC (2025-10-24): chaos tests pass; no critical security findings.
 - GA (2025-11-07): p95 < 2s small files; SLOs defined; docs complete.
-

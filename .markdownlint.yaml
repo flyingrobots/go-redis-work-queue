@@ -20,3 +20,9 @@ MD046:
 
 # Inline code spans: allow backticks in text without strict checks
 MD038: false
+
+# Ordered list item prefix flexible (allow any numbering)
+MD029: false
+
+# Allow inline HTML (used in some docs)
+MD033: false
