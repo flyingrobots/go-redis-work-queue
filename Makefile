@@ -23,3 +23,9 @@ tidy:
 
 version:
 	@echo $(VERSION)
+
+.PHONY: hooks
+hooks:
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/pre-commit
+	@echo "Git hooks enabled (pre-commit markdownlint autofix)."

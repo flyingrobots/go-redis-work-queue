@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Markdown lint + autofix staged Markdown files
+set -euo pipefail
+
+changed_md=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.md$' || true)
+if [[ -z "$changed_md" ]]; then
+  exit 0
+fi
+
+echo "[pre-commit] markdownlint-cli2 --fix on staged Markdown files"
+if command -v npx >/dev/null 2>&1; then
+  # Run with --fix so minor issues are auto-corrected
+  npx -y markdownlint-cli2 --fix $changed_md || true
+  # Re-stage any modified files
+  git add $changed_md || true
+else
+  echo "npx not found. Skipping markdownlint autofix. Install Node.js to enable autofix." >&2
+fi
+
+exit 0
