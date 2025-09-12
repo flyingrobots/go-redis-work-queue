@@ -37,6 +37,8 @@ func (w *Worker) Run(ctx context.Context) error {
         id := fmt.Sprintf("%s-%d-%d", host, pid, i)
         go func(workerID string) {
             defer wg.Done()
+            obs.WorkerActive.Inc()
+            defer obs.WorkerActive.Dec()
             w.runOne(ctx, workerID)
         }(id)
     }
