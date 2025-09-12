@@ -3,6 +3,7 @@ package producer
 import (
     "context"
     "testing"
+    "time"
 
     "github.com/alicebob/miniredis/v2"
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -24,6 +25,9 @@ func TestRateLimit(t *testing.T) {
     log, _ := zap.NewDevelopment()
     p := New(cfg, rdb, log)
     if err := p.rateLimit(context.Background()); err != nil { t.Fatal(err) }
-    if err := p.rateLimit(context.Background()); err != nil { t.Fatal(err) } // should not error; windowing test
+    start := time.Now()
+    if err := p.rateLimit(context.Background()); err != nil { t.Fatal(err) } // second call exceeds limit; will sleep ~ttl
+    if time.Since(start) < 100*time.Millisecond {
+        t.Fatalf("expected limiter to sleep when exceeded")
+    }
 }
-

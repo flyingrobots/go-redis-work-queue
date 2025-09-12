@@ -87,17 +87,33 @@ func (p *Producer) priorityForExt(ext string) string {
 func (p *Producer) rateLimit(ctx context.Context) error {
     if p.cfg.Producer.RateLimitPerSec <= 0 { return nil }
     key := p.cfg.Producer.RateLimitKey
-    // Fixed-window limiter
+    // Fixed-window limiter with TTL-based sleep and jitter
     n, err := p.rdb.Incr(ctx, key).Result()
     if err != nil { return err }
     if n == 1 {
+        // First hit in window: set expiry
         _ = p.rdb.Expire(ctx, key, time.Second).Err()
     }
     if int(n) > p.cfg.Producer.RateLimitPerSec {
-        // Sleep until window likely reset
-        time.Sleep(250 * time.Millisecond)
+        ttl, err := p.rdb.TTL(ctx, key).Result()
+        if err == nil && ttl > 0 {
+            // Add jitter up to 50ms
+            jitter := time.Duration(randUint32()%50) * time.Millisecond
+            select {
+            case <-ctx.Done():
+            case <-time.After(ttl + jitter):
+            }
+        } else {
+            time.Sleep(200 * time.Millisecond)
+        }
     }
     return nil
+}
+
+func randUint32() uint32 {
+    var b [4]byte
+    _, _ = rand.Read(b[:])
+    return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
 func randID() string {
