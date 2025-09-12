@@ -1,0 +1,15 @@
+{
+  "editor.formatOnSave": false,
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  },
+  "gopls": {
+    "ui.semanticTokens": true,
+    "build.experimentalWorkspaceModule": true
+  },
+  "go.testFlags": ["-race", "-count=1"],
+  "go.toolsManagement.autoUpdate": true
+}
