@@ -14,6 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
       - name: Install git-chglog
         run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
       - name: Generate CHANGELOG.md
@@ -27,4 +35,4 @@ jobs:
           git commit -m "chore(changelog): update CHANGELOG for ${GITHUB_REF_NAME}" || echo "no changes"
       - name: Push changes
         run: |
-          git push || echo "no push"
+          git push origin HEAD:${{ github.event.repository.default_branch }} || echo "no push"

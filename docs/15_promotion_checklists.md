@@ -3,14 +3,15 @@
 - Last updated: 2025-09-12
 
 ## Alpha → Beta Checklist
-- [ ] Functional completeness: producer, worker, all-in-one, reaper, breaker, admin CLI
-- [ ] Observability: /metrics, /healthz, /readyz live and correct
-- [ ] CI green on main (build, vet, race, unit, integration, e2e)
+
+- [x] Functional completeness: producer, worker, all-in-one, reaper, breaker, admin CLI
+- [x] Observability: /metrics, /healthz, /readyz live and correct
+- [x] CI green on main (build, vet, race, unit, integration, e2e)
 - [ ] Unit coverage ≥ 80% core packages (attach coverage report)
 - [ ] E2E passes deterministically (≥ 5 runs)
-- [ ] govulncheck: no Critical/High in code paths/stdlib
+- [x] govulncheck: no Critical/High in code paths/stdlib
 - [ ] Performance baseline: 1k jobs at 500/s complete; limiter ±10%/60s
-- [ ] Docs: README, PRD, test plan, deployment, runbook updated
+- [x] Docs: README, PRD, test plan, deployment, runbook updated
 - Evidence links:
   - CI run URL: …
   - Bench JSON: …
@@ -19,18 +20,19 @@
 
 ### Confidence Scores (Alpha → Beta)
 
-| Criterion | Confidence | Rationale | How to improve |
-|---|---:|---|---|
-| Functional completeness | 0.9 | All core roles implemented and tested; admin CLI present | Add more end-to-end tests for admin flows; document edge cases |
-| Observability endpoints | 0.95 | Live and exercised in CI/e2e; stable | Add /healthz readiness probes to example manifests; alert rules examples |
-| CI health | 0.9 | CI green with race, vet, e2e, govulncheck | Increase matrix (Go versions, OS); add flaky-test detection |
-| Coverage ≥ 80% | 0.75 | Core packages covered; gaps in admin/obs | Add tests for admin and HTTP server handlers |
-| E2E determinism | 0.8 | E2E with Redis service stable locally and in CI | Add retries and timing buffers; run 5x in workflow and gate |
-| Security (govulncheck) | 0.95 | Using Go 1.24; no critical findings | Add image scanning; pin base image digest |
-| Performance baseline | 0.7 | Bench harness exists; sample run meets ~960 jobs/min, latency sampling coarse | Improve latency measurement via metrics; run on 4 vCPU node and document env |
-| Documentation completeness | 0.9 | PRD, runbook, deployment, perf, checklists present | Add Helm usage examples and alert rules |
+| Criterion | Confidence | Rationale | How to improve | Status |
+|---|---:|---|---|---|
+| Functional completeness | 0.90 | All core roles implemented and tested; admin CLI present | Add more E2E admin flows; edge-case docs | Done |
+| Observability endpoints | 0.95 | /metrics, /healthz, /readyz live; used in CI/e2e | Add probes to examples; alert rules | Done |
+| CI health | 0.90 | CI green (build, vet, race, e2e, govulncheck) | Add matrix (OS/Go), flaky-test detector | Done |
+| Coverage ≥ 80% | 0.75 | Gaps in admin/obs packages | Add tests for admin + HTTP handlers | In progress |
+| E2E determinism | 0.80 | CI runs e2e 5×; generally stable | Gate on 5× passing and record | In progress |
+| Security (govulncheck) | 0.95 | Go 1.25 stdlib; no critical findings | Image scanning; pin base digest | Done |
+| Performance baseline | 0.70 | Harness present; prelim results only | Use Prom histograms; 4 vCPU run | In progress |
+| Documentation completeness | 0.90 | PRD, runbook, deploy, perf, checklists | Add alert rules + Helm usage | Done |
 
 ## Beta → RC Checklist
+
 - [ ] Throughput ≥ 1k jobs/min for ≥ 10m; p95 < 2s (<1MB files)
 - [ ] Chaos tests: Redis outage/latency/worker crash → no lost jobs; breaker transitions
 - [ ] Admin CLI validated against live instance
@@ -41,7 +43,21 @@
 - [ ] No P0/P1; ≤ 3 P2s w/ workarounds
 - Evidence links as above
 
+### Confidence Scores (Beta → RC)
+
+| Criterion | Confidence | Rationale | How to improve | Status |
+|---|---:|---|---|---|
+| ≥1k jobs/min for ≥10m | 0.60 | Not yet run on dedicated 4 vCPU node | Schedule controlled benchmark; record env + metrics | In progress |
+| p95 < 2s (<1MB) | 0.60 | Coarse sampling currently | Use Prom histograms; sustained run | In progress |
+| Chaos (outage/latency/crash) | 0.70 | Recovery logic exists; partial tests | Add chaos e2e (stop Redis; add latency) | In progress |
+| Admin validation | 0.85 | Admin commands + tests | Add e2e assertions for outputs | Ready for review |
+| Gauges/breaker accuracy | 0.85 | Metrics wired; observed | Add metric assertions; dashboards | Ready for review |
+| 24–48h soak | 0.50 | Not yet performed | Stage soak; capture dashboards | Not started |
+| Security and deps | 0.90 | govulncheck green; deps pinned | Add Renovate/Dependabot; image scan | Done |
+| Issue hygiene | 0.90 | No open P0/P1 | Enforce labels/triage automation | Done |
+
 ## RC → GA Checklist
+
 - [ ] Code freeze; only showstopper fixes
 - [ ] 0 P0/P1; ≤ 2 P2s with workarounds; no flakey tests across 10 runs
 - [ ] Release workflow proven; rollback rehearsal complete
@@ -50,26 +66,15 @@
 - [ ] govulncheck clean; image scan no Critical
 - [ ] 7-day RC soak: readiness > 99.9%, DLQ < 0.5%
 - Evidence links as above
-### Confidence Scores (Beta → RC)
 
-| Criterion | Confidence | Rationale | How to improve |
-|---|---:|---|---|
-| ≥1k jobs/min for ≥10m | 0.6 | Not yet run on dedicated 4 vCPU node | Schedule controlled benchmark; record metrics and environment |
-| p95 < 2s (<1MB) | 0.6 | Latency sampling method is coarse | Use Prometheus histogram quantiles on /metrics; run sustained test |
-| Chaos (outage/latency/crash) | 0.7 | Logic supports recovery; tests cover happy-path and reaper | Add chaos e2e in CI (stop Redis container; tc latency); verify no loss |
-| Admin validation | 0.85 | Admin commands tested manually; unit tests for helpers | Add e2e assertions for stats and peek outputs |
-| Gauges/breaker accuracy | 0.85 | Metrics wired; observed locally | Add metric assertions in e2e; dashboards and alerts validate |
-| 24–48h soak | 0.5 | Not yet executed | Run soak in staging and record dashboards |
-| Security and deps | 0.9 | govulncheck in CI; deps pinned | Add Renovate/Dependabot; image scanning stage |
-| Issue hygiene | 0.9 | No open P0/P1 | Enforce labels and triage automation |
 ### Confidence Scores (RC → GA)
 
-| Criterion | Confidence | Rationale | How to improve |
-|---|---:|---|---|
-| Code freeze discipline | 0.8 | Process defined; branch protection enabled | Require 1 review and passing checks (enabled); add CODEOWNERS |
-| Zero P0/P1; ≤2 P2 | 0.85 | Current backlog clean | Maintain triage; add SLOs for bug classes |
-| Release workflow | 0.9 | GoReleaser + GHCR configured; test via pre-release | Dry-run snapshot and tag a pre-release on branch |
-| Rollback rehearsal | 0.6 | Procedure documented | Execute runbook in staging and document proof |
-| Backward compatibility | 0.8 | Config stable; validation added | Add versioned config schema and migration notes |
-| Docs completeness | 0.9 | Extensive docs present | Add Grafana/Prometheus import snippets and examples (added dashboard) |
-| 7-day soak | 0.5 | Not yet executed | Run RC soak with dashboard snapshots and attach to evidence |
+| Criterion | Confidence | Rationale | How to improve | Status |
+|---|---:|---|---|---|
+| Code freeze discipline | 0.80 | Process defined; branch protection enabled | Require 1 review + passing checks; CODEOWNERS | Ready for review |
+| Zero P0/P1; ≤2 P2 | 0.85 | Backlog clean at present | Maintain triage; add SLOs | Ready for review |
+| Release workflow | 0.90 | GoReleaser + GHCR configured | Dry-run snapshot + pre-release tag | Done (configured) |
+| Rollback rehearsal | 0.60 | Runbook documented | Execute rehearsal in staging | In progress |
+| Backward compatibility | 0.80 | Config stable; validation added | Versioned schema + migration notes | Ready for review |
+| Docs completeness | 0.90 | Extensive docs + examples | Add alert rules + dashboards | Done |
+| 7-day soak | 0.50 | Not yet executed | Run RC soak; attach dashboards | Not started |
