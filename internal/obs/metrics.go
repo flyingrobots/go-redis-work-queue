@@ -47,10 +47,14 @@ var (
         Name: "circuit_breaker_state",
         Help: "0 Closed, 1 HalfOpen, 2 Open",
     })
+    WorkerActive = prometheus.NewGauge(prometheus.GaugeOpts{
+        Name: "worker_active",
+        Help: "Number of active worker goroutines",
+    })
 )
 
 func init() {
-    prometheus.MustRegister(JobsProduced, JobsConsumed, JobsCompleted, JobsFailed, JobsRetried, JobsDeadLetter, JobProcessingDuration, QueueLength, CircuitBreakerState)
+    prometheus.MustRegister(JobsProduced, JobsConsumed, JobsCompleted, JobsFailed, JobsRetried, JobsDeadLetter, JobProcessingDuration, QueueLength, CircuitBreakerState, WorkerActive)
 }
 
 // StartMetricsServer exposes /metrics and returns a server for controlled shutdown.
