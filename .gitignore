@@ -1,0 +1,33 @@
+# OS/macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# macOS SMB network shares
+._*
+
+# Go
+/bin/
+/build/
+/dist/
+/out/
+*.test
+*.coverprofile
+*.out
+coverage/
+vendor/
+
+# Go modules sum cache (generated)
+go.work
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
