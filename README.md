@@ -22,6 +22,10 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 - Run all-in-one: ./bin/job-queue-system --role=all --config=config/config.yaml
 - Or run producer only: ./bin/job-queue-system --role=producer --config=config/config.yaml
 - Or run worker only: ./bin/job-queue-system --role=worker --config=config/config.yaml
+ - Admin commands:
+   - Stats: ./bin/job-queue-system --role=admin --admin-cmd=stats --config=config/config.yaml
+   - Peek:  ./bin/job-queue-system --role=admin --admin-cmd=peek --queue=low --n=10 --config=config/config.yaml
+   - Purge DLQ: ./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
 
 ### Metrics
 
@@ -35,6 +39,10 @@ See docs/ for the Product Requirements Document (PRD) and detailed design. A sam
 ### Priority Fetching
 
 - Workers emulate prioritized multi-queue blocking fetch by looping priorities (e.g., high then low) and issuing `BRPOPLPUSH` per-queue with a short timeout (default 1s). This preserves atomic move semantics within each queue, prefers higher priority at sub-second granularity, and avoids job loss. Lower-priority jobs may incur up to the timeout in extra latency when higher-priority queues are empty.
+
+### Rate Limiting
+
+- Producer rate limiting uses a fixed-window counter (`INCR` + 1s `EXPIRE`) and sleeps precisely until the end of the window (`TTL`), with small jitter to avoid thundering herd.
 
 ### Docker
 
