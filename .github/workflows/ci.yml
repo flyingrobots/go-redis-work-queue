@@ -35,3 +35,7 @@ jobs:
         env:
           E2E_REDIS_ADDR: localhost:6379
         run: go test ./... -race -count=1
+      - name: Govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          $(go env GOPATH)/bin/govulncheck ./...

@@ -28,6 +28,10 @@ func main() {
     var adminQueue string
     var adminN int
     var adminYes bool
+    var benchCount int
+    var benchRate int
+    var benchPriority string
+    var benchTimeout time.Duration
     fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
     fs.StringVar(&role, "role", "all", "Role to run: producer|worker|all|admin")
     fs.StringVar(&configPath, "config", "config/config.yaml", "Path to YAML config")
@@ -35,6 +39,10 @@ func main() {
     fs.StringVar(&adminQueue, "queue", "", "Queue alias or full key for admin peek (high|low|completed|dead_letter|jobqueue:...)")
     fs.IntVar(&adminN, "n", 10, "Number of items for admin peek")
     fs.BoolVar(&adminYes, "yes", false, "Automatic yes to prompts (dangerous operations)")
+    fs.IntVar(&benchCount, "bench-count", 1000, "Admin bench: number of jobs")
+    fs.IntVar(&benchRate, "bench-rate", 500, "Admin bench: enqueue rate jobs/sec")
+    fs.StringVar(&benchPriority, "bench-priority", "low", "Admin bench: priority/queue alias")
+    fs.DurationVar(&benchTimeout, "bench-timeout", 60*time.Second, "Admin bench: timeout to wait for completion")
     _ = fs.Parse(os.Args[1:])
 
     // Load configuration
@@ -124,14 +132,14 @@ func main() {
     default:
         // admin role
         if role == "admin" {
-            runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes)
+            runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes, benchCount, benchRate, benchPriority, benchTimeout)
             return
         }
         logger.Fatal("unknown role", obs.String("role", role))
     }
 }
 
-func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool) {
+func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool, benchCount, benchRate int, benchPriority string, benchTimeout time.Duration) {
     switch cmd {
     case "stats":
         res, err := admin.Stats(ctx, cfg, rdb)
@@ -148,6 +156,11 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
         if !yes { logger.Fatal("refusing to purge without --yes") }
         if err := admin.PurgeDLQ(ctx, cfg, rdb); err != nil { logger.Fatal("admin purge-dlq error", obs.Err(err)) }
         fmt.Println("dead letter queue purged")
+    case "bench":
+        res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchTimeout)
+        if err != nil { logger.Fatal("admin bench error", obs.Err(err)) }
+        b, _ := json.MarshalIndent(res, "", "  ")
+        fmt.Println(string(b))
     default:
         logger.Fatal("unknown admin command", obs.String("cmd", cmd))
     }

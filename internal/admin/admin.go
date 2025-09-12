@@ -5,8 +5,10 @@ import (
     "encoding/json"
     "errors"
     "fmt"
+    "math"
     "sort"
     "strings"
+    "time"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
     "github.com/go-redis/redis/v8"
@@ -91,3 +93,63 @@ func resolveQueue(cfg *config.Config, alias string) (string, error) {
     return "", fmt.Errorf("unknown queue alias %q; known: %s, completed, dead_letter or full key starting with jobqueue:", alias, string(b))
 }
 
+type BenchResult struct {
+    Count      int           `json:"count"`
+    Duration   time.Duration `json:"duration"`
+    Throughput float64       `json:"throughput_jobs_per_sec"`
+    P50        time.Duration `json:"p50_latency"`
+    P95        time.Duration `json:"p95_latency"`
+}
+
+// Bench enqueues count jobs to the chosen queue and waits for completion
+// (observing the completed list) up to timeout. It computes simple latency
+// stats using job creation_time vs. measurement time.
+func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority string, count int, rate int, timeout time.Duration) (BenchResult, error) {
+    res := BenchResult{Count: count}
+    if count <= 0 { return res, fmt.Errorf("count must be > 0") }
+    if rate <= 0 { rate = 100 }
+    qkey, err := resolveQueue(cfg, priority)
+    if err != nil { return res, err }
+    // Clear completed
+    _ = rdb.Del(ctx, cfg.Worker.CompletedList).Err()
+
+    // Enqueue
+    ticker := time.NewTicker(time.Second / time.Duration(rate))
+    defer ticker.Stop()
+    start := time.Now()
+    for i := 0; i < count; i++ {
+        select { case <-ctx.Done(): return res, ctx.Err(); case <-ticker.C: }
+        payload := fmt.Sprintf(`{"id":"bench-%d","filepath":"/bench/%d","filesize":1,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
+            i, i, priority, time.Now().UTC().Format(time.RFC3339Nano))
+        if err := rdb.LPush(ctx, qkey, payload).Err(); err != nil { return res, err }
+    }
+
+    // Wait for completion
+    doneBy := time.Now().Add(timeout)
+    for time.Now().Before(doneBy) {
+        n, _ := rdb.LLen(ctx, cfg.Worker.CompletedList).Result()
+        if int(n) >= count { break }
+        time.Sleep(50 * time.Millisecond)
+    }
+    res.Duration = time.Since(start)
+    if res.Duration > 0 { res.Throughput = float64(count) / res.Duration.Seconds() }
+
+    // Fetch and compute latencies
+    items, _ := rdb.LRange(ctx, cfg.Worker.CompletedList, 0, -1).Result()
+    lats := make([]float64, 0, len(items))
+    now := time.Now()
+    for _, it := range items {
+        var j struct{ CreationTime string `json:"creation_time"` }
+        if err := json.Unmarshal([]byte(it), &j); err == nil {
+            if t, err2 := time.Parse(time.RFC3339Nano, j.CreationTime); err2 == nil {
+                lats = append(lats, now.Sub(t).Seconds())
+            }
+        }
+    }
+    if len(lats) > 0 {
+        sort.Float64s(lats)
+        res.P50 = time.Duration(lats[int(math.Round(0.50*float64(len(lats)-1)))]*float64(time.Second))
+        res.P95 = time.Duration(lats[int(math.Round(0.95*float64(len(lats)-1)))]*float64(time.Second))
+    }
+    return res, nil
+}
