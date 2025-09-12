@@ -69,7 +69,7 @@ func (p *Producer) Run(ctx context.Context) error {
             return err
         }
         obs.JobsProduced.Inc()
-        p.log.Info("enqueued job", obs.String("id", j.ID), obs.String("queue", key))
+        p.log.Info("enqueued job", obs.String("id", j.ID), obs.String("queue", key), obs.String("trace_id", j.TraceID), obs.String("span_id", j.SpanID))
     }
     return nil
 }
