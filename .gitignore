@@ -9,6 +9,7 @@ Icon
 
 # Go
 /bin/
+job-queue-system
 /build/
 /dist/
 /out/
@@ -30,4 +31,3 @@ go.work
 # Logs
 *.log
 logs/
-
