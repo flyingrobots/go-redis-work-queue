@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package queue
 
 import "testing"
@@ -12,4 +13,3 @@ func TestMarshalUnmarshal(t *testing.T) {
         t.Fatalf("roundtrip mismatch: %#v vs %#v", j, j2)
     }
 }
-

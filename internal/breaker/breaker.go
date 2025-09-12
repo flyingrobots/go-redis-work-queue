@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package breaker
 
 import (
@@ -106,4 +107,3 @@ func (cb *CircuitBreaker) Record(ok bool) {
         // handled in Allow()
     }
 }
-

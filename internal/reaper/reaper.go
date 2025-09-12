@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package reaper
 
 import (
