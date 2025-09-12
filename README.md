@@ -66,3 +66,7 @@ Evidence artifacts (docs/evidence/):
 - ci_run.json (CI URL), bench.json (throughput/latency), metrics_before/after.txt, config.alpha.yaml
 
 To reproduce evidence locally, see docs/evidence/README.md.
+
+## Testing
+
+See docs/testing-guide.md for a package-by-package overview and copy/paste commands to run individual tests or the full suite with the race detector.
