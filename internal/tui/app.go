@@ -594,41 +594,7 @@ func atoiDefault(s string, def int) int {
 	return v
 }
 
-func renderConfirmModal(m model) string {
-	title := "Confirm"
-	msg := ""
-	switch m.confirmAction {
-	case "purge-dlq":
-		msg = "Purge dead letter queue?"
-	case "purge-all":
-		msg = "Purge ALL managed keys?"
-	default:
-		msg = m.confirmAction
-	}
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("212")).
-		Padding(1, 2)
-
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Render(title),
-		msg,
-		"[y] Yes   [n] No",
-	)
-
-	// Centered width
-	width := m.width
-	if width <= 0 {
-		width = 80
-	}
-	modal := box.Render(content)
-	// Center horizontally by padding spaces
-	pad := 0
-	if w := lipgloss.Width(modal); width > w {
-		pad = (width - w) / 2
-	}
-	return strings.Repeat(" ", pad) + modal
-}
+// renderConfirmModal moved to overlays.go
 
 // renderHelpOverlay2 (legacy duplicate) dims the base and centers the teacup help view.
 func renderHelpOverlay2(m model, base string) string {
@@ -684,11 +650,7 @@ func renderHelpOverlay2(m model, base string) string {
 }
 
 // staticStringModel is a tiny tea.Model wrapper around a fixed string view.
-type staticStringModel struct{ s string }
-
-func (s staticStringModel) Init() tea.Cmd                           { return nil }
-func (s staticStringModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return s, nil }
-func (s staticStringModel) View() string                            { return s.s }
+// staticStringModel moved to overlays.go
 
 // bench progress ticking
 // moved to model.go: benchPollTick, benchProgMsg
