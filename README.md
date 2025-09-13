@@ -97,6 +97,14 @@ Notes:
 - The TUI calls internal admin APIs, so it reflects the same Redis keys as the CLI admin mode.
 - When a confirmation modal is open, the background dims and a full-screen scrim appears for focus.
 
+Screenshots (examples):
+
+![Queues View](docs/images/tui-queues.png)
+
+![Peek Modal](docs/images/tui-peek.png)
+
+![Charts View](docs/images/tui-charts.png)
+
 ### Admin Commands
 
 The CLI provides `--admin-cmd` flags that help you inspect the system.
