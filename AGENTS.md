@@ -124,3 +124,129 @@ High‑leverage, high‑impact items to pursue first. Keep this table updated as
 | Interactive Policy Tuning + Simulator | Prevents outages; safe “what‑if” | Read‑only preview; simple backlog/throughput model; dry‑run apply; rollback | Requires admin API to apply; start simulation offline | High | High | High | High |
 | Patterned Load Generator | Validates perf; great for demos | Add sine/burst/ramp patterns; save/load profiles; chart overlay | Build on bench; add guardrails (limits/jitter) | Low | Medium | Medium | Medium |
 | Anomaly Radar + SLO Budget | At‑a‑glance health; actionable signals | Compute backlog growth, p95, failure rate; thresholds; status widget | Define SLO; calibrate thresholds; integrate metrics | Medium | Medium | Medium‑High | Medium‑High |
+
+## Appendix — Codex Ideas in Detail
+
+Below are more detailed notes for each top pick: motivation, user stories, acceptance criteria, rough sizing/complexity, dependencies, and risks. Use these to shape PRs and to define acceptance tests.
+
+### 1) HTTP/gRPC Admin API
+
+- Motivation: Create a versioned, secure API to power the TUI, CLI, web UI, and automation. Enables RBAC, remote operations, and clear contracts.
+- User stories:
+  - As an SRE, I can call Stats/Peek/Purge endpoints safely with auth tokens.
+  - As a TUI user, my app consumes a stable v1 API regardless of internal changes.
+  - As a developer, I can add an admin operation by implementing a handler and updating the spec.
+  - As a security engineer, I can scope tokens/roles to specific admin actions.
+- Acceptance criteria:
+  - [ ] Spec: OpenAPI (HTTP+JSON) and/or gRPC proto for: Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench (queued job generator).
+  - [ ] Auth: token-based (bearer) middleware, deny-by-default, audit log of admin calls.
+  - [ ] Versioning: prefix (`/api/v1`) and compatibility notes; 404/410 for removed endpoints.
+  - [ ] Rate limit & safety: protective limits for destructive actions (e.g., purge requires `yes=true`).
+  - [ ] Tests: unit tests for handlers, integration tests against ephemeral Redis.
+  - [ ] Observability: request logs, basic latency metrics per endpoint.
+- Rough sizing: Medium (2–3 weeks). Complexity: Medium–High. Dependencies: existing `internal/admin` funcs.
+- Risks: security hardening, long-running handlers, accidental destructive ops (mitigated by guard flags and RBAC).
+
+```mermaid
+flowchart LR
+  subgraph Clients
+    TUI[Bubble Tea TUI]
+    CLI[Admin CLI]
+    Web[Future Web UI]
+  end
+  TUI -->|HTTP/gRPC| API
+  CLI -->|HTTP/gRPC| API
+  Web -->|HTTP/gRPC| API
+  API[(Admin API Service)] --> Admin[internal/admin]
+  Admin --> Redis[(Redis)]
+  Admin --> Workers[Workers]
+```
+
+### 2) DLQ Remediation UI
+
+- Motivation: Reduce incident toil by making DLQ triage fast and safe.
+- User stories:
+  - As an operator, I can list and filter DLQ items and peek payloads.
+  - As an operator, I can requeue selected items and purge specific or all items with confirmations.
+  - As an analyst, I can search DLQ by substring to find patterns.
+- Acceptance criteria:
+  - [ ] DLQ tab lists items with pagination; shows total count; supports filter/search.
+  - [ ] Actions: Peek, Requeue selected, Purge selected, Purge all (confirm modal).
+  - [ ] Performance: handles large DLQs (paginated calls, no full list materialization).
+  - [ ] Errors surfaced non-blocking; destructive actions require confirmation.
+- Rough sizing: Medium (1–2 weeks) post-Admin API. Complexity: Medium. Dependencies: Admin API endpoints for list/peek/requeue/purge.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant T as TUI (DLQ Tab)
+  participant A as Admin API
+  participant R as Redis
+  U->>T: Open DLQ tab
+  T->>A: GET /dlq?offset=o&limit=n
+  A->>R: LRANGE DLQ
+  A-->>T: Items + count
+  U->>T: Requeue selected
+  T->>A: POST /dlq/requeue {ids}
+  A->>R: RPOPLPUSH DLQ -> Queue
+  A-->>T: OK
+```
+
+### 3) Trace Drill‑down + Log Tail
+
+- Motivation: Faster root-cause analysis by correlating jobs with traces and logs.
+- User stories:
+  - As an SRE, I can see a job’s trace ID and open it in my tracing backend.
+  - As a developer, I can tail worker logs filtered by job ID or worker ID within the TUI.
+- Acceptance criteria:
+  - [ ] Display trace IDs in Peek/Info; “Open Trace” action opens external link or shows inline span summary.
+  - [ ] Log tail panel: follow mode, filter (job/worker), backpressure protection (line rate cap).
+  - [ ] Configurable tracing base URL and log source.
+- Rough sizing: Medium (1–2 weeks). Complexity: Medium. Dependencies: Ensure trace IDs are propagated and accessible.
+- Risks: log volume overhead; privacy controls for payloads/PII.
+
+### 4) Interactive Policy Tuning + Simulator
+
+- Motivation: Safe “what‑if” tuning of retries, rate limits, and concurrency to improve SLOs.
+- User stories:
+  - As an operator, I can simulate backlog and latency given new policies before applying.
+  - As an operator, I can apply changes with a confirmation and rollback if needed.
+- Acceptance criteria:
+  - [ ] UI to adjust retry/backoff, rate limits, concurrency caps; simulated charts of backlog/throughput/latency.
+  - [ ] Model: first‑order queueing approximation (service rate, arrival patterns); display assumptions clearly.
+  - [ ] Apply via Admin API with audit log and revert option.
+- Rough sizing: Large (3–4 weeks). Complexity: High. Dependencies: Admin API config endpoints.
+- Risks: false precision in simulation; UX clarity for assumptions.
+
+```mermaid
+flowchart LR
+  Params[Policy Params] --> Sim[Simulator]
+  Pattern[Traffic Pattern] --> Sim
+  Sim --> Charts[Predicted Backlog/Throughput]
+  Approve{Apply?} -->|Yes| API
+  API --> Config[Runtime Config]
+```
+
+### 5) Patterned Load Generator
+
+- Motivation: Validate performance under realistic traffic patterns and demo behaviors.
+- User stories:
+  - As a tester, I can run sine/burst/ramp patterns for a duration and see live charts.
+  - As a user, I can save and reload load profiles and cancel a run.
+- Acceptance criteria:
+  - [ ] Implement patterns: sine, burst, ramp; duration and amplitude controls; guardrails (max rate, total items).
+  - [ ] Visualize target vs actual enqueue rate; show errors; support cancel/stop.
+  - [ ] Persist/load profiles to disk (optional).
+- Rough sizing: Small–Medium (4–6 days). Complexity: Medium. Dependencies: existing bench plumbing.
+
+### 6) Anomaly Radar + SLO Budget
+
+- Motivation: At‑a‑glance operational health with early warnings and burn rate.
+- User stories:
+  - As an SRE, I can see backlog growth, error rate, and p95 latency status in one widget.
+  - As a team, we define an SLO and see remaining error budget and burn alerts.
+- Acceptance criteria:
+  - [ ] Compute/display backlog growth rate, failure rate, and p95 latency with thresholds (green/yellow/red).
+  - [ ] SLO config (YAML) and calculated error budget burn; simple alerts rendered in TUI.
+  - [ ] Lightweight computation (no heavy CPU); sampling acceptable.
+- Rough sizing: Medium (1–2 weeks). Complexity: Medium. Dependencies: metrics exposure and sampling.
