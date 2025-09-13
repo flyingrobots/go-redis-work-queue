@@ -521,10 +521,9 @@ func (m model) View() string {
     // Compose base view
     base := header + "\n" + sub + "\n\n" + body
 
-    // Overlay confirmation modal if needed, with dimmed background
     if m.confirmOpen {
-        dim := lipgloss.NewStyle().Faint(true).Render(base)
-        return dim + "\n" + renderConfirmModal(m)
+        // Render a full-screen scrim with modal in the center for strong focus.
+        return renderOverlayScreen(m)
     }
     return base
 }
@@ -713,6 +712,54 @@ func renderConfirmModal(m model) string {
     pad := 0
     if w := lipgloss.Width(modal); width > w { pad = (width - w) / 2 }
     return strings.Repeat(" ", pad) + modal
+}
+
+// renderOverlayScreen builds a full-screen dimmed scrim and draws the modal
+// centered on top of it. This replaces the regular view while the modal is open
+// for strong contrast.
+func renderOverlayScreen(m model) string {
+    width := m.width
+    height := m.height
+    if width <= 0 { width = 80 }
+    if height <= 0 { height = 24 }
+
+    // Scrim style: faint + subtle background.
+    scrimCell := lipgloss.NewStyle().Background(lipgloss.Color("236")).Faint(true).Render(" ")
+    line := strings.Repeat(scrimCell, width)
+    lines := make([]string, height)
+    for i := 0; i < height; i++ {
+        lines[i] = line
+    }
+
+    // Modal content and dimensions.
+    modal := renderConfirmModal(m)
+    modalLines := strings.Split(modal, "\n")
+    modalH := len(modalLines)
+    modalW := 0
+    for _, ml := range modalLines {
+        if w := lipgloss.Width(ml); w > modalW { modalW = w }
+    }
+
+    // Center modal within the scrim.
+    top := (height - modalH) / 2
+    left := (width - modalW) / 2
+    if top < 0 { top = 0 }
+    if left < 0 { left = 0 }
+
+    // Overlay modal lines into the scrim.
+    for i := 0; i < modalH && (top+i) < height; i++ {
+        ml := modalLines[i]
+        // Base line broken into three parts: left padding, modal, right padding.
+        lp := left
+        rp := width - (left + lipgloss.Width(ml))
+        if lp < 0 { lp = 0 }
+        if rp < 0 { rp = 0 }
+        leftPad := strings.Repeat(scrimCell, lp)
+        rightPad := strings.Repeat(scrimCell, rp)
+        lines[top+i] = leftPad + ml + rightPad
+    }
+
+    return strings.Join(lines, "\n")
 }
 
 // addSample appends a value to a named series using StatsResult map.
