@@ -37,3 +37,24 @@ mdlint:
 		exit 1; \
 	fi
 	@npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+
+.PHONY: mdlint-docs
+mdlint-docs:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 "docs/**/*.md"
+
+.PHONY: mdlint-fix
+mdlint-fix:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 --fix "docs/**/*.md"
+
+.PHONY: mdlint-docker
+mdlint-docker:
+	@docker run --rm -v "$(PWD)":/work -w /work node:20 \
+	  npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"

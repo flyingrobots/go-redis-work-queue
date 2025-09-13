@@ -3,12 +3,11 @@
   "[go]": {
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.organizeImports": true
+      "source.organizeImports": "explicit"
     }
   },
   "gopls": {
-    "ui.semanticTokens": true,
-    "build.experimentalWorkspaceModule": true
+    "ui.semanticTokens": true
   },
   "go.testFlags": ["-race", "-count=1"],
   "go.toolsManagement.autoUpdate": true
