@@ -1,29 +1,92 @@
-# AGENTS Notes
+# AGENTS
 
-Quick notes for working on this repo (Go Redis Work Queue) — things I’ve learned / want to remember when iterating fast.
+- Quick notes for working on this repo (Go Redis Work Queue) 
+- Things learned / want to remember when iterating fast
+- Activity log
+- Tasklist
+- Ideas
 
-- TUI stack and structure
+<!-- Table of Contents -->
+# Table of Contents
+1. [[AGENTS# AGENTS|AGENTS]]
+	1. [[AGENTS## Important Information|Important Information]]
+		1. [[AGENTS### Sections You Must Actively Maintain|Sections You Must Actively Maintain]]
+		2. [[AGENTS### Job Queue|Job Queue]]
+		3. [[AGENTS### TUI App|TUI App]]
+			1. [[AGENTS#### TUI stack and structure|TUI stack and structure]]
+			2. [[AGENTS#### Overlays and input behavior|Overlays and input behavior]]
+			3. [[AGENTS#### Current tabs|Current tabs]]
+			4. [[AGENTS#### Keybindings (important)|Keybindings (important)]]
+			5. [[AGENTS#### Redis/admin plumbing|Redis/admin plumbing]]
+			6. [[AGENTS#### Config + run|Config + run]]
+			7. [[AGENTS#### Observability|Observability]]
+				1. [[AGENTS##### Guardrails|Guardrails]]
+		4. [[AGENTS### Project Status|Project Status]]
+		5. [[AGENTS### Notes|Notes]]
+	2. [[AGENTS## Working Tasklist|Working Tasklist]]
+		1. [[AGENTS### Prioritized Backlog|Prioritized Backlog]]
+		2. [[AGENTS### Finished Log|Finished Log]]
+	3. [[AGENTS## Daily Activity Logs|Daily Activity Logs]]
+		1. [[AGENTS### 2025-09-13–Rewrote `AGENTS.md`|2025-09-13–Rewrote `AGENTS.md`]]
+			1. [[AGENTS#### ##### 06:39 – Starting `AGENTS.md` Enhancements|##### 06:39 – Starting `AGENTS.md` Enhancements]]
+				1. [[AGENTS##### 06:39 – Starting `AGENTS.md` Enhancements|06:39 – Starting `AGENTS.md` Enhancements]]
+	4. [[AGENTS## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM|APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM]]
+		1. [[AGENTS### Codex's Top Picks|Codex's Top Picks]]
+	5. [[AGENTS## Appendix C: Codex Ideas in Detail|Appendix C: Codex Ideas in Detail]]
+		1. [[AGENTS### HTTP/gRPC Admin API|HTTP/gRPC Admin API]]
+		2. [[AGENTS### DLQ Remediation UI|DLQ Remediation UI]]
+		3. [[AGENTS### Trace Drill‑down + Log Tail|Trace Drill‑down + Log Tail]]
+		4. [[AGENTS### Interactive Policy Tuning + Simulator|Interactive Policy Tuning + Simulator]]
+		5. [[AGENTS### Patterned Load Generator|Patterned Load Generator]]
+		6. [[AGENTS### Anomaly Radar + SLO Budget|Anomaly Radar + SLO Budget]]
+
+<!-- End of TOC -->
+
+---
+## Important Information
+
+### Sections You Must Actively Maintain
+
+It is **CRITICAL** to keep the following sections of this document up-to-date as you work.
+
+- What You Should Know
+- Working Tasklist
+- Daily Activity Logs
+### Job Queue
+
+This project is a legit job queue backed by Redis, implemented in Go. The aim is to build a robust, horizontally scalable job system, balancing powerful features against real-world pragmatism, and keep things easy to use and understand. 
+
+See the [README.md](./README.md) for more information.
+
+### TUI App
+
+There's a fancy TUI for interacting with and monitoring the job system. The app's main view is a tabbed UX, where each tab is centered around various app domains. The user can use the keyboard and mouse to interact with, monitor, and debug the system.
+
+#### TUI stack and structure
+
   - Bubble Tea + Lip Gloss + Bubbles (`table`, `viewport`, `spinner`, `progress`) and a custom scrim overlay (no external overlay dep now).
   - Entry point: `cmd/tui/main.go` constructs `internal/tui` model with config + redis + zap logger.
   - Core TUI files: `internal/tui/{model,init,app,view,commands,overlays}.go`.
   - Tabs: `internal/tui/tabs.go` renders "Job Queue", "Workers", "Dead Letter", "Settings" with per-tab border colors + mouse switching.
   - Data polling: periodic `stats` + `keys` via `internal/admin` helpers; charts maintain short time series per queue alias.
 
-- Overlays and input behavior
+#### Overlays and input behavior
+
   - Confirmation modal and Help use a full-screen scrim overlay that centers content and dims background; resilient to any terminal size.
   - ESC priority:
     1) Close confirm modal if open
     2) Exit bench inputs if focused
     3) Clear active filter
     4) Otherwise toggle Help overlay
+#### Current tabs
 
-- Current tabs
-  - Job Queue: existing dashboard (Queues table + Charts + Info). Filter (`f`/`/`), peek (`p`/enter), bench (`b` then enter), progress bar.
-  - Workers: placeholder summary (heartbeats, processing lists); will grow to live workers view.
-  - Dead Letter: placeholder summary (DLQ key + count) with future actions (peek/purge/requeue).
-  - Settings: read-only snapshot of a few config values.
+- Job Queue: existing dashboard (Queues table + Charts + Info). Filter (`f`/`/`), peek (`p`/enter), bench (`b` then enter), progress bar.
+- Workers: placeholder summary (heartbeats, processing lists); will grow to live workers view.
+- Dead Letter: placeholder summary (DLQ key + count) with future actions (peek/purge/requeue).
+- Settings: read-only snapshot of a few config values.
 
-- Keybindings (important)
+#### Keybindings (important)
+
   - `q`/`ctrl+c`: quit (asks to confirm)
   - `esc`: help toggle, or exit modal/input as above
   - `tab`/`shift+tab`: move panel focus (within Job Queue tab)
@@ -34,27 +97,45 @@ Quick notes for working on this repo (Go Redis Work Queue) — things I’ve lea
   - `D` / `A`: confirm purge DLQ / purge ALL
   - Mouse: click tabs to switch, left-click (Job Queue) peeks selected
 
-- Redis/admin plumbing
+#### Redis/admin plumbing
+
   - Uses `internal/admin` for `Stats`, `StatsKeys`, `Peek`, `Bench`, `Purge*`.
   - Completed progress for bench is polled from `cfg.Worker.CompletedList` (keep in mind large lists can be slow to LLen).
 
-- Config + run
+#### Config + run
+
   - Config path flag: `--config config/config.yaml`, refresh via `--refresh`.
   - Build: `make build` or `go build -o bin/tui ./cmd/tui`; run `./bin/tui --config config/config.yaml`.
 
-- Observability
+#### Observability
+
   - Zap logger; metrics on `:9090/metrics`; liveness `/healthz`, readiness `/readyz`.
 
-- Guardrails
+##### Guardrails
+
   - Purge actions gated by confirm modal (DLQ / ALL). Don’t run in prod without care.
   - Bench can generate many jobs fast; prefer test env and lower rates.
 
-- Near-term TODOs I’m targeting
-  - Charts expand-on-click (toggle 2/3 vs 1/3), precise mouse hitboxes (bubblezone), table polish (striping, thresholds, selection glyph), enqueue actions (`e`/`E`), right-click peek.
+### Project Status
 
-## Working Tasklist (maintain and use this from now on)
+- Alpha RC in PR
+- TUI started
 
-Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done.
+### Notes
+
+Near-term TODOs I’m targeting:
+
+- Charts expand-on-click (toggle 2/3 vs 1/3), precise mouse hitboxes (bubblezone), table polish (striping, thresholds, selection glyph), enqueue actions (`e`/`E`), right-click peek.
+
+---
+
+## Working Tasklist
+
+(maintain and use this from now on)
+
+Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done. This is your backlog.
+
+### Prioritized Backlog
 
 - [ ] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
@@ -81,7 +162,47 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
 
-## WILD IDEAS — HAVE A BRAINSTORM
+### Finished Log
+- [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://fake.com)
+
+---
+## Daily Activity Logs
+
+(maintain and use this from now on)
+
+Please keep this document up-to-date with records of what you've worked on as you're working. When you start a task, write down what you're about to do. When you finish something, log that you've finished it. If it was an item off the backlog (see below), check it off. Build up a commit graph of the day's activity and keep it up-to-date as you make commits. Use this not only to record activity, but to capture ideas, make notes/observations/insights, and jot down bugs you don't have time to deal with in the moment.
+
+> [!info]- ### 2025-09-13–Rewrote `AGENTS.md`
+> Today we rewrote `AGENTS.md` and now it's a very useful artifact that records past activity, captures current activity, plans for future activity, and helps both AI agents and humans remember what they're doing.
+> 
+> ```mermaid
+> gitGraph 
+> 	commit 
+> 	commit 
+> 	branch docs/example
+> 	checkout docs/example 
+> 	commit 
+> 	commit 
+> 	checkout main 
+> 	merge docs/example id: "PR #213"
+> ```
+> ##### 06:39 – Starting `AGENTS.md` Enhancements
+> 
+> - Switched to branch `docs/example`
+> - Refining the `AGENTS.md` file to be the one-top-shop/HUB of governance for this project, maintained by AI agents.
+> - Organized top picks from yesterday's brainstorm 
+> ##### 07:23 – Finished `AGENTS.md` Enhancements
+> 
+> - PR open at [URL](to PR)
+> - Tests added: `/path/to/tests.whatever`
+> ##### 13:42 – Bug Report
+>   > [!warning]- **Bug: Infinite Loop in Foo.bar**
+>   > Repro steps:
+>   > etc…
+>
+
+---
+## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 
 Capture ambitious, unconventional ideas. Some may be long-term or require new components; still worth recording for future exploration.
 
@@ -112,7 +233,7 @@ Capture ambitious, unconventional ideas. Some may be long-term or require new co
 - Project: Forecasting — simple ARIMA/Prophet on backlog/throughput; recommend scale-up/down and SLA adjustments.
 - Project: Exactly-once patterns — idempotency keys, dedup sets, and transactional outbox patterns documented and optionally enforced.
 
-## Codex's Top Picks
+### Codex's Top Picks
 
 High‑leverage, high‑impact items to pursue first. Keep this table updated as priorities shift.
 
@@ -125,283 +246,16 @@ High‑leverage, high‑impact items to pursue first. Keep this table updated as
 | Patterned Load Generator              | Validates perf; great for demos            | Add sine/burst/ramp patterns; save/load profiles; chart overlay             | Build on bench; add guardrails (limits/jitter)               | Low        | Medium      | Medium      | Medium          |
 | Anomaly Radar + SLO Budget            | At‑a‑glance health; actionable signals     | Compute backlog growth, p95, failure rate; thresholds; status widget        | Define SLO; calibrate thresholds; integrate metrics          | Medium     | Medium      | Medium‑High | Medium‑High     |
 
-## Appendix — Codex Ideas in Detail
+---
+## Appendix C: Codex Ideas in Detail
 
-Below are detailed briefs for each top pick: each begins with a summary table, followed by Executive Summary, Motivation, Tech Plan, User Stories with Acceptance Criteria, Definition of Done, Test Plan, and a Task List.
+The detailed mini design specs have been moved to separate documents under `docs/ideas/`:
 
-### 1) HTTP/gRPC Admin API
+- HTTP/gRPC Admin API: `docs/ideas/admin-api.md`
+- DLQ Remediation UI: `docs/ideas/dlq-remediation-ui.md`
+- Trace Drill‑down + Log Tail: `docs/ideas/trace-drilldown-log-tail.md`
+- Interactive Policy Tuning + Simulator: `docs/ideas/policy-simulator.md`
+- Patterned Load Generator: `docs/ideas/patterned-load-generator.md`
+- Anomaly Radar + SLO Budget: `docs/ideas/anomaly-radar-slo-budget.md`
 
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| High | API/Platform | `internal/admin`, auth middleware | Security hardening, destructive ops, compat drift | ~600–1000 (Go+spec) | Med‑High (per‑req O(1); Stats O(k)) | 8 (Fib) | High |
-
-**Executive Summary**
-- Define a versioned, secure Admin API (HTTP/gRPC) that fronts existing admin functions, enabling TUI/web/automation with RBAC and observability.
-
-**Motivation**
-- Create a stable contract for admin operations, allow remote control, and unlock future UI features while enforcing safety and auditability.
-
-**Tech Plan**
-- Choose transport: HTTP+JSON (OpenAPI) with optional gRPC; generate clients where useful.
-- Implement middleware: auth (bearer), rate limiting, request logging, correlation IDs.
-- Map handlers to `internal/admin` functions; add pagination/validation.
-- Versioning: `/api/v1`; document compat policy; structured errors.
-- Observability: metrics (per-endpoint latency/error), audit logs for destructive ops.
-- Ship minimal clients for TUI/CLI; integration tests with ephemeral Redis.
-
-**User Stories + Acceptance Criteria**
-- As an SRE, I can call Stats/Peek/Purge endpoints with auth tokens.
-- As a TUI user, I consume a stable v1 API regardless of internal changes.
-- As a security engineer, I can scope tokens/roles to admin actions.
-- Acceptance:
-  - [ ] Spec published (OpenAPI and/or proto) for Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench.
-  - [ ] Auth with deny‑by‑default; tokens verified; audit log persisted for destructive calls.
-  - [ ] Rate limits and explicit confirmation flags for destructive actions.
-  - [ ] Versioned paths; compat notes; structured error schema.
-  - [ ] Handler unit tests and integration tests pass in CI.
-
-**Definition of Done**
-- Docs for endpoints, auth, rate limits, and versioning; CI green with tests; TUI switched to the API for at least one op (Stats).
-
-**Test Plan**
-- Unit: middleware (auth/rate/log) and handlers; fuzz path/query parsing.
-- Integration: dockerized Redis; golden responses; auth failure/expiry cases.
-- Security: basic token leakage and privilege tests.
-
-**Task List**
-- [ ] Draft OpenAPI/proto; agree on schemas
-- [ ] Auth middleware + config
-- [ ] Implement Stats/StatsKeys
-- [ ] Implement Peek
-- [ ] Implement PurgeDLQ/PurgeAll with confirmations
-- [ ] Implement Bench
-- [ ] Add metrics + audit logs
-- [ ] Write unit/integration tests
-- [ ] Wire TUI Stats to API
-
-```mermaid
-flowchart LR
-  subgraph Clients
-    TUI[Bubble Tea TUI]
-    CLI[Admin CLI]
-    Web[Future Web UI]
-  end
-  TUI -->|HTTP/gRPC| API
-  CLI -->|HTTP/gRPC| API
-  Web -->|HTTP/gRPC| API
-  API[(Admin API Service)] --> Admin[internal/admin]
-  Admin --> Redis[(Redis)]
-  Admin --> Workers[Workers]
-```
-
-### 2) DLQ Remediation UI
-
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| High | Ops UX / TUI | Admin API (list/peek/requeue/purge) | Large DLQ perf, destructive ops | ~420–700 (TUI+API) | Medium (page O(p), total O(N)) | 5 (Fib) | High |
-
-**Executive Summary**
-- A focused DLQ tab to list, search, peek, requeue, and purge items safely with confirmations.
-
-**Motivation**
-- Reduce incident toil; provide a fast remediation loop within the TUI.
-
-**Tech Plan**
-- API: add DLQ list with pagination, peek by index/ID, requeue selected, purge endpoints.
-- TUI: DLQ tab with pager, filter, selection; action bar; confirmations.
-- Performance: server-side pagination; cap payload sizes; streaming where feasible.
-
-**User Stories + Acceptance Criteria**
-- As an operator, I can list and filter DLQ items and peek payloads.
-- As an operator, I can requeue or purge selected items with confirmation.
-- Acceptance:
-  - [ ] DLQ list is paginated with total count and filter.
-  - [ ] Peek shows pretty JSON and metadata.
-  - [ ] Requeue/Purge actions exist for selected items; purge all gated by confirm.
-  - [ ] Handles large DLQs without freezing the UI.
-
-**Definition of Done**
-- Usable DLQ tab with list/peek/requeue/purge; README and keybindings updated; basic load test run.
-
-**Test Plan**
-- API: pagination correctness; requeue idempotency; purge limits.
-- TUI: interaction tests (manual + scripted); large list navigation.
-
-**Task List**
-- [ ] API: list + count with filters
-- [ ] API: peek item by ID/index
-- [ ] API: requeue selected
-- [ ] API: purge selected/all
-- [ ] TUI: DLQ tab UI + pager + actions
-- [ ] Docs + screenshots
-
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant T as TUI (DLQ Tab)
-  participant A as Admin API
-  participant R as Redis
-  U->>T: Open DLQ tab
-  T->>A: GET /dlq?offset=o&limit=n
-  A->>R: LRANGE DLQ
-  A-->>T: Items + count
-  U->>T: Requeue selected
-  T->>A: POST /dlq/requeue {ids}
-  A->>R: RPOPLPUSH DLQ -> Queue
-  A-->>T: OK
-```
-
-### 3) Trace Drill‑down + Log Tail
-
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Med‑High | Observability / TUI | Trace propagation; log source | Log volume, PII | ~250–400 | Medium | 5 (Fib) | High |
-
-**Executive Summary**
-- Surface trace IDs in the TUI and provide a log tail pane with filters to accelerate RCA.
-
-**Motivation**
-- Tighten the feedback loop from failing jobs to actionable traces/logs.
-
-**Tech Plan**
-- Ensure trace IDs captured in payload/metadata; configurable tracing base URL.
-- Add “Open Trace” action (external link or inline spans summary).
-- Implement lightweight log tailer with rate cap and filters by job/worker.
-
-**User Stories + Acceptance Criteria**
-- As an SRE, I can open a job’s trace from the TUI.
-- As a developer, I can tail logs filtered by job or worker.
-- Acceptance:
-  - [ ] Trace IDs visible in Peek/Info; action to open.
-  - [ ] Log tail pane with follow mode, filters, and backpressure protection.
-  - [ ] Configurable endpoints for tracing and logs.
-
-**Definition of Done**
-- Trace link + log tail pane shipped; docs include setup; basic perf validation under load.
-
-**Test Plan**
-- Unit: parsing/extraction of IDs; log throttling logic.
-- Manual: links open correct trace; tailing with filters; behavior under bursty logs.
-
-**Task List**
-- [ ] Capture/propagate trace IDs
-- [ ] Add Open Trace action
-- [ ] Implement log tail pane with filters
-- [ ] Docs and examples
-
-### 4) Interactive Policy Tuning + Simulator
-
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Medium | Control Plane / TUI | Admin API config endpoints | False precision, misuse | ~500–800 | High (Sim O(T·M)) | 13 (Fib) | High |
-
-**Executive Summary**
-- A “what‑if” simulator to preview the impact of policy changes (retry/backoff, rate limits, concurrency) before applying.
-
-**Motivation**
-- Prevent outages and tune SLOs by testing changes safely.
-
-**Tech Plan**
-- Build a first‑order queueing model; configurable traffic patterns; show predicted backlog/throughput/latency.
-- Integrate apply/rollback via Admin API; include audit trail.
-
-**User Stories + Acceptance Criteria**
-- As an operator, I can simulate and apply policy changes with confidence.
-- Acceptance:
-  - [ ] UI sliders/inputs for core policies; charts update with predictions.
-  - [ ] Clear assumptions and limitations documented inline.
-  - [ ] Apply/rollback via Admin API with audit log.
-
-**Definition of Done**
-- Simulator usable for core policies; documented; apply/rollback tested end‑to‑end.
-
-**Test Plan**
-- Unit: math/model validation; boundary cases.
-- Integration: dry‑run vs live; rollback correctness.
-
-**Task List**
-- [ ] Implement core sim model
-- [ ] UI: controls + charts
-- [ ] Admin API: apply/rollback endpoints
-- [ ] Docs + inline assumptions
-
-```mermaid
-flowchart LR
-  Params[Policy Params] --> Sim[Simulator]
-  Pattern[Traffic Pattern] --> Sim
-  Sim --> Charts[Predicted Backlog/Throughput]
-  Approve{Apply?} -->|Yes| API
-  API --> Config[Runtime Config]
-```
-
-### 5) Patterned Load Generator
-
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Medium | Bench/Load | Existing bench plumbing | Overloading env, noisy graphs | ~200–350 | Medium (per tick O(1)) | 3 (Fib) | Medium |
-
-**Executive Summary**
-- Extend the bench tool to support sine/burst/ramp patterns, with guardrails and live visualization.
-
-**Motivation**
-- Validate behavior under realistic traffic and create great demos.
-
-**Tech Plan**
-- Implement pattern generators; controls for duration/amplitude; guardrails (max rate/total).
-- Overlay target vs actual enqueue rate on charts; profile persistence optional.
-
-**User Stories + Acceptance Criteria**
-- As a tester, I can run predefined patterns and see accurate live charts.
-- Acceptance:
-  - [ ] Sine, burst, ramp patterns; cancel/stop supported.
-  - [ ] Guardrails prevent runaway load.
-  - [ ] Saved profiles can be reloaded.
-
-**Definition of Done**
-- Patterns implemented with charts; docs include examples and cautions.
-
-**Test Plan**
-- Unit: pattern math; guardrails.
-- Manual: visualize and compare patterns; cancellation behavior.
-
-**Task List**
-- [ ] Implement sine/burst/ramp
-- [ ] Add controls + guardrails
-- [ ] Chart overlay target vs actual
-- [ ] Save/load profiles
-
-### 6) Anomaly Radar + SLO Budget
-
-| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Medium | Observability | Metrics exposure/sampling | Threshold tuning, noise | ~200–350 | Medium (per tick O(1)) | 5 (Fib) | Med‑High |
-
-**Executive Summary**
-- A compact widget showing backlog growth, error rate, and p95 with SLO budget and burn alerts.
-
-**Motivation**
-- Provide immediate health signals and guide operational action.
-
-**Tech Plan**
-- Compute rolling rates and percentiles with light sampling; thresholds for colorization.
-- Configurable SLO target and window; simple burn rate calculation.
-
-**User Stories + Acceptance Criteria**
-- As an SRE, I can see whether we’re inside SLO and how fast we’re burning budget.
-- Acceptance:
-  - [ ] Backlog growth, failure rate, and p95 displayed with thresholds.
-  - [ ] SLO config and budget burn shown; alert when burning too fast.
-  - [ ] Lightweight CPU/memory footprint.
-
-**Definition of Done**
-- Widget integrated; configs documented; behavior validated under synthetic load.
-
-**Test Plan**
-- Unit: rolling window calcs; thresholding logic.
-- Manual: verify color transitions and alerting conditions.
-
-**Task List**
-- [ ] Implement rolling metrics
-- [ ] Add SLO config + budget calc
-- [ ] Integrate widget + thresholds
-- [ ] Document usage and tuning
+Keep the “Codex’s Top Picks” table above in sync with these docs.
