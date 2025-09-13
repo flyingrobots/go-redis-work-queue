@@ -31,43 +31,7 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(m.refreshCmd(), tea.Every(m.refreshEvery, func(time.Time) tea.Msg { return tick{} }), spinner.Tick)
 }
 
-func (m model) refreshCmd() tea.Cmd {
-	return func() tea.Msg {
-		// Fetch stats and keys sequentially (fast ops)
-		s, err := admin.Stats(m.ctx, m.cfg, m.rdb)
-		if err != nil {
-			return statsMsg{err: err}
-		}
-		return statsMsg{s: s, err: nil}
-	}
-}
-
-func (m model) fetchKeysCmd() tea.Cmd {
-	return func() tea.Msg {
-		k, err := admin.StatsKeys(m.ctx, m.cfg, m.rdb)
-		return keysMsg{k: k, err: err}
-	}
-}
-
-func (m model) doPeekCmd(target string, n int) tea.Cmd {
-	return func() tea.Msg {
-		p, err := admin.Peek(m.ctx, m.cfg, m.rdb, target, int64(n))
-		return peekMsg{p: p, err: err}
-	}
-}
-
-func (m model) doBenchCmd(priority string, count, rate int, timeout time.Duration) tea.Cmd {
-	return func() tea.Msg {
-		b, err := admin.Bench(m.ctx, m.cfg, m.rdb, priority, count, rate, timeout)
-		return benchMsg{b: b, err: err}
-	}
-}
-
-func (m model) doEnqueueCmd(queueKey string, count int) tea.Cmd {
-	return func() tea.Msg {
-		return enqueueMsg{n: 0, key: queueKey, err: nil}
-	}
-}
+// command helpers moved to commands.go
 
 // TODO: enqueue helper will be added below
 
@@ -729,12 +693,7 @@ func (s staticStringModel) View() string                            { return s.s
 // bench progress ticking
 // moved to model.go: benchPollTick, benchProgMsg
 
-func (m model) benchPollCmd() tea.Cmd {
-	return func() tea.Msg {
-		n, _ := m.rdb.LLen(m.ctx, m.cfg.Worker.CompletedList).Result()
-		return benchProgMsg{done: n}
-	}
-}
+// benchPollCmd moved to commands.go
 
 // renderOverlayScreen builds a full-screen dimmed scrim and draws the modal
 // centered on top of it. This replaces the regular view while the modal is open
