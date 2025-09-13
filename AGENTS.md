@@ -80,3 +80,34 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Metrics: Optional TUI runtime metrics (ticks, RPC latency) for debugging
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
+
+## WILD IDEAS — HAVE A BRAINSTORM
+
+Capture ambitious, unconventional ideas. Some may be long-term or require new components; still worth recording for future exploration.
+
+- TUI: Live log tail + trace drill-down — attach to worker logs, show correlated OpenTelemetry spans; press a job to open its trace waterfall.
+- TUI: Visual DAG builder for multi-step workflows — drag-and-drop stages with dependencies, retries, and compensation actions; submit as a reusable pipeline.
+- TUI: Anomaly radar — backlog growth, p95 latency spikes, failure-rate heatmap; SLO error budget meter with burn alerts.
+- TUI: Interactive policy tuning — edit retry/backoff, rate limits, concurrency caps; preview impact with a simulator; apply with one keystroke.
+- TUI: Patterned load generator — sine/burst/ramp traffic models; schedule runs; export reproducible profiles for CI.
+- TUI: Multi-cluster control — tabs for multiple Redis endpoints; quick switch and side-by-side compare; propagate admin actions across clusters.
+- TUI: Plugin panel system — drop-in panels (Go, WASM, or Lua) for custom org metrics, transforms, or actions; hot-reload safely.
+- TUI: JSON payload studio — pretty-edit, validate, and enqueue; templates and snippets; schedule run-at/cron.
+- TUI: Calendar view — visualize scheduled and recurring jobs; click to reschedule or pause a rule.
+- TUI: Worker fleet controls — pause/resume/drain nodes; rolling restarts; live CPU/mem/net graphs per worker.
+- TUI: Right-click context menus everywhere — requeue, purge, copy payload, copy Redis key, open trace, export sample.
+- TUI: Collaborative session — multiplexed read-only share over SSH; presenter hands control with a key.
+- TUI: Theme playground — high-contrast/accessible themes; auto-switch based on OS or time of day.
+- Project: HTTP/gRPC admin API — first-class, versioned contract used by both TUI and a web UI; enable remote control and automation.
+- Project: Kubernetes Operator — CRDs for queues/workers; reconcile deployments; autoscale by backlog and SLA targets; preemption policies.
+- Project: Advanced rate limiting — token-bucket with priority fairness; global and per-tenant budgets; dynamic tuning via feedback signals.
+- Project: Producer backpressure — SDK hints when queues are saturated; adaptive rate; circuit breaking by priority.
+- Project: Multi-tenant isolation — quotas, per-tenant keys, encryption at rest (payload), audit logs, privacy scrubbing hooks.
+- Project: DLQ remediation pipeline — automatic classifiers to cluster failures; rules to auto-retry, transform, or quarantine.
+- Project: Storage backends — pluggable engines (Redis Streams, KeyDB/Dragonfly, Redis Cluster); optional Kafka outbox bridge.
+- Project: Long-term archives — stream completed jobs to ClickHouse/S3; TTL retention; fast query for forensics.
+- Project: Event hooks — webhooks or NATS for job state changes; Slack/PagerDuty notifications with deep links to TUI.
+- Project: RBAC and tokens — signed admin commands, per-action permissions; audit trail UI.
+- Project: Chaos harness — inject latency, drops, and Redis failovers; visualize recovery; automate soak/chaos scenarios.
+- Project: Forecasting — simple ARIMA/Prophet on backlog/throughput; recommend scale-up/down and SLA adjustments.
+- Project: Exactly-once patterns — idempotency keys, dedup sets, and transactional outbox patterns documented and optionally enforced.
