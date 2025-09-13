@@ -29,3 +29,11 @@ hooks:
 	@git config core.hooksPath .githooks
 	@chmod +x .githooks/pre-commit
 	@echo "Git hooks enabled (pre-commit markdownlint autofix)."
+
+.PHONY: mdlint
+mdlint:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
