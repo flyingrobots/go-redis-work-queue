@@ -52,3 +52,31 @@ Quick notes for working on this repo (Go Redis Work Queue) — things I’ve lea
 - Near-term TODOs I’m targeting
   - Charts expand-on-click (toggle 2/3 vs 1/3), precise mouse hitboxes (bubblezone), table polish (striping, thresholds, selection glyph), enqueue actions (`e`/`E`), right-click peek.
 
+## Working Tasklist (maintain and use this from now on)
+
+Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done.
+
+- [ ] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
+- [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
+- [ ] TUI: Table polish — colorized counts by thresholds (green/yellow/red), selection glyph, alternating row striping
+- [ ] TUI: Enqueue actions — `e` enqueue 1 to selected; `E` prompt for count (inline in Info panel)
+- [ ] TUI: Right-click on Queues — peek selected (later: context menu with actions)
+- [ ] TUI: Keyboard shortcuts for tabs (`1`..`4` to switch)
+- [ ] TUI: Persist UI state across sessions (active tab, focus panel, filter value)
+- [ ] TUI: Improve tiny-terminal layout — stack panels vertically; clamp widths; hide charts if extremely narrow
+- [ ] TUI: Adjustable panel split — keys (`[`/`]`) or drag on splitter (mouse) to change left/right ratio
+- [ ] TUI: Bench UX — cancel with ESC; show ETA; live throughput; configurable payload size and jitter; concurrency knob
+- [ ] TUI: Bench progress baseline — compute delta from initial `CompletedList` length (avoid overcount if list pre-populated)
+- [ ] TUI: DLQ tab — list/paginate items; peek full payload; requeue selected; purge selected; search/filter
+- [ ] TUI: Workers tab — list worker IDs, last heartbeat time, processing queue/job; sort and filter
+- [ ] TUI: Settings tab — theme toggle; show config path; copy key values; open config file shortcut
+- [ ] TUI: Theme system — centralize styles; dark/light + high-contrast palette via lipgloss adaptive colors
+- [ ] TUI: Help overlay — expand with all shortcuts (tabs, enqueue, right-click), add mouse hints, link to README
+- [ ] TUI: Mouse UX — double-click row to peek; click column header to sort if supported
+- [ ] TUI: Non-blocking error toasts/status area for transient errors (top-right), with log tail in Info
+- [ ] TUI: Unit tests for pure helpers (filtering, formatting, thresholds, clamp)
+- [ ] Admin: Requeue-from-DLQ command with count/range support (exposed to TUI)
+- [ ] Admin: Workers-list admin call (IDs, last heartbeat, active item) for Workers tab
+- [ ] Metrics: Optional TUI runtime metrics (ticks, RPC latency) for debugging
+- [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
+- [ ] Release: Add changelog entries for TUI tabbed layout and overlays
