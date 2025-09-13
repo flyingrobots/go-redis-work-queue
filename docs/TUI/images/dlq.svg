@@ -1,0 +1,11 @@
+<svg width="960" height="540" xmlns="http://www.w3.org/2000/svg">
+  <style>.label{font-family: monospace; font-size: 14px; fill: #ddd}</style>
+  <rect x="0" y="0" width="960" height="540" fill="#1e1e1e"/>
+  <rect x="8" y="8" width="300" height="28" fill="#2a2a2a" stroke="#666"/>
+  <text x="16" y="27" class="label">[ Job Queue ] [ Workers ] [ DLQ ] [ Settings ]</text>
+  <text x="16" y="64" class="label">Dead Letter Queue</text>
+  <rect x="16" y="100" width="928" height="300" fill="#2f3b2e" stroke="#607ae6"/>
+  <text x="28" y="122" class="label">(placeholder: count + actions)</text>
+  <rect x="16" y="412" width="928" height="96" fill="#303040" stroke="#607ae6"/>
+  <text x="28" y="434" class="label">Info</text>
+</svg>
