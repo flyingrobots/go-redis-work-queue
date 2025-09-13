@@ -31,113 +31,7 @@ import (
 
 // Simple, pragmatic TUI for observing and administering the queue system.
 
-// focusable panels on the dashboard
-type focusArea int
-
-const (
-	focusQueues focusArea = iota
-	focusCharts
-	focusInfo
-)
-
-type statsMsg struct {
-	s   admin.StatsResult
-	err error
-}
-
-type keysMsg struct {
-	k   admin.KeysStats
-	err error
-}
-
-type peekMsg struct {
-	p   admin.PeekResult
-	err error
-}
-
-type benchMsg struct {
-	b   admin.BenchResult
-	err error
-}
-
-type enqueueMsg struct {
-	n   int
-	key string
-	err error
-}
-
-type tick struct{}
-
-type model struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	cfg    *config.Config
-	rdb    *redis.Client
-	logger *zap.Logger
-
-	width  int
-	height int
-
-	focus   focusArea
-	help    help.Model
-	spinner spinner.Model
-	loading bool
-	errText string
-
-	// Queues table (name, count)
-	tbl table.Model
-	// For mapping selection to queue alias or key
-	peekTargets []string
-
-	// Cached data
-	lastStats admin.StatsResult
-	lastKeys  admin.KeysStats
-	lastPeek  admin.PeekResult
-	lastBench admin.BenchResult
-
-	// Bench prompt inputs
-	benchCount    textinput.Model
-	benchRate     textinput.Model
-	benchPriority textinput.Model
-	benchTimeout  textinput.Model
-
-	refreshEvery time.Duration
-
-	// layout helpers
-	tableTopY int // number of lines before the table starts
-
-	// time series for charts
-	series    map[string][]float64
-	seriesMax int
-
-	// confirmation modal state
-	confirmOpen   bool
-	confirmAction string // "purge-dlq" | "purge-all"
-
-	// Filter state for queues view
-	filter       textinput.Model
-	filterActive bool
-	allRows      []table.Row
-	allTargets   []string
-
-	// Dashboard viewports
-	vpCharts viewport.Model
-	vpInfo   viewport.Model
-
-	// Styles
-	boxTitle lipgloss.Style
-	boxBody  lipgloss.Style
-
-	// teacup components
-	sb    statusbar.Model
-	help2 tchelp.Model
-
-	// Progress for bench
-	pb       bubprog.Model
-	pbActive bool
-	pbTotal  int
-}
+// types and messages moved to model.go
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -933,9 +827,7 @@ func (s staticStringModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return s, 
 func (s staticStringModel) View() string                            { return s.s }
 
 // bench progress ticking
-type benchPollTick struct{}
-
-type benchProgMsg struct{ done int64 }
+// moved to model.go: benchPollTick, benchProgMsg
 
 func (m model) benchPollCmd() tea.Cmd {
 	return func() tea.Msg {
