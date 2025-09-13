@@ -9,6 +9,7 @@ import (
 
     "github.com/charmbracelet/lipgloss"
     asciigraph "github.com/guptarohit/asciigraph"
+    flexbox "github.com/76creates/stickers/flexbox"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
 )
@@ -41,6 +42,7 @@ func (m model) View() string {
     var body string
     switch m.activeTab {
     case tabJobs:
+        // Build panel contents as before
         fb := renderFilterBar(m)
         left := m.tbl.View()
         if fb != "" {
@@ -67,9 +69,27 @@ func (m model) View() string {
         m.vpInfo.SetContent(info)
         bottom := panel.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
 
-        gap := lipgloss.NewStyle().Width(2).Render(" ")
-        topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
-        body = topRow + "\n" + bottom
+        // Use stickers flexbox to lay out top (Queues/Charts) and bottom (Info)
+        headerLines := 4 // tab bar + header + sub + blank
+        if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" {
+            headerLines++
+        }
+        footerLines := 2 // status bar and spacing
+        bodyHeight := m.height - headerLines - footerLines
+        if bodyHeight < 6 {
+            bodyHeight = 6
+        }
+
+        fbBox := flexbox.New(m.width, bodyHeight)
+        rowTop := fbBox.NewRow().AddCells(
+            flexbox.NewCell(1, 2).SetContent(left),
+            flexbox.NewCell(1, 2).SetContent(right),
+        )
+        rowBottom := fbBox.NewRow().AddCells(
+            flexbox.NewCell(1, 1).SetContent(bottom),
+        )
+        fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
+        body = fbBox.Render()
 
     case tabWorkers:
         // Simple summary placeholder
