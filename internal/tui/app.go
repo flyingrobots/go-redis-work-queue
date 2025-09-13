@@ -2,20 +2,17 @@
 package tui
 
 import (
-    "encoding/json"
     "fmt"
-    "sort"
     "strings"
     "time"
+    "sort"
 
     bubprog "github.com/charmbracelet/bubbles/progress"
     "github.com/charmbracelet/bubbles/spinner"
     "github.com/charmbracelet/bubbles/table"
     tea "github.com/charmbracelet/bubbletea"
     "github.com/charmbracelet/lipgloss"
-    asciigraph "github.com/guptarohit/asciigraph"
     "github.com/lithammer/fuzzysearch/fuzzy"
-    overlay "github.com/rmhubbert/bubbletea-overlay"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
 )
@@ -389,181 +386,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
-	// Header
-	header := lipgloss.NewStyle().Bold(true).Render("Job Queue TUI — Redis " + m.cfg.Redis.Addr)
-	sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d",
-		focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
-	if m.errText != "" {
-		sub += "  |  Error: " + m.errText
-	}
-	if m.loading {
-		sub += "  " + m.spinner.View()
-	}
+// View moved to view.go
 
-	// Panels content
-	fb := renderFilterBar(m)
-	left := m.tbl.View()
-	if fb != "" {
-		left = fb + "\n" + left
-	}
-	left = m.boxBody.Render(m.boxTitle.Render("Queues") + "\n" + left)
+// moved to view.go: summarizeKeys
 
-	// Charts panel content
-	m.vpCharts.SetContent(renderCharts(m))
-	right := m.boxBody.Render(m.boxTitle.Render("Charts") + "\n" + m.vpCharts.View())
+// moved to view.go: renderKeys
 
-	// Info panel: keys summary + optional peek + optional bench form/result
-	info := summarizeKeys(m.lastKeys)
-	if len(m.lastPeek.Items) > 0 {
-		info += "\n\n" + renderPeek(m.lastPeek)
-	}
-	if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() || m.lastBench.Count > 0 {
-		info += "\n\n" + renderBenchForm(m)
-		if m.lastBench.Count > 0 {
-			info += "\n" + renderBenchResult(m.lastBench)
-		}
-	}
-	if m.pbActive && m.pbTotal > 0 {
-		info += "\n\nBench Progress:\n" + m.pb.View()
-	}
-	m.vpInfo.SetContent(info)
-	bottom := m.boxBody.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
+// moved to view.go: renderPeek
 
-	// Side-by-side top row
-	gap := lipgloss.NewStyle().Width(2).Render(" ")
-	topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
-	body := topRow + "\n" + bottom
+// moved to view.go: renderBenchForm
 
-	// Compose base view
-	base := header + "\n" + sub + "\n\n" + body
+// moved to view.go: renderBenchResult
 
-	if m.confirmOpen {
-		// Dim base and overlay centered confirm modal using overlay lib
-		baseDim := lipgloss.NewStyle().Faint(true).Render(base)
-		back := staticStringModel{baseDim}
-		fore := staticStringModel{renderConfirmModal(m)}
-		ov := overlay.New(fore, back, overlay.Center, overlay.Center, 0, 0)
-		return ov.View()
-	}
-	// Append status bar and optional help overlay
-	now := time.Now().Format("15:04:05")
-	m.sb.SetContent("Redis "+m.cfg.Redis.Addr, "focus:"+focusName(m.focus), m.spinner.View(), now)
-	out := base + "\n" + m.sb.View()
-	if m.help2.Active {
-		baseDim := lipgloss.NewStyle().Faint(true).Render(out)
-		back := staticStringModel{baseDim}
-		fore := staticStringModel{m.help2.View()}
-		ov := overlay.New(fore, back, overlay.Center, overlay.Center, 0, 0)
-		out = ov.View()
-	}
-	return out
-}
+// moved to view.go: helpBar
 
-func summarizeKeys(k admin.KeysStats) string {
-	// Show totals and rate limiter info
-	parts := []string{
-		fmt.Sprintf("processing_lists=%d", k.ProcessingLists),
-		fmt.Sprintf("processing_items=%d", k.ProcessingItems),
-		fmt.Sprintf("heartbeats=%d", k.Heartbeats),
-	}
-	if k.RateLimitKey != "" {
-		rl := "rate_limit_key=" + k.RateLimitKey
-		if k.RateLimitTTL != "" {
-			rl += " ttl=" + k.RateLimitTTL
-		}
-		parts = append(parts, rl)
-	}
-	return strings.Join(parts, "  |  ")
-}
-
-func renderKeys(k admin.KeysStats) string {
-	// Deterministic order
-	keys := make([]string, 0, len(k.QueueLengths))
-	for name := range k.QueueLengths {
-		keys = append(keys, name)
-	}
-	sort.Strings(keys)
-	b := &strings.Builder{}
-	fmt.Fprintf(b, "Queue Lengths:\n")
-	for _, name := range keys {
-		fmt.Fprintf(b, "  %-40s %8d\n", name, k.QueueLengths[name])
-	}
-	fmt.Fprintf(b, "\nProcessing lists: %d\nProcessing items: %d\nHeartbeats: %d\n",
-		k.ProcessingLists, k.ProcessingItems, k.Heartbeats)
-	if k.RateLimitKey != "" {
-		fmt.Fprintf(b, "Rate limit key: %s  TTL: %s\n", k.RateLimitKey, k.RateLimitTTL)
-	}
-	return b.String()
-}
-
-func renderPeek(p admin.PeekResult) string {
-	b := &strings.Builder{}
-	fmt.Fprintf(b, "Peek: %s\n", p.Queue)
-	if len(p.Items) == 0 {
-		fmt.Fprintf(b, "(no items)\n")
-		return b.String()
-	}
-	// Show items prettified if JSON
-	for i := len(p.Items) - 1; i >= 0; i-- { // show newest at bottom visually
-		it := p.Items[i]
-		var v map[string]any
-		if json.Unmarshal([]byte(it), &v) == nil {
-			pp, _ := json.MarshalIndent(v, "", "  ")
-			fmt.Fprintf(b, "[%d]\n%s\n\n", i, string(pp))
-		} else {
-			fmt.Fprintf(b, "[%d] %s\n", i, it)
-		}
-	}
-	return b.String()
-}
-
-func renderBenchForm(m model) string {
-	// Simple inline form
-	return strings.Join([]string{
-		"Bench (enter to run, esc to back):",
-		fmt.Sprintf("  Count:    %s", m.benchCount.View()),
-		fmt.Sprintf("  Rate/s:   %s", m.benchRate.View()),
-		fmt.Sprintf("  Priority: %s", m.benchPriority.View()),
-		fmt.Sprintf("  Timeout:  %s seconds", m.benchTimeout.View()),
-	}, "\n")
-}
-
-func renderBenchResult(b admin.BenchResult) string {
-	if b.Count == 0 {
-		return ""
-	}
-	return fmt.Sprintf("Bench: count=%d  duration=%s  thr=%.1f/s  p50=%s  p95=%s",
-		b.Count, b.Duration.Truncate(time.Millisecond), b.Throughput, b.P50.Truncate(time.Millisecond), b.P95.Truncate(time.Millisecond))
-}
-
-func helpBar() string {
-	return strings.Join([]string{
-		"q:quit",
-		"tab/shift+tab:focus panel",
-		"r:refresh",
-		"j/k:down/up",
-		"wheel/mouse: scroll/select",
-		"enter/p:peek",
-		"b:bench form",
-		"f:filter (queues)",
-		"D:purge DLQ (y/n)",
-		"A:purge ALL (y/n)",
-	}, "  ")
-}
-
-func focusName(f focusArea) string {
-	switch f {
-	case focusQueues:
-		return "Queues"
-	case focusCharts:
-		return "Charts"
-	case focusInfo:
-		return "Info"
-	default:
-		return "?"
-	}
-}
+// moved to view.go: focusName
 
 func cycleBenchFocus(m *model) {
 	if m.benchCount.Focused() {
@@ -734,45 +571,9 @@ func (m *model) addSample(alias, key string, s admin.StatsResult) {
 	m.series[alias] = arr
 }
 
-func renderCharts(m model) string {
-	width := m.width
-	if width <= 10 {
-		width = 80
-	}
-	plotW := width - 2
-	if plotW < 10 {
-		plotW = 10
-	}
-	// Height per chart
-	h := 8
-	makePlot := func(title string, data []float64) string {
-		if len(data) == 0 {
-			return fmt.Sprintf("%s\n(no data yet)", title)
-		}
-		g := asciigraph.Plot(data,
-			asciigraph.Height(h),
-			asciigraph.Width(plotW),
-			asciigraph.Caption(title),
-		)
-		return g
-	}
-	parts := []string{}
-	parts = append(parts, makePlot("High Priority", m.series["high"]))
-	parts = append(parts, makePlot("Low Priority", m.series["low"]))
-	parts = append(parts, makePlot("Completed", m.series["completed"]))
-	parts = append(parts, makePlot("Dead Letter", m.series["dead_letter"]))
-	return strings.Join(parts, "\n\n")
-}
+// moved to view.go: renderCharts
 
-func renderFilterBar(m model) string {
-	if m.filterActive {
-		return "Filter: " + m.filter.View() + "  (esc to clear)"
-	}
-	if v := strings.TrimSpace(m.filter.Value()); v != "" {
-		return "Filter: " + m.filter.View() + "  (press f to edit, esc to clear)"
-	}
-	return "Press 'f' to filter queues"
-}
+// moved to view.go: renderFilterBar
 
 func (m *model) applyFilterAndSetRows() {
 	q := strings.TrimSpace(m.filter.Value())
