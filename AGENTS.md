@@ -127,7 +127,7 @@ High‑leverage, high‑impact items to pursue first. Keep this table updated as
 
 ## Appendix — Codex Ideas in Detail
 
-Below are more detailed notes for each top pick: motivation, user stories, acceptance criteria, rough sizing/complexity, dependencies, and risks. Use these to shape PRs and to define acceptance tests.
+Below are more detailed notes for each top pick: motivation, user stories, acceptance criteria, Fibonacci sizing (1–13), LoC estimates, and time/space/storage complexity where applicable, plus dependencies and risks. Use these to shape PRs and acceptance tests.
 
 ### 1) HTTP/gRPC Admin API
 
@@ -144,7 +144,10 @@ Below are more detailed notes for each top pick: motivation, user stories, accep
   - [ ] Rate limit & safety: protective limits for destructive actions (e.g., purge requires `yes=true`).
   - [ ] Tests: unit tests for handlers, integration tests against ephemeral Redis.
   - [ ] Observability: request logs, basic latency metrics per endpoint.
-- Rough sizing: Medium (2–3 weeks). Complexity: Medium–High. Dependencies: existing `internal/admin` funcs.
+- Sizing (Fibonacci): 8
+- LoC estimate: ~450–750 Go LoC (handlers/middleware/clients) + ~150–250 spec lines (OpenAPI/proto)
+- Complexity (time/space/storage): per-request O(1) controller overhead; endpoint complexity dominated by admin ops (e.g., Stats O(k) where k=#queues). Space O(response size); storage n/a.
+- Dependencies: existing `internal/admin` funcs.
 - Risks: security hardening, long-running handlers, accidental destructive ops (mitigated by guard flags and RBAC).
 
 ```mermaid
@@ -174,7 +177,10 @@ flowchart LR
   - [ ] Actions: Peek, Requeue selected, Purge selected, Purge all (confirm modal).
   - [ ] Performance: handles large DLQs (paginated calls, no full list materialization).
   - [ ] Errors surfaced non-blocking; destructive actions require confirmation.
-- Rough sizing: Medium (1–2 weeks) post-Admin API. Complexity: Medium. Dependencies: Admin API endpoints for list/peek/requeue/purge.
+- Sizing (Fibonacci): 5 (post‑Admin API)
+- LoC estimate: ~300–500 Go LoC (TUI tab + pagination + actions) + ~120–200 Go LoC (API endpoints)
+- Complexity (time/space/storage): list page O(p) where p=page size; total pagination O(N). Space O(p) client-side; storage n/a.
+- Dependencies: Admin API endpoints for list/peek/requeue/purge.
 
 ```mermaid
 sequenceDiagram
@@ -202,7 +208,10 @@ sequenceDiagram
   - [ ] Display trace IDs in Peek/Info; “Open Trace” action opens external link or shows inline span summary.
   - [ ] Log tail panel: follow mode, filter (job/worker), backpressure protection (line rate cap).
   - [ ] Configurable tracing base URL and log source.
-- Rough sizing: Medium (1–2 weeks). Complexity: Medium. Dependencies: Ensure trace IDs are propagated and accessible.
+- Sizing (Fibonacci): 5
+- LoC estimate: ~250–400 Go LoC (TUI panels/actions) + small glue to tracing/logs
+- Complexity (time/space/storage): trace link open O(1); inline span render O(s) where s=#spans fetched. Log tail O(r) with r=lines/sec; bounded buffer space O(w) where w=window size; storage n/a.
+- Dependencies: Ensure trace IDs are propagated and accessible.
 - Risks: log volume overhead; privacy controls for payloads/PII.
 
 ### 4) Interactive Policy Tuning + Simulator
@@ -215,7 +224,10 @@ sequenceDiagram
   - [ ] UI to adjust retry/backoff, rate limits, concurrency caps; simulated charts of backlog/throughput/latency.
   - [ ] Model: first‑order queueing approximation (service rate, arrival patterns); display assumptions clearly.
   - [ ] Apply via Admin API with audit log and revert option.
-- Rough sizing: Large (3–4 weeks). Complexity: High. Dependencies: Admin API config endpoints.
+- Sizing (Fibonacci): 13
+- LoC estimate: ~500–800 Go LoC (sim model + UI + apply/rollback)
+- Complexity (time/space/storage): simulation O(T·M) where T=time steps, M=queues/policies; space O(M) + O(T) for series; storage n/a.
+- Dependencies: Admin API config endpoints.
 - Risks: false precision in simulation; UX clarity for assumptions.
 
 ```mermaid
@@ -237,7 +249,10 @@ flowchart LR
   - [ ] Implement patterns: sine, burst, ramp; duration and amplitude controls; guardrails (max rate, total items).
   - [ ] Visualize target vs actual enqueue rate; show errors; support cancel/stop.
   - [ ] Persist/load profiles to disk (optional).
-- Rough sizing: Small–Medium (4–6 days). Complexity: Medium. Dependencies: existing bench plumbing.
+- Sizing (Fibonacci): 3
+- LoC estimate: ~200–350 Go LoC (patterns, controls, charts overlay)
+- Complexity (time/space/storage): rate calc O(1)/tick; enqueue loop O(duration/step); space O(w) for chart window; storage n/a.
+- Dependencies: existing bench plumbing.
 
 ### 6) Anomaly Radar + SLO Budget
 
@@ -249,4 +264,7 @@ flowchart LR
   - [ ] Compute/display backlog growth rate, failure rate, and p95 latency with thresholds (green/yellow/red).
   - [ ] SLO config (YAML) and calculated error budget burn; simple alerts rendered in TUI.
   - [ ] Lightweight computation (no heavy CPU); sampling acceptable.
-- Rough sizing: Medium (1–2 weeks). Complexity: Medium. Dependencies: metrics exposure and sampling.
+- Sizing (Fibonacci): 5
+- LoC estimate: ~200–350 Go LoC (computations + widget + config)
+- Complexity (time/space/storage): per‑tick metrics compute O(1); rolling windows O(w) memory; storage n/a.
+- Dependencies: metrics exposure and sampling.
