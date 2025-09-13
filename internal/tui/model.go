@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-redis/redis/v8"
 	tchelp "github.com/mistakenelf/teacup/help"
@@ -55,6 +56,7 @@ type (
 	tick          struct{}
 	benchPollTick struct{}
 	benchProgMsg  struct{ done int64 }
+	animTick      struct{}
 )
 
 type model struct {
@@ -123,20 +125,27 @@ type model struct {
 	help2 tchelp.Model
 
 	// Progress for bench
-    pb       bubprog.Model
-    pbActive bool
-    pbTotal  int
+	pb       bubprog.Model
+	pbActive bool
+	pbTotal  int
 
-    // Tabs
-    activeTab tabID
+	// Tabs
+	activeTab tabID
+
+	// Expansion animation (Jobs: Queues | Charts)
+	spring    harmonica.Spring
+	expPos    float64 // 0.0 = 50/50, 1.0 = Charts expanded (1:2)
+	expVel    float64
+	expTarget float64
+	expActive bool
 }
 
 // tabs for top-level navigation
 type tabID int
 
 const (
-    tabJobs tabID = iota
-    tabWorkers
-    tabDLQ
-    tabSettings
+	tabJobs tabID = iota
+	tabWorkers
+	tabDLQ
+	tabSettings
 )

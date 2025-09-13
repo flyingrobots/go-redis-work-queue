@@ -1,153 +1,164 @@
 package tui
 
 import (
-    "encoding/json"
-    "fmt"
-    "sort"
-    "strings"
-    "time"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
 
-    "github.com/charmbracelet/lipgloss"
-    asciigraph "github.com/guptarohit/asciigraph"
-    flexbox "github.com/76creates/stickers/flexbox"
+	flexbox "github.com/76creates/stickers/flexbox"
+	"github.com/charmbracelet/lipgloss"
+	asciigraph "github.com/guptarohit/asciigraph"
 
-    "github.com/flyingrobots/go-redis-work-queue/internal/admin"
+	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 )
 
 func (m model) View() string {
-    // Tab bar
-    tabBar, _ := m.buildTabBar()
+	// Tab bar
+	tabBar, _ := m.buildTabBar()
 
-    header := lipgloss.NewStyle().Bold(true).Render("Job Queue TUI — Redis " + m.cfg.Redis.Addr)
-    sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d", focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
-    if m.errText != "" {
-        sub += "  |  Error: " + m.errText
-    }
-    if m.loading {
-        sub += "  " + m.spinner.View()
-    }
+	header := lipgloss.NewStyle().Bold(true).Render("Job Queue TUI — Redis " + m.cfg.Redis.Addr)
+	sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d", focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
+	if m.errText != "" {
+		sub += "  |  Error: " + m.errText
+	}
+	if m.loading {
+		sub += "  " + m.spinner.View()
+	}
 
-    // Panel border color per tab
-    panelColor := "#7aa2f7" // default for Job Queue
-    switch m.activeTab {
-    case tabWorkers:
-        panelColor = "#9ece6a"
-    case tabDLQ:
-        panelColor = "#f7768e"
-    case tabSettings:
-        panelColor = "#bb9af7"
-    }
-    panel := m.boxBody.Copy().BorderForeground(lipgloss.Color(panelColor))
+	// Panel border color per tab
+	panelColor := "#7aa2f7" // default for Job Queue
+	switch m.activeTab {
+	case tabWorkers:
+		panelColor = "#9ece6a"
+	case tabDLQ:
+		panelColor = "#f7768e"
+	case tabSettings:
+		panelColor = "#bb9af7"
+	}
+	panel := m.boxBody.Copy().BorderForeground(lipgloss.Color(panelColor))
 
-    var body string
-    switch m.activeTab {
-    case tabJobs:
-        // Build panel contents as before
-        fb := renderFilterBar(m)
-        left := m.tbl.View()
-        if fb != "" {
-            left = fb + "\n" + left
-        }
-        left = panel.Render(m.boxTitle.Render("Queues") + "\n" + left)
+	var body string
+	switch m.activeTab {
+	case tabJobs:
+		// Build panel contents as before
+		fb := renderFilterBar(m)
+		left := m.tbl.View()
+		if fb != "" {
+			left = fb + "\n" + left
+		}
+		left = panel.Render(m.boxTitle.Render("Queues") + "\n" + left)
 
-        m.vpCharts.SetContent(renderCharts(m))
-        right := panel.Render(m.boxTitle.Render("Charts") + "\n" + m.vpCharts.View())
+		m.vpCharts.SetContent(renderCharts(m))
+		right := panel.Render(m.boxTitle.Render("Charts") + "\n" + m.vpCharts.View())
 
-        info := summarizeKeys(m.lastKeys)
-        if len(m.lastPeek.Items) > 0 {
-            info += "\n\n" + renderPeek(m.lastPeek)
-        }
-        if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() || m.lastBench.Count > 0 {
-            info += "\n\n" + renderBenchForm(m)
-            if m.lastBench.Count > 0 {
-                info += "\n" + renderBenchResult(m.lastBench)
-            }
-        }
-        if m.pbActive && m.pbTotal > 0 {
-            info += "\n\nBench Progress:\n" + m.pb.View()
-        }
-        m.vpInfo.SetContent(info)
-        bottom := panel.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
+		info := summarizeKeys(m.lastKeys)
+		if len(m.lastPeek.Items) > 0 {
+			info += "\n\n" + renderPeek(m.lastPeek)
+		}
+		if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() || m.lastBench.Count > 0 {
+			info += "\n\n" + renderBenchForm(m)
+			if m.lastBench.Count > 0 {
+				info += "\n" + renderBenchResult(m.lastBench)
+			}
+		}
+		if m.pbActive && m.pbTotal > 0 {
+			info += "\n\nBench Progress:\n" + m.pb.View()
+		}
+		m.vpInfo.SetContent(info)
+		bottom := panel.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
 
-        // Use stickers flexbox to lay out top (Queues/Charts with gutter) and bottom (Info)
-        bodyW, bodyH := m.bodyDims()
-        fbBox := flexbox.New(bodyW, bodyH)
-        gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
-        rowTop := fbBox.NewRow().AddCells(
-            flexbox.NewCell(1, 2).SetContent(left),
-            gutter,
-            flexbox.NewCell(1, 2).SetContent(right),
-        )
-        rowBottom := fbBox.NewRow().AddCells(
-            flexbox.NewCell(1, 1).SetContent(bottom),
-        )
-        fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
-        body = fbBox.Render()
+		// Use stickers flexbox to lay out top (Queues/Charts with gutter) and bottom (Info)
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
+		// animate left/right width ratio with spring position (0.0..1.0): 0=1:1, 1=1:2
+		// scale ratios for smoother distribution
+		base := 100
+		lrx := base
+		rrx := base + int(float64(base)*m.expPos)
+		if rrx < 1 {
+			rrx = 1
+		}
+		if lrx < 1 {
+			lrx = 1
+		}
+		rowTop := fbBox.NewRow().AddCells(
+			flexbox.NewCell(lrx, 2).SetContent(left),
+			gutter,
+			flexbox.NewCell(rrx, 2).SetContent(right),
+		)
+		rowBottom := fbBox.NewRow().AddCells(
+			flexbox.NewCell(1, 1).SetContent(bottom),
+		)
+		fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
+		body = fbBox.Render()
 
-    case tabWorkers:
-        // Simple summary placeholder
-        workersInfo := []string{
-            fmt.Sprintf("Workers: heartbeats=%d", m.lastStats.Heartbeats),
-            fmt.Sprintf("Processing lists: %d", len(m.lastStats.ProcessingLists)),
-            "(Placeholder) Future: live workers view with heartbeats and active jobs",
-        }
-        content := strings.Join(workersInfo, "\n")
-        bodyW, bodyH := m.bodyDims()
-        fbBox := flexbox.New(bodyW, bodyH)
-        single := fbBox.NewRow().AddCells(
-            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Workers") + "\n" + content)),
-        )
-        fbBox.SetRows([]*flexbox.Row{single})
-        body = fbBox.Render()
+	case tabWorkers:
+		// Simple summary placeholder
+		workersInfo := []string{
+			fmt.Sprintf("Workers: heartbeats=%d", m.lastStats.Heartbeats),
+			fmt.Sprintf("Processing lists: %d", len(m.lastStats.ProcessingLists)),
+			"(Placeholder) Future: live workers view with heartbeats and active jobs",
+		}
+		content := strings.Join(workersInfo, "\n")
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		single := fbBox.NewRow().AddCells(
+			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Workers") + "\n" + content)),
+		)
+		fbBox.SetRows([]*flexbox.Row{single})
+		body = fbBox.Render()
 
-    case tabDLQ:
-        // DLQ summary placeholder
-        dlqDisplay := fmt.Sprintf("dead_letter (%s)", m.cfg.Worker.DeadLetterList)
-        dlqCount := m.lastStats.Queues[dlqDisplay]
-        lines := []string{
-            fmt.Sprintf("Dead Letter Queue: %s", m.cfg.Worker.DeadLetterList),
-            fmt.Sprintf("Count: %d", dlqCount),
-            "(Placeholder) Future: DLQ list with actions (peek/purge/requeue)",
-        }
-        bodyW, bodyH := m.bodyDims()
-        fbBox := flexbox.New(bodyW, bodyH)
-        single := fbBox.NewRow().AddCells(
-            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n"))),
-        )
-        fbBox.SetRows([]*flexbox.Row{single})
-        body = fbBox.Render()
+	case tabDLQ:
+		// DLQ summary placeholder
+		dlqDisplay := fmt.Sprintf("dead_letter (%s)", m.cfg.Worker.DeadLetterList)
+		dlqCount := m.lastStats.Queues[dlqDisplay]
+		lines := []string{
+			fmt.Sprintf("Dead Letter Queue: %s", m.cfg.Worker.DeadLetterList),
+			fmt.Sprintf("Count: %d", dlqCount),
+			"(Placeholder) Future: DLQ list with actions (peek/purge/requeue)",
+		}
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		single := fbBox.NewRow().AddCells(
+			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n"))),
+		)
+		fbBox.SetRows([]*flexbox.Row{single})
+		body = fbBox.Render()
 
-    case tabSettings:
-        // Subset of key config values
-        lines := []string{
-            fmt.Sprintf("Redis: %s", m.cfg.Redis.Addr),
-            fmt.Sprintf("Queues: high=%s low=%s", m.cfg.Worker.Queues["high"], m.cfg.Worker.Queues["low"]),
-            fmt.Sprintf("Completed: %s", m.cfg.Worker.CompletedList),
-            fmt.Sprintf("Dead Letter: %s", m.cfg.Worker.DeadLetterList),
-            fmt.Sprintf("Default Priority: %s", m.cfg.Producer.DefaultPriority),
-        }
-        bodyW, bodyH := m.bodyDims()
-        fbBox := flexbox.New(bodyW, bodyH)
-        single := fbBox.NewRow().AddCells(
-            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n"))),
-        )
-        fbBox.SetRows([]*flexbox.Row{single})
-        body = fbBox.Render()
-    }
+	case tabSettings:
+		// Subset of key config values
+		lines := []string{
+			fmt.Sprintf("Redis: %s", m.cfg.Redis.Addr),
+			fmt.Sprintf("Queues: high=%s low=%s", m.cfg.Worker.Queues["high"], m.cfg.Worker.Queues["low"]),
+			fmt.Sprintf("Completed: %s", m.cfg.Worker.CompletedList),
+			fmt.Sprintf("Dead Letter: %s", m.cfg.Worker.DeadLetterList),
+			fmt.Sprintf("Default Priority: %s", m.cfg.Producer.DefaultPriority),
+		}
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		single := fbBox.NewRow().AddCells(
+			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n"))),
+		)
+		fbBox.SetRows([]*flexbox.Row{single})
+		body = fbBox.Render()
+	}
 
-    base := tabBar + "\n" + header + "\n" + sub + "\n\n" + body
-    if m.confirmOpen {
-        // Use a full-screen scrim overlay that centers the modal and preserves header/body
-        return renderOverlayScreen(m)
-    }
+	base := tabBar + "\n" + header + "\n" + sub + "\n\n" + body
+	if m.confirmOpen {
+		// Use a full-screen scrim overlay that centers the modal and preserves header/body
+		return renderOverlayScreen(m)
+	}
 	now := time.Now().Format("15:04:05")
 	m.sb.SetContent("Redis "+m.cfg.Redis.Addr, "focus:"+focusName(m.focus), m.spinner.View(), now)
-    out := base + "\n" + m.sb.View()
-    if m.help2.Active {
-        // Dim with scrim and center the help content
-        out = renderHelpOverlay(m, "")
-    }
-    return out
+	out := base + "\n" + m.sb.View()
+	if m.help2.Active {
+		// Dim with scrim and center the help content
+		out = renderHelpOverlay(m, "")
+	}
+	return out
 }
 
 func summarizeKeys(k admin.KeysStats) string {

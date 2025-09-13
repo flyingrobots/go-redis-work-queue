@@ -47,3 +47,10 @@ func clamp(v, low, high int) int {
 	}
 	return v
 }
+
+func abs(f float64) float64 {
+	if f < 0 {
+		return -f
+	}
+	return f
+}

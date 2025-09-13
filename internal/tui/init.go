@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-redis/redis/v8"
 	tchelp "github.com/mistakenelf/teacup/help"
@@ -74,7 +75,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 		tchelp.TitleColor{Background: lipgloss.AdaptiveColor{Dark: "#444444", Light: "#DDDDDD"}, Foreground: lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"}},
 		lipgloss.AdaptiveColor{Dark: "#888888", Light: "#222222"}, entries)
 
-    return model{
+	return model{
 		ctx:           ctx,
 		cancel:        cancel,
 		cfg:           cfg,
@@ -99,7 +100,12 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 		boxBody:       boxBody,
 		sb:            sb,
 		help2:         help2,
-        pb:            bubprog.New(bubprog.WithDefaultGradient()),
-        activeTab:     tabJobs,
-    }
+		pb:            bubprog.New(bubprog.WithDefaultGradient()),
+		activeTab:     tabJobs,
+		spring:        harmonica.NewSpring(harmonica.FPS(60), 6.0, 0.25),
+		expPos:        0.0,
+		expVel:        0.0,
+		expTarget:     0.0,
+		expActive:     false,
+	}
 }

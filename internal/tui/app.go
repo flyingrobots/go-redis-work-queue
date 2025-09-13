@@ -219,6 +219,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+
+			// Charts expand-on-click with spring animation: right half expands, left half returns to balanced
+			if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && m.activeTab == tabJobs {
+				if msg.X > m.width/2 {
+					m.expTarget = 1.0
+					m.expActive = true
+					return m, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} })
+				} else {
+					m.expTarget = 0.0
+					m.expActive = true
+					return m, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} })
+				}
+			}
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
 				if msg.Action == tea.MouseActionPress {
@@ -334,6 +347,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if percent >= 1 {
 				m.pbActive = false
+			}
+		}
+	case animTick:
+		if m.expActive {
+			m.expPos, m.expVel = m.spring.Update(m.expPos, m.expVel, m.expTarget)
+			// stop condition
+			if abs(m.expPos-m.expTarget) < 0.002 && abs(m.expVel) < 0.002 {
+				m.expPos = m.expTarget
+				m.expVel = 0
+				m.expActive = false
+			} else {
+				cmds = append(cmds, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} }))
 			}
 		}
 	}
