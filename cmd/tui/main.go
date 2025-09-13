@@ -20,6 +20,8 @@ import (
     "github.com/charmbracelet/lipgloss"
     asciigraph "github.com/guptarohit/asciigraph"
     "github.com/lithammer/fuzzysearch/fuzzy"
+    tchelp "github.com/mistakenelf/teacup/help"
+    "github.com/mistakenelf/teacup/statusbar"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -122,6 +124,10 @@ type model struct {
     // Styles
     boxTitle lipgloss.Style
     boxBody  lipgloss.Style
+
+    // teacup components
+    sb    statusbar.Model
+    help2 tchelp.Model
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -165,6 +171,29 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
     boxTitle := lipgloss.NewStyle().Bold(true)
     boxBody := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
 
+    // Status bar colors and model
+    sb := statusbar.New(
+        statusbar.ColorConfig{Foreground: lipgloss.AdaptiveColor{Dark: "#000000", Light: "#ffffff"}, Background: lipgloss.AdaptiveColor{Dark: "#ffaa00", Light: "#111111"}},
+        statusbar.ColorConfig{Foreground: lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"}, Background: lipgloss.AdaptiveColor{Dark: "#333333", Light: "#eeeeee"}},
+        statusbar.ColorConfig{Foreground: lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"}, Background: lipgloss.AdaptiveColor{Dark: "#444444", Light: "#dddddd"}},
+        statusbar.ColorConfig{Foreground: lipgloss.AdaptiveColor{Dark: "#000000", Light: "#ffffff"}, Background: lipgloss.AdaptiveColor{Dark: "#55dd55", Light: "#226622"}},
+    )
+
+    // Teacup help entries
+    entries := []tchelp.Entry{
+        {Key: "q", Description: "Quit"},
+        {Key: "tab/shift+tab", Description: "Focus next/prev panel"},
+        {Key: "j/k, wheel", Description: "Scroll selected panel"},
+        {Key: "f or /", Description: "Filter queues (fuzzy)"},
+        {Key: "p", Description: "Peek selected queue"},
+        {Key: "b", Description: "Bench form (enter to run)"},
+        {Key: "D / A", Description: "Purge DLQ / ALL (y/n)"},
+        {Key: "h/?", Description: "Toggle help"},
+    }
+    help2 := tchelp.New(false, false, "Help",
+        tchelp.TitleColor{Background: lipgloss.AdaptiveColor{Dark: "#444444", Light: "#DDDDDD"}, Foreground: lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"}},
+        lipgloss.AdaptiveColor{Dark: "#888888", Light: "#222222"}, entries)
+
     return model{
         ctx:          ctx,
         cancel:       cancel,
@@ -188,6 +217,8 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         vpInfo:       viewport.New(0, 10),
         boxTitle:     boxTitle,
         boxBody:      boxBody,
+        sb:           sb,
+        help2:        help2,
     }
 }
 
@@ -280,6 +311,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             return m, nil
         case "r":
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
+        case "h", "?":
+            m.help2.SetIsActive(!m.help2.Active)
+            if m.help2.Active { m.help2.GotoTop() }
+            return m, nil
         case "f", "/":
             if m.focus == focusQueues {
                 m.filterActive = true
@@ -362,7 +397,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         // Layout calculations
         headerLines := 3 // header, sub, blank
         if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" { headerLines++ }
-        footerLines := 2 // help and maybe a blank
+        footerLines := statusbar.Height + 1 // statusbar and a blank
         availH := m.height - headerLines - footerLines
         if availH < 6 { availH = 6 }
         // Split into top row (queues + charts) and bottom row (info)
@@ -380,6 +415,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         m.vpCharts.Height = topH - 2
         m.vpInfo.Width = m.width - 4
         m.vpInfo.Height = bottomH - 2
+
+        // Resize status bar and help
+        m.sb.SetSize(m.width)
+        hw := m.width - 10
+        if hw < 40 { hw = m.width - 2 }
+        hh := m.height - 6
+        if hh < 6 { hh = m.height - 2 }
+        m.help2.SetSize(hw, hh)
     case tea.MouseMsg:
         if !m.confirmOpen {
             switch msg.Button {
@@ -526,7 +569,7 @@ func (m model) View() string {
     // Side-by-side top row
     gap := lipgloss.NewStyle().Width(2).Render(" ")
     topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
-    body := topRow + "\n" + bottom + "\n" + helpBar()
+    body := topRow + "\n" + bottom
 
     // Compose base view
     base := header + "\n" + sub + "\n\n" + body
@@ -535,7 +578,14 @@ func (m model) View() string {
         // Render a full-screen scrim with modal in the center for strong focus.
         return renderOverlayScreen(m)
     }
-    return base
+    // Append status bar and optional help overlay
+    now := time.Now().Format("15:04:05")
+    m.sb.SetContent("Redis "+m.cfg.Redis.Addr, "focus:"+focusName(m.focus), m.spinner.View(), now)
+    out := base + "\n" + m.sb.View()
+    if m.help2.Active {
+        out = renderHelpOverlay(m, out)
+    }
+    return out
 }
 
 func summarizeKeys(k admin.KeysStats) string {
@@ -718,6 +768,76 @@ func renderConfirmModal(m model) string {
     pad := 0
     if w := lipgloss.Width(modal); width > w { pad = (width - w) / 2 }
     return strings.Repeat(" ", pad) + modal
+}
+
+// renderHelpOverlay2 (legacy duplicate) dims the base and centers the teacup help view.
+func renderHelpOverlay2(m model, base string) string {
+    dim := lipgloss.NewStyle().Faint(true).Render(base)
+    width := m.width
+    height := m.height
+    if width <= 0 { width = 80 }
+    if height <= 0 { height = 24 }
+
+    scrimCell := lipgloss.NewStyle().Background(lipgloss.Color("236")).Faint(true).Render(" ")
+    line := strings.Repeat(scrimCell, width)
+    lines := make([]string, height)
+    for i := 0; i < height; i++ { lines[i] = line }
+
+    hv := m.help2.View()
+    hvLines := strings.Split(hv, "\n")
+    hH := len(hvLines)
+    hW := 0
+    for _, l := range hvLines { if w := lipgloss.Width(l); w > hW { hW = w } }
+    top := (height - hH) / 2
+    left := (width - hW) / 2
+    if top < 0 { top = 0 }
+    if left < 0 { left = 0 }
+    for i := 0; i < hH && (top+i) < height; i++ {
+        ml := hvLines[i]
+        lp := left
+        rp := width - (left + lipgloss.Width(ml))
+        if lp < 0 { lp = 0 }
+        if rp < 0 { rp = 0 }
+        leftPad := strings.Repeat(scrimCell, lp)
+        rightPad := strings.Repeat(scrimCell, rp)
+        lines[top+i] = leftPad + ml + rightPad
+    }
+    return dim + "\n" + strings.Join(lines, "\n")
+}
+
+// renderHelpOverlay dims the base and centers the teacup help view.
+func renderHelpOverlay(m model, base string) string {
+    dim := lipgloss.NewStyle().Faint(true).Render(base)
+    width := m.width
+    height := m.height
+    if width <= 0 { width = 80 }
+    if height <= 0 { height = 24 }
+
+    scrimCell := lipgloss.NewStyle().Background(lipgloss.Color("236")).Faint(true).Render(" ")
+    line := strings.Repeat(scrimCell, width)
+    lines := make([]string, height)
+    for i := 0; i < height; i++ { lines[i] = line }
+
+    hv := m.help2.View()
+    hvLines := strings.Split(hv, "\n")
+    hH := len(hvLines)
+    hW := 0
+    for _, l := range hvLines { if w := lipgloss.Width(l); w > hW { hW = w } }
+    top := (height - hH) / 2
+    left := (width - hW) / 2
+    if top < 0 { top = 0 }
+    if left < 0 { left = 0 }
+    for i := 0; i < hH && (top+i) < height; i++ {
+        ml := hvLines[i]
+        lp := left
+        rp := width - (left + lipgloss.Width(ml))
+        if lp < 0 { lp = 0 }
+        if rp < 0 { rp = 0 }
+        leftPad := strings.Repeat(scrimCell, lp)
+        rightPad := strings.Repeat(scrimCell, rp)
+        lines[top+i] = leftPad + ml + rightPad
+    }
+    return dim + "\n" + strings.Join(lines, "\n")
 }
 
 // renderOverlayScreen builds a full-screen dimmed scrim and draws the modal
