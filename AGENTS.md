@@ -111,3 +111,16 @@ Capture ambitious, unconventional ideas. Some may be long-term or require new co
 - Project: Chaos harness — inject latency, drops, and Redis failovers; visualize recovery; automate soak/chaos scenarios.
 - Project: Forecasting — simple ARIMA/Prophet on backlog/throughput; recommend scale-up/down and SLA adjustments.
 - Project: Exactly-once patterns — idempotency keys, dedup sets, and transactional outbox patterns documented and optionally enforced.
+
+## Codex's Top Picks
+
+High‑leverage, high‑impact items to pursue first. Keep this table updated as priorities shift.
+
+| Idea | Why | First Steps | Remarks | Difficulty | Complexity | Wow factor | Leverage Factor |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| HTTP/gRPC Admin API | Core enabler for TUI/web/automation/RBAC | Define API (proto/OpenAPI); wrap existing admin funcs; add basic auth | Version the API; unlocks Workers/DLQ features and remote ops | Medium | Medium‑High | Medium | High |
+| DLQ Remediation UI | Reduces incident toil; fast, visible value | List/paginate DLQ; peek; requeue/purge; add filters/search | Needs admin endpoints; great demo for reliability wins | Medium | Medium | High | High |
+| Trace Drill‑down + Log Tail | Deep observability; faster RCA | Ensure trace IDs; link to tracing UI; basic worker log tail with filters | Start with external trace links; mind privacy/log volume | Medium | Medium | High | Medium |
+| Interactive Policy Tuning + Simulator | Prevents outages; safe “what‑if” | Read‑only preview; simple backlog/throughput model; dry‑run apply; rollback | Requires admin API to apply; start simulation offline | High | High | High | High |
+| Patterned Load Generator | Validates perf; great for demos | Add sine/burst/ramp patterns; save/load profiles; chart overlay | Build on bench; add guardrails (limits/jitter) | Low | Medium | Medium | Medium |
+| Anomaly Radar + SLO Budget | At‑a‑glance health; actionable signals | Compute backlog growth, p95, failure rate; thresholds; status widget | Define SLO; calibrate thresholds; integrate metrics | Medium | Medium | Medium‑High | Medium‑High |
