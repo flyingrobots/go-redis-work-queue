@@ -820,7 +820,7 @@ func (m *model) applyFilterAndSetRows() {
     labels := make([]string, len(m.allRows))
     for i, r := range m.allRows { labels[i] = r[0] }
     ranks := fuzzy.RankFindNormalizedFold(q, labels)
-    fuzzy.SortRanks(ranks)
+    sort.Sort(ranks)
     rows := make([]table.Row, 0, len(ranks))
     targets := make([]string, 0, len(ranks))
     for _, rk := range ranks {
@@ -829,4 +829,17 @@ func (m *model) applyFilterAndSetRows() {
     }
     m.tbl.SetRows(rows)
     m.peekTargets = targets
+}
+// clamp limits v to the inclusive range [low, high].
+func clamp(v, low, high int) int {
+    if high < low {
+        return low
+    }
+    if v < low {
+        return low
+    }
+    if v > high {
+        return high
+    }
+    return v
 }
