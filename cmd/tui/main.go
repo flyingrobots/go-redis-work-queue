@@ -17,6 +17,7 @@ import (
     "github.com/charmbracelet/bubbles/table"
     "github.com/charmbracelet/bubbles/textinput"
     "github.com/charmbracelet/lipgloss"
+    asciigraph "github.com/guptarohit/asciigraph"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -35,6 +36,7 @@ const (
     modeKeys
     modePeek
     modeBench
+    modeCharts
 )
 
 type statsMsg struct {
@@ -97,6 +99,10 @@ type model struct {
 
     // layout helpers
     tableTopY int // number of lines before the table starts
+
+    // time series for charts
+    series    map[string][]float64
+    seriesMax int
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -147,6 +153,8 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         benchTimeout: bt,
         refreshEvery: refreshEvery,
         tableTopY:    3, // header + sub + blank line
+        series:       map[string][]float64{"high": {}, "low": {}, "completed": {}, "dead_letter": {}},
+        seriesMax:    180, // keep last N points
     }
 }
 
@@ -201,6 +209,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
         case "r":
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
+        case "c":
+            m.mode = modeCharts
         case "p":
             if m.mode == modeQueues && len(m.peekTargets) > 0 {
                 i := m.tbl.Cursor()
@@ -321,6 +331,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         } else {
             m.lastStats = msg.s
             m.errText = ""
+            // Update series with latest counts per known queues
+            m.addSample("high", m.cfg.Worker.Queues["high"], msg.s)
+            m.addSample("low", m.cfg.Worker.Queues["low"], msg.s)
+            m.addSample("completed", m.cfg.Worker.CompletedList, msg.s)
+            m.addSample("dead_letter", m.cfg.Worker.DeadLetterList, msg.s)
             // Update table with queues only (friendly names)
             rows := []table.Row{}
             m.peekTargets = m.peekTargets[:0]
@@ -419,6 +434,9 @@ func (m model) View() string {
             body += "\n" + renderBenchResult(m.lastBench)
         }
         body += "\n" + helpBar()
+    case modeCharts:
+        body = renderCharts(m)
+        body += "\n" + helpBar()
     }
 
     return header + "\n" + sub + "\n\n" + body
@@ -505,6 +523,7 @@ func helpBar() string {
         "right-click: peek",
         "p:peek",
         "b:bench",
+        "c:charts",
         "D:purge DLQ",
         "A:purge ALL",
     }, "  ")
@@ -574,4 +593,41 @@ func main() {
         fmt.Fprintf(os.Stderr, "tui error: %v\n", err)
         os.Exit(1)
     }
+}
+
+// addSample appends a value to a named series using StatsResult map.
+func (m *model) addSample(alias, key string, s admin.StatsResult) {
+    if alias == "" || key == "" { return }
+    display := fmt.Sprintf("%s (%s)", alias, key)
+    val := s.Queues[display]
+    arr := m.series[alias]
+    arr = append(arr, float64(val))
+    if len(arr) > m.seriesMax { arr = arr[len(arr)-m.seriesMax:] }
+    m.series[alias] = arr
+}
+
+func renderCharts(m model) string {
+    width := m.width
+    if width <= 10 { width = 80 }
+    plotW := width - 2
+    if plotW < 10 { plotW = 10 }
+    // Height per chart
+    h := 8
+    makePlot := func(title string, data []float64) string {
+        if len(data) == 0 {
+            return fmt.Sprintf("%s\n(no data yet)", title)
+        }
+        g := asciigraph.Plot(data,
+            asciigraph.Height(h),
+            asciigraph.Width(plotW),
+            asciigraph.Caption(title),
+        )
+        return g
+    }
+    parts := []string{}
+    parts = append(parts, makePlot("High Priority", m.series["high"]))
+    parts = append(parts, makePlot("Low Priority", m.series["low"]))
+    parts = append(parts, makePlot("Completed", m.series["completed"]))
+    parts = append(parts, makePlot("Dead Letter", m.series["dead_letter"]))
+    return strings.Join(parts, "\n\n")
 }
