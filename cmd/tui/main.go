@@ -12,6 +12,7 @@ import (
     "time"
 
     tea "github.com/charmbracelet/bubbletea"
+    bubprog "github.com/charmbracelet/bubbles/progress"
     "github.com/charmbracelet/bubbles/help"
     "github.com/charmbracelet/bubbles/spinner"
     "github.com/charmbracelet/bubbles/table"
@@ -22,6 +23,7 @@ import (
     "github.com/lithammer/fuzzysearch/fuzzy"
     tchelp "github.com/mistakenelf/teacup/help"
     "github.com/mistakenelf/teacup/statusbar"
+    overlay "github.com/rmhubbert/bubbletea-overlay"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -128,6 +130,11 @@ type model struct {
     // teacup components
     sb    statusbar.Model
     help2 tchelp.Model
+
+    // Progress for bench
+    pb       bubprog.Model
+    pbActive bool
+    pbTotal  int
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -219,6 +226,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         boxBody:      boxBody,
         sb:           sb,
         help2:        help2,
+        pb:           bubprog.New(bubprog.WithDefaultGradient()),
     }
 }
 
@@ -345,7 +353,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 to := time.Duration(atoiDefault(m.benchTimeout.Value(), 60)) * time.Second
                 m.loading = true
                 m.errText = ""
+                m.pbActive = true
+                m.pbTotal = count
                 cmds = append(cmds, m.doBenchCmd(prio, count, rate, to), spinner.Tick)
+                // start progress polling
+                cmds = append(cmds, tea.Tick(200*time.Millisecond, func(time.Time) tea.Msg { return benchPollTick{} }))
             }
         case "esc":
             // Clear filter/modal or blur bench inputs
@@ -423,6 +435,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         hh := m.height - 6
         if hh < 6 { hh = m.height - 2 }
         m.help2.SetSize(hw, hh)
+        if m.width > 0 { m.pb.Width = m.width - 20 }
     case tea.MouseMsg:
         if !m.confirmOpen {
             switch msg.Button {
@@ -511,6 +524,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             m.errText = msg.err.Error()
         } else {
             m.lastBench = msg.b
+            m.pbActive = false
+            if cmd := m.pb.SetPercent(1.0); cmd != nil { cmds = append(cmds, cmd) }
         }
     }
 
@@ -518,6 +533,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     if m.loading {
         var c tea.Cmd
         m.spinner, c = m.spinner.Update(msg)
+        cmds = append(cmds, c)
+    }
+    // Progress animate update
+    {
+        var c tea.Cmd
+        m.pb, c = m.pb.Update(msg)
         cmds = append(cmds, c)
     }
     // Always update table on dashboard
@@ -563,6 +584,9 @@ func (m model) View() string {
             info += "\n" + renderBenchResult(m.lastBench)
         }
     }
+    if m.pbActive && m.pbTotal > 0 {
+        info += "\n\nBench Progress:\n" + m.pb.View()
+    }
     m.vpInfo.SetContent(info)
     bottom := m.boxBody.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
 
@@ -575,15 +599,23 @@ func (m model) View() string {
     base := header + "\n" + sub + "\n\n" + body
 
     if m.confirmOpen {
-        // Render a full-screen scrim with modal in the center for strong focus.
-        return renderOverlayScreen(m)
+        // Dim base and overlay centered confirm modal using overlay lib
+        baseDim := lipgloss.NewStyle().Faint(true).Render(base)
+        back := staticStringModel{baseDim}
+        fore := staticStringModel{renderConfirmModal(m)}
+        ov := overlay.New(fore, back, overlay.Center, overlay.Center, 0, 0)
+        return ov.View()
     }
     // Append status bar and optional help overlay
     now := time.Now().Format("15:04:05")
     m.sb.SetContent("Redis "+m.cfg.Redis.Addr, "focus:"+focusName(m.focus), m.spinner.View(), now)
     out := base + "\n" + m.sb.View()
     if m.help2.Active {
-        out = renderHelpOverlay(m, out)
+        baseDim := lipgloss.NewStyle().Faint(true).Render(out)
+        back := staticStringModel{baseDim}
+        fore := staticStringModel{m.help2.View()}
+        ov := overlay.New(fore, back, overlay.Center, overlay.Center, 0, 0)
+        out = ov.View()
     }
     return out
 }
@@ -805,39 +837,22 @@ func renderHelpOverlay2(m model, base string) string {
     return dim + "\n" + strings.Join(lines, "\n")
 }
 
-// renderHelpOverlay dims the base and centers the teacup help view.
-func renderHelpOverlay(m model, base string) string {
-    dim := lipgloss.NewStyle().Faint(true).Render(base)
-    width := m.width
-    height := m.height
-    if width <= 0 { width = 80 }
-    if height <= 0 { height = 24 }
+// staticStringModel is a tiny tea.Model wrapper around a fixed string view.
+type staticStringModel struct{ s string }
+func (s staticStringModel) Init() tea.Cmd { return nil }
+func (s staticStringModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return s, nil }
+func (s staticStringModel) View() string { return s.s }
 
-    scrimCell := lipgloss.NewStyle().Background(lipgloss.Color("236")).Faint(true).Render(" ")
-    line := strings.Repeat(scrimCell, width)
-    lines := make([]string, height)
-    for i := 0; i < height; i++ { lines[i] = line }
+// bench progress ticking
+type benchPollTick struct{}
 
-    hv := m.help2.View()
-    hvLines := strings.Split(hv, "\n")
-    hH := len(hvLines)
-    hW := 0
-    for _, l := range hvLines { if w := lipgloss.Width(l); w > hW { hW = w } }
-    top := (height - hH) / 2
-    left := (width - hW) / 2
-    if top < 0 { top = 0 }
-    if left < 0 { left = 0 }
-    for i := 0; i < hH && (top+i) < height; i++ {
-        ml := hvLines[i]
-        lp := left
-        rp := width - (left + lipgloss.Width(ml))
-        if lp < 0 { lp = 0 }
-        if rp < 0 { rp = 0 }
-        leftPad := strings.Repeat(scrimCell, lp)
-        rightPad := strings.Repeat(scrimCell, rp)
-        lines[top+i] = leftPad + ml + rightPad
+type benchProgMsg struct{ done int64 }
+
+func (m model) benchPollCmd() tea.Cmd {
+    return func() tea.Msg {
+        n, _ := m.rdb.LLen(m.ctx, m.cfg.Worker.CompletedList).Result()
+        return benchProgMsg{done: n}
     }
-    return dim + "\n" + strings.Join(lines, "\n")
 }
 
 // renderOverlayScreen builds a full-screen dimmed scrim and draws the modal
