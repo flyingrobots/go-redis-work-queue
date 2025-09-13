@@ -69,20 +69,13 @@ func (m model) View() string {
         m.vpInfo.SetContent(info)
         bottom := panel.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
 
-        // Use stickers flexbox to lay out top (Queues/Charts) and bottom (Info)
-        headerLines := 4 // tab bar + header + sub + blank
-        if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" {
-            headerLines++
-        }
-        footerLines := 2 // status bar and spacing
-        bodyHeight := m.height - headerLines - footerLines
-        if bodyHeight < 6 {
-            bodyHeight = 6
-        }
-
-        fbBox := flexbox.New(m.width, bodyHeight)
+        // Use stickers flexbox to lay out top (Queues/Charts with gutter) and bottom (Info)
+        bodyW, bodyH := m.bodyDims()
+        fbBox := flexbox.New(bodyW, bodyH)
+        gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
         rowTop := fbBox.NewRow().AddCells(
             flexbox.NewCell(1, 2).SetContent(left),
+            gutter,
             flexbox.NewCell(1, 2).SetContent(right),
         )
         rowBottom := fbBox.NewRow().AddCells(
@@ -99,7 +92,13 @@ func (m model) View() string {
             "(Placeholder) Future: live workers view with heartbeats and active jobs",
         }
         content := strings.Join(workersInfo, "\n")
-        body = panel.Render(m.boxTitle.Render("Workers") + "\n" + content)
+        bodyW, bodyH := m.bodyDims()
+        fbBox := flexbox.New(bodyW, bodyH)
+        single := fbBox.NewRow().AddCells(
+            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Workers") + "\n" + content)),
+        )
+        fbBox.SetRows([]*flexbox.Row{single})
+        body = fbBox.Render()
 
     case tabDLQ:
         // DLQ summary placeholder
@@ -110,7 +109,13 @@ func (m model) View() string {
             fmt.Sprintf("Count: %d", dlqCount),
             "(Placeholder) Future: DLQ list with actions (peek/purge/requeue)",
         }
-        body = panel.Render(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n"))
+        bodyW, bodyH := m.bodyDims()
+        fbBox := flexbox.New(bodyW, bodyH)
+        single := fbBox.NewRow().AddCells(
+            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n"))),
+        )
+        fbBox.SetRows([]*flexbox.Row{single})
+        body = fbBox.Render()
 
     case tabSettings:
         // Subset of key config values
@@ -121,7 +126,13 @@ func (m model) View() string {
             fmt.Sprintf("Dead Letter: %s", m.cfg.Worker.DeadLetterList),
             fmt.Sprintf("Default Priority: %s", m.cfg.Producer.DefaultPriority),
         }
-        body = panel.Render(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n"))
+        bodyW, bodyH := m.bodyDims()
+        fbBox := flexbox.New(bodyW, bodyH)
+        single := fbBox.NewRow().AddCells(
+            flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n"))),
+        )
+        fbBox.SetRows([]*flexbox.Row{single})
+        body = fbBox.Render()
     }
 
     base := tabBar + "\n" + header + "\n" + sub + "\n\n" + body
