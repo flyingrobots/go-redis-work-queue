@@ -116,39 +116,68 @@ Capture ambitious, unconventional ideas. Some may be long-term or require new co
 
 High‑leverage, high‑impact items to pursue first. Keep this table updated as priorities shift.
 
-| Idea | Why | First Steps | Remarks | Difficulty | Complexity | Wow factor | Leverage Factor |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| HTTP/gRPC Admin API | Core enabler for TUI/web/automation/RBAC | Define API (proto/OpenAPI); wrap existing admin funcs; add basic auth | Version the API; unlocks Workers/DLQ features and remote ops | Medium | Medium‑High | Medium | High |
-| DLQ Remediation UI | Reduces incident toil; fast, visible value | List/paginate DLQ; peek; requeue/purge; add filters/search | Needs admin endpoints; great demo for reliability wins | Medium | Medium | High | High |
-| Trace Drill‑down + Log Tail | Deep observability; faster RCA | Ensure trace IDs; link to tracing UI; basic worker log tail with filters | Start with external trace links; mind privacy/log volume | Medium | Medium | High | Medium |
-| Interactive Policy Tuning + Simulator | Prevents outages; safe “what‑if” | Read‑only preview; simple backlog/throughput model; dry‑run apply; rollback | Requires admin API to apply; start simulation offline | High | High | High | High |
-| Patterned Load Generator | Validates perf; great for demos | Add sine/burst/ramp patterns; save/load profiles; chart overlay | Build on bench; add guardrails (limits/jitter) | Low | Medium | Medium | Medium |
-| Anomaly Radar + SLO Budget | At‑a‑glance health; actionable signals | Compute backlog growth, p95, failure rate; thresholds; status widget | Define SLO; calibrate thresholds; integrate metrics | Medium | Medium | Medium‑High | Medium‑High |
+| Idea                                  | Why                                        | First Steps                                                                 | Remarks                                                      | Difficulty | Complexity  | Wow factor  | Leverage Factor |
+| ------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- | ----------- | ----------- | --------------- |
+| HTTP/gRPC Admin API                   | Core enabler for TUI/web/automation/RBAC   | Define API (proto/OpenAPI); wrap existing admin funcs; add basic auth       | Version the API; unlocks Workers/DLQ features and remote ops | Medium     | Medium‑High | Medium      | High            |
+| DLQ Remediation UI                    | Reduces incident toil; fast, visible value | List/paginate DLQ; peek; requeue/purge; add filters/search                  | Needs admin endpoints; great demo for reliability wins       | Medium     | Medium      | High        | High            |
+| Trace Drill‑down + Log Tail           | Deep observability; faster RCA             | Ensure trace IDs; link to tracing UI; basic worker log tail with filters    | Start with external trace links; mind privacy/log volume     | Medium     | Medium      | High        | Medium          |
+| Interactive Policy Tuning + Simulator | Prevents outages; safe “what‑if”           | Read‑only preview; simple backlog/throughput model; dry‑run apply; rollback | Requires admin API to apply; start simulation offline        | High       | High        | High        | High            |
+| Patterned Load Generator              | Validates perf; great for demos            | Add sine/burst/ramp patterns; save/load profiles; chart overlay             | Build on bench; add guardrails (limits/jitter)               | Low        | Medium      | Medium      | Medium          |
+| Anomaly Radar + SLO Budget            | At‑a‑glance health; actionable signals     | Compute backlog growth, p95, failure rate; thresholds; status widget        | Define SLO; calibrate thresholds; integrate metrics          | Medium     | Medium      | Medium‑High | Medium‑High     |
 
 ## Appendix — Codex Ideas in Detail
 
-Below are more detailed notes for each top pick: motivation, user stories, acceptance criteria, Fibonacci sizing (1–13), LoC estimates, and time/space/storage complexity where applicable, plus dependencies and risks. Use these to shape PRs and acceptance tests.
+Below are detailed briefs for each top pick: each begins with a summary table, followed by Executive Summary, Motivation, Tech Plan, User Stories with Acceptance Criteria, Definition of Done, Test Plan, and a Task List.
 
 ### 1) HTTP/gRPC Admin API
 
-- Motivation: Create a versioned, secure API to power the TUI, CLI, web UI, and automation. Enables RBAC, remote operations, and clear contracts.
-- User stories:
-  - As an SRE, I can call Stats/Peek/Purge endpoints safely with auth tokens.
-  - As a TUI user, my app consumes a stable v1 API regardless of internal changes.
-  - As a developer, I can add an admin operation by implementing a handler and updating the spec.
-  - As a security engineer, I can scope tokens/roles to specific admin actions.
-- Acceptance criteria:
-  - [ ] Spec: OpenAPI (HTTP+JSON) and/or gRPC proto for: Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench (queued job generator).
-  - [ ] Auth: token-based (bearer) middleware, deny-by-default, audit log of admin calls.
-  - [ ] Versioning: prefix (`/api/v1`) and compatibility notes; 404/410 for removed endpoints.
-  - [ ] Rate limit & safety: protective limits for destructive actions (e.g., purge requires `yes=true`).
-  - [ ] Tests: unit tests for handlers, integration tests against ephemeral Redis.
-  - [ ] Observability: request logs, basic latency metrics per endpoint.
-- Sizing (Fibonacci): 8
-- LoC estimate: ~450–750 Go LoC (handlers/middleware/clients) + ~150–250 spec lines (OpenAPI/proto)
-- Complexity (time/space/storage): per-request O(1) controller overhead; endpoint complexity dominated by admin ops (e.g., Stats O(k) where k=#queues). Space O(response size); storage n/a.
-- Dependencies: existing `internal/admin` funcs.
-- Risks: security hardening, long-running handlers, accidental destructive ops (mitigated by guard flags and RBAC).
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| High | API/Platform | `internal/admin`, auth middleware | Security hardening, destructive ops, compat drift | ~600–1000 (Go+spec) | Med‑High (per‑req O(1); Stats O(k)) | 8 (Fib) | High |
+
+**Executive Summary**
+- Define a versioned, secure Admin API (HTTP/gRPC) that fronts existing admin functions, enabling TUI/web/automation with RBAC and observability.
+
+**Motivation**
+- Create a stable contract for admin operations, allow remote control, and unlock future UI features while enforcing safety and auditability.
+
+**Tech Plan**
+- Choose transport: HTTP+JSON (OpenAPI) with optional gRPC; generate clients where useful.
+- Implement middleware: auth (bearer), rate limiting, request logging, correlation IDs.
+- Map handlers to `internal/admin` functions; add pagination/validation.
+- Versioning: `/api/v1`; document compat policy; structured errors.
+- Observability: metrics (per-endpoint latency/error), audit logs for destructive ops.
+- Ship minimal clients for TUI/CLI; integration tests with ephemeral Redis.
+
+**User Stories + Acceptance Criteria**
+- As an SRE, I can call Stats/Peek/Purge endpoints with auth tokens.
+- As a TUI user, I consume a stable v1 API regardless of internal changes.
+- As a security engineer, I can scope tokens/roles to admin actions.
+- Acceptance:
+  - [ ] Spec published (OpenAPI and/or proto) for Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench.
+  - [ ] Auth with deny‑by‑default; tokens verified; audit log persisted for destructive calls.
+  - [ ] Rate limits and explicit confirmation flags for destructive actions.
+  - [ ] Versioned paths; compat notes; structured error schema.
+  - [ ] Handler unit tests and integration tests pass in CI.
+
+**Definition of Done**
+- Docs for endpoints, auth, rate limits, and versioning; CI green with tests; TUI switched to the API for at least one op (Stats).
+
+**Test Plan**
+- Unit: middleware (auth/rate/log) and handlers; fuzz path/query parsing.
+- Integration: dockerized Redis; golden responses; auth failure/expiry cases.
+- Security: basic token leakage and privilege tests.
+
+**Task List**
+- [ ] Draft OpenAPI/proto; agree on schemas
+- [ ] Auth middleware + config
+- [ ] Implement Stats/StatsKeys
+- [ ] Implement Peek
+- [ ] Implement PurgeDLQ/PurgeAll with confirmations
+- [ ] Implement Bench
+- [ ] Add metrics + audit logs
+- [ ] Write unit/integration tests
+- [ ] Wire TUI Stats to API
 
 ```mermaid
 flowchart LR
@@ -167,20 +196,44 @@ flowchart LR
 
 ### 2) DLQ Remediation UI
 
-- Motivation: Reduce incident toil by making DLQ triage fast and safe.
-- User stories:
-  - As an operator, I can list and filter DLQ items and peek payloads.
-  - As an operator, I can requeue selected items and purge specific or all items with confirmations.
-  - As an analyst, I can search DLQ by substring to find patterns.
-- Acceptance criteria:
-  - [ ] DLQ tab lists items with pagination; shows total count; supports filter/search.
-  - [ ] Actions: Peek, Requeue selected, Purge selected, Purge all (confirm modal).
-  - [ ] Performance: handles large DLQs (paginated calls, no full list materialization).
-  - [ ] Errors surfaced non-blocking; destructive actions require confirmation.
-- Sizing (Fibonacci): 5 (post‑Admin API)
-- LoC estimate: ~300–500 Go LoC (TUI tab + pagination + actions) + ~120–200 Go LoC (API endpoints)
-- Complexity (time/space/storage): list page O(p) where p=page size; total pagination O(N). Space O(p) client-side; storage n/a.
-- Dependencies: Admin API endpoints for list/peek/requeue/purge.
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| High | Ops UX / TUI | Admin API (list/peek/requeue/purge) | Large DLQ perf, destructive ops | ~420–700 (TUI+API) | Medium (page O(p), total O(N)) | 5 (Fib) | High |
+
+**Executive Summary**
+- A focused DLQ tab to list, search, peek, requeue, and purge items safely with confirmations.
+
+**Motivation**
+- Reduce incident toil; provide a fast remediation loop within the TUI.
+
+**Tech Plan**
+- API: add DLQ list with pagination, peek by index/ID, requeue selected, purge endpoints.
+- TUI: DLQ tab with pager, filter, selection; action bar; confirmations.
+- Performance: server-side pagination; cap payload sizes; streaming where feasible.
+
+**User Stories + Acceptance Criteria**
+- As an operator, I can list and filter DLQ items and peek payloads.
+- As an operator, I can requeue or purge selected items with confirmation.
+- Acceptance:
+  - [ ] DLQ list is paginated with total count and filter.
+  - [ ] Peek shows pretty JSON and metadata.
+  - [ ] Requeue/Purge actions exist for selected items; purge all gated by confirm.
+  - [ ] Handles large DLQs without freezing the UI.
+
+**Definition of Done**
+- Usable DLQ tab with list/peek/requeue/purge; README and keybindings updated; basic load test run.
+
+**Test Plan**
+- API: pagination correctness; requeue idempotency; purge limits.
+- TUI: interaction tests (manual + scripted); large list navigation.
+
+**Task List**
+- [ ] API: list + count with filters
+- [ ] API: peek item by ID/index
+- [ ] API: requeue selected
+- [ ] API: purge selected/all
+- [ ] TUI: DLQ tab UI + pager + actions
+- [ ] Docs + screenshots
 
 ```mermaid
 sequenceDiagram
@@ -200,35 +253,77 @@ sequenceDiagram
 
 ### 3) Trace Drill‑down + Log Tail
 
-- Motivation: Faster root-cause analysis by correlating jobs with traces and logs.
-- User stories:
-  - As an SRE, I can see a job’s trace ID and open it in my tracing backend.
-  - As a developer, I can tail worker logs filtered by job ID or worker ID within the TUI.
-- Acceptance criteria:
-  - [ ] Display trace IDs in Peek/Info; “Open Trace” action opens external link or shows inline span summary.
-  - [ ] Log tail panel: follow mode, filter (job/worker), backpressure protection (line rate cap).
-  - [ ] Configurable tracing base URL and log source.
-- Sizing (Fibonacci): 5
-- LoC estimate: ~250–400 Go LoC (TUI panels/actions) + small glue to tracing/logs
-- Complexity (time/space/storage): trace link open O(1); inline span render O(s) where s=#spans fetched. Log tail O(r) with r=lines/sec; bounded buffer space O(w) where w=window size; storage n/a.
-- Dependencies: Ensure trace IDs are propagated and accessible.
-- Risks: log volume overhead; privacy controls for payloads/PII.
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Med‑High | Observability / TUI | Trace propagation; log source | Log volume, PII | ~250–400 | Medium | 5 (Fib) | High |
+
+**Executive Summary**
+- Surface trace IDs in the TUI and provide a log tail pane with filters to accelerate RCA.
+
+**Motivation**
+- Tighten the feedback loop from failing jobs to actionable traces/logs.
+
+**Tech Plan**
+- Ensure trace IDs captured in payload/metadata; configurable tracing base URL.
+- Add “Open Trace” action (external link or inline spans summary).
+- Implement lightweight log tailer with rate cap and filters by job/worker.
+
+**User Stories + Acceptance Criteria**
+- As an SRE, I can open a job’s trace from the TUI.
+- As a developer, I can tail logs filtered by job or worker.
+- Acceptance:
+  - [ ] Trace IDs visible in Peek/Info; action to open.
+  - [ ] Log tail pane with follow mode, filters, and backpressure protection.
+  - [ ] Configurable endpoints for tracing and logs.
+
+**Definition of Done**
+- Trace link + log tail pane shipped; docs include setup; basic perf validation under load.
+
+**Test Plan**
+- Unit: parsing/extraction of IDs; log throttling logic.
+- Manual: links open correct trace; tailing with filters; behavior under bursty logs.
+
+**Task List**
+- [ ] Capture/propagate trace IDs
+- [ ] Add Open Trace action
+- [ ] Implement log tail pane with filters
+- [ ] Docs and examples
 
 ### 4) Interactive Policy Tuning + Simulator
 
-- Motivation: Safe “what‑if” tuning of retries, rate limits, and concurrency to improve SLOs.
-- User stories:
-  - As an operator, I can simulate backlog and latency given new policies before applying.
-  - As an operator, I can apply changes with a confirmation and rollback if needed.
-- Acceptance criteria:
-  - [ ] UI to adjust retry/backoff, rate limits, concurrency caps; simulated charts of backlog/throughput/latency.
-  - [ ] Model: first‑order queueing approximation (service rate, arrival patterns); display assumptions clearly.
-  - [ ] Apply via Admin API with audit log and revert option.
-- Sizing (Fibonacci): 13
-- LoC estimate: ~500–800 Go LoC (sim model + UI + apply/rollback)
-- Complexity (time/space/storage): simulation O(T·M) where T=time steps, M=queues/policies; space O(M) + O(T) for series; storage n/a.
-- Dependencies: Admin API config endpoints.
-- Risks: false precision in simulation; UX clarity for assumptions.
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Medium | Control Plane / TUI | Admin API config endpoints | False precision, misuse | ~500–800 | High (Sim O(T·M)) | 13 (Fib) | High |
+
+**Executive Summary**
+- A “what‑if” simulator to preview the impact of policy changes (retry/backoff, rate limits, concurrency) before applying.
+
+**Motivation**
+- Prevent outages and tune SLOs by testing changes safely.
+
+**Tech Plan**
+- Build a first‑order queueing model; configurable traffic patterns; show predicted backlog/throughput/latency.
+- Integrate apply/rollback via Admin API; include audit trail.
+
+**User Stories + Acceptance Criteria**
+- As an operator, I can simulate and apply policy changes with confidence.
+- Acceptance:
+  - [ ] UI sliders/inputs for core policies; charts update with predictions.
+  - [ ] Clear assumptions and limitations documented inline.
+  - [ ] Apply/rollback via Admin API with audit log.
+
+**Definition of Done**
+- Simulator usable for core policies; documented; apply/rollback tested end‑to‑end.
+
+**Test Plan**
+- Unit: math/model validation; boundary cases.
+- Integration: dry‑run vs live; rollback correctness.
+
+**Task List**
+- [ ] Implement core sim model
+- [ ] UI: controls + charts
+- [ ] Admin API: apply/rollback endpoints
+- [ ] Docs + inline assumptions
 
 ```mermaid
 flowchart LR
@@ -241,30 +336,72 @@ flowchart LR
 
 ### 5) Patterned Load Generator
 
-- Motivation: Validate performance under realistic traffic patterns and demo behaviors.
-- User stories:
-  - As a tester, I can run sine/burst/ramp patterns for a duration and see live charts.
-  - As a user, I can save and reload load profiles and cancel a run.
-- Acceptance criteria:
-  - [ ] Implement patterns: sine, burst, ramp; duration and amplitude controls; guardrails (max rate, total items).
-  - [ ] Visualize target vs actual enqueue rate; show errors; support cancel/stop.
-  - [ ] Persist/load profiles to disk (optional).
-- Sizing (Fibonacci): 3
-- LoC estimate: ~200–350 Go LoC (patterns, controls, charts overlay)
-- Complexity (time/space/storage): rate calc O(1)/tick; enqueue loop O(duration/step); space O(w) for chart window; storage n/a.
-- Dependencies: existing bench plumbing.
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Medium | Bench/Load | Existing bench plumbing | Overloading env, noisy graphs | ~200–350 | Medium (per tick O(1)) | 3 (Fib) | Medium |
+
+**Executive Summary**
+- Extend the bench tool to support sine/burst/ramp patterns, with guardrails and live visualization.
+
+**Motivation**
+- Validate behavior under realistic traffic and create great demos.
+
+**Tech Plan**
+- Implement pattern generators; controls for duration/amplitude; guardrails (max rate/total).
+- Overlay target vs actual enqueue rate on charts; profile persistence optional.
+
+**User Stories + Acceptance Criteria**
+- As a tester, I can run predefined patterns and see accurate live charts.
+- Acceptance:
+  - [ ] Sine, burst, ramp patterns; cancel/stop supported.
+  - [ ] Guardrails prevent runaway load.
+  - [ ] Saved profiles can be reloaded.
+
+**Definition of Done**
+- Patterns implemented with charts; docs include examples and cautions.
+
+**Test Plan**
+- Unit: pattern math; guardrails.
+- Manual: visualize and compare patterns; cancellation behavior.
+
+**Task List**
+- [ ] Implement sine/burst/ramp
+- [ ] Add controls + guardrails
+- [ ] Chart overlay target vs actual
+- [ ] Save/load profiles
 
 ### 6) Anomaly Radar + SLO Budget
 
-- Motivation: At‑a‑glance operational health with early warnings and burn rate.
-- User stories:
-  - As an SRE, I can see backlog growth, error rate, and p95 latency status in one widget.
-  - As a team, we define an SLO and see remaining error budget and burn alerts.
-- Acceptance criteria:
-  - [ ] Compute/display backlog growth rate, failure rate, and p95 latency with thresholds (green/yellow/red).
-  - [ ] SLO config (YAML) and calculated error budget burn; simple alerts rendered in TUI.
-  - [ ] Lightweight computation (no heavy CPU); sampling acceptable.
-- Sizing (Fibonacci): 5
-- LoC estimate: ~200–350 Go LoC (computations + widget + config)
-- Complexity (time/space/storage): per‑tick metrics compute O(1); rolling windows O(w) memory; storage n/a.
-- Dependencies: metrics exposure and sampling.
+| Priority | Domain | Dependencies | Risks | LoC Estimate | Complexity | Effort | Impact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Medium | Observability | Metrics exposure/sampling | Threshold tuning, noise | ~200–350 | Medium (per tick O(1)) | 5 (Fib) | Med‑High |
+
+**Executive Summary**
+- A compact widget showing backlog growth, error rate, and p95 with SLO budget and burn alerts.
+
+**Motivation**
+- Provide immediate health signals and guide operational action.
+
+**Tech Plan**
+- Compute rolling rates and percentiles with light sampling; thresholds for colorization.
+- Configurable SLO target and window; simple burn rate calculation.
+
+**User Stories + Acceptance Criteria**
+- As an SRE, I can see whether we’re inside SLO and how fast we’re burning budget.
+- Acceptance:
+  - [ ] Backlog growth, failure rate, and p95 displayed with thresholds.
+  - [ ] SLO config and budget burn shown; alert when burning too fast.
+  - [ ] Lightweight CPU/memory footprint.
+
+**Definition of Done**
+- Widget integrated; configs documented; behavior validated under synthetic load.
+
+**Test Plan**
+- Unit: rolling window calcs; thresholding logic.
+- Manual: verify color transitions and alerting conditions.
+
+**Task List**
+- [ ] Implement rolling metrics
+- [ ] Add SLO config + budget calc
+- [ ] Integrate widget + thresholds
+- [ ] Document usage and tuning
