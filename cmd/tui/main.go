@@ -527,6 +527,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             m.pbActive = false
             if cmd := m.pb.SetPercent(1.0); cmd != nil { cmds = append(cmds, cmd) }
         }
+    case benchPollTick:
+        if m.pbActive {
+            cmds = append(cmds, m.benchPollCmd(), tea.Tick(200*time.Millisecond, func(time.Time) tea.Msg { return benchPollTick{} }))
+        }
+    case benchProgMsg:
+        if m.pbTotal > 0 {
+            percent := float64(msg.done) / float64(m.pbTotal)
+            if percent > 1 { percent = 1 }
+            if cmd := m.pb.SetPercent(percent); cmd != nil { cmds = append(cmds, cmd) }
+            if percent >= 1 { m.pbActive = false }
+        }
     }
 
     // Spinner update when loading
@@ -537,8 +548,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     }
     // Progress animate update
     {
-        var c tea.Cmd
-        m.pb, c = m.pb.Update(msg)
+        md, c := m.pb.Update(msg)
+        if pm, ok := md.(bubprog.Model); ok {
+            m.pb = pm
+        }
         cmds = append(cmds, c)
     }
     // Always update table on dashboard
