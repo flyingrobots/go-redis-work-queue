@@ -37,8 +37,8 @@ dockers:
 
 release:
   github:
-    owner: {{ .Env.GITHUB_REPOSITORY_OWNER }}
-    name: {{ .Env.GITHUB_REPOSITORY_NAME }}
+    owner: '{{.Env.GITHUB_REPOSITORY_OWNER}}'
+    name: '{{.Env.GITHUB_REPOSITORY_NAME}}'
   draft: false
   prerelease: auto
 
