@@ -12,12 +12,12 @@ all: build
 build:
 	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/$(APP) ./cmd/$(APP)
 
-.PHONY: build-tui
-build-tui:
+.PHONY: build-tui tui-build
+build-tui tui-build:
 	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/tui ./cmd/tui
 
-.PHONY: run-tui
-run-tui: build-tui
+.PHONY: run-tui tui
+run-tui tui: build-tui
 	./bin/tui --config=config/config.yaml
 
 run:
