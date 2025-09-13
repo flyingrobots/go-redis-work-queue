@@ -42,17 +42,72 @@ func (m model) View() string {
 	var body string
 	switch m.activeTab {
 	case tabJobs:
-		// Build panel contents as before
-		fb := renderFilterBar(m)
-		left := m.tbl.View()
-		if fb != "" {
-			left = fb + "\n" + left
+		// Flex layout with borders applied at the cell level to avoid double borders/overflow.
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
+		// Animated ratios: 0.0 => 1:1, 1.0 => 1:2 (Charts wider)
+		base := 100
+		lrx := base
+		rrx := base + int(float64(base)*m.expPos)
+		if rrx < 1 {
+			rrx = 1
 		}
-		left = panel.Render(m.boxTitle.Render("Queues") + "\n" + left)
+		if lrx < 1 {
+			lrx = 1
+		}
 
-		m.vpCharts.SetContent(renderCharts(m))
-		right := panel.Render(m.boxTitle.Render("Charts") + "\n" + m.vpCharts.View())
+		// Prepare cells with style; set content after we size them
+		cLeft := flexbox.NewCell(lrx, 2).SetStyle(panel)
+		cRight := flexbox.NewCell(rrx, 2).SetStyle(panel)
+		cBottom := flexbox.NewCell(1, 1).SetStyle(panel)
+		rowTop := fbBox.NewRow().AddCells(cLeft, gutter, cRight)
+		rowBottom := fbBox.NewRow().AddCells(cBottom)
+		fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
 
+		// Size pass: compute inner dimensions for contents
+		fbBox.ForceRecalculate()
+		lc := fbBox.GetRowCellCopy(0, 0)
+		rc := fbBox.GetRowCellCopy(0, 2)
+		bc := fbBox.GetRowCellCopy(1, 0)
+		// Panel overhead: 2 border + 2 padding (h), 2 border (v)
+		innerLeftW, innerLeftH := lc.GetWidth()-4, lc.GetHeight()-2
+		innerRightW, innerRightH := rc.GetWidth()-4, rc.GetHeight()-2
+		innerBottomW, innerBottomH := bc.GetWidth()-4, bc.GetHeight()-2
+		if innerLeftW < 1 {
+			innerLeftW = 1
+		}
+		if innerRightW < 1 {
+			innerRightW = 1
+		}
+		if innerBottomW < 1 {
+			innerBottomW = 1
+		}
+		if innerLeftH < 1 {
+			innerLeftH = 1
+		}
+		if innerRightH < 1 {
+			innerRightH = 1
+		}
+		if innerBottomH < 1 {
+			innerBottomH = 1
+		}
+
+		// Left (Queues)
+		m.tbl.SetWidth(innerLeftW)
+		leftBody := m.tbl.View()
+		if fb := renderFilterBar(m); fb != "" {
+			leftBody = fb + "\n" + leftBody
+		}
+		leftContent := m.boxTitle.Render("Queues") + "\n" + leftBody
+
+		// Right (Charts): render with cell-based width
+		chartsStr := renderChartsWidth(m, innerRightW)
+		rightContent := m.boxTitle.Render("Charts") + "\n" + chartsStr
+
+		// Bottom (Info): viewport sized to inner dimensions
+		m.vpInfo.Width = innerBottomW
+		m.vpInfo.Height = innerBottomH - 1 // minus title line
 		info := summarizeKeys(m.lastKeys)
 		if len(m.lastPeek.Items) > 0 {
 			info += "\n\n" + renderPeek(m.lastPeek)
@@ -67,32 +122,13 @@ func (m model) View() string {
 			info += "\n\nBench Progress:\n" + m.pb.View()
 		}
 		m.vpInfo.SetContent(info)
-		bottom := panel.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
+		bottomContent := m.boxTitle.Render("Info") + "\n" + m.vpInfo.View()
 
-		// Use stickers flexbox to lay out top (Queues/Charts with gutter) and bottom (Info)
-		bodyW, bodyH := m.bodyDims()
-		fbBox := flexbox.New(bodyW, bodyH)
-		gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
-		// animate left/right width ratio with spring position (0.0..1.0): 0=1:1, 1=1:2
-		// scale ratios for smoother distribution
-		base := 100
-		lrx := base
-		rrx := base + int(float64(base)*m.expPos)
-		if rrx < 1 {
-			rrx = 1
-		}
-		if lrx < 1 {
-			lrx = 1
-		}
-		rowTop := fbBox.NewRow().AddCells(
-			flexbox.NewCell(lrx, 2).SetContent(left),
-			gutter,
-			flexbox.NewCell(rrx, 2).SetContent(right),
-		)
-		rowBottom := fbBox.NewRow().AddCells(
-			flexbox.NewCell(1, 1).SetContent(bottom),
-		)
-		fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
+		// Set contents after sizing so borders line up with cell widths
+		rowTop.GetCell(0).SetContent(leftContent)
+		rowTop.GetCell(2).SetContent(rightContent)
+		rowBottom.GetCell(0).SetContent(bottomContent)
+
 		body = fbBox.Render()
 
 	case tabWorkers:
@@ -106,7 +142,7 @@ func (m model) View() string {
 		bodyW, bodyH := m.bodyDims()
 		fbBox := flexbox.New(bodyW, bodyH)
 		single := fbBox.NewRow().AddCells(
-			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Workers") + "\n" + content)),
+			flexbox.NewCell(1, 1).SetStyle(panel).SetContent(m.boxTitle.Render("Workers") + "\n" + content),
 		)
 		fbBox.SetRows([]*flexbox.Row{single})
 		body = fbBox.Render()
@@ -123,7 +159,7 @@ func (m model) View() string {
 		bodyW, bodyH := m.bodyDims()
 		fbBox := flexbox.New(bodyW, bodyH)
 		single := fbBox.NewRow().AddCells(
-			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n"))),
+			flexbox.NewCell(1, 1).SetStyle(panel).SetContent(m.boxTitle.Render("Dead Letter Queue") + "\n" + strings.Join(lines, "\n")),
 		)
 		fbBox.SetRows([]*flexbox.Row{single})
 		body = fbBox.Render()
@@ -140,7 +176,7 @@ func (m model) View() string {
 		bodyW, bodyH := m.bodyDims()
 		fbBox := flexbox.New(bodyW, bodyH)
 		single := fbBox.NewRow().AddCells(
-			flexbox.NewCell(1, 1).SetContent(panel.Render(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n"))),
+			flexbox.NewCell(1, 1).SetStyle(panel).SetContent(m.boxTitle.Render("Settings") + "\n" + strings.Join(lines, "\n")),
 		)
 		fbBox.SetRows([]*flexbox.Row{single})
 		body = fbBox.Render()
@@ -244,12 +280,7 @@ func focusName(f focusArea) string {
 	return "?"
 }
 
-func renderCharts(m model) string {
-	width := m.width
-	if width <= 10 {
-		width = 80
-	}
-	plotW := width - 2
+func renderChartsWidth(m model, plotW int) string {
 	if plotW < 10 {
 		plotW = 10
 	}
