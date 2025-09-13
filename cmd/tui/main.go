@@ -481,13 +481,14 @@ func (m model) View() string {
     }
 
     // Compose base view
-    out := header + "\n" + sub + "\n\n" + body
+    base := header + "\n" + sub + "\n\n" + body
 
-    // Overlay confirmation modal if needed
+    // Overlay confirmation modal if needed, with dimmed background
     if m.confirmOpen {
-        out += "\n" + renderConfirmModal(m)
+        dim := lipgloss.NewStyle().Faint(true).Render(base)
+        return dim + "\n" + renderConfirmModal(m)
     }
-    return out
+    return base
 }
 
 func summarizeKeys(k admin.KeysStats) string {
