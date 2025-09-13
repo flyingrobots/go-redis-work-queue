@@ -16,6 +16,7 @@ import (
     "github.com/charmbracelet/bubbles/spinner"
     "github.com/charmbracelet/bubbles/table"
     "github.com/charmbracelet/bubbles/textinput"
+    "github.com/charmbracelet/bubbles/viewport"
     "github.com/charmbracelet/lipgloss"
     asciigraph "github.com/guptarohit/asciigraph"
     "github.com/lithammer/fuzzysearch/fuzzy"
@@ -30,14 +31,13 @@ import (
 
 // Simple, pragmatic TUI for observing and administering the queue system.
 
-type viewMode int
+// focusable panels on the dashboard
+type focusArea int
 
 const (
-    modeQueues viewMode = iota
-    modeKeys
-    modePeek
-    modeBench
-    modeCharts
+    focusQueues focusArea = iota
+    focusCharts
+    focusInfo
 )
 
 type statsMsg struct {
@@ -73,7 +73,7 @@ type model struct {
     width  int
     height int
 
-    mode      viewMode
+    focus     focusArea
     help      help.Model
     spinner   spinner.Model
     loading   bool
@@ -114,6 +114,14 @@ type model struct {
     filterActive bool
     allRows      []table.Row
     allTargets   []string
+
+    // Dashboard viewports
+    vpCharts viewport.Model
+    vpInfo   viewport.Model
+
+    // Styles
+    boxTitle lipgloss.Style
+    boxBody  lipgloss.Style
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -153,13 +161,17 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
     fi.Placeholder = "filter"
     fi.CharLimit = 64
 
+    // Panels styles
+    boxTitle := lipgloss.NewStyle().Bold(true)
+    boxBody := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
+
     return model{
         ctx:          ctx,
         cancel:       cancel,
         cfg:          cfg,
         rdb:          rdb,
         logger:       logger,
-        mode:         modeQueues,
+        focus:        focusQueues,
         help:         help.New(),
         spinner:      sp,
         tbl:          t,
@@ -172,6 +184,10 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         series:       map[string][]float64{"high": {}, "low": {}, "completed": {}, "dead_letter": {}},
         seriesMax:    180, // keep last N points
         filter:       fi,
+        vpCharts:     viewport.New(0, 10),
+        vpInfo:       viewport.New(0, 10),
+        boxTitle:     boxTitle,
+        boxBody:      boxBody,
     }
 }
 
@@ -256,34 +272,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             m.cancel()
             return m, tea.Quit
         case "tab":
-            // Toggle between queues and keys views
-            if m.mode == modeQueues { m.mode = modeKeys } else { m.mode = modeQueues }
-            return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
+            // Cycle focus across panels
+            m.focus = (m.focus + 1) % 3
+            return m, nil
+        case "shift+tab":
+            if m.focus == 0 { m.focus = 2 } else { m.focus-- }
+            return m, nil
         case "r":
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
         case "f", "/":
-            if m.mode == modeQueues {
+            if m.focus == focusQueues {
                 m.filterActive = true
                 m.filter.Focus()
             }
-        case "c":
-            m.mode = modeCharts
         case "p":
-            if m.mode == modeQueues && len(m.peekTargets) > 0 {
+            if len(m.peekTargets) > 0 {
                 i := m.tbl.Cursor()
                 if i >= 0 && i < len(m.peekTargets) {
                     m.loading = true
                     m.errText = ""
-                    m.mode = modePeek
                     cmds = append(cmds, m.doPeekCmd(m.peekTargets[i], 10), spinner.Tick)
                 }
             }
         case "b":
-            m.mode = modeBench
+            // open bench form in inline info viewport
+            // focus remains unchanged; enter runs
             // Focus first input
             m.benchCount.Focus()
         case "enter":
-            if m.mode == modeBench {
+            // If bench inputs focused, run bench
+            if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() {
                 // Parse inputs and run
                 count := atoiDefault(m.benchCount.Value(), 1000)
                 rate := atoiDefault(m.benchRate.Value(), 500)
@@ -295,12 +313,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 cmds = append(cmds, m.doBenchCmd(prio, count, rate, to), spinner.Tick)
             }
         case "esc":
-            // Return to queues view or clear filter/modal
+            // Clear filter/modal or blur bench inputs
             if m.confirmOpen {
                 m.confirmOpen = false
-            } else if m.mode == modeBench {
-                m.mode = modeQueues
-            } else if m.mode == modeQueues && m.filterActive {
+            } else if m.filterActive {
                 m.filterActive = false
                 m.filter.SetValue("")
                 m.applyFilterAndSetRows()
@@ -316,7 +332,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         }
 
         // Navigate bench inputs
-        if m.mode == modeBench {
+        if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() {
             switch msg.String() {
             case "tab", "shift+tab":
                 cycleBenchFocus(&m)
@@ -333,7 +349,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         }
 
         // Update filter input when active
-        if m.mode == modeQueues && m.filterActive {
+        if m.filterActive {
             var c tea.Cmd
             m.filter, c = m.filter.Update(msg)
             cmds = append(cmds, c)
@@ -343,55 +359,46 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case tea.WindowSizeMsg:
         m.width = msg.Width
         m.height = msg.Height
-        // Fit table to window
-        if m.width > 0 { m.tbl.SetWidth(m.width) }
-        // Leave a bit of space for footer/help
-        if m.height > 6 { m.tbl.SetHeight(m.height - 6) }
+        // Layout calculations
+        headerLines := 3 // header, sub, blank
+        if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" { headerLines++ }
+        footerLines := 2 // help and maybe a blank
+        availH := m.height - headerLines - footerLines
+        if availH < 6 { availH = 6 }
+        // Split into top row (queues + charts) and bottom row (info)
+        bottomH := availH / 3
+        topH := availH - bottomH
+        // Set widths
+        leftW := m.width / 2
+        if leftW < 30 { leftW = 30 }
+        rightW := m.width - leftW - 3
+        if rightW < 20 { rightW = 20 }
+        // Apply sizes
+        m.tbl.SetWidth(leftW - 4)
+        m.tbl.SetHeight(topH - 3)
+        m.vpCharts.Width = rightW - 2
+        m.vpCharts.Height = topH - 2
+        m.vpInfo.Width = m.width - 4
+        m.vpInfo.Height = bottomH - 2
     case tea.MouseMsg:
-        // Basic mouse support for queues view: wheel scroll and click to select/peek
-        if m.mode == modeQueues && !m.confirmOpen {
-            top := m.tableTopY
-            if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" { top++ }
+        if !m.confirmOpen {
             switch msg.Button {
             case tea.MouseButtonWheelUp:
-                if msg.Action == tea.MouseActionPress { m.tbl.MoveUp(1) }
+                if msg.Action == tea.MouseActionPress {
+                    switch m.focus { case focusQueues: m.tbl.MoveUp(1); case focusCharts: m.vpCharts.LineUp(1); case focusInfo: m.vpInfo.LineUp(1) }
+                }
             case tea.MouseButtonWheelDown:
-                if msg.Action == tea.MouseActionPress { m.tbl.MoveDown(1) }
-            case tea.MouseButtonNone:
-                if msg.Action == tea.MouseActionMotion {
-                    // Hover highlight: move cursor under pointer
-                    rowWithin := msg.Y - (top + 1)
-                    if rowWithin >= 0 && rowWithin < m.tbl.Height() {
-                        start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
-                        idx := start + rowWithin
-                        if idx >= 0 && idx < len(m.tbl.Rows()) {
-                            m.tbl.SetCursor(idx)
-                        }
-                    }
+                if msg.Action == tea.MouseActionPress {
+                    switch m.focus { case focusQueues: m.tbl.MoveDown(1); case focusCharts: m.vpCharts.LineDown(1); case focusInfo: m.vpInfo.LineDown(1) }
                 }
             case tea.MouseButtonLeft:
                 if msg.Action == tea.MouseActionPress {
-                    // Attempt to map Y position to a visible row
-                    // table header is 1 line; rows follow
-                    rowWithin := msg.Y - (top + 1)
-                    if rowWithin >= 0 && rowWithin < m.tbl.Height() {
-                        // Compute starting row index using table logic
-                        start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
-                        idx := start + rowWithin
-                        if idx >= 0 && idx < len(m.tbl.Rows()) {
-                            m.tbl.SetCursor(idx)
-                        }
-                    }
-                }
-            case tea.MouseButtonRight:
-                if msg.Action == tea.MouseActionPress {
-                    // Right-click: peek selected
+                    // Left click peeks current queue
                     if len(m.peekTargets) > 0 {
                         i := m.tbl.Cursor()
                         if i >= 0 && i < len(m.peekTargets) {
                             m.loading = true
                             m.errText = ""
-                            m.mode = modePeek
                             cmds = append(cmds, m.doPeekCmd(m.peekTargets[i], 10), spinner.Tick)
                         }
                     }
@@ -470,8 +477,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         m.spinner, c = m.spinner.Update(msg)
         cmds = append(cmds, c)
     }
-    // Table update when in queues view
-    if m.mode == modeQueues {
+    // Always update table on dashboard
+    {
         var c tea.Cmd
         m.tbl, c = m.tbl.Update(msg)
         cmds = append(cmds, c)
@@ -483,8 +490,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
     // Header
     header := lipgloss.NewStyle().Bold(true).Render("Job Queue TUI — Redis " + m.cfg.Redis.Addr)
-    sub := fmt.Sprintf("Mode: %s  |  Heartbeats: %d  |  Processing lists: %d",
-        modeName(m.mode), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
+    sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d",
+        focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
     if m.errText != "" {
         sub += "  |  Error: " + m.errText
     }
@@ -492,31 +499,34 @@ func (m model) View() string {
         sub += "  " + m.spinner.View()
     }
 
-    body := ""
-    switch m.mode {
-    case modeQueues:
-        fb := renderFilterBar(m)
-        if fb != "" { m.tableTopY = 4 } else { m.tableTopY = 3 }
-        if fb != "" { body = fb + "\n" + m.tbl.View() } else { body = m.tbl.View() }
-        // Footer summary from keys
-        body += "\n" + summarizeKeys(m.lastKeys)
-        body += "\n" + helpBar()
-    case modeKeys:
-        body = renderKeys(m.lastKeys)
-        body += "\n" + helpBar()
-    case modePeek:
-        body = renderPeek(m.lastPeek)
-        body += "\n" + helpBar()
-    case modeBench:
-        body = renderBenchForm(m)
-        if (m.lastBench.Count > 0 && !m.loading) || m.errText != "" {
-            body += "\n" + renderBenchResult(m.lastBench)
-        }
-        body += "\n" + helpBar()
-    case modeCharts:
-        body = renderCharts(m)
-        body += "\n" + helpBar()
+    // Panels content
+    fb := renderFilterBar(m)
+    left := m.tbl.View()
+    if fb != "" { left = fb + "\n" + left }
+    left = m.boxBody.Render(m.boxTitle.Render("Queues") + "\n" + left)
+
+    // Charts panel content
+    m.vpCharts.SetContent(renderCharts(m))
+    right := m.boxBody.Render(m.boxTitle.Render("Charts") + "\n" + m.vpCharts.View())
+
+    // Info panel: keys summary + optional peek + optional bench form/result
+    info := summarizeKeys(m.lastKeys)
+    if len(m.lastPeek.Items) > 0 {
+        info += "\n\n" + renderPeek(m.lastPeek)
     }
+    if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() || m.lastBench.Count > 0 {
+        info += "\n\n" + renderBenchForm(m)
+        if m.lastBench.Count > 0 {
+            info += "\n" + renderBenchResult(m.lastBench)
+        }
+    }
+    m.vpInfo.SetContent(info)
+    bottom := m.boxBody.Render(m.boxTitle.Render("Info") + "\n" + m.vpInfo.View())
+
+    // Side-by-side top row
+    gap := lipgloss.NewStyle().Width(2).Render(" ")
+    topRow := lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
+    body := topRow + "\n" + bottom + "\n" + helpBar()
 
     // Compose base view
     base := header + "\n" + sub + "\n\n" + body
@@ -602,30 +612,26 @@ func renderBenchResult(b admin.BenchResult) string {
 func helpBar() string {
     return strings.Join([]string{
         "q:quit",
-        "tab:switch view",
+        "tab/shift+tab:focus panel",
         "r:refresh",
         "j/k:down/up",
         "wheel/mouse: scroll/select",
-        "right-click: peek",
-        "p:peek",
-        "b:bench",
-        "c:charts",
-        "f:filter",
+        "enter/p:peek",
+        "b:bench form",
+        "f:filter (queues)",
         "D:purge DLQ (y/n)",
         "A:purge ALL (y/n)",
     }, "  ")
 }
 
-func modeName(m viewMode) string {
-    switch m {
-    case modeQueues:
+func focusName(f focusArea) string {
+    switch f {
+    case focusQueues:
         return "Queues"
-    case modeKeys:
-        return "Keys"
-    case modePeek:
-        return "Peek"
-    case modeBench:
-        return "Bench"
+    case focusCharts:
+        return "Charts"
+    case focusInfo:
+        return "Info"
     default:
         return "?"
     }
@@ -800,7 +806,6 @@ func renderCharts(m model) string {
 }
 
 func renderFilterBar(m model) string {
-    if m.mode != modeQueues { return "" }
     if m.filterActive {
         return "Filter: " + m.filter.View() + "  (esc to clear)"
     }
