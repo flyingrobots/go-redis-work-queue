@@ -103,6 +103,10 @@ type model struct {
     // time series for charts
     series    map[string][]float64
     seriesMax int
+
+    // confirmation modal state
+    confirmOpen   bool
+    confirmAction string // "purge-dlq" | "purge-all"
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -199,6 +203,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     var cmds []tea.Cmd
     switch msg := msg.(type) {
     case tea.KeyMsg:
+        // When a confirmation modal is open, only handle confirm/cancel keys
+        if m.confirmOpen {
+            switch msg.String() {
+            case "y", "enter":
+                // Run the pending action
+                switch m.confirmAction {
+                case "purge-dlq":
+                    m.loading = true
+                    m.errText = ""
+                    m.confirmOpen = false
+                    cmds = append(cmds, func() tea.Msg {
+                        err := admin.PurgeDLQ(m.ctx, m.cfg, m.rdb)
+                        if err != nil { return statsMsg{err: err} }
+                        return statsMsg{}
+                    }, spinner.Tick, m.refreshCmd(), m.fetchKeysCmd())
+                case "purge-all":
+                    m.loading = true
+                    m.errText = ""
+                    m.confirmOpen = false
+                    cmds = append(cmds, func() tea.Msg {
+                        _, err := admin.PurgeAll(m.ctx, m.cfg, m.rdb)
+                        if err != nil { return statsMsg{err: err} }
+                        return statsMsg{}
+                    }, spinner.Tick, m.refreshCmd(), m.fetchKeysCmd())
+                }
+            case "n", "esc":
+                m.confirmOpen = false
+            case "q", "ctrl+c":
+                // allow quitting from modal too
+                m.cancel()
+                return m, tea.Quit
+            }
+            return m, tea.Batch(cmds...)
+        }
+
         switch msg.String() {
         case "ctrl+c", "q":
             m.cancel()
@@ -243,23 +282,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 m.mode = modeQueues
             }
         case "D":
-            // Purge DLQ with confirmation via simple prompt in terminal
-            // We’ll run and show result in error area
-            m.loading = true
-            m.errText = ""
-            cmds = append(cmds, func() tea.Msg {
-                err := admin.PurgeDLQ(m.ctx, m.cfg, m.rdb)
-                if err != nil { return statsMsg{err: err} }
-                return statsMsg{}
-            }, spinner.Tick, m.refreshCmd(), m.fetchKeysCmd())
+            // Open confirmation modal for DLQ purge
+            m.confirmOpen = true
+            m.confirmAction = "purge-dlq"
         case "A":
-            m.loading = true
-            m.errText = ""
-            cmds = append(cmds, func() tea.Msg {
-                _, err := admin.PurgeAll(m.ctx, m.cfg, m.rdb)
-                if err != nil { return statsMsg{err: err} }
-                return statsMsg{}
-            }, spinner.Tick, m.refreshCmd(), m.fetchKeysCmd())
+            // Open confirmation modal for ALL purge
+            m.confirmOpen = true
+            m.confirmAction = "purge-all"
         }
 
         // Navigate bench inputs
@@ -288,12 +317,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         if m.height > 6 { m.tbl.SetHeight(m.height - 6) }
     case tea.MouseMsg:
         // Basic mouse support for queues view: wheel scroll and click to select/peek
-        if m.mode == modeQueues {
+        if m.mode == modeQueues && !m.confirmOpen {
             switch msg.Button {
             case tea.MouseButtonWheelUp:
                 if msg.Action == tea.MouseActionPress { m.tbl.MoveUp(1) }
             case tea.MouseButtonWheelDown:
                 if msg.Action == tea.MouseActionPress { m.tbl.MoveDown(1) }
+            case tea.MouseButtonNone:
+                if msg.Action == tea.MouseActionMotion {
+                    // Hover highlight: move cursor under pointer
+                    rowWithin := msg.Y - (m.tableTopY + 1)
+                    if rowWithin >= 0 && rowWithin < m.tbl.Height() {
+                        start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
+                        idx := start + rowWithin
+                        if idx >= 0 && idx < len(m.tbl.Rows()) {
+                            m.tbl.SetCursor(idx)
+                        }
+                    }
+                }
             case tea.MouseButtonLeft:
                 if msg.Action == tea.MouseActionPress {
                     // Attempt to map Y position to a visible row
@@ -439,7 +480,14 @@ func (m model) View() string {
         body += "\n" + helpBar()
     }
 
-    return header + "\n" + sub + "\n\n" + body
+    // Compose base view
+    out := header + "\n" + sub + "\n\n" + body
+
+    // Overlay confirmation modal if needed
+    if m.confirmOpen {
+        out += "\n" + renderConfirmModal(m)
+    }
+    return out
 }
 
 func summarizeKeys(k admin.KeysStats) string {
@@ -524,8 +572,8 @@ func helpBar() string {
         "p:peek",
         "b:bench",
         "c:charts",
-        "D:purge DLQ",
-        "A:purge ALL",
+        "D:purge DLQ (y/n)",
+        "A:purge ALL (y/n)",
     }, "  ")
 }
 
@@ -589,10 +637,42 @@ func main() {
     }
 
     m := initialModel(cfg, rdb, logger, refresh)
-    if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
+    if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseAllMotion()).Run(); err != nil {
         fmt.Fprintf(os.Stderr, "tui error: %v\n", err)
         os.Exit(1)
     }
+}
+
+func renderConfirmModal(m model) string {
+    title := "Confirm"
+    msg := ""
+    switch m.confirmAction {
+    case "purge-dlq":
+        msg = "Purge dead letter queue?"
+    case "purge-all":
+        msg = "Purge ALL managed keys?"
+    default:
+        msg = m.confirmAction
+    }
+    box := lipgloss.NewStyle().
+        Border(lipgloss.RoundedBorder()).
+        BorderForeground(lipgloss.Color("212")).
+        Padding(1, 2)
+
+    content := lipgloss.JoinVertical(lipgloss.Left,
+        lipgloss.NewStyle().Bold(true).Render(title),
+        msg,
+        "[y] Yes   [n] No",
+    )
+
+    // Centered width
+    width := m.width
+    if width <= 0 { width = 80 }
+    modal := box.Render(content)
+    // Center horizontally by padding spaces
+    pad := 0
+    if w := lipgloss.Width(modal); width > w { pad = (width - w) / 2 }
+    return strings.Repeat(" ", pad) + modal
 }
 
 // addSample appends a value to a named series using StatsResult map.
