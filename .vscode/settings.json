@@ -2,9 +2,12 @@
   "editor.formatOnSave": false,
   "[go]": {
     "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": true
-    }
+"[go]": {
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+},
   },
   "gopls": {
     "ui.semanticTokens": true,
