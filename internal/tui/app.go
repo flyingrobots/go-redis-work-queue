@@ -118,10 +118,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.confirmOpen {
 				m.confirmOpen = false
+			} else if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() {
+				// Exit bench input mode
+				m.benchCount.Blur()
+				m.benchRate.Blur()
+				m.benchPriority.Blur()
+				m.benchTimeout.Blur()
 			} else if m.filterActive {
+				// Clear active filter entry
 				m.filterActive = false
 				m.filter.SetValue("")
 				m.applyFilterAndSetRows()
+			} else {
+				// Toggle help overlay when not in a modal or input mode
+				m.help2.SetIsActive(!m.help2.Active)
+				if m.help2.Active {
+					m.help2.GotoTop()
+				}
 			}
 		case "D":
 			m.confirmOpen = true
@@ -155,7 +168,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		headerLines := 3
+		headerLines := 4 // tabs + header + sub + blank
 		if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" {
 			headerLines++
 		}
@@ -196,6 +209,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		if !m.confirmOpen {
+			// Tab bar click handling (first row)
+			if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && msg.Y == 0 {
+				_, zones := m.buildTabBar()
+				for _, z := range zones {
+					if msg.X >= z.start && msg.X < z.end {
+						m.activeTab = z.id
+						return m, nil
+					}
+				}
+			}
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
 				if msg.Action == tea.MouseActionPress {
@@ -220,7 +243,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case tea.MouseButtonLeft:
-				if msg.Action == tea.MouseActionPress {
+				if msg.Action == tea.MouseActionPress && m.activeTab == tabJobs {
 					if len(m.peekTargets) > 0 {
 						i := m.tbl.Cursor()
 						if i >= 0 && i < len(m.peekTargets) {

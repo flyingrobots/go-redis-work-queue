@@ -55,7 +55,7 @@ Run worker only
 
 ### TUI (Bubble Tea)
 
-An interactive TUI is available for observing and administering the job queue. It uses Charmbracelet’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.
+An interactive TUI is available for observing and administering the job queue. It uses `Charmbracelet`’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.
 
 Run it:
 
@@ -78,6 +78,7 @@ Flags:
 Keybindings:
 
 - `q`: quit
+- `esc`: toggle help overlay (when not in a modal/input)
 - `tab`: switch Queues/Keys
 - `r`: refresh
 - `j/k`: move selection
