@@ -20,3 +20,6 @@ All notable changes to this project will be documented in this file.
   - Charts view: time-series graphs for queue lengths (asciigraph)
   - Modal confirmations for purge actions with dimmed background
   - Fuzzy filter on queues view (press 'f' to filter)
+  - Full-screen scrim overlay for confirmations
+  - Makefile targets: `build-tui`, `run-tui`
+  - README: added TUI usage and screenshots placeholders
