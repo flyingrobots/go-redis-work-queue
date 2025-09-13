@@ -40,6 +40,7 @@ require (
 	github.com/guptarohit/asciigraph v0.7.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
+	github.com/lrstanley/bubblezone v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
