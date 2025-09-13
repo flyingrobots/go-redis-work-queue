@@ -30,10 +30,10 @@ A single, multi-role Go binary that implements a robust file-processing job queu
 
 ## Roles and Execution Modes
 
-- role=producer: scans a directory and enqueues jobs with priority, rate-limited via Redis.
-- role=worker: runs N worker goroutines consuming jobs by priority, with processing lists and heartbeats.
-- role=all: runs both producer and worker in one process for development or small deployments.
-- role=admin: provides operational commands: `stats` (print queue/processing/heartbeat counts), `peek` (inspect queue tail items), and `purge-dlq` (clear dead-letter queue with `--yes`).
+- `role=producer`: scans a directory and enqueues jobs with priority, rate-limited via Redis.
+- `role=worker`: runs N worker goroutines consuming jobs by priority, with processing lists and heartbeats.
+- `role=all`: runs both producer and worker in one process for development or small deployments.
+- `role=admin`: provides operational commands: `stats` (print queue/processing/heartbeat counts), `peek` (inspect queue tail items), and `purge-dlq` (clear dead-letter queue with `--yes`).
 
 ## Configuration
 
@@ -92,7 +92,7 @@ observability:
     endpoint: ""      # e.g. OTLP gRPC or HTTP endpoint
 ```
 
-Environment overrides use upper snake case with dots replaced by underscores, e.g., WORKER_COUNT, REDIS_ADDR.
+Environment overrides use upper snake case with dots replaced by underscores, e.g., `WORKER_COUNT`, `REDIS_ADDR`.
 
 ## Data Model
 
@@ -113,12 +113,12 @@ Job payload JSON:
 
 ## Redis Keys and Structures
 
-- Queues: jobqueue:high_priority, jobqueue:low_priority (List)
-- Processing list per worker: jobqueue:worker:<ID>:processing (List)
-- Heartbeat per worker: jobqueue:processing:worker:<ID> (String with EX)
-- Completed list: jobqueue:completed (List)
-- Dead letter list: jobqueue:dead_letter (List)
-- Producer rate limit: jobqueue:rate_limit:producer (Counter with EX)
+- Queues: `jobqueue:high_priority`, `jobqueue:low_priority` (List)
+- Processing list per worker: `jobqueue:worker:<ID>:processing (List)`
+- Heartbeat per worker: `jobqueue:processing:worker:<ID> `(String with EX)
+- Completed list: `jobqueue:completed` (List)
+- Dead letter list: `jobqueue:dead_letter` (List)
+- Producer rate limit: `jobqueue:rate_limit:producer` (Counter with EX)
 
 ## Core Algorithms
 
@@ -126,51 +126,51 @@ Job payload JSON:
 
 - Scan directory recursively using include/exclude globs.
 - Determine priority by extension list.
-- Rate limiting: INCR rate_limit_key; if first increment, set EX=1; if value > rate_limit_per_sec, `TTL`-based precise sleep (with jitter) until window reset before enqueueing more.
-- LPUSH job JSON to priority queue.
+- Rate limiting: `INCR rate_limit_key; if first increment, set EX=1; if value > rate_limit_per_sec`, `TTL`-based precise sleep (with jitter) until window reset before enqueueing more.
+- `LPUSH` job JSON to priority queue.
 
 ### Worker Fetch
 
-- Unique worker ID: "hostname-PID-idx" for each goroutine.
+- Unique worker ID: `"hostname-PID-idx"` for each goroutine.
 - Prioritized fetch: loop priorities in order (e.g., high then low) and call `BRPOPLPUSH` per-queue with a short timeout (default 1s). Guarantees atomic move per-queue, priority preference within timeout granularity, and no job loss. Tradeoff: lower-priority jobs may wait up to the timeout when higher-priority queues are empty.
-- On receipt, SET heartbeat key to job JSON with EX=heartbeat_ttl.
+- On receipt, `SET heartbeat` key to job JSON with `EX=heartbeat_ttl`.
 
 ### Processing
 
 - Create a span (if tracing enabled) using job trace/span IDs when present; log with IDs.
 - Execute user-defined processing (stub initially: simulate processing with duration proportional to filesize; placeholder to plug real logic).
-- On success: LPUSH completed_list job JSON; LREM processing_list 1 job; DEL heartbeat key.
-- On failure: increment Retries in payload; exponential backoff; if retries <= max_retries LPUSH back to original priority queue; else LPUSH dead_letter_list; in both cases LREM from processing_list and DEL heartbeat.
+- On success: `LPUSH completed_list job JSON; LREM processing_list 1 job; DEL heartbeat key`.
+- On failure: increment Retries in payload; exponential backoff; `if retries <= max_retries LPUSH` back to original priority queue; else `LPUSH dead_letter_list`; in both cases `LREM` from `processing_list` and `DEL heartbeat`.
 
 ### Graceful Shutdown
 
-- Catch SIGINT/SIGTERM; cancel context; stop accepting new jobs; allow in-flight job to finish; ensure heartbeat and processing list cleanup as part of success/failure paths.
+- Catch `SIGINT`/`SIGTERM`; cancel context; stop accepting new jobs; allow in-flight job to finish; ensure heartbeat and processing list cleanup as part of success/failure paths.
 
 ### Reaper
 
 - Periodically scan all heartbeat keys matching pattern. For each missing/expired heartbeat, recover jobs lingering in processing lists:
-  - For each worker processing list, if list has elements and the corresponding heartbeat key is absent, pop jobs (LPOP) one by one, inspect priority within payload, and LPUSH back to the appropriate priority queue.
+  - For each worker processing list, if list has elements and the corresponding heartbeat key is absent, pop jobs (`LPOP`) one by one, inspect priority within payload, and `LPUSH` back to the appropriate priority queue.
 
 ### Circuit Breaker
 
 - Closed: normal operation, track success/failure counts in rolling window.
-- Open: if failure_rate >= threshold and samples >= min_samples, stop fetching jobs for cooldown_period.
+- Open: `if failure_rate >= threshold and samples >= min_samples`, stop fetching jobs for `cooldown_period`.
 - HalfOpen: probe with a single job; on success -> Closed; on failure -> Open.
 
 ## Observability
 
 - HTTP server exposes `/metrics`, `/healthz`, and `/readyz`. Key metrics:
-  - Counter: jobs_produced_total, jobs_consumed_total, jobs_completed_total, jobs_failed_total, jobs_retried_total, jobs_dead_letter_total
-  - Histogram: job_processing_duration_seconds
-  - Gauges: queue_length{queue=...}, worker_active, circuit_breaker_state (0=Closed,1=HalfOpen,2=Open)
-- Logging (zap): structured, includes trace_id/span_id when present
+  - Counter: `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total`
+  - Histogram: `job_processing_duration_seconds`
+  - Gauges: `queue_length{queue=...}`, `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`)
+- Logging (zap): structured, includes `trace_id`/`span_id` when present
 - Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process. Job `trace_id`/`span_id` are propagated as remote parent when present.
 
 ## CLI
 
-- --role=producer|worker|all
-- --config=path/to/config.yaml
-- --version
+- `--role=producer|worker|all`
+- `--config=path/to/config.yaml`
+- `--version`
 
 ## Performance & Capacity Targets
 
@@ -187,7 +187,7 @@ Job payload JSON:
 ## Deployment
 
 - Dockerfile builds single static binary
-- Health probes: metrics endpoint (HTTP 200), and optional /healthz (future)
+- Health probes: metrics endpoint (HTTP `200`), and optional /healthz (future)
 
 ## Testing Strategy
 
@@ -197,7 +197,7 @@ Job payload JSON:
 
 ## Risks & Mitigations
 
-- Multi-queue atomic move: emulate priority by sequential BRPOPLPUSH timeouts
+- Multi-queue atomic move: emulate priority by sequential `BRPOPLPUSH` timeouts
 - Large queues: monitor queue_length gauges; consider sharding per priority if needed
 
 ## Milestones

@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
-    tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-    "github.com/flyingrobots/go-redis-work-queue/internal/obs"
-    "github.com/flyingrobots/go-redis-work-queue/internal/redisclient"
-    itui "github.com/flyingrobots/go-redis-work-queue/internal/tui"
+	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
+	"github.com/flyingrobots/go-redis-work-queue/internal/redisclient"
+	itui "github.com/flyingrobots/go-redis-work-queue/internal/tui"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "redis ping failed: %v\n", err)
 	}
 
-    m := itui.New(cfg, rdb, logger, refresh)
+	m := itui.New(cfg, rdb, logger, refresh)
 	if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseAllMotion()).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "tui error: %v\n", err)
 		os.Exit(1)

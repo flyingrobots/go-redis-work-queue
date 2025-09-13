@@ -2,10 +2,10 @@
 
 This folder documents instances where we intentionally deviated from a reviewer recommendation, with rationale, tradeoffs, and revisit criteria.
 
-Contents
+## Contents
 
-- rate-limiter-fixed-window.md
-- priority-fetching-brpoplpush.md
-- reaper-scan-vs-registry.md
-- metrics-scope.md
-- go-toolchain-version.md
+- [rate-limiter-fixed-window](rate-limiter-fixed-window.md)
+- [priority-fetching-brpoplpush](priority-fetching-brpoplpush.md)
+- [reaper-scan-vs-registry](reaper-scan-vs-registry.md)
+- [metrics-scope](metrics-scope.md)
+- [go-toolchain-version](go-toolchain-version.md)

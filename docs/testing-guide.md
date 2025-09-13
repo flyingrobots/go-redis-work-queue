@@ -20,7 +20,7 @@ make build
 go test ./... -race -count=1
 ```
 
-Notes
+### Notes
 
 - Use `-count=1` to avoid cached results during iteration.
 - Add `-v` for verbose output.
