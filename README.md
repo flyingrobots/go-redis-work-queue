@@ -53,6 +53,50 @@ Run worker only
 ./bin/job-queue-system --role=worker --config=config/config.yaml
 ```
 
+### TUI (Bubble Tea)
+
+An interactive TUI is available for observing and administering the job queue. It uses Charmbracelet’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.
+
+Run it:
+
+```
+go run ./cmd/tui --config config/config.yaml
+```
+
+Or build it:
+
+```
+go build -o bin/tui ./cmd/tui
+./bin/tui --config config/config.yaml
+```
+
+Flags:
+
+- `--config`: Path to YAML config (defaults to `config/config.yaml`).
+- `--refresh`: Stats refresh interval (default `2s`).
+
+Keybindings:
+
+- `q`: quit
+- `tab`: switch Queues/Keys
+- `r`: refresh
+- `j/k`: move selection
+- `p`: peek selected queue
+- `b`: open bench form (tab cycles fields, enter runs, esc exits)
+- `c`: charts view (time-series for queue lengths)
+- `f` or `/`: filter queues (fuzzy, case-insensitive); `esc` clears
+- `D`: purge dead-letter queue (modal confirm)
+- `A`: purge ALL managed keys (modal confirm)
+
+Mouse:
+
+- Wheel scrolls, hover highlights row, left-click selects, right-click peeks.
+
+Notes:
+
+- The TUI calls internal admin APIs, so it reflects the same Redis keys as the CLI admin mode.
+- When a confirmation modal is open, the background dims and a full-screen scrim appears for focus.
+
 ### Admin Commands
 
 The CLI provides `--admin-cmd` flags that help you inspect the system.
