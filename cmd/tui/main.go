@@ -18,6 +18,7 @@ import (
     "github.com/charmbracelet/bubbles/textinput"
     "github.com/charmbracelet/lipgloss"
     asciigraph "github.com/guptarohit/asciigraph"
+    "github.com/lithammer/fuzzysearch/fuzzy"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/admin"
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -107,6 +108,12 @@ type model struct {
     // confirmation modal state
     confirmOpen   bool
     confirmAction string // "purge-dlq" | "purge-all"
+
+    // Filter state for queues view
+    filter       textinput.Model
+    filterActive bool
+    allRows      []table.Row
+    allTargets   []string
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -141,6 +148,11 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
     bt.Placeholder = "timeout (s)"
     bt.SetValue("60")
 
+    // Filter input
+    fi := textinput.New()
+    fi.Placeholder = "filter"
+    fi.CharLimit = 64
+
     return model{
         ctx:          ctx,
         cancel:       cancel,
@@ -159,6 +171,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         tableTopY:    3, // header + sub + blank line
         series:       map[string][]float64{"high": {}, "low": {}, "completed": {}, "dead_letter": {}},
         seriesMax:    180, // keep last N points
+        filter:       fi,
     }
 }
 
@@ -248,6 +261,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
         case "r":
             return m, tea.Batch(m.refreshCmd(), m.fetchKeysCmd())
+        case "f", "/":
+            if m.mode == modeQueues {
+                m.filterActive = true
+                m.filter.Focus()
+            }
         case "c":
             m.mode = modeCharts
         case "p":
@@ -277,9 +295,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 cmds = append(cmds, m.doBenchCmd(prio, count, rate, to), spinner.Tick)
             }
         case "esc":
-            // Return to queues view
-            if m.mode != modeQueues {
+            // Return to queues view or clear filter/modal
+            if m.confirmOpen {
+                m.confirmOpen = false
+            } else if m.mode == modeBench {
                 m.mode = modeQueues
+            } else if m.mode == modeQueues && m.filterActive {
+                m.filterActive = false
+                m.filter.SetValue("")
+                m.applyFilterAndSetRows()
             }
         case "D":
             // Open confirmation modal for DLQ purge
@@ -308,6 +332,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             cmds = append(cmds, c)
         }
 
+        // Update filter input when active
+        if m.mode == modeQueues && m.filterActive {
+            var c tea.Cmd
+            m.filter, c = m.filter.Update(msg)
+            cmds = append(cmds, c)
+            m.applyFilterAndSetRows()
+        }
+
     case tea.WindowSizeMsg:
         m.width = msg.Width
         m.height = msg.Height
@@ -318,6 +350,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case tea.MouseMsg:
         // Basic mouse support for queues view: wheel scroll and click to select/peek
         if m.mode == modeQueues && !m.confirmOpen {
+            top := m.tableTopY
+            if m.filterActive || strings.TrimSpace(m.filter.Value()) != "" { top++ }
             switch msg.Button {
             case tea.MouseButtonWheelUp:
                 if msg.Action == tea.MouseActionPress { m.tbl.MoveUp(1) }
@@ -326,7 +360,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
             case tea.MouseButtonNone:
                 if msg.Action == tea.MouseActionMotion {
                     // Hover highlight: move cursor under pointer
-                    rowWithin := msg.Y - (m.tableTopY + 1)
+                    rowWithin := msg.Y - (top + 1)
                     if rowWithin >= 0 && rowWithin < m.tbl.Height() {
                         start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
                         idx := start + rowWithin
@@ -339,7 +373,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 if msg.Action == tea.MouseActionPress {
                     // Attempt to map Y position to a visible row
                     // table header is 1 line; rows follow
-                    rowWithin := msg.Y - (m.tableTopY + 1)
+                    rowWithin := msg.Y - (top + 1)
                     if rowWithin >= 0 && rowWithin < m.tbl.Height() {
                         // Compute starting row index using table logic
                         start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
@@ -401,7 +435,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                     m.peekTargets = append(m.peekTargets, display)
                 }
             }
-            m.tbl.SetRows(rows)
+            m.allRows = rows
+            m.allTargets = append([]string(nil), m.peekTargets...)
+            m.applyFilterAndSetRows()
             if m.tbl.Cursor() >= len(rows) && len(rows) > 0 { m.tbl.SetCursor(len(rows) - 1) }
         }
         m.loading = false
@@ -459,7 +495,9 @@ func (m model) View() string {
     body := ""
     switch m.mode {
     case modeQueues:
-        body = m.tbl.View()
+        fb := renderFilterBar(m)
+        if fb != "" { m.tableTopY = 4 } else { m.tableTopY = 3 }
+        if fb != "" { body = fb + "\n" + m.tbl.View() } else { body = m.tbl.View() }
         // Footer summary from keys
         body += "\n" + summarizeKeys(m.lastKeys)
         body += "\n" + helpBar()
@@ -573,6 +611,7 @@ func helpBar() string {
         "p:peek",
         "b:bench",
         "c:charts",
+        "f:filter",
         "D:purge DLQ (y/n)",
         "A:purge ALL (y/n)",
     }, "  ")
@@ -711,4 +750,36 @@ func renderCharts(m model) string {
     parts = append(parts, makePlot("Completed", m.series["completed"]))
     parts = append(parts, makePlot("Dead Letter", m.series["dead_letter"]))
     return strings.Join(parts, "\n\n")
+}
+
+func renderFilterBar(m model) string {
+    if m.mode != modeQueues { return "" }
+    if m.filterActive {
+        return "Filter: " + m.filter.View() + "  (esc to clear)"
+    }
+    if v := strings.TrimSpace(m.filter.Value()); v != "" {
+        return "Filter: " + m.filter.View() + "  (press f to edit, esc to clear)"
+    }
+    return "Press 'f' to filter queues"
+}
+
+func (m *model) applyFilterAndSetRows() {
+    q := strings.TrimSpace(m.filter.Value())
+    if q == "" {
+        m.tbl.SetRows(m.allRows)
+        m.peekTargets = append([]string(nil), m.allTargets...)
+        return
+    }
+    labels := make([]string, len(m.allRows))
+    for i, r := range m.allRows { labels[i] = r[0] }
+    ranks := fuzzy.RankFindNormalizedFold(q, labels)
+    fuzzy.SortRanks(ranks)
+    rows := make([]table.Row, 0, len(ranks))
+    targets := make([]string, 0, len(ranks))
+    for _, rk := range ranks {
+        rows = append(rows, m.allRows[rk.OriginalIndex])
+        targets = append(targets, m.allTargets[rk.OriginalIndex])
+    }
+    m.tbl.SetRows(rows)
+    m.peekTargets = targets
 }
