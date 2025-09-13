@@ -13,6 +13,7 @@ job-queue-system
 /build/
 /dist/
 /out/
+/.gocache/
 *.test
 *.coverprofile
 *.out
