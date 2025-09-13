@@ -94,6 +94,9 @@ type model struct {
     benchTimeout  textinput.Model
 
     refreshEvery time.Duration
+
+    // layout helpers
+    tableTopY int // number of lines before the table starts
 }
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
@@ -143,6 +146,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
         benchPriority: bp,
         benchTimeout: bt,
         refreshEvery: refreshEvery,
+        tableTopY:    3, // header + sub + blank line
     }
 }
 
@@ -268,6 +272,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case tea.WindowSizeMsg:
         m.width = msg.Width
         m.height = msg.Height
+        // Fit table to window
+        if m.width > 0 { m.tbl.SetWidth(m.width) }
+        // Leave a bit of space for footer/help
+        if m.height > 6 { m.tbl.SetHeight(m.height - 6) }
+    case tea.MouseMsg:
+        // Basic mouse support for queues view: wheel scroll and click to select/peek
+        if m.mode == modeQueues {
+            switch msg.Button {
+            case tea.MouseButtonWheelUp:
+                if msg.Action == tea.MouseActionPress { m.tbl.MoveUp(1) }
+            case tea.MouseButtonWheelDown:
+                if msg.Action == tea.MouseActionPress { m.tbl.MoveDown(1) }
+            case tea.MouseButtonLeft:
+                if msg.Action == tea.MouseActionPress {
+                    // Attempt to map Y position to a visible row
+                    // table header is 1 line; rows follow
+                    rowWithin := msg.Y - (m.tableTopY + 1)
+                    if rowWithin >= 0 && rowWithin < m.tbl.Height() {
+                        // Compute starting row index using table logic
+                        start := clamp(m.tbl.Cursor()-m.tbl.Height(), 0, m.tbl.Cursor())
+                        idx := start + rowWithin
+                        if idx >= 0 && idx < len(m.tbl.Rows()) {
+                            m.tbl.SetCursor(idx)
+                        }
+                    }
+                }
+            case tea.MouseButtonRight:
+                if msg.Action == tea.MouseActionPress {
+                    // Right-click: peek selected
+                    if len(m.peekTargets) > 0 {
+                        i := m.tbl.Cursor()
+                        if i >= 0 && i < len(m.peekTargets) {
+                            m.loading = true
+                            m.errText = ""
+                            m.mode = modePeek
+                            cmds = append(cmds, m.doPeekCmd(m.peekTargets[i], 10), spinner.Tick)
+                        }
+                    }
+                }
+            }
+        }
     case tick:
         cmds = append(cmds, m.refreshCmd(), m.fetchKeysCmd(), tea.Every(m.refreshEvery, func(time.Time) tea.Msg { return tick{} }))
     case statsMsg:
@@ -456,6 +501,8 @@ func helpBar() string {
         "tab:switch view",
         "r:refresh",
         "j/k:down/up",
+        "wheel/mouse: scroll/select",
+        "right-click: peek",
         "p:peek",
         "b:bench",
         "D:purge DLQ",
@@ -523,9 +570,8 @@ func main() {
     }
 
     m := initialModel(cfg, rdb, logger, refresh)
-    if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
+    if _, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
         fmt.Fprintf(os.Stderr, "tui error: %v\n", err)
         os.Exit(1)
     }
 }
-
