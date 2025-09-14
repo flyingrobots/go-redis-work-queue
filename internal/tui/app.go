@@ -65,6 +65,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.confirmOpen = true
 			m.confirmAction = "quit"
 			return m, nil
+		case "1":
+			m.activeTab = tabJobs
+			return m, nil
+		case "2":
+			m.activeTab = tabWorkers
+			return m, nil
+		case "3":
+			m.activeTab = tabDLQ
+			return m, nil
+		case "4":
+			m.activeTab = tabSettings
+			return m, nil
 		case "tab":
 			m.focus = (m.focus + 1) % 3
 			return m, nil

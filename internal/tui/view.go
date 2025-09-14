@@ -42,11 +42,12 @@ func (m model) View() string {
 	var body string
 	switch m.activeTab {
 	case tabJobs:
-		// Flex layout with borders applied at the cell level to avoid double borders/overflow.
+		// Flex layout with borders at the cell level to avoid double borders/overflow.
 		bodyW, bodyH := m.bodyDims()
 		fbBox := flexbox.New(bodyW, bodyH)
+		stack := bodyW < 120 // stack panels vertically on narrow terminals
 		gutter := flexbox.NewCell(0, 2).SetMinWidth(2).SetContent("")
-		// Animated ratios: 0.0 => 1:1, 1.0 => 1:2 (Charts wider)
+		// Animated ratios for wide mode: 0.0 => 1:1, 1.0 => 1:2 (Charts wider)
 		base := 100
 		lrx := base
 		rrx := base + int(float64(base)*m.expPos)
@@ -57,19 +58,38 @@ func (m model) View() string {
 			lrx = 1
 		}
 
-		// Prepare cells with style; set content after we size them
-		cLeft := flexbox.NewCell(lrx, 2).SetStyle(panel)
-		cRight := flexbox.NewCell(rrx, 2).SetStyle(panel)
-		cBottom := flexbox.NewCell(1, 1).SetStyle(panel)
-		rowTop := fbBox.NewRow().AddCells(cLeft, gutter, cRight)
-		rowBottom := fbBox.NewRow().AddCells(cBottom)
-		fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
+		var rowTop, rowMid, rowBottom *flexbox.Row
+		if !stack {
+			// Wide: Queues | gutter | Charts on top, Info on bottom
+			cLeft := flexbox.NewCell(lrx, 2).SetStyle(panel)
+			cRight := flexbox.NewCell(rrx, 2).SetStyle(panel)
+			cBottom := flexbox.NewCell(1, 1).SetStyle(panel)
+			rowTop = fbBox.NewRow().AddCells(cLeft, gutter, cRight)
+			rowBottom = fbBox.NewRow().AddCells(cBottom)
+			fbBox.SetRows([]*flexbox.Row{rowTop, rowBottom})
+		} else {
+			// Narrow: stack Queues, Charts, then Info (2,2,1 ratios)
+			cQueues := flexbox.NewCell(1, 2).SetStyle(panel)
+			cCharts := flexbox.NewCell(1, 2).SetStyle(panel)
+			cInfo := flexbox.NewCell(1, 1).SetStyle(panel)
+			rowTop = fbBox.NewRow().AddCells(cQueues)
+			rowMid = fbBox.NewRow().AddCells(cCharts)
+			rowBottom = fbBox.NewRow().AddCells(cInfo)
+			fbBox.SetRows([]*flexbox.Row{rowTop, rowMid, rowBottom})
+		}
 
 		// Size pass: compute inner dimensions for contents
 		fbBox.ForceRecalculate()
-		lc := fbBox.GetRowCellCopy(0, 0)
-		rc := fbBox.GetRowCellCopy(0, 2)
-		bc := fbBox.GetRowCellCopy(1, 0)
+		var lc, rc, bc *flexbox.Cell
+		if !stack {
+			lc = fbBox.GetRowCellCopy(0, 0)
+			rc = fbBox.GetRowCellCopy(0, 2)
+			bc = fbBox.GetRowCellCopy(1, 0)
+		} else {
+			lc = fbBox.GetRowCellCopy(0, 0)
+			rc = fbBox.GetRowCellCopy(1, 0)
+			bc = fbBox.GetRowCellCopy(2, 0)
+		}
 		// Panel overhead: 2 border + 2 padding (h), 2 border (v)
 		innerLeftW, innerLeftH := lc.GetWidth()-4, lc.GetHeight()-2
 		innerRightW, innerRightH := rc.GetWidth()-4, rc.GetHeight()-2
@@ -95,6 +115,16 @@ func (m model) View() string {
 
 		// Left (Queues)
 		m.tbl.SetWidth(innerLeftW)
+		// Height = inner cell height minus title and optional filter line
+		filterLines := 0
+		if strings.TrimSpace(m.filter.Value()) != "" || m.filterActive {
+			filterLines = 1
+		}
+		tblH := innerLeftH - 1 - filterLines
+		if tblH < 3 {
+			tblH = 3
+		}
+		m.tbl.SetHeight(tblH)
 		leftBody := m.tbl.View()
 		if fb := renderFilterBar(m); fb != "" {
 			leftBody = fb + "\n" + leftBody
@@ -126,7 +156,11 @@ func (m model) View() string {
 
 		// Set contents after sizing so borders line up with cell widths
 		rowTop.GetCell(0).SetContent(leftContent)
-		rowTop.GetCell(2).SetContent(rightContent)
+		if !stack {
+			rowTop.GetCell(2).SetContent(rightContent)
+		} else {
+			rowMid.GetCell(0).SetContent(rightContent)
+		}
 		rowBottom.GetCell(0).SetContent(bottomContent)
 
 		body = fbBox.Render()
