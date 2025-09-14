@@ -447,3 +447,23 @@ capacity_planner_prediction_error{model="ewma|holt_winters"}
 - **A/B Testing**: Compare scaling strategies
 - **Explain Mode**: Natural language plan explanations
 
+
+---
+feature: automatic-capacity-planning
+dependencies:
+  hard:
+    - admin_api
+    - metrics_history
+    - forecasting
+  soft:
+    - kubernetes_operator
+    - multi_cluster_control
+enables:
+  - auto_scaling
+  - resource_optimization
+  - cost_reduction
+provides:
+  - capacity_recommendations
+  - scaling_policies
+  - resource_predictions
+---

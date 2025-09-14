@@ -560,3 +560,21 @@ func (tm *ThemeManager) SafeApplyTheme(name string) {
 - **Brand Integration**: Corporate theme templates
 - **Theme Inheritance**: Base themes with variations
 - **Real-time Collaboration**: Live theme editing with team members
+---
+feature: theme-playground
+dependencies:
+  hard:
+    - tui_framework
+    - lipgloss
+  soft:
+    - admin_api
+enables:
+  - customization
+  - accessibility
+  - user_preference
+provides:
+  - theme_system
+  - color_picker
+  - wcag_validation
+  - theme_export
+---

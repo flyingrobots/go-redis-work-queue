@@ -414,3 +414,25 @@ func (w *WorkflowEngine) Execute() error {
 
 This feature revolutionizes how teams build and manage complex job orchestrations.
 
+
+---
+feature: visual-dag-builder
+dependencies:
+  hard:
+    - admin_api
+    - tui_framework
+    - redis
+    - scheduler_primitives
+  soft:
+    - event_hooks
+    - distributed_tracing
+enables:
+  - workflow_orchestration
+  - pipeline_execution
+  - compensation_patterns
+provides:
+  - dag_editor
+  - workflow_runner
+  - dag_validation
+  - live_status
+---

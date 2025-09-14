@@ -761,3 +761,22 @@ func (s *Snapshotter) CaptureWithRetry(ctx context.Context, maxRetries int) (*Qu
 - **Real-time Monitoring**: Stream diff alerts for production queue changes
 - **API Integration**: REST/GraphQL APIs for external snapshot management
 - **Schema Evolution**: Handle queue structure changes gracefully
+---
+feature: queue-snapshot-testing
+dependencies:
+  hard:
+    - redis
+    - serialization
+  soft:
+    - admin_api
+    - git_integration
+enables:
+  - reproducible_testing
+  - regression_detection
+  - ci_integration
+provides:
+  - snapshot_capture
+  - diff_engine
+  - test_helpers
+  - restore_capability
+---

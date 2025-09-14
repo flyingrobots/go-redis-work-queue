@@ -90,3 +90,24 @@ Every serious infrastructure tool has an operator now. RabbitMQ, Kafka, Redis al
 
 Not sexy but absolutely necessary for Kubernetes shops. The autoscaling based on queue metrics is your differentiator. Ship this to unlock enterprise.
 
+
+---
+feature: kubernetes-operator
+dependencies:
+  hard:
+    - admin_api
+    - controller_runtime
+    - k8s_api
+  soft:
+    - rbac_and_tokens
+    - automatic_capacity_planning
+enables:
+  - gitops_deployment
+  - auto_scaling
+  - declarative_config
+provides:
+  - queue_crd
+  - worker_crd
+  - reconciliation
+  - k8s_integration
+---

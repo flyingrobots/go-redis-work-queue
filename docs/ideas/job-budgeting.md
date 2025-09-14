@@ -536,3 +536,23 @@ The system is designed to fail safely without blocking job processing:
 - **Cost Anomaly Detection**: Alert on unusual spending patterns beyond budget thresholds
 - **Granular Queue Budgets**: Sub-queue budget allocation for fine-grained control
 - **Historical Cost Analysis**: Detailed reports showing cost trends over quarters/years
+---
+feature: job-budgeting
+dependencies:
+  hard:
+    - metrics_system
+    - tenant_labels
+  soft:
+    - admin_api
+    - multi_tenant_isolation
+    - advanced_rate_limiting
+enables:
+  - cost_control
+  - resource_governance
+  - chargeback
+provides:
+  - cost_tracking
+  - budget_enforcement
+  - spending_alerts
+  - usage_reports
+---

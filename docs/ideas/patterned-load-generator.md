@@ -72,3 +72,23 @@ K6 has this for HTTP. JMeter has it for everything. But having it built into you
 
 Solid engineering hygiene. Not glamorous, but the kind of feature that prevents 3am pages. The 3 Fib effort makes this a no-brainer quick win. Ship it and sleep better.
 
+
+---
+feature: patterned-load-generator
+dependencies:
+  hard:
+    - admin_api
+    - redis
+  soft:
+    - json_payload_studio
+    - monitoring_system
+enables:
+  - load_testing
+  - performance_validation
+  - capacity_testing
+provides:
+  - traffic_patterns
+  - load_profiles
+  - benchmark_tools
+  - stress_testing
+---

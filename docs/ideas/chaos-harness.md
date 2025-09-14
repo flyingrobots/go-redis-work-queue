@@ -85,3 +85,23 @@ Gremlin charges $$$$ for chaos testing. Litmus is complex. Built-in chaos with v
 
 This is how you build unbreakable systems. The visual recovery alone is worth it. Ship this and run public "break our queue" challenges.
 
+
+---
+feature: chaos-harness
+dependencies:
+  hard:
+    - admin_api
+    - workers
+    - fault_injection
+  soft:
+    - multi_cluster_control
+    - monitoring_system
+enables:
+  - reliability_testing
+  - chaos_engineering
+  - failure_recovery
+provides:
+  - fault_injectors
+  - chaos_scenarios
+  - recovery_validation
+---

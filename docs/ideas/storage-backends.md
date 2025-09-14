@@ -608,3 +608,23 @@ func (b *BackendManager) Recover(ctx context.Context, opts RecoveryOptions) erro
 - **Edge Caching**: Local queues with remote synchronization
 - **Compression Codecs**: Pluggable payload compression strategies
 
+
+---
+feature: storage-backends
+dependencies:
+  hard:
+    - redis
+    - storage_abstraction
+  soft:
+    - admin_api
+    - migration_system
+enables:
+  - backend_flexibility
+  - performance_optimization
+  - multi_cloud
+provides:
+  - redis_streams
+  - keydb_support
+  - dragonfly_support
+  - kafka_bridge
+---

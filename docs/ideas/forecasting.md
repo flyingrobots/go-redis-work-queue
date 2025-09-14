@@ -618,3 +618,22 @@ func (mhm *ModelHealthMonitor) switchToFallback(modelName string) error {
 - **Automated Scaling Integration**: Direct integration with Kubernetes HPA
 - **Multi-Cluster Forecasting**: Predict load distribution across multiple clusters
 - **Cost Optimization**: Balance performance vs infrastructure costs in recommendations
+---
+feature: forecasting
+dependencies:
+  hard:
+    - metrics_history
+    - time_series_analysis
+  soft:
+    - admin_api
+    - automatic_capacity_planning
+enables:
+  - predictive_operations
+  - capacity_planning
+  - proactive_scaling
+provides:
+  - arima_models
+  - prophet_integration
+  - trend_analysis
+  - predictions
+---

@@ -584,3 +584,24 @@ Granular permissions for different roles:
 - **Time-based Auto-Retry**: Schedule retries for optimal times
 - **Cost Analysis**: Show financial impact of failures
 
+
+---
+feature: dlq-remediation-ui
+dependencies:
+  hard:
+    - admin_api
+    - tui_framework
+    - redis
+  soft:
+    - job_genealogy_navigator
+    - json_payload_studio
+enables:
+  - error_recovery
+  - dlq_management
+  - operational_efficiency
+provides:
+  - dlq_viewer
+  - bulk_operations
+  - requeue_actions
+  - pattern_analysis
+---

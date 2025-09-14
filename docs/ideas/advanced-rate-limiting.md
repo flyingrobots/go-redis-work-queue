@@ -104,3 +104,23 @@ Every cloud API has this. Kong, Traefik, Envoy all do token buckets. But integra
 
 Not glamorous but absolutely necessary for enterprise/SaaS. The fairness algorithm is your differentiator. Ship it and charge more.
 
+
+---
+feature: advanced-rate-limiting
+dependencies:
+  hard:
+    - redis
+    - rate_limiter
+  soft:
+    - admin_api
+    - producer_backpressure
+enables:
+  - fair_queuing
+  - priority_management
+  - resource_protection
+provides:
+  - token_bucket
+  - sliding_window
+  - priority_fairness
+  - global_limits
+---

@@ -503,3 +503,25 @@ type PipelineMetrics struct {
 - **A/B Testing**: Compare different remediation strategies on similar failure patterns
 - **Integration APIs**: Plugin system for custom classifiers and actions
 - **Compliance Framework**: Built-in GDPR, HIPAA, and SOC2 compliance controls
+
+---
+feature: dlq-remediation-pipeline
+dependencies:
+  hard:
+    - admin_api
+    - redis
+    - classification_engine
+  soft:
+    - dlq_remediation_ui
+    - event_hooks
+    - ml_models
+enables:
+  - automated_recovery
+  - intelligent_remediation
+  - self_healing
+provides:
+  - auto_classification
+  - remediation_rules
+  - transformation_pipeline
+  - recovery_actions
+---

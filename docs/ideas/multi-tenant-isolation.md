@@ -675,3 +675,23 @@ For existing deployments adding multi-tenancy:
 - **Self-service onboarding**: API-driven tenant provisioning with approval workflows
 - **Tenant marketplace**: Template sharing between tenants with permission controls
 - **Compliance automation**: Automated generation of SOC 2 and GDPR compliance reports
+---
+feature: multi-tenant-isolation
+dependencies:
+  hard:
+    - redis
+    - namespace_separation
+    - rbac_and_tokens
+  soft:
+    - admin_api
+    - job_budgeting
+enables:
+  - saas_deployment
+  - secure_multi_tenancy
+  - compliance
+provides:
+  - tenant_namespacing
+  - quota_management
+  - encryption
+  - audit_trail
+---

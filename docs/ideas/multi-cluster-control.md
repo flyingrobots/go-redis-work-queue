@@ -624,3 +624,27 @@ Comprehensive logging of multi-cluster operations:
 - **Disaster Recovery Automation**: One-click DR activation
 - **Cost Optimization**: Show and optimize multi-cluster costs
 
+
+---
+feature: multi-cluster-control
+dependencies:
+  hard:
+    - admin_api
+    - redis
+    - tui_framework
+    - config_management
+  soft:
+    - dlq_remediation_ui
+    - capacity_planning
+    - monitoring_system
+enables:
+  - global_operations
+  - disaster_recovery
+  - federation
+  - cross_region_sync
+  - chaos_engineering
+provides:
+  - cluster_switching
+  - compare_view
+  - multi_apply_actions
+---

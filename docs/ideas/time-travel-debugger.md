@@ -658,3 +658,23 @@ The Time Travel Debugger provides a foundation for even more advanced debugging 
 - **Compliance Reports**: Audit trails for regulatory requirements
 
 This feature transforms debugging from archaeology to science, giving engineering teams superpowers to understand exactly what happened in their distributed systems.
+---
+feature: time-travel-debugger
+dependencies:
+  hard:
+    - admin_api
+    - event_sourcing
+    - redis
+  soft:
+    - distributed_tracing
+    - job_genealogy_navigator
+enables:
+  - replay_debugging
+  - production_debugging
+  - state_comparison
+provides:
+  - event_capture
+  - timeline_navigation
+  - state_snapshots
+  - diff_viewer
+---

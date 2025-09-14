@@ -72,3 +72,23 @@ DataDog SLO tracking costs $$$. PagerDuty's error budgets are enterprise-only. Y
 
 This is spicy ops tooling. Not revolutionary, but excellently executed. The combination of SLO tracking + terminal UI + real-time updates hits different. Ship this and watch SRE teams take notice.
 
+
+---
+feature: anomaly-radar-slo-budget
+dependencies:
+  hard:
+    - metrics_system
+    - redis
+  soft:
+    - admin_api
+    - monitoring_system
+enables:
+  - sre_operations
+  - incident_detection
+  - slo_management
+provides:
+  - anomaly_detection
+  - slo_tracking
+  - burn_rate_alerts
+  - threshold_monitoring
+---

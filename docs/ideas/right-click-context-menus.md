@@ -91,3 +91,22 @@ VSCode in terminal vibes. Makes power users faster and newcomers comfortable.
 
 Essential polish that makes everything feel premium. Ship this early - it makes every other feature better.
 
+
+---
+feature: right-click-context-menus
+dependencies:
+  hard:
+    - tui_framework
+    - bubblezone
+  soft:
+    - admin_api
+enables:
+  - improved_ux
+  - quick_actions
+  - contextual_operations
+provides:
+  - context_menus
+  - mouse_integration
+  - action_shortcuts
+  - menu_system
+---

@@ -691,3 +691,23 @@ type DedupMetrics struct {
 - **A/B Testing Framework**: Split traffic between dedup strategies for optimization
 - **Integration Webhooks**: Real-time notifications for duplicate detection events
 
+
+---
+feature: exactly-once-patterns
+dependencies:
+  hard:
+    - redis
+    - idempotency_keys
+  soft:
+    - admin_api
+    - event_hooks
+enables:
+  - reliable_processing
+  - duplicate_prevention
+  - transactional_outbox
+provides:
+  - dedup_sets
+  - idempotency_helpers
+  - outbox_pattern
+  - state_management
+---

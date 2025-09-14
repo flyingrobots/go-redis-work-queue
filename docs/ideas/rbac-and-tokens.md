@@ -645,3 +645,22 @@ func (p Permission) matchesResource(resource string) bool {
 - **Mobile App**: Dedicated mobile app for token management
 - **Webhook Integration**: Real-time notifications for security events
 - **Compliance Reports**: Automated SOX, GDPR, and HIPAA compliance reports
+---
+feature: rbac-and-tokens
+dependencies:
+  hard:
+    - admin_api
+    - auth_middleware
+  soft:
+    - audit_logging
+    - tui_framework
+enables:
+  - multi_tenant_isolation
+  - kubernetes_operator
+  - plugin_panel_system
+provides:
+  - token_management
+  - role_system
+  - permission_scopes
+  - audit_trail
+---

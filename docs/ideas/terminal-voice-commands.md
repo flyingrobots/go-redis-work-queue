@@ -880,3 +880,22 @@ func (v *VoiceManager) handleFailure(err error) error {
 - **Integration with External Systems**: Voice control for connected services
 - **Voice Analytics**: Usage patterns and optimization suggestions
 - **Custom Wake Words**: User-defined activation phrases
+---
+feature: terminal-voice-commands
+dependencies:
+  hard:
+    - voice_recognition
+    - tui_framework
+  soft:
+    - admin_api
+    - accessibility_framework
+enables:
+  - hands_free_operation
+  - accessibility
+  - productivity
+provides:
+  - voice_control
+  - command_recognition
+  - audio_feedback
+  - wake_words
+---

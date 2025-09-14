@@ -623,3 +623,23 @@ tracing:
 - **Trace Replay**: Re-execute jobs with historical trace context
 - **Custom Span Processors**: Plugin system for organization-specific logic
 
+
+---
+feature: distributed-tracing-integration
+dependencies:
+  hard:
+    - opentelemetry_sdk
+    - redis
+  soft:
+    - admin_api
+    - event_hooks
+enables:
+  - trace_drilldown_log_tail
+  - time_travel_debugger
+  - visual_dag_builder
+provides:
+  - trace_context
+  - span_management
+  - trace_exemplars
+  - waterfall_view
+---

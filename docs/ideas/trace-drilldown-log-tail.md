@@ -74,3 +74,23 @@ DataDog's APM integration costs $$$. New Relic's distributed tracing is complex.
 
 This is the feature that makes people go "oh shit, this isn't just another queue." The integration of traces + logs + queue state in one view is powerful. Ship it and watch DevOps Twitter notice.
 
+
+---
+feature: trace-drilldown-log-tail
+dependencies:
+  hard:
+    - distributed_tracing
+    - log_aggregation
+    - admin_api
+  soft:
+    - time_travel_debugger
+enables:
+  - deep_debugging
+  - correlated_logs
+  - incident_response
+provides:
+  - trace_viewer
+  - log_correlation
+  - span_details
+  - waterfall_timeline
+---

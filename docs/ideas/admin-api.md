@@ -101,3 +101,30 @@ Comparable to Sidekiq's API or BullMQ's REST endpoints. Nothing revolutionary, b
 
 This is Brussels sprouts - not exciting, but good for you. Every serious queue needs this. Build it, ship it, never think about it again. The real value is in what it enables, not what it is.
 
+
+---
+feature: admin-api
+dependencies:
+  hard:
+    - redis
+    - internal_admin
+    - auth_middleware
+  soft:
+    - metrics_system
+    - audit_logging
+enables:
+  - multi_cluster_control
+  - visual_dag_builder
+  - plugin_panel_system
+  - rbac_and_tokens
+  - event_hooks
+  - kubernetes_operator
+  - time_travel_debugger
+  - automatic_capacity_planning
+provides:
+  - rest_api
+  - grpc_api
+  - stats_endpoints
+  - purge_endpoints
+  - bench_endpoints
+---

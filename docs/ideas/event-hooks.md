@@ -511,3 +511,23 @@ type EventMetrics struct {
 - **Event Sourcing Integration**: Compatible with event sourcing patterns
 - **Compliance Features**: GDPR-compliant event redaction and retention policies
 
+
+---
+feature: event-hooks
+dependencies:
+  hard:
+    - admin_api
+    - http_client
+  soft:
+    - rbac_and_tokens
+    - distributed_tracing
+enables:
+  - external_integrations
+  - real_time_notifications
+  - workflow_triggers
+provides:
+  - webhook_delivery
+  - event_filtering
+  - retry_logic
+  - deep_links
+---

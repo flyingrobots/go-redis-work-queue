@@ -500,3 +500,24 @@ type Metrics struct {
 - **Query Optimization**: Cost-based query planner integration
 - **Compliance Automation**: Automated data classification and retention
 
+
+---
+feature: long-term-archives
+dependencies:
+  hard:
+    - storage_backend
+    - completed_stream
+  soft:
+    - admin_api
+    - clickhouse
+    - s3
+enables:
+  - historical_analysis
+  - compliance
+  - forensics
+provides:
+  - data_export
+  - retention_policies
+  - query_interface
+  - archive_management
+---

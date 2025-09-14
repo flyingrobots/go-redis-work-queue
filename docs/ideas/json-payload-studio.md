@@ -494,3 +494,23 @@ Track adoption and impact:
 - **Payload Debugger**: Step through payload processing
 - **A/B Testing**: Test payload variations
 
+
+---
+feature: json-payload-studio
+dependencies:
+  hard:
+    - tui_framework
+    - json_editor
+  soft:
+    - admin_api
+    - schema_validation
+enables:
+  - payload_creation
+  - testing
+  - validation
+provides:
+  - json_editor
+  - template_system
+  - snippet_expansion
+  - schema_validation
+---

@@ -548,3 +548,22 @@ func (s *SmartRetryEngine) handleModelFailure(err error, modelType string) {
 - **Auto-scaling Integration**: Factor in cluster scaling events
 - **Custom Business Logic**: Plugin system for domain-specific retry rules
 - **Advanced Visualization**: 3D failure pattern exploration and what-if analysis
+---
+feature: smart-retry-strategies
+dependencies:
+  hard:
+    - redis
+    - retry_system
+  soft:
+    - admin_api
+    - ml_models
+enables:
+  - intelligent_recovery
+  - reduced_failures
+  - adaptive_behavior
+provides:
+  - bayesian_retry
+  - ml_prediction
+  - error_classification
+  - retry_optimization
+---

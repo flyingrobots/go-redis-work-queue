@@ -351,3 +351,22 @@ type RecoveryStrategy struct {
 - **Integration Webhooks**: Real-time notifications to external systems
 - **Dynamic Thresholds**: Auto-adjust thresholds based on worker capacity
 - **Cost-Based Prioritization**: Factor in processing costs for throttling decisions
+---
+feature: producer-backpressure
+dependencies:
+  hard:
+    - redis
+    - rate_limiting
+  soft:
+    - admin_api
+    - circuit_breaker
+enables:
+  - reliability
+  - cascade_prevention
+  - system_stability
+provides:
+  - adaptive_rate_limiting
+  - circuit_breakers
+  - priority_shedding
+  - sdk_hints
+---

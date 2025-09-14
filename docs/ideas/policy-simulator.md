@@ -81,3 +81,23 @@ Nobody else has this. AWS SQS? Nope. RabbitMQ? Nope. This is approaching Kuberne
 
 This is unicorn territory - magical if it works. Start with a simple MVP (constant load, basic Little's Law) and iterate. The risk is building something too complex to trust. The reward is being the only queue with predictive capacity planning.
 
+
+---
+feature: policy-simulator
+dependencies:
+  hard:
+    - admin_api
+    - policy_engine
+  soft:
+    - forecasting
+    - automatic_capacity_planning
+enables:
+  - policy_testing
+  - what_if_analysis
+  - safe_changes
+provides:
+  - simulation_engine
+  - impact_preview
+  - policy_validation
+  - dry_run
+---

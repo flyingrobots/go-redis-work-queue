@@ -748,3 +748,23 @@ func (le *LeaderElection) TryAcquireLeadership() bool {
 - **Rollback Prediction**: ML model to predict rollback likelihood based on early metrics
 - **Synthetic Testing**: Automated synthetic job generation for canary validation
 
+
+---
+feature: canary-deployments
+dependencies:
+  hard:
+    - worker_versioning
+    - routing_system
+    - metrics_system
+  soft:
+    - admin_api
+    - multi_cluster_control
+enables:
+  - safe_rollouts
+  - gradual_deployment
+  - automatic_promotion
+provides:
+  - traffic_splitting
+  - version_routing
+  - rollback_mechanism
+---

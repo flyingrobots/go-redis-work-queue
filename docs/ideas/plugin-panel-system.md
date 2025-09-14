@@ -101,3 +101,24 @@ Nobody expects plugins in a terminal job queue. That's exactly why it's brillian
 
 This is your path to unicorn status. Start small with read-only plugins, nail the security model, then watch the community build amazing things. This transforms you from tool to platform.
 
+
+---
+feature: plugin-panel-system
+dependencies:
+  hard:
+    - admin_api
+    - tui_framework
+    - plugin_runtime
+  soft:
+    - event_hooks
+    - rbac_and_tokens
+enables:
+  - custom_visualizations
+  - third_party_integrations
+  - extensible_ui
+provides:
+  - plugin_api
+  - panel_registry
+  - hot_reload
+  - plugin_marketplace
+---

@@ -477,3 +477,23 @@ queue:genealogy:trees:{root_id} -> STRING (JSON serialized tree)
 - **Cross-Queue Relationships**: Track jobs that span multiple queue systems
 - **Performance Correlation**: Overlay execution times on genealogy structure
 - **Integration Testing**: Generate test suites based on successful genealogies
+---
+feature: job-genealogy-navigator
+dependencies:
+  hard:
+    - graph_storage
+    - relationship_tracking
+    - tui_framework
+  soft:
+    - admin_api
+    - distributed_tracing
+enables:
+  - debugging_workflows
+  - impact_analysis
+  - root_cause_analysis
+provides:
+  - tree_visualization
+  - relationship_graph
+  - blame_mode
+  - ancestry_tracking
+---

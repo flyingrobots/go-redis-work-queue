@@ -102,3 +102,23 @@ Google Calendar meets htop. Nobody expects a calendar in their terminal queue. T
 
 This is visual poetry in a terminal. The heatmap month view alone is worth building. Ship it and watch people screenshot their beautiful job calendars.
 
+
+---
+feature: calendar-view
+dependencies:
+  hard:
+    - tui_framework
+    - scheduling_system
+  soft:
+    - admin_api
+    - visual_dag_builder
+enables:
+  - schedule_visualization
+  - job_planning
+  - recurring_jobs
+provides:
+  - calendar_ui
+  - schedule_management
+  - cron_visualization
+  - drag_drop_scheduling
+---

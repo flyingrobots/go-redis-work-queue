@@ -97,3 +97,23 @@ Kubernetes popularized these patterns. Sidekiq Enterprise has similar controls. 
 
 Essential ops infrastructure. Not sexy, but the kind of feature that builds trust and prevents incidents. Ship this to show you're serious about production.
 
+
+---
+feature: worker-fleet-controls
+dependencies:
+  hard:
+    - admin_api
+    - worker_management
+  soft:
+    - multi_cluster_control
+    - kubernetes_operator
+enables:
+  - fleet_management
+  - rolling_updates
+  - drain_patterns
+provides:
+  - worker_control
+  - pause_resume
+  - drain_operations
+  - health_monitoring
+---

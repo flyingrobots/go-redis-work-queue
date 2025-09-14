@@ -66,3 +66,23 @@ sequenceDiagram
   O->>S: Input events
 ```
 
+
+---
+feature: collaborative-session
+dependencies:
+  hard:
+    - tui_framework
+    - multiplexing
+  soft:
+    - admin_api
+    - rbac_and_tokens
+enables:
+  - team_debugging
+  - pair_operations
+  - training
+provides:
+  - session_sharing
+  - read_only_mode
+  - control_handoff
+  - cursor_sharing
+---
