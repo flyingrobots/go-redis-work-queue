@@ -3,11 +3,9 @@ package multicluster
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 

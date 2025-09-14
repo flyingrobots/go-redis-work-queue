@@ -153,11 +153,15 @@ func TestClusterManager_StatsCollection(t *testing.T) {
 	defer mr.Close()
 
 	// Setup test data in Redis
-	mr.Lpush("jobqueue:queue:high", "job1", "job2")
-	mr.Lpush("jobqueue:queue:normal", "job3", "job4", "job5")
+	mr.Lpush("jobqueue:queue:high", "job1")
+	mr.Lpush("jobqueue:queue:high", "job2")
+	mr.Lpush("jobqueue:queue:normal", "job3")
+	mr.Lpush("jobqueue:queue:normal", "job4")
+	mr.Lpush("jobqueue:queue:normal", "job5")
 	mr.Lpush("jobqueue:processing", "processing1")
-	mr.Lpush("jobqueue:dead_letter", "dead1", "dead2")
-	mr.Set("jobqueue:workers:count", "5", 0)
+	mr.Lpush("jobqueue:dead_letter", "dead1")
+	mr.Lpush("jobqueue:dead_letter", "dead2")
+	mr.Set("jobqueue:workers:count", "5")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -211,10 +215,15 @@ func TestClusterManager_CompareResults(t *testing.T) {
 	defer mr2.Close()
 
 	// Setup different data in each cluster
-	mr1.Lpush("jobqueue:queue:high", "job1", "job2", "job3")
+	mr1.Lpush("jobqueue:queue:high", "job1")
+	mr1.Lpush("jobqueue:queue:high", "job2")
+	mr1.Lpush("jobqueue:queue:high", "job3")
 	mr1.Lpush("jobqueue:dead_letter", "dead1")
-	mr2.Lpush("jobqueue:queue:high", "job1", "job2")
-	mr2.Lpush("jobqueue:dead_letter", "dead1", "dead2", "dead3")
+	mr2.Lpush("jobqueue:queue:high", "job1")
+	mr2.Lpush("jobqueue:queue:high", "job2")
+	mr2.Lpush("jobqueue:dead_letter", "dead1")
+	mr2.Lpush("jobqueue:dead_letter", "dead2")
+	mr2.Lpush("jobqueue:dead_letter", "dead3")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{

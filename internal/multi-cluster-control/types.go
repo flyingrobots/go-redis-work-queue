@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/go-redis/redis/v8"
 )
 

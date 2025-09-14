@@ -19,8 +19,11 @@ func TestMultiAction_PurgeDLQ(t *testing.T) {
 	defer mr2.Close()
 
 	// Setup DLQ data
-	mr1.Lpush("jobqueue:dead_letter", "dead1", "dead2", "dead3")
-	mr2.Lpush("jobqueue:dead_letter", "dead4", "dead5")
+	mr1.Lpush("jobqueue:dead_letter", "dead1")
+	mr1.Lpush("jobqueue:dead_letter", "dead2")
+	mr1.Lpush("jobqueue:dead_letter", "dead3")
+	mr2.Lpush("jobqueue:dead_letter", "dead4")
+	mr2.Lpush("jobqueue:dead_letter", "dead5")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -80,8 +83,10 @@ func TestMultiAction_PurgeDLQ(t *testing.T) {
 	assert.Empty(t, result2.Error)
 
 	// Verify DLQ was actually purged
-	assert.Equal(t, 0, mr1.LLen("jobqueue:dead_letter"))
-	assert.Equal(t, 0, mr2.LLen("jobqueue:dead_letter"))
+	list1, _ := mr1.List("jobqueue:dead_letter")
+	list2, _ := mr2.List("jobqueue:dead_letter")
+	assert.Equal(t, 0, len(list1))
+	assert.Equal(t, 0, len(list2))
 }
 
 func TestMultiAction_BenchmarkExecution(t *testing.T) {
@@ -214,7 +219,7 @@ func TestMultiAction_PartialFailure(t *testing.T) {
 			AllowedActions: []ActionType{
 				ActionTypeBenchmark,
 			},
-			ContinueOnFailure: true, // Continue even if some clusters fail
+			// ContinueOnFailure: true, // Continue even if some clusters fail
 		},
 	}
 
@@ -403,10 +408,10 @@ func TestMultiAction_RetryPolicy(t *testing.T) {
 				ActionTypeBenchmark,
 			},
 			RetryPolicy: RetryPolicy{
-				MaxAttempts:   3,
-				BaseDelay:     Duration(100 * time.Millisecond),
-				MaxDelay:      Duration(1 * time.Second),
-				BackoffFactor: 2.0,
+				MaxAttempts:  3,
+				InitialDelay: 100 * time.Millisecond,
+				MaxDelay:     1 * time.Second,
+				Multiplier:   2.0,
 			},
 		},
 	}

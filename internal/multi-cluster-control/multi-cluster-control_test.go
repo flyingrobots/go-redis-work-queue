@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 )
 
@@ -119,7 +118,7 @@ func TestClusterStats(t *testing.T) {
 	defer mr.Close()
 
 	// Set up some test data
-	mr.Lpush("jobqueue:queue:default", "job1", "job2", "job3")
+	mr.Lpush("jobqueue:queue:default", "job1")
 	mr.Lpush("jobqueue:dead_letter", "dead1")
 
 	cfg := &Config{

@@ -1,0 +1,684 @@
+// Copyright 2025 James Ross
+package visual_dag_builder
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+)
+
+// APIHandler provides HTTP handlers for the DAG builder API
+type APIHandler struct {
+	orchestrator *Orchestrator
+	builder      *DAGBuilder
+	storage      WorkflowStorage
+	logger       *zap.Logger
+}
+
+// NewAPIHandler creates a new API handler
+func NewAPIHandler(orchestrator *Orchestrator, storage WorkflowStorage, logger *zap.Logger) *APIHandler {
+	return &APIHandler{
+		orchestrator: orchestrator,
+		builder:      orchestrator.builder,
+		storage:      storage,
+		logger:       logger,
+	}
+}
+
+// SetupRoutes configures the HTTP routes
+func (h *APIHandler) SetupRoutes(router *mux.Router) {
+	// Workflow management
+	router.HandleFunc("/workflows", h.ListWorkflows).Methods("GET")
+	router.HandleFunc("/workflows", h.CreateWorkflow).Methods("POST")
+	router.HandleFunc("/workflows/{id}", h.GetWorkflow).Methods("GET")
+	router.HandleFunc("/workflows/{id}", h.UpdateWorkflow).Methods("PUT")
+	router.HandleFunc("/workflows/{id}", h.DeleteWorkflow).Methods("DELETE")
+	router.HandleFunc("/workflows/{id}/validate", h.ValidateWorkflow).Methods("POST")
+
+	// Execution management
+	router.HandleFunc("/workflows/{id}/execute", h.ExecuteWorkflow).Methods("POST")
+	router.HandleFunc("/executions", h.ListExecutions).Methods("GET")
+	router.HandleFunc("/executions/{id}", h.GetExecution).Methods("GET")
+	router.HandleFunc("/executions/{id}/cancel", h.CancelExecution).Methods("POST")
+	router.HandleFunc("/executions/{id}/events", h.GetExecutionEvents).Methods("GET")
+
+	// Node management
+	router.HandleFunc("/workflows/{id}/nodes", h.AddNode).Methods("POST")
+	router.HandleFunc("/workflows/{id}/nodes/{nodeId}", h.UpdateNode).Methods("PUT")
+	router.HandleFunc("/workflows/{id}/nodes/{nodeId}", h.DeleteNode).Methods("DELETE")
+
+	// Edge management
+	router.HandleFunc("/workflows/{id}/edges", h.AddEdge).Methods("POST")
+	router.HandleFunc("/workflows/{id}/edges/{edgeId}", h.DeleteEdge).Methods("DELETE")
+
+	// Utility endpoints
+	router.HandleFunc("/node-types", h.GetNodeTypes).Methods("GET")
+	router.HandleFunc("/templates", h.GetTemplates).Methods("GET")
+}
+
+// Workflow handlers
+
+func (h *APIHandler) ListWorkflows(w http.ResponseWriter, r *http.Request) {
+	workflows, err := h.storage.ListWorkflows(r.Context())
+	if err != nil {
+		h.handleError(w, "Failed to list workflows", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, map[string]interface{}{
+		"workflows": workflows,
+		"count":     len(workflows),
+	})
+}
+
+func (h *APIHandler) CreateWorkflow(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Tags        []string `json:"tags,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		h.handleError(w, "Workflow name is required", nil, http.StatusBadRequest)
+		return
+	}
+
+	workflow := h.builder.CreateWorkflow(req.Name, req.Description)
+	workflow.Tags = req.Tags
+
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("Created new workflow",
+		zap.String("workflow_id", workflow.ID),
+		zap.String("name", workflow.Name))
+
+	h.respondJSON(w, workflow)
+}
+
+func (h *APIHandler) GetWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	workflow, err := h.storage.LoadWorkflow(r.Context(), id)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	h.respondJSON(w, workflow)
+}
+
+func (h *APIHandler) UpdateWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	var workflow WorkflowDefinition
+	if err := json.NewDecoder(r.Body).Decode(&workflow); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	workflow.ID = id // Ensure ID matches URL
+
+	// Validate workflow
+	validation := h.builder.ValidateDAG(&workflow)
+	if !validation.Valid {
+		h.respondJSON(w, map[string]interface{}{
+			"error": "Workflow validation failed",
+			"validation_errors": validation.Errors,
+			"validation_warnings": validation.Warnings,
+		})
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.storage.SaveWorkflow(r.Context(), &workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("Updated workflow",
+		zap.String("workflow_id", workflow.ID))
+
+	h.respondJSON(w, workflow)
+}
+
+func (h *APIHandler) DeleteWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	if err := h.storage.DeleteWorkflow(r.Context(), id); err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to delete workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	h.logger.Info("Deleted workflow", zap.String("workflow_id", id))
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *APIHandler) ValidateWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	workflow, err := h.storage.LoadWorkflow(r.Context(), id)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	validation := h.builder.ValidateDAG(workflow)
+	h.respondJSON(w, validation)
+}
+
+// Execution handlers
+
+func (h *APIHandler) ExecuteWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	var req struct {
+		Parameters map[string]interface{} `json:"parameters,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	execution, err := h.orchestrator.ExecuteWorkflow(r.Context(), id, req.Parameters)
+	if err != nil {
+		h.handleError(w, "Failed to start execution", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, execution)
+}
+
+func (h *APIHandler) ListExecutions(w http.ResponseWriter, r *http.Request) {
+	workflowID := r.URL.Query().Get("workflow_id")
+
+	var executions []*WorkflowExecution
+	var err error
+
+	if workflowID != "" {
+		executions, err = h.storage.ListExecutions(r.Context(), workflowID)
+	} else {
+		// List all executions - would need different method in real implementation
+		executions = []*WorkflowExecution{}
+	}
+
+	if err != nil {
+		h.handleError(w, "Failed to list executions", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, map[string]interface{}{
+		"executions": executions,
+		"count":      len(executions),
+	})
+}
+
+func (h *APIHandler) GetExecution(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	execution, err := h.orchestrator.GetExecution(r.Context(), id)
+	if err != nil {
+		if err == ErrExecutionNotFound {
+			h.handleError(w, "Execution not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to get execution", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	h.respondJSON(w, execution)
+}
+
+func (h *APIHandler) CancelExecution(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	if err := h.orchestrator.CancelExecution(r.Context(), id); err != nil {
+		if err == ErrExecutionNotFound {
+			h.handleError(w, "Execution not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to cancel execution", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	h.respondJSON(w, map[string]string{"status": "cancelled"})
+}
+
+func (h *APIHandler) GetExecutionEvents(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	events, err := h.storage.GetEvents(r.Context(), id)
+	if err != nil {
+		h.handleError(w, "Failed to get execution events", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, map[string]interface{}{
+		"events": events,
+		"count":  len(events),
+	})
+}
+
+// Node management handlers
+
+func (h *APIHandler) AddNode(w http.ResponseWriter, r *http.Request) {
+	workflowID := mux.Vars(r)["id"]
+
+	var node Node
+	if err := json.NewDecoder(r.Body).Decode(&node); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	// Load workflow
+	workflow, err := h.storage.LoadWorkflow(r.Context(), workflowID)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Add node
+	if err := h.builder.AddNode(workflow, node); err != nil {
+		h.handleError(w, "Failed to add node", err, http.StatusBadRequest)
+		return
+	}
+
+	// Save workflow
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, node)
+}
+
+func (h *APIHandler) UpdateNode(w http.ResponseWriter, r *http.Request) {
+	workflowID := mux.Vars(r)["id"]
+	nodeID := mux.Vars(r)["nodeId"]
+
+	var updatedNode Node
+	if err := json.NewDecoder(r.Body).Decode(&updatedNode); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	updatedNode.ID = nodeID // Ensure ID matches URL
+
+	// Load workflow
+	workflow, err := h.storage.LoadWorkflow(r.Context(), workflowID)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Find and update node
+	found := false
+	for i, node := range workflow.Nodes {
+		if node.ID == nodeID {
+			workflow.Nodes[i] = updatedNode
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		h.handleError(w, "Node not found", ErrNodeNotFound, http.StatusNotFound)
+		return
+	}
+
+	// Save workflow
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, updatedNode)
+}
+
+func (h *APIHandler) DeleteNode(w http.ResponseWriter, r *http.Request) {
+	workflowID := mux.Vars(r)["id"]
+	nodeID := mux.Vars(r)["nodeId"]
+
+	// Load workflow
+	workflow, err := h.storage.LoadWorkflow(r.Context(), workflowID)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Remove node
+	workflow.RemoveNode(nodeID)
+
+	// Save workflow
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Edge management handlers
+
+func (h *APIHandler) AddEdge(w http.ResponseWriter, r *http.Request) {
+	workflowID := mux.Vars(r)["id"]
+
+	var edge Edge
+	if err := json.NewDecoder(r.Body).Decode(&edge); err != nil {
+		h.handleError(w, "Invalid request body", err, http.StatusBadRequest)
+		return
+	}
+
+	// Load workflow
+	workflow, err := h.storage.LoadWorkflow(r.Context(), workflowID)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Add edge
+	if err := h.builder.AddEdge(workflow, edge); err != nil {
+		h.handleError(w, "Failed to add edge", err, http.StatusBadRequest)
+		return
+	}
+
+	// Save workflow
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	h.respondJSON(w, edge)
+}
+
+func (h *APIHandler) DeleteEdge(w http.ResponseWriter, r *http.Request) {
+	workflowID := mux.Vars(r)["id"]
+	edgeID := mux.Vars(r)["edgeId"]
+
+	// Load workflow
+	workflow, err := h.storage.LoadWorkflow(r.Context(), workflowID)
+	if err != nil {
+		if err == ErrWorkflowNotFound {
+			h.handleError(w, "Workflow not found", err, http.StatusNotFound)
+		} else {
+			h.handleError(w, "Failed to load workflow", err, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Remove edge
+	workflow.RemoveEdge(edgeID)
+
+	// Save workflow
+	if err := h.storage.SaveWorkflow(r.Context(), workflow); err != nil {
+		h.handleError(w, "Failed to save workflow", err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Utility handlers
+
+func (h *APIHandler) GetNodeTypes(w http.ResponseWriter, r *http.Request) {
+	nodeTypes := []map[string]interface{}{
+		{
+			"type": "task",
+			"name": "Task",
+			"description": "Executes a single job",
+			"icon": "⚙️",
+			"color": "#007bff",
+			"required_fields": []string{"job.queue", "job.type"},
+		},
+		{
+			"type": "decision",
+			"name": "Decision",
+			"description": "Evaluates conditions for branching",
+			"icon": "🔀",
+			"color": "#6f42c1",
+			"required_fields": []string{"conditions"},
+		},
+		{
+			"type": "parallel",
+			"name": "Parallel",
+			"description": "Executes multiple branches in parallel",
+			"icon": "🔱",
+			"color": "#28a745",
+			"required_fields": []string{"parallel.branches", "parallel.wait_for"},
+		},
+		{
+			"type": "loop",
+			"name": "Loop",
+			"description": "Iterates over collections",
+			"icon": "🔄",
+			"color": "#ffc107",
+			"required_fields": []string{"loop.iterator"},
+		},
+		{
+			"type": "delay",
+			"name": "Delay",
+			"description": "Waits for a specified duration",
+			"icon": "⏰",
+			"color": "#fd7e14",
+			"required_fields": []string{"metadata.delay"},
+		},
+		{
+			"type": "compensate",
+			"name": "Compensate",
+			"description": "Performs rollback operations",
+			"icon": "↩️",
+			"color": "#dc3545",
+			"required_fields": []string{"compensation_job"},
+		},
+	}
+
+	h.respondJSON(w, map[string]interface{}{
+		"node_types": nodeTypes,
+	})
+}
+
+func (h *APIHandler) GetTemplates(w http.ResponseWriter, r *http.Request) {
+	templates := []map[string]interface{}{
+		{
+			"id": "linear-pipeline",
+			"name": "Linear Pipeline",
+			"description": "Simple sequential workflow",
+			"category": "basic",
+			"nodes": []Node{
+				{
+					ID:   "start",
+					Type: TaskNode,
+					Name: "Start Task",
+					Position: Position{X: 100, Y: 100},
+					Job: &JobConfig{
+						Queue: "default",
+						Type:  "start_task",
+					},
+				},
+				{
+					ID:   "process",
+					Type: TaskNode,
+					Name: "Process Task",
+					Position: Position{X: 300, Y: 100},
+					Job: &JobConfig{
+						Queue: "default",
+						Type:  "process_task",
+					},
+				},
+				{
+					ID:   "finish",
+					Type: TaskNode,
+					Name: "Finish Task",
+					Position: Position{X: 500, Y: 100},
+					Job: &JobConfig{
+						Queue: "default",
+						Type:  "finish_task",
+					},
+				},
+			},
+			"edges": []Edge{
+				{
+					ID:   "start_to_process",
+					From: "start",
+					To:   "process",
+					Type: SequentialEdge,
+				},
+				{
+					ID:   "process_to_finish",
+					From: "process",
+					To:   "finish",
+					Type: SequentialEdge,
+				},
+			},
+		},
+		{
+			"id": "conditional-workflow",
+			"name": "Conditional Workflow",
+			"description": "Workflow with decision branching",
+			"category": "advanced",
+			"nodes": []Node{
+				{
+					ID:   "validate",
+					Type: TaskNode,
+					Name: "Validate Input",
+					Position: Position{X: 100, Y: 100},
+					Job: &JobConfig{
+						Queue: "validation",
+						Type:  "validate_input",
+					},
+				},
+				{
+					ID:   "decide",
+					Type: DecisionNode,
+					Name: "Check Result",
+					Position: Position{X: 300, Y: 100},
+					Conditions: []DecisionCondition{
+						{
+							Expression: "result.valid == true",
+							Target:     "process",
+							Label:      "Valid",
+						},
+					},
+					DefaultTarget: "error",
+				},
+				{
+					ID:   "process",
+					Type: TaskNode,
+					Name: "Process Data",
+					Position: Position{X: 500, Y: 50},
+					Job: &JobConfig{
+						Queue: "processing",
+						Type:  "process_data",
+					},
+				},
+				{
+					ID:   "error",
+					Type: TaskNode,
+					Name: "Handle Error",
+					Position: Position{X: 500, Y: 150},
+					Job: &JobConfig{
+						Queue: "error_handling",
+						Type:  "handle_error",
+					},
+				},
+			},
+			"edges": []Edge{
+				{
+					ID:   "validate_to_decide",
+					From: "validate",
+					To:   "decide",
+					Type: SequentialEdge,
+				},
+				{
+					ID:        "decide_to_process",
+					From:      "decide",
+					To:        "process",
+					Type:      ConditionalEdge,
+					Condition: "result.valid == true",
+					Label:     "Valid",
+				},
+				{
+					ID:        "decide_to_error",
+					From:      "decide",
+					To:        "error",
+					Type:      ConditionalEdge,
+					Condition: "result.valid == false",
+					Label:     "Invalid",
+				},
+			},
+		},
+	}
+
+	h.respondJSON(w, map[string]interface{}{
+		"templates": templates,
+	})
+}
+
+// Helper methods
+
+func (h *APIHandler) respondJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		h.logger.Error("Failed to encode JSON response", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (h *APIHandler) handleError(w http.ResponseWriter, message string, err error, statusCode int) {
+	h.logger.Error(message, zap.Error(err))
+
+	errorResponse := map[string]interface{}{
+		"error":   message,
+		"status":  statusCode,
+	}
+
+	if err != nil {
+		errorResponse["details"] = err.Error()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(errorResponse)
+}

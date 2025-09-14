@@ -47,7 +47,7 @@ func TestValidateDAG_EmptyWorkflow(t *testing.T) {
 
 	foundEmptyError := false
 	for _, err := range result.Errors {
-		if err.Type == MissingRequiredError && err.Message == "workflow must have at least one node" {
+		if err.Type == string(MissingRequiredError) && err.Message == "workflow must have at least one node" {
 			foundEmptyError = true
 			break
 		}
@@ -384,7 +384,7 @@ func TestValidateDAG_CyclicDependency(t *testing.T) {
 	// Should have cycle detection error
 	foundCycleError := false
 	for _, err := range result.Errors {
-		if err.Type == CyclicDependencyError {
+		if err.Type == string(CyclicDependencyError) {
 			foundCycleError = true
 			break
 		}
@@ -425,7 +425,7 @@ func TestValidateDAG_MissingNode(t *testing.T) {
 	// Should have missing node error
 	foundMissingError := false
 	for _, err := range result.Errors {
-		if err.Type == InvalidReferenceError {
+		if err.Type == string(InvalidReferenceError) {
 			foundMissingError = true
 			break
 		}

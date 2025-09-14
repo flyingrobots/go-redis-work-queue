@@ -2,9 +2,7 @@
 package visual_dag_builder
 
 import (
-	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -592,6 +590,7 @@ func generateWorkflowID() string {
 // Helper methods for ValidationResult
 func (v *ValidationResult) addError(err ValidationError) {
 	v.Errors = append(v.Errors, err)
+	v.Valid = false
 }
 
 func (v *ValidationResult) addWarning(err ValidationError) {
