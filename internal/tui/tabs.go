@@ -27,9 +27,9 @@ func (m model) buildTabBar() (string, []tabZone) {
 	}
 
 	// Styles
-	// Compact, borderless tabs to conserve width
-	base := lipgloss.NewStyle().Padding(0, 1)
-	inactive := base.Foreground(lipgloss.AdaptiveColor{Dark: "#bbbbbb", Light: "#333333"})
+	// Compact tabs with light borders for visibility
+	base := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder())
+	inactive := base.Foreground(lipgloss.AdaptiveColor{Dark: "#bbbbbb", Light: "#333333"}).BorderForeground(lipgloss.AdaptiveColor{Dark: "#555555", Light: "#cccccc"})
 
 	b := &strings.Builder{}
 	zones := make([]tabZone, 0, len(items))
@@ -42,7 +42,7 @@ func (m model) buildTabBar() (string, []tabZone) {
 	for i, it := range items {
 		st := inactive
 		if it.id == m.activeTab {
-			st = base.Bold(true).Foreground(lipgloss.Color(it.color)).Underline(true)
+			st = base.Bold(true).Foreground(lipgloss.Color(it.color)).BorderForeground(lipgloss.Color(it.color))
 		}
 		seg := st.Render(it.label)
 		b.WriteString(seg)
