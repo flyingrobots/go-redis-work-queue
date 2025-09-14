@@ -33,12 +33,6 @@
 	4. [[AGENTS## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM|APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM]]
 		1. [[AGENTS### Codex's Top Picks|Codex's Top Picks]]
 	5. [[AGENTS## Appendix C: Codex Ideas in Detail|Appendix C: Codex Ideas in Detail]]
-		1. [[AGENTS### HTTP/gRPC Admin API|HTTP/gRPC Admin API]]
-		2. [[AGENTS### DLQ Remediation UI|DLQ Remediation UI]]
-		3. [[AGENTS### Trace Drill‑down + Log Tail|Trace Drill‑down + Log Tail]]
-		4. [[AGENTS### Interactive Policy Tuning + Simulator|Interactive Policy Tuning + Simulator]]
-		5. [[AGENTS### Patterned Load Generator|Patterned Load Generator]]
-		6. [[AGENTS### Anomaly Radar + SLO Budget|Anomaly Radar + SLO Budget]]
 
 <!-- End of TOC -->
 
@@ -137,14 +131,14 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 
 ### Prioritized Backlog
 
-- [ ] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
+- [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] TUI: Table polish — colorized counts by thresholds (green/yellow/red), selection glyph, alternating row striping
 - [ ] TUI: Enqueue actions — `e` enqueue 1 to selected; `E` prompt for count (inline in Info panel)
 - [ ] TUI: Right-click on Queues — peek selected (later: context menu with actions)
-- [ ] TUI: Keyboard shortcuts for tabs (`1`..`4` to switch)
+- [x] TUI: Keyboard shortcuts for tabs (`1`..`4` to switch)
 - [ ] TUI: Persist UI state across sessions (active tab, focus panel, filter value)
-- [ ] TUI: Improve tiny-terminal layout — stack panels vertically; clamp widths; hide charts if extremely narrow
+- [x] TUI: Improve tiny-terminal layout — stack panels vertically; clamp widths; hide charts if extremely narrow
 - [ ] TUI: Adjustable panel split — keys (`[`/`]`) or drag on splitter (mouse) to change left/right ratio
 - [ ] TUI: Bench UX — cancel with ESC; show ETA; live throughput; configurable payload size and jitter; concurrency knob
 - [ ] TUI: Bench progress baseline — compute delta from initial `CompletedList` length (avoid overcount if list pre-populated)
@@ -156,14 +150,26 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] TUI: Mouse UX — double-click row to peek; click column header to sort if supported
 - [ ] TUI: Non-blocking error toasts/status area for transient errors (top-right), with log tail in Info
 - [ ] TUI: Unit tests for pure helpers (filtering, formatting, thresholds, clamp)
+- [x] TUI: Flexbox layout via `stickers` across tabs; cell-based sizing for contents
 - [ ] Admin: Requeue-from-DLQ command with count/range support (exposed to TUI)
 - [ ] Admin: Workers-list admin call (IDs, last heartbeat, active item) for Workers tab
 - [ ] Metrics: Optional TUI runtime metrics (ticks, RPC latency) for debugging
+- [x] Docs: Add TUI design README with SVG mockups
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
 
 ### Finished Log
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://fake.com)
+
+- [x] TUI layout revamp (flexbox + animation) **2025-09-13**
+  - Integrated `github.com/76creates/stickers/flexbox` for panel layout across all tabs
+  - Applied borders at cell level; sized content to cell inner dims (fixed clipped corners/edges)
+  - Added Harmonica spring animation for Charts expansion (animated 1:1 → 1:2)
+  - Implemented narrow-width stacking (Queues → Charts → Info) to avoid overflow
+  - Compact tab bar styling with visible borders; active tab colored; added 1–4 keybindings
+  - Fixed Queues table bottom-border clipping by clamping table height from cell height
+  - Rendered charts using cell width; resized Info viewport from cell dims
+  - Added TUI design doc with SVG mockups under `docs/TUI/`
 
 ---
 ## Daily Activity Logs
@@ -199,6 +205,25 @@ Please keep this document up-to-date with records of what you've worked on as yo
 >   > [!warning]- **Bug: Infinite Loop in Foo.bar**
 >   > Repro steps:
 >   > etc…
+
+---
+> [!info]- ### 2025-09-13 – TUI Layout Revamp (Flexbox + Animation + Docs)
+> Implemented a responsive, animated TUI layout and added design docs.
+>
+> Changes
+> - Switched panel layout to stickers flexbox across all tabs
+> - Borders are drawn at cell level; content sized to inner width/height
+> - Charts expansion uses Harmonica spring animation (click right to expand, left to balance)
+> - Narrow terminals stack panels vertically to prevent clipping
+> - Tab bar restyled (compact, bordered); added numeric tab shortcuts (1–4)
+> - Fixed queues bottom border by setting table height from cell height
+> - Charts now render with precise cell width; Info viewport sized from cell dims
+> - Wrote `docs/TUI/README.md` and color-coded SVG mockups for all screens
+>
+> Follow-ups
+> - Bubblezone for precise mouse hitboxes (tabs/panels/rows)
+> - Add `c` keyboard toggle for expand
+> - Tune stacking threshold; optionally add min-widths per cell
 >
 
 ---
