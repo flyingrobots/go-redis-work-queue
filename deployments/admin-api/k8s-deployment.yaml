@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis-work-queue
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: admin-api-config
+  namespace: redis-work-queue
+data:
+  admin-api.yaml: |
+    server:
+      listen_addr: ":8080"
+      read_timeout: 30s
+      write_timeout: 30s
+    auth:
+      require_auth: true
+      deny_by_default: true
+    rate_limit:
+      enabled: true
+      per_minute: 100
+      burst: 10
+    audit:
+      enabled: true
+      log_path: "/var/log/admin-api/audit.log"
+      rotate_size: 104857600
+    cors:
+      enabled: true
+      allow_origins:
+        - "https://admin.example.com"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-api-secrets
+  namespace: redis-work-queue
+type: Opaque
+stringData:
+  jwt-secret: "change-me-in-production"
+  redis-password: ""
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-api
+  namespace: redis-work-queue
+  labels:
+    app: admin-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: admin-api
+  template:
+    metadata:
+      labels:
+        app: admin-api
+    spec:
+      containers:
+      - name: admin-api
+        image: redis-work-queue/admin-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: admin-api-secrets
+              key: jwt-secret
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: admin-api-secrets
+              key: redis-password
+        volumeMounts:
+        - name: config
+          mountPath: /root/configs
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/admin-api
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: admin-api-config
+      - name: audit-logs
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-api-service
+  namespace: redis-work-queue
+spec:
+  selector:
+    app: admin-api
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: admin-api-ingress
+  namespace: redis-work-queue
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - admin-api.example.com
+    secretName: admin-api-tls
+  rules:
+  - host: admin-api.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-api-service
+            port:
+              number: 8080
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: admin-api-pdb
+  namespace: redis-work-queue
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: admin-api
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: admin-api-hpa
+  namespace: redis-work-queue
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: admin-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -1,0 +1,212 @@
+{
+  "task_id": "P4.T048",
+  "created_at": "2025-09-14T19:41:47.138994Z",
+  "task": {
+    "id": "P4.T048",
+    "feature_id": "F019",
+    "title": "Design Forecasting",
+    "description": "Design task for Forecasting",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "1 design doc, ~800-1200 lines",
+        "breakdown": "Architecture (400), API spec (300), Data model (200), Diagrams (300)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "Architecture documented with Mermaid diagrams",
+          "API endpoints specified in OpenAPI 3.0 format",
+          "Data models defined with JSON Schema",
+          "Integration points identified and documented",
+          "Security threat model completed",
+          "Performance requirements specified",
+          "Testing strategy defined"
+        ],
+        "stop_when": "Design approved by architect; do NOT start implementation"
+      },
+      "scope": {
+        "includes": [
+          "docs/design/f019-design.md",
+          "docs/api/f019-openapi.yaml",
+          "docs/schemas/f019-schema.json"
+        ],
+        "excludes": [
+          "implementation code",
+          "tests",
+          "deployment configs"
+        ],
+        "restrictions": "Must follow company design template"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "cp1",
+          "at_percent": 25,
+          "description": "Architecture draft complete"
+        },
+        {
+          "id": "cp2",
+          "at_percent": 50,
+          "description": "API specification complete"
+        },
+        {
+          "id": "cp3",
+          "at_percent": 75,
+          "description": "Data models and diagrams complete"
+        },
+        {
+          "id": "cp4",
+          "at_percent": 100,
+          "description": "Review and approval"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 512,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 1024,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "documentation",
+        "architecture",
+        "api_design"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "medium",
+      "preemptible": true,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 4,
+      "mostLikely": 8,
+      "pessimistic": 16
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Baseline forecasting on backlog/throughput with confidence bands.",
+        "script": "test_p4.t048.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Recommendations generated and displayed succinctly.",
+        "script": "test_p4.t048.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Toggleable overlays; no impact on core loop performance.",
+        "script": "test_p4.t048.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Implement EWMA/Holt\u2011Winters",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Persist short history; optional TSDB reader",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/forecasting.md",
+        "excerpt": "Predict backlog, throughput, and error trends using simple time\u2011series models (moving averages, Holt\u2011Winters, optional ARIMA) to recommend scaling actions and SLO adjustments.\n\n> [!note]- **\ud83d\udde3\ufe0f CLAUDE'",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "design_sections": [
+        "Executive Summary",
+        "System Architecture",
+        "API Specification",
+        "Data Models",
+        "Security Model",
+        "Performance Requirements",
+        "Testing Strategy",
+        "Deployment Plan"
+      ],
+      "deliverables": [
+        "Architecture document (Markdown + Mermaid)",
+        "OpenAPI 3.0 specification",
+        "JSON Schema definitions",
+        "Security threat model",
+        "Performance benchmarks"
+      ],
+      "technical_approach": [
+        "Data:",
+        "Persist short history in\u2011memory for TUI charts and optionally to disk for longer windows.",
+        "Optionally pull from metrics TSDB (Prometheus) for richer history.",
+        "Models:",
+        "Baseline: EWMA / Holt\u2011Winters; later ARIMA/Prophet plugins.",
+        "Compute point forecasts and confidence bounds.",
+        "Recommendations:",
+        "Translate forecasts into human hints (e.g., \"Scale workers +2 for next 30m\").",
+        "Budget burn projections for SLO widget.",
+        "TUI:",
+        "Overlay forecast bands on charts; show next 30\u2013120m.",
+        "Small \"What's Next\" panel with recommendations."
+      ],
+      "user_stories": [
+        "I can see forecast bands on queue charts and a plain\u2011English recommendation."
+      ]
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P4.T048.json",
+    "on_failure": "Move this file to failed-tasks/P4.T048.json",
+    "on_help_needed": "Move to help-me/P4.T048.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

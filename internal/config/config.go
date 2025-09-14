@@ -60,17 +60,34 @@ type CircuitBreaker struct {
 	MinSamples       int           `mapstructure:"min_samples"`
 }
 
-type Tracing struct {
-	Enabled  bool   `mapstructure:"enabled"`
-	Endpoint string `mapstructure:"endpoint"`
+type TracingConfig struct {
+	Enabled             bool              `mapstructure:"enabled"`
+	Endpoint            string            `mapstructure:"endpoint"`
+	Environment         string            `mapstructure:"environment"`
+	SamplingStrategy    string            `mapstructure:"sampling_strategy"`
+	SamplingRate        float64           `mapstructure:"sampling_rate"`
+	BatchTimeout        time.Duration     `mapstructure:"batch_timeout"`
+	MaxExportBatchSize  int               `mapstructure:"max_export_batch_size"`
+	Headers             map[string]string `mapstructure:"headers"`
+	Insecure            bool              `mapstructure:"insecure"`
+	PropagationFormat   string            `mapstructure:"propagation_format"`
+	AttributeAllowlist  []string          `mapstructure:"attribute_allowlist"`
+	RedactSensitive     bool              `mapstructure:"redact_sensitive"`
+	EnableMetricExemplars bool            `mapstructure:"enable_metric_exemplars"`
 }
 
-type Observability struct {
+// Tracing is a backwards-compatible alias
+type Tracing = TracingConfig
+
+type ObservabilityConfig struct {
 	MetricsPort         int           `mapstructure:"metrics_port"`
 	LogLevel            string        `mapstructure:"log_level"`
-	Tracing             Tracing       `mapstructure:"tracing"`
+	Tracing             TracingConfig `mapstructure:"tracing"`
 	QueueSampleInterval time.Duration `mapstructure:"queue_sample_interval"`
 }
+
+// Observability is a backwards-compatible alias
+type Observability = ObservabilityConfig
 
 type Config struct {
 	Redis          Redis          `mapstructure:"redis"`

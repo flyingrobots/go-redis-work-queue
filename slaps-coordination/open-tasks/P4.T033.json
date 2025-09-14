@@ -1,0 +1,217 @@
+{
+  "task_id": "P4.T033",
+  "created_at": "2025-09-14T19:41:47.131900Z",
+  "task": {
+    "id": "P4.T033",
+    "feature_id": "F012",
+    "title": "Design Kubernetes Operator",
+    "description": "Design task for Kubernetes Operator",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "1 design doc, ~800-1200 lines",
+        "breakdown": "Architecture (400), API spec (300), Data model (200), Diagrams (300)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "Architecture documented with Mermaid diagrams",
+          "API endpoints specified in OpenAPI 3.0 format",
+          "Data models defined with JSON Schema",
+          "Integration points identified and documented",
+          "Security threat model completed",
+          "Performance requirements specified",
+          "Testing strategy defined"
+        ],
+        "stop_when": "Design approved by architect; do NOT start implementation"
+      },
+      "scope": {
+        "includes": [
+          "docs/design/f012-design.md",
+          "docs/api/f012-openapi.yaml",
+          "docs/schemas/f012-schema.json"
+        ],
+        "excludes": [
+          "implementation code",
+          "tests",
+          "deployment configs"
+        ],
+        "restrictions": "Must follow company design template"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "cp1",
+          "at_percent": 25,
+          "description": "Architecture draft complete"
+        },
+        {
+          "id": "cp2",
+          "at_percent": 50,
+          "description": "API specification complete"
+        },
+        {
+          "id": "cp3",
+          "at_percent": 75,
+          "description": "Data models and diagrams complete"
+        },
+        {
+          "id": "cp4",
+          "at_percent": 100,
+          "description": "Review and approval"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 512,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 1024,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "documentation",
+        "architecture",
+        "api_design"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "medium",
+      "preemptible": true,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 4,
+      "mostLikely": 8,
+      "pessimistic": 16
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "CRDs with schemas and validation webhooks.",
+        "script": "test_p4.t033.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Reconciler manages Deployments and scales by backlog/SLO.",
+        "script": "test_p4.t033.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Rolling updates drain before restart.",
+        "script": "test_p4.t033.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Define CRDs + validation webhooks",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Implement reconcilers (Queue, WorkerPool)",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/kubernetes-operator.md",
+        "excerpt": "Ship a Kubernetes Operator with CRDs to declaratively manage queues and workers. Reconcile desired state (workers, rate limits, DLQ policies) from YAML, autoscale by backlog/SLA targets, and support s",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "design_sections": [
+        "Executive Summary",
+        "System Architecture",
+        "API Specification",
+        "Data Models",
+        "Security Model",
+        "Performance Requirements",
+        "Testing Strategy",
+        "Deployment Plan"
+      ],
+      "deliverables": [
+        "Architecture document (Markdown + Mermaid)",
+        "OpenAPI 3.0 specification",
+        "JSON Schema definitions",
+        "Security threat model",
+        "Performance benchmarks"
+      ],
+      "technical_approach": [
+        "CRDs:",
+        "`Queue`: name, priorities, rate limits, DLQ config, retention.",
+        "`WorkerPool`: image, version, env, resources, concurrency, max in\u2011flight, drain policy, min/max replicas.",
+        "`Policy`: global knobs (circuit breaker thresholds, retry/backoff defaults).",
+        "Reconciliation:",
+        "Manage Deployments/StatefulSets for workers; inject config/secret mounts.",
+        "Observe metrics (backlog length, p95 latency) and scale `WorkerPool` via HPA\u2011like logic.",
+        "Orchestrate rolling updates with drain/ready hooks via Admin API.",
+        "Safety & RBAC:",
+        "Namespace\u2011scoped by default; cluster\u2011scoped optional.",
+        "Webhooks: CRD validation (limits, reserved names), defaulting, and drift detection.",
+        "Finalizers to drain on delete; prevent orphaned DLQs.",
+        "Observability:",
+        "Conditions per resource; events; Prometheus metrics (reconcile durations, errors).",
+        "Tooling:",
+        "Kustomize bases for common setups; examples repo."
+      ],
+      "user_stories": [
+        "I can declare a `WorkerPool` and see it reconcile with autoscaling.",
+        "I can update a `Queue` rate limit and see changes propagate safely."
+      ]
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P4.T033.json",
+    "on_failure": "Move this file to failed-tasks/P4.T033.json",
+    "on_help_needed": "Move to help-me/P4.T033.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

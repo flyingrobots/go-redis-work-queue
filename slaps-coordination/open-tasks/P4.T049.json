@@ -1,0 +1,225 @@
+{
+  "task_id": "P4.T049",
+  "created_at": "2025-09-14T19:41:47.139253Z",
+  "task": {
+    "id": "P4.T049",
+    "feature_id": "F019",
+    "title": "Implement Forecasting",
+    "description": "Implement task for Forecasting",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "~ LoC",
+        "breakdown": "Core logic (60%), Tests (25%), Integration (15%)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "All functions implemented per specification",
+          "Unit tests passing with 80% coverage",
+          "Integration tests passing",
+          "Code reviewed and approved",
+          "Documentation updated",
+          "No linting errors",
+          "Performance benchmarks met",
+          "Baseline forecasting on backlog/throughput with confidence bands.",
+          "Recommendations generated and displayed succinctly.",
+          "Toggleable overlays; no impact on core loop performance."
+        ],
+        "stop_when": "Core functionality complete; do NOT add extra features"
+      },
+      "scope": {
+        "includes": [
+          "internal/forecasting/",
+          "internal/forecasting/*_test.go",
+          "docs/api/forecasting.md"
+        ],
+        "excludes": [
+          "UI unless specified",
+          "deployment configs"
+        ],
+        "restrictions": "Follow existing code patterns and style guide"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "setup",
+          "at_percent": 10,
+          "description": "Module structure created"
+        },
+        {
+          "id": "core",
+          "at_percent": 40,
+          "description": "Core logic implemented"
+        },
+        {
+          "id": "integration",
+          "at_percent": 60,
+          "description": "Integration complete"
+        },
+        {
+          "id": "tests",
+          "at_percent": 80,
+          "description": "Tests passing"
+        },
+        {
+          "id": "docs",
+          "at_percent": 100,
+          "description": "Documentation complete"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 1024,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 2048,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "golang",
+        "backend",
+        "redis"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "medium",
+      "preemptible": true,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 8,
+      "mostLikely": 16,
+      "pessimistic": 24
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Baseline forecasting on backlog/throughput with confidence bands.",
+        "script": "test_p4.t049.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Recommendations generated and displayed succinctly.",
+        "script": "test_p4.t049.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Toggleable overlays; no impact on core loop performance.",
+        "script": "test_p4.t049.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Implement EWMA/Holt\u2011Winters",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Persist short history; optional TSDB reader",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/forecasting.md",
+        "excerpt": "Predict backlog, throughput, and error trends using simple time\u2011series models (moving averages, Holt\u2011Winters, optional ARIMA) to recommend scaling actions and SLO adjustments.\n\n> [!note]- **\ud83d\udde3\ufe0f CLAUDE'",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "implementation_checklist": [
+        "Implement EWMA/Holt\u2011Winters",
+        "Persist short history; optional TSDB reader",
+        "Overlay UI + recommendations",
+        "Docs + examples"
+      ],
+      "technical_approach": [
+        "Data:",
+        "Persist short history in\u2011memory for TUI charts and optionally to disk for longer windows.",
+        "Optionally pull from metrics TSDB (Prometheus) for richer history.",
+        "Models:",
+        "Baseline: EWMA / Holt\u2011Winters; later ARIMA/Prophet plugins.",
+        "Compute point forecasts and confidence bounds.",
+        "Recommendations:",
+        "Translate forecasts into human hints (e.g., \"Scale workers +2 for next 30m\").",
+        "Budget burn projections for SLO widget.",
+        "TUI:",
+        "Overlay forecast bands on charts; show next 30\u2013120m.",
+        "Small \"What's Next\" panel with recommendations."
+      ],
+      "code_structure": {
+        "main_package": "internal/forecasting",
+        "files": [
+          "forecasting.go - Main implementation",
+          "types.go - Data structures",
+          "handlers.go - Request handlers",
+          "errors.go - Custom errors",
+          "config.go - Configuration"
+        ]
+      }
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P4.T049.json",
+    "on_failure": "Move this file to failed-tasks/P4.T049.json",
+    "on_help_needed": "Move to help-me/P4.T049.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

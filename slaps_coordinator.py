@@ -346,15 +346,14 @@ Please execute this task following the requirements above."""
                 f.write(prompt)
 
             # Launch Claude CLI process - use text for now, stream-json seems buffered
+            # Correct order: claude --model sonnet --dangerously-skip-permissions -p "prompt"
             cmd = [
                 "claude",
-                "-p",  # Print mode (non-interactive)
                 "--model", self.model,  # Use sonnet by default
                 "--dangerously-skip-permissions",
                 "--output-format", "text",  # Text mode for now
-                "--verbose",  # Show what's happening
                 "--max-turns", "10",  # Limit turns for safety
-                prompt  # Prompt as last argument
+                "-p", prompt  # -p flag with prompt LAST
             ]
 
             print(f"[LAUNCH] Running: {' '.join(cmd[:6])}... '{prompt[:50]}...'")  # Debug

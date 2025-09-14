@@ -1,0 +1,942 @@
+openapi: 3.0.3
+info:
+  title: Multi-Cluster Redis Control API
+  description: API for managing multiple Redis clusters from a unified interface
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://redis-control.example.com/api/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+tags:
+  - name: clusters
+    description: Cluster management operations
+  - name: actions
+    description: Administrative actions on clusters
+  - name: config
+    description: Configuration management
+  - name: metrics
+    description: Metrics and monitoring
+
+paths:
+  /clusters:
+    get:
+      tags:
+        - clusters
+      summary: List all configured clusters
+      description: Returns a list of all configured Redis clusters with their current status
+      operationId: listClusters
+      parameters:
+        - name: status
+          in: query
+          description: Filter by cluster status
+          schema:
+            type: string
+            enum: [online, offline, degraded, unknown]
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+            example: "production,us-east-1"
+      responses:
+        '200':
+          description: List of clusters retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClusterSummary'
+                  total:
+                    type: integer
+                    example: 5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clusters/{clusterId}:
+    get:
+      tags:
+        - clusters
+      summary: Get cluster details
+      description: Returns detailed information about a specific cluster
+      operationId: getCluster
+      parameters:
+        - $ref: '#/components/parameters/ClusterId'
+      responses:
+        '200':
+          description: Cluster details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clusters/{clusterId}/metrics:
+    get:
+      tags:
+        - clusters
+        - metrics
+      summary: Get cluster metrics
+      description: Fetch current metrics for a specific cluster
+      operationId: getClusterMetrics
+      parameters:
+        - $ref: '#/components/parameters/ClusterId'
+        - name: period
+          in: query
+          description: Time period for metrics aggregation
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 6h, 24h]
+            default: 5m
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterMetrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clusters/{clusterId}/health:
+    get:
+      tags:
+        - clusters
+      summary: Health check for cluster
+      description: Performs a health check on the specified cluster
+      operationId: checkClusterHealth
+      parameters:
+        - $ref: '#/components/parameters/ClusterId'
+      responses:
+        '200':
+          description: Health check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Cluster is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /clusters/compare:
+    post:
+      tags:
+        - clusters
+      summary: Compare multiple clusters
+      description: Compare metrics and configuration across multiple clusters
+      operationId: compareClusters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clusterIds
+              properties:
+                clusterIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                  maxItems: 10
+                  example: ["cluster-1", "cluster-2"]
+                metrics:
+                  type: array
+                  items:
+                    type: string
+                  example: ["queues.failed", "workers.active", "throughput.jobs_per_second"]
+      responses:
+        '200':
+          description: Comparison completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /actions:
+    get:
+      tags:
+        - actions
+      summary: List available actions
+      description: Returns a list of administrative actions that can be executed
+      operationId: listActions
+      parameters:
+        - name: clusterId
+          in: query
+          description: Filter actions available for specific cluster
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Actions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionDefinition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /actions/execute:
+    post:
+      tags:
+        - actions
+      summary: Execute action on clusters
+      description: Execute an administrative action on one or more clusters
+      operationId: executeAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionRequest'
+      responses:
+        '202':
+          description: Action accepted for execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Action not permitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /actions/{actionId}/status:
+    get:
+      tags:
+        - actions
+      summary: Get action execution status
+      description: Check the status of an executed action
+      operationId: getActionStatus
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          description: Action execution ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Action status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /actions/history:
+    get:
+      tags:
+        - actions
+      summary: Get action history
+      description: Retrieve history of executed actions with audit trail
+      operationId: getActionHistory
+      parameters:
+        - name: clusterId
+          in: query
+          description: Filter by cluster ID
+          schema:
+            type: string
+        - name: actionType
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+            enum: [purge_dlq, restart_workers, flush_queue, benchmark]
+        - name: startTime
+          in: query
+          description: Start time for history range (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          description: End time for history range (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Action history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionHistoryEntry'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /config:
+    get:
+      tags:
+        - config
+      summary: Get current configuration
+      description: Retrieve the current system configuration
+      operationId: getConfig
+      responses:
+        '200':
+          description: Configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /config/clusters:
+    post:
+      tags:
+        - config
+      summary: Add new cluster
+      description: Add a new cluster to the configuration
+      operationId: addCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterConfig'
+      responses:
+        '201':
+          description: Cluster added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Cluster already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/clusters/{clusterId}:
+    put:
+      tags:
+        - config
+      summary: Update cluster configuration
+      description: Update configuration for an existing cluster
+      operationId: updateCluster
+      parameters:
+        - $ref: '#/components/parameters/ClusterId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterConfig'
+      responses:
+        '200':
+          description: Cluster updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - config
+      summary: Remove cluster
+      description: Remove a cluster from the configuration
+      operationId: deleteCluster
+      parameters:
+        - $ref: '#/components/parameters/ClusterId'
+      responses:
+        '204':
+          description: Cluster removed successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    ClusterId:
+      name: clusterId
+      in: path
+      required: true
+      description: Unique cluster identifier
+      schema:
+        type: string
+        example: "prod-cluster-1"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "CLUSTER_NOT_FOUND"
+        message:
+          type: string
+          example: "The specified cluster was not found"
+        details:
+          type: object
+          additionalProperties: true
+
+    ClusterSummary:
+      type: object
+      required:
+        - id
+        - name
+        - status
+      properties:
+        id:
+          type: string
+          example: "prod-cluster-1"
+        name:
+          type: string
+          example: "Production Cluster 1"
+        label:
+          type: string
+          example: "PROD-1"
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: "#FF5722"
+        status:
+          type: string
+          enum: [online, offline, degraded, unknown]
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["production", "us-east-1"]
+
+    ClusterDetail:
+      allOf:
+        - $ref: '#/components/schemas/ClusterSummary'
+        - type: object
+          properties:
+            endpoints:
+              type: object
+              properties:
+                primary:
+                  type: string
+                  format: uri
+                  example: "redis://redis1.example.com:6379"
+                replicas:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+            connectionStatus:
+              type: object
+              properties:
+                connected:
+                  type: boolean
+                lastConnected:
+                  type: string
+                  format: date-time
+                connectionErrors:
+                  type: integer
+            configuration:
+              $ref: '#/components/schemas/ClusterConfig'
+
+    ClusterConfig:
+      type: object
+      required:
+        - id
+        - name
+        - endpoints
+      properties:
+        id:
+          type: string
+          example: "prod-cluster-1"
+        name:
+          type: string
+          example: "Production Cluster 1"
+        label:
+          type: string
+          example: "PROD-1"
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: "#FF5722"
+        endpoints:
+          type: object
+          required:
+            - primary
+          properties:
+            primary:
+              type: string
+              format: uri
+              example: "redis://redis1.example.com:6379"
+            replicas:
+              type: array
+              items:
+                type: string
+                format: uri
+        auth:
+          type: object
+          properties:
+            method:
+              type: string
+              enum: [password, tls, none]
+              default: none
+            credentials:
+              type: string
+              description: Encrypted credentials
+        polling:
+          type: object
+          properties:
+            intervalMs:
+              type: integer
+              minimum: 1000
+              maximum: 60000
+              default: 5000
+            timeoutMs:
+              type: integer
+              minimum: 100
+              maximum: 30000
+              default: 2000
+            jitterMs:
+              type: integer
+              minimum: 0
+              maximum: 5000
+              default: 500
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["production", "us-east-1"]
+
+    ClusterMetrics:
+      type: object
+      required:
+        - clusterId
+        - timestamp
+        - queues
+        - workers
+      properties:
+        clusterId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        queues:
+          type: object
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            delayed:
+              type: integer
+            failed:
+              type: integer
+        workers:
+          type: object
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            idle:
+              type: integer
+        throughput:
+          type: object
+          properties:
+            jobsPerSecond:
+              type: number
+              format: float
+            bytesPerSecond:
+              type: integer
+        memory:
+          type: object
+          properties:
+            usedBytes:
+              type: integer
+              format: int64
+            maxBytes:
+              type: integer
+              format: int64
+            fragmentationRatio:
+              type: number
+              format: float
+        connections:
+          type: object
+          properties:
+            current:
+              type: integer
+            rejected:
+              type: integer
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [pass, warn, fail]
+              message:
+                type: string
+              duration:
+                type: integer
+                description: Check duration in milliseconds
+
+    ComparisonResult:
+      type: object
+      required:
+        - clusters
+        - timestamp
+      properties:
+        clusters:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+        differences:
+          type: array
+          items:
+            type: object
+            properties:
+              metric:
+                type: string
+              values:
+                type: object
+                additionalProperties:
+                  type: number
+              severity:
+                type: string
+                enum: [info, warning, critical]
+              deltaPercent:
+                type: number
+        anomalies:
+          type: array
+          items:
+            type: object
+            properties:
+              cluster:
+                type: string
+              type:
+                type: string
+              details:
+                type: string
+              severity:
+                type: string
+                enum: [low, medium, high]
+
+    ActionDefinition:
+      type: object
+      required:
+        - type
+        - name
+        - description
+      properties:
+        type:
+          type: string
+          enum: [purge_dlq, restart_workers, flush_queue, benchmark]
+        name:
+          type: string
+        description:
+          type: string
+        requiresConfirmation:
+          type: boolean
+          default: true
+        parameters:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+              required:
+                type: boolean
+              default:
+                type: any
+
+    ActionRequest:
+      type: object
+      required:
+        - type
+        - targets
+      properties:
+        type:
+          type: string
+          enum: [purge_dlq, restart_workers, flush_queue, benchmark]
+        targets:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        parameters:
+          type: object
+          properties:
+            queuePattern:
+              type: string
+            force:
+              type: boolean
+              default: false
+            dryRun:
+              type: boolean
+              default: false
+        confirmation:
+          type: object
+          required:
+            - user
+            - timestamp
+          properties:
+            user:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            checksum:
+              type: string
+              description: SHA256 hash of action details
+
+    ActionResponse:
+      type: object
+      required:
+        - actionId
+        - status
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, rejected]
+        message:
+          type: string
+        estimatedDuration:
+          type: integer
+          description: Estimated duration in seconds
+
+    ActionStatus:
+      type: object
+      required:
+        - actionId
+        - status
+        - startTime
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        results:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+              message:
+                type: string
+              error:
+                type: string
+
+    ActionHistoryEntry:
+      type: object
+      required:
+        - actionId
+        - type
+        - targets
+        - status
+        - timestamp
+        - user
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        targets:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [completed, failed, cancelled]
+        timestamp:
+          type: string
+          format: date-time
+        user:
+          type: string
+        duration:
+          type: integer
+          description: Duration in milliseconds
+        results:
+          type: object
+
+    SystemConfig:
+      type: object
+      properties:
+        version:
+          type: string
+        features:
+          type: object
+          properties:
+            multiClusterEnabled:
+              type: boolean
+            compareViewEnabled:
+              type: boolean
+            actionPropagationEnabled:
+              type: boolean
+            maxClusters:
+              type: integer
+        defaults:
+          type: object
+          properties:
+            pollingInterval:
+              type: integer
+            connectionTimeout:
+              type: integer
+            maxConnectionsPerCluster:
+              type: integer

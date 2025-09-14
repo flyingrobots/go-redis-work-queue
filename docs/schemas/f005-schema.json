@@ -1,0 +1,691 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.example.com/schemas/plugin-system/v1",
+  "title": "Plugin Panel System Schemas",
+  "description": "JSON Schema definitions for the Plugin Panel System",
+  "definitions": {
+    "PluginManifest": {
+      "type": "object",
+      "title": "Plugin Manifest",
+      "description": "Plugin metadata and configuration manifest",
+      "required": [
+        "name",
+        "version",
+        "description",
+        "runtime",
+        "entry",
+        "capabilities"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique plugin identifier",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 50
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Plugin description",
+          "maxLength": 500
+        },
+        "author": {
+          "type": "string",
+          "description": "Plugin author or organization",
+          "maxLength": 100
+        },
+        "license": {
+          "type": "string",
+          "description": "License identifier (SPDX)",
+          "examples": ["MIT", "Apache-2.0", "GPL-3.0"]
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Plugin homepage URL"
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri",
+          "description": "Source repository URL"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Plugin categorization tags",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Plugin runtime environment",
+          "enum": ["wasm", "lua", "starlark"]
+        },
+        "entry": {
+          "type": "string",
+          "description": "Entry point file path",
+          "pattern": "^[a-zA-Z0-9/_.-]+\\.(wasm|lua|star)$"
+        },
+        "hot_reload": {
+          "type": "boolean",
+          "description": "Enable hot-reload on file changes",
+          "default": true
+        },
+        "capabilities": {
+          "$ref": "#/definitions/CapabilityRequirements"
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourceLimits"
+        },
+        "ui": {
+          "$ref": "#/definitions/UIConfiguration"
+        },
+        "config_schema": {
+          "type": "object",
+          "description": "JSON Schema for plugin-specific configuration",
+          "additionalProperties": true
+        },
+        "dependencies": {
+          "type": "object",
+          "description": "Plugin dependencies",
+          "properties": {
+            "plugins": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PluginDependency"
+              }
+            },
+            "host_version": {
+              "type": "string",
+              "description": "Minimum host version required",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapabilityRequirements": {
+      "type": "object",
+      "title": "Capability Requirements",
+      "description": "Required and optional capabilities for the plugin",
+      "properties": {
+        "required": {
+          "type": "array",
+          "description": "Capabilities that must be granted",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          },
+          "uniqueItems": true
+        },
+        "optional": {
+          "type": "array",
+          "description": "Capabilities that enhance functionality if granted",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Capability": {
+      "type": "string",
+      "title": "Capability",
+      "description": "Permission capability identifier",
+      "pattern": "^(read|write|admin):[a-z_]+$",
+      "enum": [
+        "read:stats",
+        "read:queues",
+        "read:jobs",
+        "write:enqueue",
+        "write:requeue",
+        "write:modify",
+        "admin:purge",
+        "admin:delete",
+        "admin:system"
+      ]
+    },
+    "ResourceLimits": {
+      "type": "object",
+      "title": "Resource Limits",
+      "description": "Resource consumption limits for the plugin",
+      "properties": {
+        "max_memory_mb": {
+          "type": "integer",
+          "description": "Maximum memory in megabytes",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        },
+        "max_cpu_ms": {
+          "type": "integer",
+          "description": "Maximum CPU time per event in milliseconds",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "description": "Maximum execution time per call in milliseconds",
+          "minimum": 100,
+          "maximum": 10000,
+          "default": 5000
+        },
+        "max_state_mb": {
+          "type": "integer",
+          "description": "Maximum persistent state storage in megabytes",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10
+        },
+        "max_api_calls_per_minute": {
+          "type": "integer",
+          "description": "Maximum API calls per minute",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "UIConfiguration": {
+      "type": "object",
+      "title": "UI Configuration",
+      "description": "User interface settings for the plugin panel",
+      "properties": {
+        "panel_position": {
+          "type": "string",
+          "description": "Default panel position",
+          "enum": ["left", "right", "bottom"],
+          "default": "right"
+        },
+        "default_width": {
+          "type": "integer",
+          "description": "Default panel width in characters",
+          "minimum": 10,
+          "maximum": 200,
+          "default": 40
+        },
+        "default_height": {
+          "type": "integer",
+          "description": "Default panel height in lines",
+          "minimum": 5,
+          "maximum": 100,
+          "default": 20
+        },
+        "resizable": {
+          "type": "boolean",
+          "description": "Allow user to resize the panel",
+          "default": true
+        },
+        "focusable": {
+          "type": "boolean",
+          "description": "Panel can receive keyboard focus",
+          "default": true
+        },
+        "title": {
+          "type": "string",
+          "description": "Default panel title",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginDependency": {
+      "type": "object",
+      "title": "Plugin Dependency",
+      "description": "Dependency on another plugin",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Plugin name",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version constraint",
+          "pattern": "^(\\^|~|>=?|<=?|=)?\\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginState": {
+      "type": "object",
+      "title": "Plugin State",
+      "description": "Plugin runtime state and metadata",
+      "required": [
+        "plugin_id",
+        "version",
+        "status",
+        "loaded_at"
+      ],
+      "properties": {
+        "plugin_id": {
+          "type": "string",
+          "description": "Unique plugin instance identifier",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "description": "Plugin name from manifest"
+        },
+        "version": {
+          "type": "string",
+          "description": "Plugin version"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current plugin status",
+          "enum": [
+            "loading",
+            "running",
+            "suspended",
+            "crashed",
+            "disabled"
+          ]
+        },
+        "loaded_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Plugin load timestamp"
+        },
+        "last_activity": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last plugin activity timestamp"
+        },
+        "granted_capabilities": {
+          "type": "array",
+          "description": "List of granted capabilities",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          }
+        },
+        "resource_usage": {
+          "$ref": "#/definitions/ResourceUsage"
+        },
+        "error": {
+          "type": "string",
+          "description": "Last error message if crashed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResourceUsage": {
+      "type": "object",
+      "title": "Resource Usage",
+      "description": "Current resource consumption metrics",
+      "properties": {
+        "memory_bytes": {
+          "type": "integer",
+          "description": "Current memory usage in bytes",
+          "minimum": 0
+        },
+        "cpu_ms_total": {
+          "type": "integer",
+          "description": "Total CPU time consumed in milliseconds",
+          "minimum": 0
+        },
+        "api_calls_count": {
+          "type": "integer",
+          "description": "Total API calls made",
+          "minimum": 0
+        },
+        "api_calls_last_minute": {
+          "type": "integer",
+          "description": "API calls in the last minute",
+          "minimum": 0
+        },
+        "state_bytes": {
+          "type": "integer",
+          "description": "Persistent state storage used in bytes",
+          "minimum": 0
+        },
+        "events_received": {
+          "type": "integer",
+          "description": "Total events received",
+          "minimum": 0
+        },
+        "events_processed": {
+          "type": "integer",
+          "description": "Total events successfully processed",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginEvent": {
+      "type": "object",
+      "title": "Plugin Event",
+      "description": "Base event structure for plugin communication",
+      "required": ["id", "type", "timestamp"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique event identifier"
+        },
+        "type": {
+          "$ref": "#/definitions/EventType"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp"
+        },
+        "source": {
+          "type": "string",
+          "description": "Event source identifier"
+        },
+        "data": {
+          "type": "object",
+          "description": "Event-specific data",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventType": {
+      "type": "string",
+      "title": "Event Type",
+      "description": "Types of events plugins can subscribe to",
+      "enum": [
+        "stats_update",
+        "queue_change",
+        "job_selection",
+        "key_press",
+        "timer",
+        "focus_change",
+        "resize",
+        "plugin_message"
+      ]
+    },
+    "PluginMessage": {
+      "type": "object",
+      "title": "Plugin Message",
+      "description": "Inter-plugin communication message",
+      "required": ["from", "to", "type", "payload"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source plugin name"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target plugin name or '*' for broadcast"
+        },
+        "type": {
+          "type": "string",
+          "description": "Message type identifier"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Message payload",
+          "additionalProperties": true
+        },
+        "reply_to": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Original message ID if this is a reply"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginCapabilityGrant": {
+      "type": "object",
+      "title": "Plugin Capability Grant",
+      "description": "User's capability grant decision for a plugin",
+      "required": [
+        "plugin_name",
+        "plugin_version",
+        "capabilities",
+        "granted_at",
+        "granted_by"
+      ],
+      "properties": {
+        "plugin_name": {
+          "type": "string",
+          "description": "Plugin name"
+        },
+        "plugin_version": {
+          "type": "string",
+          "description": "Plugin version this grant applies to"
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Granted capabilities",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          }
+        },
+        "denied_capabilities": {
+          "type": "array",
+          "description": "Explicitly denied capabilities",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          }
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Grant timestamp"
+        },
+        "granted_by": {
+          "type": "string",
+          "description": "User who granted the capabilities"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional expiration time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes about the grant"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginAuditLog": {
+      "type": "object",
+      "title": "Plugin Audit Log",
+      "description": "Audit log entry for plugin actions",
+      "required": [
+        "timestamp",
+        "plugin_name",
+        "plugin_version",
+        "action",
+        "result"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "plugin_name": {
+          "type": "string"
+        },
+        "plugin_version": {
+          "type": "string"
+        },
+        "plugin_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action performed",
+          "enum": [
+            "plugin_load",
+            "plugin_unload",
+            "plugin_crash",
+            "api_call",
+            "capability_request",
+            "capability_denied",
+            "resource_limit_exceeded",
+            "state_access"
+          ]
+        },
+        "api_method": {
+          "type": "string",
+          "description": "API method called (for api_call actions)"
+        },
+        "capability_used": {
+          "$ref": "#/definitions/Capability"
+        },
+        "result": {
+          "type": "string",
+          "enum": ["success", "failure", "denied"]
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if failed"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "description": "Operation duration in milliseconds",
+          "minimum": 0
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional action-specific data",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "UIRenderCommand": {
+      "type": "object",
+      "title": "UI Render Command",
+      "description": "Command to update plugin panel display",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "clear",
+            "write",
+            "writeLine",
+            "setPosition",
+            "table",
+            "chart",
+            "form",
+            "menu"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "description": "Text content for write operations"
+        },
+        "style": {
+          "$ref": "#/definitions/TextStyle"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "y": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Data for complex render types (tables, charts)",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "TextStyle": {
+      "type": "object",
+      "title": "Text Style",
+      "description": "Text styling properties",
+      "properties": {
+        "foreground": {
+          "$ref": "#/definitions/Color"
+        },
+        "background": {
+          "$ref": "#/definitions/Color"
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "strikethrough": {
+          "type": "boolean"
+        },
+        "blink": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Color": {
+      "type": "string",
+      "title": "Color",
+      "description": "Terminal color",
+      "oneOf": [
+        {
+          "enum": [
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+            "default"
+          ]
+        },
+        {
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Hex color for terminals that support it"
+        }
+      ]
+    },
+    "PluginConfiguration": {
+      "type": "object",
+      "title": "Plugin Configuration",
+      "description": "User-provided plugin configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the plugin is enabled",
+          "default": true
+        },
+        "auto_load": {
+          "type": "boolean",
+          "description": "Automatically load on startup",
+          "default": true
+        },
+        "config": {
+          "type": "object",
+          "description": "Plugin-specific configuration matching config_schema",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

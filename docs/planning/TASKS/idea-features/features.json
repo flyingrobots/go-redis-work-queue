@@ -1,0 +1,564 @@
+{
+  "meta": {
+    "generated_at": "2025-09-14T16:20:16.398141",
+    "feature_count": 37,
+    "artifact_hash": "2ee626e4fe8fcb811ff33352b19555ed3338ab0f482e142d47e646135046e1f5"
+  },
+  "features": [
+    {
+      "id": "F001",
+      "title": "Admin Api",
+      "description": "Implement admin-api capability for the Redis work queue system",
+      "priority": "P1",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/admin-api.md",
+          "excerpt": "Feature specification for admin-api",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F002",
+      "title": "Multi Cluster Control",
+      "description": "Implement multi-cluster-control capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/multi-cluster-control.md",
+          "excerpt": "Feature specification for multi-cluster-control",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F003",
+      "title": "Visual Dag Builder",
+      "description": "Implement visual-dag-builder capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/visual-dag-builder.md",
+          "excerpt": "Feature specification for visual-dag-builder",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F004",
+      "title": "Distributed Tracing Integration",
+      "description": "Implement distributed-tracing-integration capability for the Redis work queue system",
+      "priority": "P1",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/distributed-tracing-integration.md",
+          "excerpt": "Feature specification for distributed-tracing-integration",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F005",
+      "title": "Plugin Panel System",
+      "description": "Implement plugin-panel-system capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/plugin-panel-system.md",
+          "excerpt": "Feature specification for plugin-panel-system",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F006",
+      "title": "Time Travel Debugger",
+      "description": "Implement time-travel-debugger capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/time-travel-debugger.md",
+          "excerpt": "Feature specification for time-travel-debugger",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F007",
+      "title": "Exactly Once Patterns",
+      "description": "Implement exactly-once-patterns capability for the Redis work queue system",
+      "priority": "P1",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/exactly-once-patterns.md",
+          "excerpt": "Feature specification for exactly-once-patterns",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F008",
+      "title": "Rbac And Tokens",
+      "description": "Implement rbac-and-tokens capability for the Redis work queue system",
+      "priority": "P1",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/rbac-and-tokens.md",
+          "excerpt": "Feature specification for rbac-and-tokens",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F009",
+      "title": "Chaos Harness",
+      "description": "Implement chaos-harness capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/chaos-harness.md",
+          "excerpt": "Feature specification for chaos-harness",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F010",
+      "title": "Anomaly Radar Slo Budget",
+      "description": "Implement anomaly-radar-slo-budget capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/anomaly-radar-slo-budget.md",
+          "excerpt": "Feature specification for anomaly-radar-slo-budget",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F011",
+      "title": "Automatic Capacity Planning",
+      "description": "Implement automatic-capacity-planning capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/automatic-capacity-planning.md",
+          "excerpt": "Feature specification for automatic-capacity-planning",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F012",
+      "title": "Kubernetes Operator",
+      "description": "Implement kubernetes-operator capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/kubernetes-operator.md",
+          "excerpt": "Feature specification for kubernetes-operator",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F013",
+      "title": "Canary Deployments",
+      "description": "Implement canary-deployments capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/canary-deployments.md",
+          "excerpt": "Feature specification for canary-deployments",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F014",
+      "title": "Event Hooks",
+      "description": "Implement event-hooks capability for the Redis work queue system",
+      "priority": "P1",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/event-hooks.md",
+          "excerpt": "Feature specification for event-hooks",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F015",
+      "title": "Smart Payload Deduplication",
+      "description": "Implement smart-payload-deduplication capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/smart-payload-deduplication.md",
+          "excerpt": "Feature specification for smart-payload-deduplication",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F016",
+      "title": "Job Budgeting",
+      "description": "Implement job-budgeting capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/job-budgeting.md",
+          "excerpt": "Feature specification for job-budgeting",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F017",
+      "title": "Job Genealogy Navigator",
+      "description": "Implement job-genealogy-navigator capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/job-genealogy-navigator.md",
+          "excerpt": "Feature specification for job-genealogy-navigator",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F018",
+      "title": "Long Term Archives",
+      "description": "Implement long-term-archives capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/long-term-archives.md",
+          "excerpt": "Feature specification for long-term-archives",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F019",
+      "title": "Forecasting",
+      "description": "Implement forecasting capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/forecasting.md",
+          "excerpt": "Feature specification for forecasting",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F020",
+      "title": "Multi Tenant Isolation",
+      "description": "Implement multi-tenant-isolation capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/multi-tenant-isolation.md",
+          "excerpt": "Feature specification for multi-tenant-isolation",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F021",
+      "title": "Producer Backpressure",
+      "description": "Implement producer-backpressure capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/producer-backpressure.md",
+          "excerpt": "Feature specification for producer-backpressure",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F022",
+      "title": "Queue Snapshot Testing",
+      "description": "Implement queue-snapshot-testing capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/queue-snapshot-testing.md",
+          "excerpt": "Feature specification for queue-snapshot-testing",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F023",
+      "title": "Smart Retry Strategies",
+      "description": "Implement smart-retry-strategies capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/smart-retry-strategies.md",
+          "excerpt": "Feature specification for smart-retry-strategies",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F024",
+      "title": "Storage Backends",
+      "description": "Implement storage-backends capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/storage-backends.md",
+          "excerpt": "Feature specification for storage-backends",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F025",
+      "title": "Terminal Voice Commands",
+      "description": "Implement terminal-voice-commands capability for the Redis work queue system",
+      "priority": "P4",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/terminal-voice-commands.md",
+          "excerpt": "Feature specification for terminal-voice-commands",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F026",
+      "title": "Theme Playground",
+      "description": "Implement theme-playground capability for the Redis work queue system",
+      "priority": "P4",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/theme-playground.md",
+          "excerpt": "Feature specification for theme-playground",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F027",
+      "title": "Trace Drilldown Log Tail",
+      "description": "Implement trace-drilldown-log-tail capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/trace-drilldown-log-tail.md",
+          "excerpt": "Feature specification for trace-drilldown-log-tail",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F028",
+      "title": "Dlq Remediation Ui",
+      "description": "Implement dlq-remediation-ui capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/dlq-remediation-ui.md",
+          "excerpt": "Feature specification for dlq-remediation-ui",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F029",
+      "title": "Dlq Remediation Pipeline",
+      "description": "Implement dlq-remediation-pipeline capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/dlq-remediation-pipeline.md",
+          "excerpt": "Feature specification for dlq-remediation-pipeline",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F030",
+      "title": "Patterned Load Generator",
+      "description": "Implement patterned-load-generator capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/patterned-load-generator.md",
+          "excerpt": "Feature specification for patterned-load-generator",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F031",
+      "title": "Policy Simulator",
+      "description": "Implement policy-simulator capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/policy-simulator.md",
+          "excerpt": "Feature specification for policy-simulator",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F032",
+      "title": "Advanced Rate Limiting",
+      "description": "Implement advanced-rate-limiting capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/advanced-rate-limiting.md",
+          "excerpt": "Feature specification for advanced-rate-limiting",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F033",
+      "title": "Calendar View",
+      "description": "Implement calendar-view capability for the Redis work queue system",
+      "priority": "P4",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/calendar-view.md",
+          "excerpt": "Feature specification for calendar-view",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F034",
+      "title": "Collaborative Session",
+      "description": "Implement collaborative-session capability for the Redis work queue system",
+      "priority": "P4",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/collaborative-session.md",
+          "excerpt": "Feature specification for collaborative-session",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F035",
+      "title": "Json Payload Studio",
+      "description": "Implement json-payload-studio capability for the Redis work queue system",
+      "priority": "P3",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/json-payload-studio.md",
+          "excerpt": "Feature specification for json-payload-studio",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F036",
+      "title": "Worker Fleet Controls",
+      "description": "Implement worker-fleet-controls capability for the Redis work queue system",
+      "priority": "P2",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/worker-fleet-controls.md",
+          "excerpt": "Feature specification for worker-fleet-controls",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    },
+    {
+      "id": "F037",
+      "title": "Right Click Context Menus",
+      "description": "Implement right-click-context-menus capability for the Redis work queue system",
+      "priority": "P4",
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/right-click-context-menus.md",
+          "excerpt": "Feature specification for right-click-context-menus",
+          "confidence": 1.0,
+          "rationale": "Primary feature specification document"
+        }
+      ]
+    }
+  ]
+}

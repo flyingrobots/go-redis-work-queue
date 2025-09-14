@@ -1,0 +1,765 @@
+openapi: 3.0.3
+info:
+  title: Plugin Panel System API
+  description: |
+    API specification for the Plugin Panel System that enables custom panels within the TUI.
+
+    This API is exposed to plugins running in sandboxed environments (WASM, Lua, Starlark)
+    and provides controlled access to system resources through capability-based permissions.
+
+    ## Security Model
+    All API calls are subject to capability checks. Plugins must declare required capabilities
+    in their manifest, and users must grant these capabilities before plugins can access the APIs.
+
+    ## Rate Limiting
+    Plugin API calls are rate-limited to prevent resource exhaustion.
+  version: 1.0.0
+  contact:
+    name: Plugin API Support
+    email: plugins@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: plugin://host/api/v1
+    description: Plugin host API (internal)
+
+tags:
+  - name: Events
+    description: Event subscription and handling
+  - name: Admin
+    description: Administrative operations (capability-gated)
+  - name: UI
+    description: User interface rendering
+  - name: State
+    description: Plugin state management
+  - name: System
+    description: System and plugin information
+
+paths:
+  /events/subscribe:
+    post:
+      tags:
+        - Events
+      summary: Subscribe to system events
+      description: Subscribe to receive specific types of system events
+      operationId: subscribeEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - events
+              properties:
+                events:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EventType'
+                  minItems: 1
+                  uniqueItems: true
+      responses:
+        '200':
+          description: Successfully subscribed to events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /events/unsubscribe:
+    post:
+      tags:
+        - Events
+      summary: Unsubscribe from events
+      description: Stop receiving specific event types
+      operationId: unsubscribeEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subscription_id
+              properties:
+                subscription_id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Successfully unsubscribed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get queue statistics
+      description: |
+        Retrieve current queue statistics.
+        Requires 'read:stats' capability.
+      operationId: getStats
+      security:
+        - capabilities: [read:stats]
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /admin/peek/{queue}:
+    get:
+      tags:
+        - Admin
+      summary: Peek at queue contents
+      description: |
+        View jobs in a queue without consuming them.
+        Requires 'read:queues' capability.
+      operationId: peekQueue
+      security:
+        - capabilities: [read:queues]
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Queue contents retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeekResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/enqueue:
+    post:
+      tags:
+        - Admin
+      summary: Enqueue a new job
+      description: |
+        Add a new job to a queue.
+        Requires 'write:enqueue' capability.
+      operationId: enqueueJob
+      security:
+        - capabilities: [write:enqueue]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnqueueRequest'
+      responses:
+        '201':
+          description: Job enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/requeue/{jobId}:
+    post:
+      tags:
+        - Admin
+      summary: Requeue a job
+      description: |
+        Move a job back to its original queue for retry.
+        Requires 'write:requeue' capability.
+      operationId: requeueJob
+      security:
+        - capabilities: [write:requeue]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Job requeued successfully
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/purge/{queue}:
+    delete:
+      tags:
+        - Admin
+      summary: Purge a queue
+      description: |
+        Delete all jobs from a queue. This is a destructive operation.
+        Requires 'admin:purge' capability.
+      operationId: purgeQueue
+      security:
+        - capabilities: [admin:purge]
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Queue purged successfully
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ui/panel:
+    put:
+      tags:
+        - UI
+      summary: Update panel properties
+      description: Set panel title, size, and position
+      operationId: updatePanel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelUpdate'
+      responses:
+        '200':
+          description: Panel updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /ui/render:
+    post:
+      tags:
+        - UI
+      summary: Render content to panel
+      description: Send rendering commands to update panel display
+      operationId: renderContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderCommand'
+      responses:
+        '200':
+          description: Content rendered successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /ui/notification:
+    post:
+      tags:
+        - UI
+      summary: Show notification
+      description: Display a notification message to the user
+      operationId: showNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+      responses:
+        '204':
+          description: Notification displayed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /state/{key}:
+    get:
+      tags:
+        - State
+      summary: Get plugin state
+      description: Retrieve a value from plugin's persistent state
+      operationId: getState
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+      responses:
+        '200':
+          description: State value retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    description: The stored value
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - State
+      summary: Set plugin state
+      description: Store a value in plugin's persistent state
+      operationId: setState
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value:
+                  description: The value to store
+      responses:
+        '204':
+          description: State value stored
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '507':
+          description: Storage quota exceeded
+
+    delete:
+      tags:
+        - State
+      summary: Delete plugin state
+      description: Remove a value from plugin's persistent state
+      operationId: deleteState
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+      responses:
+        '204':
+          description: State value deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /system/info:
+    get:
+      tags:
+        - System
+      summary: Get system information
+      description: Retrieve information about the host system and plugin runtime
+      operationId: getSystemInfo
+      responses:
+        '200':
+          description: System information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfo'
+
+  /system/capabilities:
+    get:
+      tags:
+        - System
+      summary: Get granted capabilities
+      description: List capabilities granted to this plugin
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Capabilities retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
+
+components:
+  securitySchemes:
+    capabilities:
+      type: apiKey
+      in: header
+      name: X-Plugin-Capability
+      description: Capability-based authorization
+
+  schemas:
+    EventType:
+      type: string
+      enum:
+        - stats_update
+        - queue_change
+        - job_selection
+        - key_press
+        - timer
+        - focus_change
+        - resize
+
+    Event:
+      type: object
+      required:
+        - id
+        - type
+        - timestamp
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/EventType'
+        timestamp:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: type
+
+    StatsEvent:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/StatsResult'
+
+    QueueChangeEvent:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            queue:
+              type: string
+            operation:
+              type: string
+              enum: [enqueue, dequeue, purge]
+            jobId:
+              type: string
+            oldLength:
+              type: integer
+            newLength:
+              type: integer
+
+    KeyEvent:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            key:
+              type: string
+            modifiers:
+              type: array
+              items:
+                type: string
+                enum: [ctrl, alt, shift, meta]
+            panelFocused:
+              type: boolean
+
+    SubscriptionResponse:
+      type: object
+      required:
+        - subscription_id
+        - events
+      properties:
+        subscription_id:
+          type: string
+          format: uuid
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+
+    StatsResult:
+      type: object
+      properties:
+        queues:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              length:
+                type: integer
+              key:
+                type: string
+        workers:
+          type: object
+          properties:
+            active:
+              type: integer
+            heartbeats:
+              type: integer
+        processing:
+          type: object
+          properties:
+            lists:
+              type: integer
+            items:
+              type: integer
+
+    PeekResult:
+      type: object
+      properties:
+        queue:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobPayload'
+
+    JobPayload:
+      type: object
+      required:
+        - id
+        - filepath
+        - filesize
+        - priority
+        - retries
+        - creation_time
+      properties:
+        id:
+          type: string
+        filepath:
+          type: string
+        filesize:
+          type: integer
+        priority:
+          type: string
+          enum: [high, low]
+        retries:
+          type: integer
+        creation_time:
+          type: string
+          format: date-time
+        trace_id:
+          type: string
+        span_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    EnqueueRequest:
+      type: object
+      required:
+        - queue
+        - payload
+      properties:
+        queue:
+          type: string
+        payload:
+          $ref: '#/components/schemas/JobPayload'
+
+    EnqueueResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        queue:
+          type: string
+
+    PanelUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        width:
+          type: integer
+          minimum: 10
+          maximum: 200
+        height:
+          type: integer
+          minimum: 5
+          maximum: 100
+        position:
+          type: string
+          enum: [left, right, bottom]
+
+    RenderCommand:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [clear, write, writeLine, table, chart, form]
+        content:
+          type: string
+        style:
+          $ref: '#/components/schemas/TextStyle'
+        data:
+          type: object
+          description: Additional data for complex render types
+
+    TextStyle:
+      type: object
+      properties:
+        foreground:
+          type: string
+          enum: [black, red, green, yellow, blue, magenta, cyan, white]
+        background:
+          type: string
+          enum: [black, red, green, yellow, blue, magenta, cyan, white]
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        underline:
+          type: boolean
+
+    Notification:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          maxLength: 500
+        type:
+          type: string
+          enum: [info, success, warning, error]
+          default: info
+        duration_ms:
+          type: integer
+          minimum: 1000
+          maximum: 10000
+          default: 3000
+
+    SystemInfo:
+      type: object
+      properties:
+        host_version:
+          type: string
+        api_version:
+          type: string
+        runtime:
+          type: string
+          enum: [wasm, lua, starlark]
+        plugin_id:
+          type: string
+        plugin_version:
+          type: string
+        uptime_seconds:
+          type: integer
+        resource_usage:
+          type: object
+          properties:
+            memory_bytes:
+              type: integer
+            cpu_ms:
+              type: integer
+            state_bytes:
+              type: integer
+
+    CapabilitiesResponse:
+      type: object
+      properties:
+        granted:
+          type: array
+          items:
+            type: string
+          description: List of granted capabilities
+        requested:
+          type: array
+          items:
+            type: string
+          description: List of requested capabilities from manifest
+        denied:
+          type: array
+          items:
+            type: string
+          description: List of explicitly denied capabilities
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - CAPABILITY_DENIED
+                - RATE_LIMIT_EXCEEDED
+                - INVALID_REQUEST
+                - NOT_FOUND
+                - QUOTA_EXCEEDED
+                - INTERNAL_ERROR
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Capability not granted
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CAPABILITY_DENIED
+              message: "Plugin lacks required capability: write:enqueue"
+              details:
+                required: write:enqueue
+                granted: [read:stats, read:queues]
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          schema:
+            type: string
+            format: date-time

@@ -1,0 +1,228 @@
+{
+  "task_id": "P4.T082",
+  "created_at": "2025-09-14T19:41:47.150079Z",
+  "task": {
+    "id": "P4.T082",
+    "feature_id": "F034",
+    "title": "Implement Collaborative Session",
+    "description": "Implement task for Collaborative Session",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "~ LoC",
+        "breakdown": "Core logic (60%), Tests (25%), Integration (15%)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "All functions implemented per specification",
+          "Unit tests passing with 80% coverage",
+          "Integration tests passing",
+          "Code reviewed and approved",
+          "Documentation updated",
+          "No linting errors",
+          "Performance benchmarks met",
+          "Read\u2011only viewing with smooth updates under typical terminal sizes.",
+          "Secure token\u2011based auth with expiry; control handoff flow.",
+          "Redaction of configured secrets in frames."
+        ],
+        "stop_when": "Core functionality complete; do NOT add extra features"
+      },
+      "scope": {
+        "includes": [
+          "internal/collaborative-session/",
+          "internal/collaborative-session/*_test.go",
+          "docs/api/collaborative-session.md"
+        ],
+        "excludes": [
+          "UI unless specified",
+          "deployment configs"
+        ],
+        "restrictions": "Follow existing code patterns and style guide"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "setup",
+          "at_percent": 10,
+          "description": "Module structure created"
+        },
+        {
+          "id": "core",
+          "at_percent": 40,
+          "description": "Core logic implemented"
+        },
+        {
+          "id": "integration",
+          "at_percent": 60,
+          "description": "Integration complete"
+        },
+        {
+          "id": "tests",
+          "at_percent": 80,
+          "description": "Tests passing"
+        },
+        {
+          "id": "docs",
+          "at_percent": 100,
+          "description": "Documentation complete"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 1024,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 2048,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "golang",
+        "backend",
+        "redis"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "medium",
+      "preemptible": true,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 8,
+      "mostLikely": 16,
+      "pessimistic": 24
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Read\u2011only viewing with smooth updates under typical terminal sizes.",
+        "script": "test_p4.t082.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Secure token\u2011based auth with expiry; control handoff flow.",
+        "script": "test_p4.t082.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Redaction of configured secrets in frames.",
+        "script": "test_p4.t082.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Session server + transport",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Presenter/observer UI + handoff",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/collaborative-session.md",
+        "excerpt": "Share a read\u2011only live TUI session over the network. A presenter can invite observers to follow along; optionally hand control with a key press. Perfect for incident reviews, pairing, and demos\u2014withou",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "implementation_checklist": [
+        "Session server + transport",
+        "Presenter/observer UI + handoff",
+        "Token auth + expiry",
+        "Redaction + metrics",
+        "Docs + demo scripts"
+      ],
+      "technical_approach": [
+        "Architecture:",
+        "Session host multiplexes TUI output and input events over a secure transport.",
+        "Observers receive frame deltas; optional control token to accept input.",
+        "Transport & security:",
+        "Default: SSH port forwarding or WebSocket over TLS to a small embedded server.",
+        "Auth: one\u2011time session token with expiry; optional mTLS.",
+        "Permissions: read\u2011only by default; control handoff requires explicit approval.",
+        "TUI integration:",
+        "Presenter mode indicator; participant list; handoff prompt; control timeout.",
+        "Frame capture with minimal diff encoding (lines changed per tick) to keep CPU low.",
+        "Observability:",
+        "Session logs: joins/leaves, handoffs, duration.",
+        "Metrics: active sessions, participants, bandwidth.",
+        "Safety: redact sensitive values in frames (configurable patterns) before broadcast."
+      ],
+      "code_structure": {
+        "main_package": "internal/collaborative-session",
+        "files": [
+          "collaborative-session.go - Main implementation",
+          "types.go - Data structures",
+          "handlers.go - Request handlers",
+          "errors.go - Custom errors",
+          "config.go - Configuration"
+        ]
+      }
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P4.T082.json",
+    "on_failure": "Move this file to failed-tasks/P4.T082.json",
+    "on_help_needed": "Move to help-me/P4.T082.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

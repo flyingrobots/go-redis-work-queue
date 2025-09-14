@@ -85,16 +85,53 @@ func (p *Producer) Run(ctx context.Context) error {
 		}
 		prio := p.priorityForExt(filepath.Ext(path))
 		id := randID()
-		traceID, spanID := randTraceAndSpan()
+
+		// Start enqueue span for tracing
+		enqCtx, enqSpan := obs.StartEnqueueSpan(ctx, p.cfg.Worker.Queues[prio], prio)
+
+		// Get trace and span IDs from the current context
+		traceID, spanID := obs.GetTraceAndSpanID(enqCtx)
+		if traceID == "" {
+			// Fallback to random IDs if no active trace
+			traceID, spanID = randTraceAndSpan()
+		}
+
 		j := queue.NewJob(id, abs, fi.Size(), prio, traceID, spanID)
+
+		// Add span attributes
+		obs.AddSpanAttributes(enqCtx,
+			obs.KeyValue("job.id", j.ID),
+			obs.KeyValue("job.filepath", abs),
+			obs.KeyValue("job.filesize", fi.Size()),
+			obs.KeyValue("job.priority", prio),
+		)
+
 		payload, _ := j.Marshal()
 		key := p.cfg.Worker.Queues[prio]
 		if key == "" {
 			key = p.cfg.Worker.Queues[p.cfg.Producer.DefaultPriority]
 		}
-		if err := p.rdb.LPush(ctx, key, payload).Err(); err != nil {
+
+		// Add event before enqueue
+		obs.AddEvent(enqCtx, "enqueueing_job",
+			obs.KeyValue("queue", key),
+			obs.KeyValue("job_id", j.ID),
+		)
+
+		if err := p.rdb.LPush(enqCtx, key, payload).Err(); err != nil {
+			obs.RecordError(enqCtx, err)
+			enqSpan.End()
 			return err
 		}
+
+		// Mark span as successful
+		obs.SetSpanSuccess(enqCtx)
+		obs.AddEvent(enqCtx, "job_enqueued",
+			obs.KeyValue("queue", key),
+			obs.KeyValue("job_id", j.ID),
+		)
+		enqSpan.End()
+
 		obs.JobsProduced.Inc()
 		p.log.Info("enqueued job", obs.String("id", j.ID), obs.String("queue", key), obs.String("trace_id", j.TraceID), obs.String("span_id", j.SpanID))
 		return nil

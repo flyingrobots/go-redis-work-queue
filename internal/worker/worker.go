@@ -91,11 +91,18 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 			if key == "" {
 				continue
 			}
-			v, err := w.rdb.BRPopLPush(ctx, key, procList, w.cfg.Worker.BRPopLPushTimeout).Result()
+
+			// Start dequeue span
+			deqCtx, deqSpan := obs.StartDequeueSpan(ctx, key)
+
+			v, err := w.rdb.BRPopLPush(deqCtx, key, procList, w.cfg.Worker.BRPopLPushTimeout).Result()
 			if err == redis.Nil {
+				deqSpan.End()
 				continue
 			}
 			if err != nil {
+				obs.RecordError(deqCtx, err)
+				deqSpan.End()
 				if ctx.Err() != nil {
 					return
 				}
@@ -103,6 +110,12 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 				time.Sleep(50 * time.Millisecond)
 				continue
 			}
+
+			// Successfully dequeued
+			obs.SetSpanSuccess(deqCtx)
+			obs.AddEvent(deqCtx, "job_dequeued", obs.KeyValue("queue", key))
+			deqSpan.End()
+
 			payload = v
 			srcQueue = key
 			break
@@ -142,9 +155,25 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	ctx, span := obs.ContextWithJobSpan(ctx, job)
 	defer span.End()
 
+	// Add worker and queue attributes
+	obs.AddSpanAttributes(ctx,
+		obs.KeyValue("worker.id", workerID),
+		obs.KeyValue("queue.source", srcQueue),
+		obs.KeyValue("processing.list", procList),
+	)
+
+	// Add processing started event
+	obs.AddEvent(ctx, "job.processing.started",
+		obs.KeyValue("job.id", job.ID),
+		obs.KeyValue("worker.id", workerID),
+	)
+
 	// Simulated processing: sleep based on filesize with cancellable timer
 	dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
 	canceled := false
+
+	processingStart := time.Now()
+
 	if dur > 0 {
 		timer := time.NewTimer(dur)
 		defer func() {
@@ -165,13 +194,24 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 		}
 	}
 
+	processingDuration := time.Since(processingStart)
+	obs.AddSpanAttributes(ctx, obs.KeyValue("processing.duration_ms", processingDuration.Milliseconds()))
+
 	// For demonstration, consider processing success unless canceled or filename contains "fail"
 	success := !canceled && !strings.Contains(strings.ToLower(job.FilePath), "fail")
 
 	if success {
+		// Mark span as successful
+		obs.SetSpanSuccess(ctx)
+		obs.AddEvent(ctx, "job.processing.completed",
+			obs.KeyValue("job.id", job.ID),
+			obs.KeyValue("duration_ms", processingDuration.Milliseconds()),
+		)
+
 		// complete
 		if err := w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err(); err != nil {
 			w.log.Error("LPUSH completed failed", obs.Err(err))
+			obs.RecordError(ctx, err)
 		}
 		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 			w.log.Error("LREM processing failed", obs.Err(err))
@@ -186,6 +226,19 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 
 	// failure path with retry
 	obs.JobsFailed.Inc()
+
+	// Record failure in span
+	failureReason := "processing_failed"
+	if canceled {
+		failureReason = "canceled"
+	}
+	obs.RecordError(ctx, fmt.Errorf(failureReason))
+	obs.AddEvent(ctx, "job.processing.failed",
+		obs.KeyValue("job.id", job.ID),
+		obs.KeyValue("reason", failureReason),
+		obs.KeyValue("retries", job.Retries),
+	)
+
 	job.Retries++
 	// backoff
 	bo := backoff(job.Retries, w.cfg.Worker.Backoff.Base, w.cfg.Worker.Backoff.Max)
@@ -196,9 +249,16 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 
 	if job.Retries <= w.cfg.Worker.MaxRetries {
 		obs.JobsRetried.Inc()
+		obs.AddEvent(ctx, "job.retrying",
+			obs.KeyValue("job.id", job.ID),
+			obs.KeyValue("retry_count", job.Retries),
+			obs.KeyValue("backoff_ms", bo.Milliseconds()),
+		)
+
 		payload2, _ := job.Marshal()
 		if err := w.rdb.LPush(ctx, srcQueue, payload2).Err(); err != nil {
 			w.log.Error("LPUSH retry failed", obs.Err(err))
+			obs.RecordError(ctx, err)
 		}
 		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 			w.log.Error("LREM processing failed", obs.Err(err))
@@ -211,8 +271,14 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	}
 
 	// dead letter
+	obs.AddEvent(ctx, "job.dead_lettered",
+		obs.KeyValue("job.id", job.ID),
+		obs.KeyValue("max_retries_exceeded", true),
+	)
+
 	if err := w.rdb.LPush(ctx, w.cfg.Worker.DeadLetterList, payload).Err(); err != nil {
 		w.log.Error("LPUSH DLQ failed", obs.Err(err))
+		obs.RecordError(ctx, err)
 	}
 	if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 		w.log.Error("LREM processing failed", obs.Err(err))

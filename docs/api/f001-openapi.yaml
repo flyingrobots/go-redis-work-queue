@@ -1,0 +1,623 @@
+openapi: 3.0.3
+info:
+  title: Go Redis Work Queue Admin API
+  description: |
+    Administrative API for managing and monitoring the go-redis-work-queue system.
+
+    ## Authentication
+    All endpoints require a bearer token in the Authorization header.
+
+    ## Rate Limiting
+    API endpoints are rate-limited per user. Rate limit information is returned in response headers.
+
+    ## Versioning
+    This API uses URL versioning. The current version is v1.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/api/v1
+    description: Production server
+  - url: https://staging-api.example.com/api/v1
+    description: Staging server
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Statistics
+    description: Queue and system statistics
+  - name: Operations
+    description: Queue operations and management
+  - name: Testing
+    description: Performance testing and benchmarking
+
+paths:
+  /stats:
+    get:
+      tags:
+        - Statistics
+      summary: Get queue statistics
+      description: Returns current statistics for all queues including processing lists and worker heartbeats
+      operationId: getStats
+      responses:
+        '200':
+          description: Successfully retrieved statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 100/minute
+
+  /stats/keys:
+    get:
+      tags:
+        - Statistics
+      summary: Get Redis key statistics
+      description: Returns detailed statistics about managed Redis keys
+      operationId: getStatsKeys
+      responses:
+        '200':
+          description: Successfully retrieved key statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 100/minute
+
+  /peek/{queue}:
+    get:
+      tags:
+        - Operations
+      summary: Peek at queue items
+      description: Non-destructively view items in a queue without consuming them
+      operationId: peekQueue
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          description: Queue identifier (high, low, completed, dead_letter, or full Redis key)
+          schema:
+            type: string
+            examples:
+              high:
+                value: high
+              low:
+                value: low
+              completed:
+                value: completed
+              dead_letter:
+                value: dead_letter
+              custom:
+                value: jobqueue:custom
+        - name: limit
+          in: query
+          required: false
+          description: Number of items to return (default 10, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Successfully retrieved queue items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeekResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 50/minute
+
+  /bench:
+    post:
+      tags:
+        - Testing
+      summary: Run benchmark test
+      description: |
+        Enqueues test jobs and measures throughput and latency.
+        This operation requires write permissions.
+      operationId: runBenchmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BenchmarkRequest'
+      responses:
+        '200':
+          description: Benchmark completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 10/minute
+      x-required-role: write
+
+  /queues/dlq:
+    delete:
+      tags:
+        - Operations
+      summary: Purge dead letter queue
+      description: |
+        Permanently deletes all items from the dead letter queue.
+        This is a destructive operation that requires admin permissions and confirmation.
+      operationId: purgeDLQ
+      parameters:
+        - name: X-Confirmation-Token
+          in: header
+          required: true
+          description: Confirmation token to prevent accidental deletion
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{32}$'
+      responses:
+        '204':
+          description: Dead letter queue purged successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 5/minute
+      x-required-role: admin
+      x-audit: true
+
+  /queues/all:
+    delete:
+      tags:
+        - Operations
+      summary: Purge all queues
+      description: |
+        Permanently deletes all items from all queues including processing lists and heartbeats.
+        This is an extremely destructive operation that requires admin permissions and double confirmation.
+      operationId: purgeAll
+      parameters:
+        - name: X-Confirmation-Token
+          in: header
+          required: true
+          description: Confirmation token to prevent accidental deletion
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{32}$'
+        - name: X-Double-Confirmation
+          in: header
+          required: true
+          description: Second confirmation required for this dangerous operation
+          schema:
+            type: string
+            enum: ['YES_DELETE_EVERYTHING']
+      responses:
+        '200':
+          description: All queues purged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      keys_deleted:
+                        type: integer
+                        description: Number of Redis keys deleted
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-rate-limit: 1/minute
+      x-required-role: admin
+      x-audit: true
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for API authentication
+
+  schemas:
+    ResponseMeta:
+      type: object
+      required:
+        - request_id
+        - timestamp
+        - version
+      properties:
+        request_id:
+          type: string
+          format: uuid
+          description: Unique request identifier for tracing
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp in RFC3339 format
+        version:
+          type: string
+          description: API version
+          example: v1
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - AUTH_REQUIRED
+            - AUTH_INVALID
+            - PERMISSION_DENIED
+            - RATE_LIMIT_EXCEEDED
+            - QUEUE_NOT_FOUND
+            - INVALID_REQUEST
+            - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+
+    StatsResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          required:
+            - queues
+            - processing
+            - workers
+          properties:
+            queues:
+              type: object
+              properties:
+                high:
+                  type: object
+                  properties:
+                    length:
+                      type: integer
+                      format: int64
+                      description: Number of items in queue
+                    key:
+                      type: string
+                      description: Redis key name
+                low:
+                  type: object
+                  properties:
+                    length:
+                      type: integer
+                      format: int64
+                    key:
+                      type: string
+                completed:
+                  type: object
+                  properties:
+                    length:
+                      type: integer
+                      format: int64
+                    key:
+                      type: string
+                dead_letter:
+                  type: object
+                  properties:
+                    length:
+                      type: integer
+                      format: int64
+                    key:
+                      type: string
+            processing:
+              type: object
+              properties:
+                lists:
+                  type: integer
+                  description: Number of processing lists
+                items:
+                  type: integer
+                  description: Total items being processed
+            workers:
+              type: object
+              properties:
+                active:
+                  type: integer
+                  description: Number of active workers
+                heartbeats:
+                  type: integer
+                  description: Number of worker heartbeats
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: 'null'
+
+    KeyStatsResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          required:
+            - queue_lengths
+            - processing_lists
+            - processing_items
+            - heartbeats
+          properties:
+            queue_lengths:
+              type: object
+              additionalProperties:
+                type: integer
+                format: int64
+              description: Map of queue names to their lengths
+            processing_lists:
+              type: integer
+              format: int64
+              description: Number of processing lists
+            processing_items:
+              type: integer
+              format: int64
+              description: Total items being processed
+            heartbeats:
+              type: integer
+              format: int64
+              description: Number of worker heartbeats
+            rate_limit_key:
+              type: string
+              description: Rate limiter Redis key
+            rate_limit_ttl:
+              type: string
+              description: Rate limiter TTL
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: 'null'
+
+    PeekResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          required:
+            - queue
+            - items
+          properties:
+            queue:
+              type: string
+              description: Redis key of the queue
+            items:
+              type: array
+              items:
+                type: string
+              description: Raw job payloads from the queue
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: 'null'
+
+    BenchmarkRequest:
+      type: object
+      required:
+        - priority
+        - count
+      properties:
+        priority:
+          type: string
+          description: Queue priority level
+          enum: [high, low]
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Number of jobs to enqueue
+        rate:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+          description: Jobs per second to enqueue
+        timeout:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 60
+          description: Maximum seconds to wait for completion
+
+    BenchmarkResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          required:
+            - count
+            - duration_ms
+            - throughput_jobs_per_sec
+          properties:
+            count:
+              type: integer
+              description: Number of jobs processed
+            duration_ms:
+              type: integer
+              description: Total duration in milliseconds
+            throughput_jobs_per_sec:
+              type: number
+              format: double
+              description: Jobs processed per second
+            p50_latency_ms:
+              type: integer
+              description: 50th percentile latency in milliseconds
+            p95_latency_ms:
+              type: integer
+              description: 95th percentile latency in milliseconds
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: 'null'
+
+    ErrorResponse:
+      type: object
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          type: 'null'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            data: null
+            meta:
+              request_id: "550e8400-e29b-41d4-a716-446655440000"
+              timestamp: "2025-01-14T10:00:00Z"
+              version: "v1"
+            error:
+              code: "INVALID_REQUEST"
+              message: "Invalid queue identifier"
+              details:
+                field: "queue"
+                value: "invalid_queue"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: Bearer realm="Admin API"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            data: null
+            meta:
+              request_id: "550e8400-e29b-41d4-a716-446655440000"
+              timestamp: "2025-01-14T10:00:00Z"
+              version: "v1"
+            error:
+              code: "PERMISSION_DENIED"
+              message: "Admin role required for this operation"
+              details:
+                required_role: "admin"
+                user_role: "read"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: string
+            format: date-time
+          description: Time when the rate limit window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

@@ -1,0 +1,1010 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Visual DAG Builder Data Models",
+  "description": "JSON Schema definitions for the Visual DAG Builder and workflow orchestration system",
+  "definitions": {
+    "WorkflowSpec": {
+      "type": "object",
+      "title": "Workflow Specification",
+      "description": "Complete specification of a workflow DAG",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Unique workflow identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Human-readable workflow name"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Workflow version number"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Workflow description"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-_]+$",
+            "maxLength": 64
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Tags for categorization"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Node"
+          },
+          "minItems": 1,
+          "maxItems": 500,
+          "description": "Workflow nodes"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Edge"
+          },
+          "maxItems": 1000,
+          "description": "Connections between nodes"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Parameter"
+          },
+          "maxProperties": 100,
+          "description": "Workflow input parameters"
+        },
+        "config": {
+          "$ref": "#/definitions/WorkflowConfig"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional workflow metadata"
+        }
+      },
+      "required": ["name", "nodes", "edges"],
+      "additionalProperties": false
+    },
+    "Node": {
+      "type": "object",
+      "title": "Workflow Node",
+      "description": "A single node in the workflow DAG",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Unique node identifier within workflow"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["task", "decision", "delay", "parallel", "exclusive", "compensation", "start", "end"],
+          "description": "Node type"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Node display name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Node description"
+        },
+        "position": {
+          "$ref": "#/definitions/Position"
+        },
+        "config": {
+          "oneOf": [
+            {"$ref": "#/definitions/TaskNodeConfig"},
+            {"$ref": "#/definitions/DecisionNodeConfig"},
+            {"$ref": "#/definitions/DelayNodeConfig"},
+            {"$ref": "#/definitions/GatewayNodeConfig"},
+            {"$ref": "#/definitions/CompensationNodeConfig"}
+          ],
+          "description": "Node-specific configuration"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional node metadata"
+        }
+      },
+      "required": ["id", "type", "name"],
+      "additionalProperties": false
+    },
+    "TaskNodeConfig": {
+      "type": "object",
+      "title": "Task Node Configuration",
+      "description": "Configuration for task execution nodes",
+      "properties": {
+        "handler": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_]+$",
+          "description": "Task handler function name"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue to use for this task"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 5,
+          "description": "Task priority"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 300,
+          "description": "Timeout in seconds"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 3,
+          "description": "Maximum retry attempts"
+        },
+        "retryBackoff": {
+          "$ref": "#/definitions/BackoffConfig"
+        },
+        "compensationNode": {
+          "type": "string",
+          "description": "ID of compensation node for this task"
+        },
+        "inputMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Input parameter mapping expressions"
+        },
+        "outputMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Output parameter mapping expressions"
+        }
+      },
+      "required": ["handler"],
+      "additionalProperties": false
+    },
+    "DecisionNodeConfig": {
+      "type": "object",
+      "title": "Decision Node Configuration",
+      "description": "Configuration for conditional branching nodes",
+      "properties": {
+        "defaultBranch": {
+          "type": "string",
+          "description": "Default branch node ID"
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Branch"
+          },
+          "minItems": 1,
+          "maxItems": 20,
+          "description": "Conditional branches"
+        }
+      },
+      "required": ["branches"],
+      "additionalProperties": false
+    },
+    "Branch": {
+      "type": "object",
+      "title": "Decision Branch",
+      "description": "A conditional branch in a decision node",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Branch condition expression"
+        },
+        "targetNode": {
+          "type": "string",
+          "description": "Target node ID for this branch"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Branch label"
+        }
+      },
+      "required": ["condition", "targetNode"],
+      "additionalProperties": false
+    },
+    "DelayNodeConfig": {
+      "type": "object",
+      "title": "Delay Node Configuration",
+      "description": "Configuration for delay/timer nodes",
+      "properties": {
+        "delayType": {
+          "type": "string",
+          "enum": ["fixed", "until", "cron"],
+          "description": "Type of delay"
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2592000,
+          "description": "Fixed delay duration in seconds (max 30 days)"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Delay until specific timestamp"
+        },
+        "cron": {
+          "type": "string",
+          "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|((((\\d+,)+\\d+|(\\d+(\\/|-)\\d+)|\\d+|\\*) ?){5,7})$",
+          "description": "Cron expression for scheduled execution"
+        }
+      },
+      "required": ["delayType"],
+      "additionalProperties": false
+    },
+    "GatewayNodeConfig": {
+      "type": "object",
+      "title": "Gateway Node Configuration",
+      "description": "Configuration for parallel/exclusive gateway nodes",
+      "properties": {
+        "gatewayType": {
+          "type": "string",
+          "enum": ["parallel", "exclusive"],
+          "description": "Gateway type"
+        },
+        "joinStrategy": {
+          "type": "string",
+          "enum": ["all", "any", "n_of_m"],
+          "default": "all",
+          "description": "Join strategy for incoming branches"
+        },
+        "joinCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of branches to wait for (n_of_m strategy)"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "description": "Join timeout in seconds"
+        }
+      },
+      "required": ["gatewayType"],
+      "additionalProperties": false
+    },
+    "CompensationNodeConfig": {
+      "type": "object",
+      "title": "Compensation Node Configuration",
+      "description": "Configuration for compensation/rollback nodes",
+      "properties": {
+        "compensates": {
+          "type": "string",
+          "description": "ID of the node being compensated"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["immediate", "deferred", "manual"],
+          "default": "immediate",
+          "description": "Compensation strategy"
+        },
+        "handler": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_]+$",
+          "description": "Compensation handler function"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 300,
+          "description": "Compensation timeout in seconds"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Compensation retry attempts"
+        }
+      },
+      "required": ["compensates", "handler"],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "title": "Workflow Edge",
+      "description": "Connection between two nodes",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Unique edge identifier"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source node ID"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target node ID"
+        },
+        "condition": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Edge condition expression"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Edge label"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Edge priority for parallel execution"
+        }
+      },
+      "required": ["id", "source", "target"],
+      "additionalProperties": false
+    },
+    "Position": {
+      "type": "object",
+      "title": "Canvas Position",
+      "description": "Position coordinates on the visual canvas",
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "X coordinate"
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Y coordinate"
+        }
+      },
+      "required": ["x", "y"],
+      "additionalProperties": false
+    },
+    "Parameter": {
+      "type": "object",
+      "title": "Workflow Parameter",
+      "description": "Input parameter definition",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "integer", "boolean", "object", "array"],
+          "description": "Parameter type"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether parameter is required"
+        },
+        "default": {
+          "description": "Default value"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Parameter description"
+        },
+        "enum": {
+          "type": "array",
+          "description": "Allowed values"
+        },
+        "minimum": {
+          "type": "number",
+          "description": "Minimum value (for numbers)"
+        },
+        "maximum": {
+          "type": "number",
+          "description": "Maximum value (for numbers)"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern (for strings)"
+        },
+        "validation": {
+          "type": "string",
+          "description": "Custom validation expression"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "WorkflowConfig": {
+      "type": "object",
+      "title": "Workflow Configuration",
+      "description": "Global workflow configuration settings",
+      "properties": {
+        "maxExecutionTime": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2592000,
+          "default": 3600,
+          "description": "Maximum execution time in seconds (max 30 days)"
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 3,
+          "description": "Global maximum retry attempts"
+        },
+        "compensationStrategy": {
+          "type": "string",
+          "enum": ["saga", "none", "manual"],
+          "default": "none",
+          "description": "Compensation strategy"
+        },
+        "concurrencyLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Maximum concurrent node executions"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 5,
+          "description": "Workflow priority"
+        },
+        "queueConfig": {
+          "$ref": "#/definitions/QueueConfig"
+        },
+        "notificationConfig": {
+          "$ref": "#/definitions/NotificationConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueConfig": {
+      "type": "object",
+      "title": "Queue Configuration",
+      "description": "Queue-specific configuration",
+      "properties": {
+        "defaultQueue": {
+          "type": "string",
+          "default": "default",
+          "description": "Default queue name"
+        },
+        "visibilityTimeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 43200,
+          "default": 30,
+          "description": "Message visibility timeout in seconds"
+        },
+        "messageRetention": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 1209600,
+          "default": 345600,
+          "description": "Message retention period in seconds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationConfig": {
+      "type": "object",
+      "title": "Notification Configuration",
+      "description": "Workflow notification settings",
+      "properties": {
+        "onSuccess": {
+          "$ref": "#/definitions/NotificationTarget"
+        },
+        "onFailure": {
+          "$ref": "#/definitions/NotificationTarget"
+        },
+        "onTimeout": {
+          "$ref": "#/definitions/NotificationTarget"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationTarget": {
+      "type": "object",
+      "title": "Notification Target",
+      "description": "Notification destination configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["webhook", "email", "slack", "queue"],
+          "description": "Notification type"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target URL, email, or identifier"
+        },
+        "template": {
+          "type": "string",
+          "description": "Notification template"
+        }
+      },
+      "required": ["type", "target"],
+      "additionalProperties": false
+    },
+    "BackoffConfig": {
+      "type": "object",
+      "title": "Backoff Configuration",
+      "description": "Retry backoff configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["fixed", "linear", "exponential"],
+          "default": "exponential",
+          "description": "Backoff type"
+        },
+        "initialInterval": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 1,
+          "description": "Initial interval in seconds"
+        },
+        "maxInterval": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 300,
+          "description": "Maximum interval in seconds"
+        },
+        "multiplier": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 2,
+          "description": "Backoff multiplier"
+        },
+        "jitter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add random jitter to intervals"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkflowRun": {
+      "type": "object",
+      "title": "Workflow Run",
+      "description": "Workflow execution instance",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "description": "Unique run identifier"
+        },
+        "workflowId": {
+          "type": "string",
+          "description": "Workflow identifier"
+        },
+        "workflowVersion": {
+          "type": "integer",
+          "description": "Workflow version used"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "cancelled", "compensating"],
+          "description": "Run status"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Run start time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Run end time"
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Duration in milliseconds"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Input parameters"
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Workflow output"
+        },
+        "error": {
+          "$ref": "#/definitions/WorkflowError"
+        },
+        "nodeStatuses": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/NodeStatus"
+          },
+          "description": "Status of each node"
+        },
+        "context": {
+          "$ref": "#/definitions/WorkflowContext"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional run metadata"
+        }
+      },
+      "required": ["id", "workflowId", "status", "startTime"],
+      "additionalProperties": false
+    },
+    "NodeStatus": {
+      "type": "object",
+      "title": "Node Execution Status",
+      "description": "Status of a node execution within a workflow run",
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "description": "Node identifier"
+        },
+        "nodeName": {
+          "type": "string",
+          "description": "Node name"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "skipped", "compensated", "compensating"],
+          "description": "Node execution status"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Node execution start time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Node execution end time"
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution duration in milliseconds"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of execution attempts"
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Node input data"
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Node output data"
+        },
+        "error": {
+          "$ref": "#/definitions/NodeError"
+        },
+        "jobId": {
+          "type": "string",
+          "description": "Associated queue job ID"
+        }
+      },
+      "required": ["nodeId", "status"],
+      "additionalProperties": false
+    },
+    "WorkflowContext": {
+      "type": "object",
+      "title": "Workflow Execution Context",
+      "description": "Runtime context for workflow execution",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Workflow variables"
+        },
+        "globalState": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Global state accessible to all nodes"
+        },
+        "compensationStack": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Stack of nodes to compensate"
+        },
+        "traceId": {
+          "type": "string",
+          "description": "Distributed trace ID"
+        },
+        "correlationId": {
+          "type": "string",
+          "description": "Correlation ID for related runs"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkflowError": {
+      "type": "object",
+      "title": "Workflow Error",
+      "description": "Error information for workflow execution",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "nodeId": {
+          "type": "string",
+          "description": "Node where error occurred"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error details"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "NodeError": {
+      "type": "object",
+      "title": "Node Execution Error",
+      "description": "Error information for node execution",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "attempt": {
+          "type": "integer",
+          "description": "Attempt number when error occurred"
+        },
+        "retryable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether error is retryable"
+        },
+        "stack": {
+          "type": "string",
+          "description": "Error stack trace"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "RunEvent": {
+      "type": "object",
+      "title": "Workflow Run Event",
+      "description": "Event emitted during workflow execution",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Event ID"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "run_started",
+            "run_completed",
+            "run_failed",
+            "run_cancelled",
+            "node_started",
+            "node_completed",
+            "node_failed",
+            "node_retrying",
+            "node_skipped",
+            "compensation_started",
+            "compensation_completed",
+            "compensation_failed"
+          ],
+          "description": "Event type"
+        },
+        "runId": {
+          "type": "string",
+          "description": "Associated run ID"
+        },
+        "nodeId": {
+          "type": "string",
+          "description": "Associated node ID (if applicable)"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Event-specific data"
+        }
+      },
+      "required": ["id", "timestamp", "type", "runId"],
+      "additionalProperties": false
+    },
+    "ValidationResult": {
+      "type": "object",
+      "title": "Workflow Validation Result",
+      "description": "Result of workflow validation",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "Whether workflow is valid"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationError"
+          },
+          "description": "Validation errors"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationWarning"
+          },
+          "description": "Validation warnings"
+        },
+        "statistics": {
+          "$ref": "#/definitions/ValidationStatistics"
+        }
+      },
+      "required": ["valid"],
+      "additionalProperties": false
+    },
+    "ValidationError": {
+      "type": "object",
+      "title": "Validation Error",
+      "description": "Workflow validation error",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "CYCLE_DETECTED",
+            "UNREACHABLE_NODE",
+            "MISSING_DEPENDENCY",
+            "INVALID_EDGE",
+            "DUPLICATE_ID",
+            "INVALID_EXPRESSION",
+            "MISSING_HANDLER",
+            "INVALID_CONFIG"
+          ],
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "nodeId": {
+          "type": "string",
+          "description": "Related node ID"
+        },
+        "edgeId": {
+          "type": "string",
+          "description": "Related edge ID"
+        },
+        "path": {
+          "type": "string",
+          "description": "JSON path to error location"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "ValidationWarning": {
+      "type": "object",
+      "title": "Validation Warning",
+      "description": "Workflow validation warning",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "UNUSED_PARAMETER",
+            "MISSING_COMPENSATION",
+            "LONG_RUNNING",
+            "HIGH_COMPLEXITY",
+            "MISSING_TIMEOUT",
+            "NO_RETRY_CONFIG"
+          ],
+          "description": "Warning code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Warning message"
+        },
+        "nodeId": {
+          "type": "string",
+          "description": "Related node ID"
+        },
+        "suggestion": {
+          "type": "string",
+          "description": "Suggested fix"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "ValidationStatistics": {
+      "type": "object",
+      "title": "Validation Statistics",
+      "description": "Workflow complexity statistics",
+      "properties": {
+        "nodeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of nodes"
+        },
+        "edgeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of edges"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum DAG depth"
+        },
+        "parallelBranches": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of parallel branches"
+        },
+        "compensationNodes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of compensation nodes"
+        },
+        "estimatedDuration": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Estimated execution time in seconds"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
