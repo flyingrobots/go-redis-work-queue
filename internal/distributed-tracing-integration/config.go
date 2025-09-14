@@ -1,89 +1,76 @@
 // Copyright 2025 James Ross
-package distributedtracing
+package distributed_tracing_integration
 
-import (
-	"time"
-)
+import "strings"
 
-// TracingConfig holds configuration for distributed tracing.
-type TracingConfig struct {
-	// Enabled determines if tracing is enabled
-	Enabled bool `json:"enabled" yaml:"enabled"`
+// TracingUIConfig represents configuration for tracing UI integration
+type TracingUIConfig struct {
+	// JaegerBaseURL is the base URL for Jaeger UI (e.g., "http://localhost:16686")
+	JaegerBaseURL string `mapstructure:"jaeger_base_url"`
 
-	// Endpoint is the OTLP endpoint for trace export
-	Endpoint string `json:"endpoint" yaml:"endpoint"`
+	// ZipkinBaseURL is the base URL for Zipkin UI (e.g., "http://localhost:9411")
+	ZipkinBaseURL string `mapstructure:"zipkin_base_url"`
 
-	// Environment label for the service
-	Environment string `json:"environment" yaml:"environment"`
+	// CustomTraceURL is a custom URL template for trace viewing
+	// Use {traceID} as placeholder, e.g., "https://my-tracing.com/trace/{traceID}"
+	CustomTraceURL string `mapstructure:"custom_trace_url"`
 
-	// SamplingStrategy: "always", "never", "probabilistic", "adaptive"
-	SamplingStrategy string `json:"sampling_strategy" yaml:"sampling_strategy"`
+	// EnableCopyActions enables copy trace ID to clipboard actions
+	EnableCopyActions bool `mapstructure:"enable_copy_actions"`
 
-	// SamplingRate for probabilistic sampling (0.0 to 1.0)
-	SamplingRate float64 `json:"sampling_rate" yaml:"sampling_rate"`
+	// EnableOpenActions enables open trace in browser actions
+	EnableOpenActions bool `mapstructure:"enable_open_actions"`
 
-	// BatchTimeout for batching trace exports
-	BatchTimeout time.Duration `json:"batch_timeout" yaml:"batch_timeout"`
-
-	// MaxExportBatchSize is the maximum number of spans to export in a batch
-	MaxExportBatchSize int `json:"max_export_batch_size" yaml:"max_export_batch_size"`
-
-	// Headers to include in OTLP exports (e.g., for authentication)
-	Headers map[string]string `json:"headers" yaml:"headers"`
-
-	// Insecure disables TLS for the exporter
-	Insecure bool `json:"insecure" yaml:"insecure"`
-
-	// PropagationFormat: "w3c", "b3", "jaeger"
-	PropagationFormat string `json:"propagation_format" yaml:"propagation_format"`
-
-	// AttributeAllowlist defines which attributes to include in spans
-	AttributeAllowlist []string `json:"attribute_allowlist" yaml:"attribute_allowlist"`
-
-	// RedactSensitive removes sensitive data from spans
-	RedactSensitive bool `json:"redact_sensitive" yaml:"redact_sensitive"`
-
-	// EnableMetricExemplars attaches trace IDs to metrics
-	EnableMetricExemplars bool `json:"enable_metric_exemplars" yaml:"enable_metric_exemplars"`
+	// DefaultTraceViewer sets the default trace viewer ("jaeger", "zipkin", "custom")
+	DefaultTraceViewer string `mapstructure:"default_trace_viewer"`
 }
 
-// DefaultTracingConfig returns default tracing configuration.
-func DefaultTracingConfig() *TracingConfig {
-	return &TracingConfig{
-		Enabled:               false,
-		Endpoint:              "localhost:4317",
-		Environment:           "development",
-		SamplingStrategy:      "probabilistic",
-		SamplingRate:          0.1,
-		BatchTimeout:          5 * time.Second,
-		MaxExportBatchSize:    512,
-		Headers:               make(map[string]string),
-		Insecure:              true,
-		PropagationFormat:     "w3c",
-		AttributeAllowlist:    []string{},
-		RedactSensitive:       true,
-		EnableMetricExemplars: true,
+// DefaultTracingUIConfig returns default configuration for tracing UI
+func DefaultTracingUIConfig() TracingUIConfig {
+	return TracingUIConfig{
+		JaegerBaseURL:      "http://localhost:16686",
+		ZipkinBaseURL:      "http://localhost:9411",
+		CustomTraceURL:     "",
+		EnableCopyActions:  true,
+		EnableOpenActions:  true,
+		DefaultTraceViewer: "jaeger",
 	}
 }
 
-// Validate checks if the configuration is valid.
-func (c *TracingConfig) Validate() error {
-	if c.SamplingRate < 0 || c.SamplingRate > 1 {
-		return ErrInvalidSamplingRate
+// GetTraceURL returns the trace URL for a given trace ID
+func (c *TracingUIConfig) GetTraceURL(traceID string) string {
+	if traceID == "" {
+		return ""
 	}
 
-	if c.SamplingStrategy != "always" &&
-		c.SamplingStrategy != "never" &&
-		c.SamplingStrategy != "probabilistic" &&
-		c.SamplingStrategy != "adaptive" {
-		return ErrInvalidSamplingStrategy
+	switch c.DefaultTraceViewer {
+	case "jaeger":
+		if c.JaegerBaseURL != "" {
+			return c.JaegerBaseURL + "/trace/" + traceID
+		}
+	case "zipkin":
+		if c.ZipkinBaseURL != "" {
+			return c.ZipkinBaseURL + "/zipkin/traces/" + traceID
+		}
+	case "custom":
+		if c.CustomTraceURL != "" {
+			return replaceTraceID(c.CustomTraceURL, traceID)
+		}
 	}
 
-	if c.PropagationFormat != "w3c" &&
-		c.PropagationFormat != "b3" &&
-		c.PropagationFormat != "jaeger" {
-		return ErrInvalidPropagationFormat
+	// Fallback to Jaeger
+	if c.JaegerBaseURL != "" {
+		return c.JaegerBaseURL + "/trace/" + traceID
 	}
 
-	return nil
+	return ""
+}
+
+// replaceTraceID replaces {traceID} placeholder in URL template
+func replaceTraceID(template, traceID string) string {
+	result := strings.ReplaceAll(template, "{traceID}", traceID)
+	result = strings.ReplaceAll(result, "{trace_id}", traceID)
+	result = strings.ReplaceAll(result, "{{traceID}}", traceID)
+	result = strings.ReplaceAll(result, "{{trace_id}}", traceID)
+	return result
 }

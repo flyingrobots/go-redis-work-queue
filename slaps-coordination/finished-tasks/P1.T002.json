@@ -1,6 +1,6 @@
 {
   "task_id": "P1.T002",
-  "created_at": "2025-09-14T19:24:59.977024+00:00",
+  "created_at": "2025-09-14T19:41:47.123548Z",
   "task": {
     "id": "P1.T002",
     "feature_id": "F001",
@@ -257,13 +257,24 @@
       ]
     }
   },
-  "dependencies_completed": [
+  "dependencies": [
     "P1.T001"
   ],
   "instructions": {
     "on_complete": "Move this file to finished-tasks/P1.T002.json",
     "on_failure": "Move this file to failed-tasks/P1.T002.json",
     "on_help_needed": "Move to help-me/P1.T002.json",
-    "note": "This is an IMPLEMENTATION task - write actual code!"
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    }
   }
 }

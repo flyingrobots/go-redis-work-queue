@@ -1,27 +1,24 @@
 // Copyright 2025 James Ross
-package distributedtracing
+package distributed_tracing_integration
 
 import "errors"
 
 var (
-	// ErrTracingNotEnabled indicates tracing is not enabled in configuration.
-	ErrTracingNotEnabled = errors.New("tracing is not enabled")
+	// ErrTraceIDNotFound indicates that a trace ID was not found in the context or job
+	ErrTraceIDNotFound = errors.New("trace ID not found")
 
-	// ErrInvalidTraceContext indicates the trace context could not be parsed.
-	ErrInvalidTraceContext = errors.New("invalid trace context")
+	// ErrInvalidTraceID indicates that a trace ID format is invalid
+	ErrInvalidTraceID = errors.New("invalid trace ID format")
 
-	// ErrInvalidSamplingRate indicates the sampling rate is outside valid range.
-	ErrInvalidSamplingRate = errors.New("sampling rate must be between 0.0 and 1.0")
+	// ErrInvalidSpanID indicates that a span ID format is invalid
+	ErrInvalidSpanID = errors.New("invalid span ID format")
 
-	// ErrInvalidSamplingStrategy indicates an unknown sampling strategy.
-	ErrInvalidSamplingStrategy = errors.New("invalid sampling strategy")
+	// ErrTracingDisabled indicates that tracing is disabled
+	ErrTracingDisabled = errors.New("tracing is disabled")
 
-	// ErrInvalidPropagationFormat indicates an unknown propagation format.
-	ErrInvalidPropagationFormat = errors.New("invalid propagation format")
+	// ErrInvalidJobFormat indicates that a job has an invalid format for trace extraction
+	ErrInvalidJobFormat = errors.New("invalid job format for trace extraction")
 
-	// ErrProviderNotInitialized indicates the tracer provider is not initialized.
-	ErrProviderNotInitialized = errors.New("tracer provider not initialized")
-
-	// ErrSpanNotFound indicates no span was found in the context.
-	ErrSpanNotFound = errors.New("span not found in context")
+	// ErrTracingUINotConfigured indicates that tracing UI integration is not configured
+	ErrTracingUINotConfigured = errors.New("tracing UI not configured")
 )

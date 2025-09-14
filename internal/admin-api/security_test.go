@@ -32,7 +32,7 @@ func TestSecurityAuthRequired(t *testing.T) {
 	defer rdb.Close()
 
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{
 				"high": "jobqueue:high",
 				"low":  "jobqueue:low",
@@ -122,7 +122,7 @@ func TestSecurityDestructiveOperations(t *testing.T) {
 	defer rdb.Close()
 
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{
 				"high": "jobqueue:high",
 				"low":  "jobqueue:low",
@@ -143,7 +143,8 @@ func TestSecurityDestructiveOperations(t *testing.T) {
 	defer ts.Close()
 
 	// Add test data
-	mr.Lpush("jobqueue:dead_letter", "job1", "job2")
+	mr.Lpush("jobqueue:dead_letter", "job1")
+	mr.Lpush("jobqueue:dead_letter", "job2")
 
 	tests := []struct {
 		name           string
@@ -239,7 +240,7 @@ func TestSecurityTokenLeakage(t *testing.T) {
 	defer rdb.Close()
 
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{"high": "jobqueue:high"},
 		},
 	}
@@ -311,7 +312,7 @@ func TestSecurityInjectionAttacks(t *testing.T) {
 	defer rdb.Close()
 
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{
 				"high": "jobqueue:high",
 				"low":  "jobqueue:low",
@@ -382,7 +383,7 @@ func TestSecurityCORS(t *testing.T) {
 	defer rdb.Close()
 
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{"high": "jobqueue:high"},
 		},
 	}

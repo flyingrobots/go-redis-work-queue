@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -50,7 +49,7 @@ func setupIntegrationTest(t *testing.T) (*testSetup, func()) {
 
 	// Create configs
 	appCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{
 				"high": "jobqueue:high",
 				"low":  "jobqueue:low",
@@ -58,7 +57,7 @@ func setupIntegrationTest(t *testing.T) (*testSetup, func()) {
 			CompletedList:  "jobqueue:completed",
 			DeadLetterList: "jobqueue:dead_letter",
 		},
-		Producer: config.ProducerConfig{
+		Producer: config.Producer{
 			RateLimitKey: "jobqueue:rate_limit",
 		},
 	}
@@ -110,11 +109,14 @@ func TestIntegrationStats(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	ctx := context.Background()
-	setup.mr.Lpush("jobqueue:high", "job1", "job2", "job3")
-	setup.mr.Lpush("jobqueue:low", "job4", "job5")
+	setup.mr.Lpush("jobqueue:high", "job1")
+	setup.mr.Lpush("jobqueue:high", "job2")
+	setup.mr.Lpush("jobqueue:high", "job3")
+	setup.mr.Lpush("jobqueue:low", "job4")
+	setup.mr.Lpush("jobqueue:low", "job5")
 	setup.mr.Lpush("jobqueue:completed", "job6")
-	setup.mr.Lpush("jobqueue:dead_letter", "job7", "job8")
+	setup.mr.Lpush("jobqueue:dead_letter", "job7")
+	setup.mr.Lpush("jobqueue:dead_letter", "job8")
 
 	// Request stats
 	resp, err := setup.httpClient.Get(setup.server.URL + "/api/v1/stats")
@@ -244,7 +246,9 @@ func TestIntegrationPurgeDLQ(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	setup.mr.Lpush("jobqueue:dead_letter", "failed1", "failed2", "failed3")
+	setup.mr.Lpush("jobqueue:dead_letter", "failed1")
+	setup.mr.Lpush("jobqueue:dead_letter", "failed2")
+	setup.mr.Lpush("jobqueue:dead_letter", "failed3")
 
 	// Test with wrong confirmation
 	wrongReq := adminapi.PurgeRequest{
@@ -311,7 +315,8 @@ func TestIntegrationPurgeAll(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	setup.mr.Lpush("jobqueue:high", "job1", "job2")
+	setup.mr.Lpush("jobqueue:high", "job1")
+	setup.mr.Lpush("jobqueue:high", "job2")
 	setup.mr.Lpush("jobqueue:low", "job3")
 	setup.mr.Lpush("jobqueue:completed", "job4")
 	setup.mr.Lpush("jobqueue:dead_letter", "job5")

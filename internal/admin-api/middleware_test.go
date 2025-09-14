@@ -2,7 +2,6 @@
 package adminapi
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"

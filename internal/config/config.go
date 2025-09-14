@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	exactlyonce "github.com/james-ross/go-redis-work-queue/internal/exactly-once-patterns"
 )
 
 type Redis struct {
@@ -90,11 +91,12 @@ type ObservabilityConfig struct {
 type Observability = ObservabilityConfig
 
 type Config struct {
-	Redis          Redis          `mapstructure:"redis"`
-	Worker         Worker         `mapstructure:"worker"`
-	Producer       Producer       `mapstructure:"producer"`
-	CircuitBreaker CircuitBreaker `mapstructure:"circuit_breaker"`
-	Observability  Observability  `mapstructure:"observability"`
+	Redis          Redis               `mapstructure:"redis"`
+	Worker         Worker              `mapstructure:"worker"`
+	Producer       Producer            `mapstructure:"producer"`
+	CircuitBreaker CircuitBreaker      `mapstructure:"circuit_breaker"`
+	Observability  Observability       `mapstructure:"observability"`
+	ExactlyOnce    exactlyonce.Config  `mapstructure:"exactly_once"`
 }
 
 func defaultConfig() *Config {
