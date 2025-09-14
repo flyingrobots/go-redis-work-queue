@@ -46,3 +46,40 @@ observability:
   tracing:
     enabled: false
     endpoint: ""
+
+exactly_once:
+  idempotency:
+    enabled: true
+    default_ttl: 24h
+    key_prefix: "idempotency:"
+    max_retries: 3
+    retry_delay: 100ms
+    cleanup_interval: 1h
+    batch_size: 100
+    storage:
+      type: "redis"
+      redis:
+        key_pattern: "{queue}:idempotency:{tenant}:{key}"
+        hash_key_pattern: "{queue}:idempotency:{tenant}"
+        use_hashes: true
+        compression: false
+
+  outbox:
+    enabled: false  # Requires database setup
+    poll_interval: 5s
+    batch_size: 50
+    max_retries: 5
+    cleanup_interval: 24h
+    cleanup_after: 168h  # 7 days
+    retry_backoff:
+      initial_delay: 1s
+      max_delay: 30m
+      multiplier: 2.0
+      jitter: true
+    publishers: []
+
+  metrics:
+    enabled: true
+    collection_interval: 30s
+    histogram_buckets: [0.001, 0.01, 0.1, 1, 10]
+    cardinality_limit: 1000

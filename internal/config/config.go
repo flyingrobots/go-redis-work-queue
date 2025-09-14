@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	exactlyonce "github.com/james-ross/go-redis-work-queue/internal/exactly-once-patterns"
 )
 
 type Redis struct {
@@ -145,6 +144,7 @@ func defaultConfig() *Config {
 			Tracing:             Tracing{Enabled: false},
 			QueueSampleInterval: 2 * time.Second,
 		},
+		ExactlyOnce: *exactlyonce.DefaultConfig(),
 	}
 }
 
@@ -198,6 +198,15 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("observability.tracing.enabled", def.Observability.Tracing.Enabled)
 	v.SetDefault("observability.tracing.endpoint", def.Observability.Tracing.Endpoint)
 	v.SetDefault("observability.queue_sample_interval", def.Observability.QueueSampleInterval)
+
+	// Exactly-once patterns defaults
+	v.SetDefault("exactly_once.idempotency.enabled", def.ExactlyOnce.Idempotency.Enabled)
+	v.SetDefault("exactly_once.idempotency.default_ttl", def.ExactlyOnce.Idempotency.DefaultTTL)
+	v.SetDefault("exactly_once.idempotency.key_prefix", def.ExactlyOnce.Idempotency.KeyPrefix)
+	v.SetDefault("exactly_once.idempotency.storage.type", def.ExactlyOnce.Idempotency.Storage.Type)
+	v.SetDefault("exactly_once.outbox.enabled", def.ExactlyOnce.Outbox.Enabled)
+	v.SetDefault("exactly_once.metrics.enabled", def.ExactlyOnce.Metrics.Enabled)
+
 
 	// Optional file read
 	if _, err := os.Stat(path); err == nil {

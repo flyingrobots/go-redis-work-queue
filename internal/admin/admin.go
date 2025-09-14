@@ -334,3 +334,111 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 	}
 	return deleted, nil
 }
+
+// PeekWithTracing enhances the standard Peek function with tracing information
+type PeekWithTracingResult struct {
+	PeekResult
+	TraceJobs    []*distributed_tracing_integration.TraceableJob            `json:"trace_jobs,omitempty"`
+	TraceActions map[string][]distributed_tracing_integration.TraceAction   `json:"trace_actions,omitempty"`
+	TraceInfo    []string                                                   `json:"trace_info,omitempty"`
+}
+
+func PeekWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client, queueAlias string, n int64) (PeekWithTracingResult, error) {
+	// Get basic peek result
+	basicResult, err := Peek(ctx, cfg, rdb, queueAlias, n)
+	if err != nil {
+		return PeekWithTracingResult{}, err
+	}
+
+	result := PeekWithTracingResult{
+		PeekResult:   basicResult,
+		TraceJobs:    make([]*distributed_tracing_integration.TraceableJob, 0),
+		TraceActions: make(map[string][]distributed_tracing_integration.TraceAction),
+		TraceInfo:    make([]string, 0),
+	}
+
+	// Initialize tracing integration with defaults
+	tracing := distributed_tracing_integration.NewWithDefaults()
+
+	// Parse jobs and extract trace information
+	for _, item := range basicResult.Items {
+		job, err := distributed_tracing_integration.ParseJobWithTrace(item)
+		if err != nil {
+			// Skip items that can't be parsed, but continue processing
+			continue
+		}
+
+		result.TraceJobs = append(result.TraceJobs, job)
+
+		// Generate trace actions for jobs with trace information
+		if job.TraceID != "" {
+			actions := distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.config)
+			result.TraceActions[job.ID] = actions
+
+			// Add formatted trace info
+			traceInfo := distributed_tracing_integration.FormatTraceForDisplay(job, tracing.config)
+			result.TraceInfo = append(result.TraceInfo, fmt.Sprintf("Job %s: %s", job.ID, traceInfo))
+		} else {
+			result.TraceInfo = append(result.TraceInfo, fmt.Sprintf("Job %s: No trace information", job.ID))
+		}
+	}
+
+	return result, nil
+}
+
+// InfoWithTracing provides detailed job information including trace data
+type JobInfoResult struct {
+	JobID        string                                                     `json:"job_id"`
+	Queue        string                                                     `json:"queue"`
+	Job          *distributed_tracing_integration.TraceableJob             `json:"job,omitempty"`
+	TraceActions []distributed_tracing_integration.TraceAction             `json:"trace_actions,omitempty"`
+	TraceURL     string                                                     `json:"trace_url,omitempty"`
+	RawJSON      string                                                     `json:"raw_json"`
+}
+
+func InfoWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client, queueAlias string, jobIndex int) (JobInfoResult, error) {
+	// Get items from queue
+	peekResult, err := Peek(ctx, cfg, rdb, queueAlias, int64(jobIndex+1))
+	if err != nil {
+		return JobInfoResult{}, err
+	}
+
+	if jobIndex >= len(peekResult.Items) {
+		return JobInfoResult{}, fmt.Errorf("job index %d out of range (queue has %d items)", jobIndex, len(peekResult.Items))
+	}
+
+	jobJSON := peekResult.Items[jobIndex]
+
+	result := JobInfoResult{
+		Queue:   peekResult.Queue,
+		RawJSON: jobJSON,
+	}
+
+	// Parse job with trace information
+	job, err := distributed_tracing_integration.ParseJobWithTrace(jobJSON)
+	if err != nil {
+		return result, nil // Return basic info even if trace parsing fails
+	}
+
+	result.JobID = job.ID
+	result.Job = job
+
+	// Generate trace actions and URL if trace info is available
+	if job.TraceID != "" {
+		tracing := distributed_tracing_integration.NewWithDefaults()
+		result.TraceActions = distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.config)
+		result.TraceURL = tracing.GetTraceURL(job.TraceID)
+	}
+
+	return result, nil
+}
+
+// GetTraceActions returns available actions for a specific trace ID
+func GetTraceActions(traceID string) []distributed_tracing_integration.TraceAction {
+	if traceID == "" {
+		return []distributed_tracing_integration.TraceAction{}
+	}
+
+	tracing := distributed_tracing_integration.NewWithDefaults()
+	return distributed_tracing_integration.GenerateTraceActions(traceID, tracing.config)
+}

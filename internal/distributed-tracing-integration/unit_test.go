@@ -1,5 +1,5 @@
 // Copyright 2025 James Ross
-package distributedtracing
+package distributed_tracing_integration
 
 import (
 	"context"

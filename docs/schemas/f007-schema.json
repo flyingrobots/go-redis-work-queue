@@ -1,0 +1,707 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.com/f007-exactly-once-patterns.json",
+  "title": "Exactly Once Patterns Schema Definitions",
+  "description": "JSON Schema definitions for the F007 Exactly Once Patterns feature",
+  "type": "object",
+  "definitions": {
+    "IdempotencyKeyData": {
+      "$id": "#/definitions/IdempotencyKeyData",
+      "title": "Idempotency Key Data",
+      "description": "Data structure stored in Redis for idempotency tracking",
+      "type": "object",
+      "required": ["status", "processed_at", "worker_id"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_seen", "processing", "completed", "failed"],
+          "description": "Current processing status of the job"
+        },
+        "processed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the job was processed"
+        },
+        "worker_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Unique identifier of the worker that processed the job"
+        },
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 1,
+          "description": "Number of processing attempts"
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Original job identifier"
+        },
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Name of the queue where the job was processed"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Tenant identifier for multi-tenancy support"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "maxProperties": 50,
+          "description": "Additional metadata associated with the job processing",
+          "properties": {
+            "correlation_id": {
+              "type": "string",
+              "description": "Request correlation identifier"
+            },
+            "trace_id": {
+              "type": "string",
+              "description": "Distributed tracing identifier"
+            },
+            "retry_reason": {
+              "type": "string",
+              "description": "Reason for retry if applicable"
+            }
+          }
+        },
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2592000,
+          "description": "Time-to-live in seconds (max 30 days)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "OutboxEvent": {
+      "$id": "#/definitions/OutboxEvent",
+      "title": "Outbox Event",
+      "description": "Event stored in the outbox table for reliable event publishing",
+      "type": "object",
+      "required": ["id", "event_type", "aggregate_id", "data", "created_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique event identifier (UUID v4)"
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Type of the event (e.g., 'user.created', 'order.placed')",
+          "examples": ["user.created", "order.placed", "payment.processed"]
+        },
+        "aggregate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Identifier of the aggregate that produced the event"
+        },
+        "data": {
+          "type": "object",
+          "description": "Event payload data",
+          "maxProperties": 100,
+          "additionalProperties": true
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxProperties": 20,
+          "description": "Event metadata",
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "Source system that generated the event"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$",
+              "description": "Schema version (semantic versioning)"
+            },
+            "correlation_id": {
+              "type": "string",
+              "description": "Request correlation identifier"
+            },
+            "tenant_id": {
+              "type": "string",
+              "description": "Tenant identifier for multi-tenancy"
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "published", "failed"],
+          "default": "pending",
+          "description": "Processing status of the event"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the event was created"
+        },
+        "published_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the event was published"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0,
+          "description": "Number of retry attempts"
+        },
+        "last_error": {
+          "type": ["string", "null"],
+          "maxLength": 10000,
+          "description": "Last error message if processing failed"
+        },
+        "scheduled_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the event should be processed (for delayed events)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DedupConfiguration": {
+      "$id": "#/definitions/DedupConfiguration",
+      "title": "Deduplication Configuration",
+      "description": "Configuration settings for deduplication behavior",
+      "type": "object",
+      "required": ["enabled", "redis_config", "default_ttl"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether deduplication is enabled"
+        },
+        "redis_config": {
+          "type": "object",
+          "required": ["addresses"],
+          "properties": {
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^redis://[^\\s]+$"
+              },
+              "minItems": 1,
+              "maxItems": 20,
+              "description": "Redis server addresses"
+            },
+            "password": {
+              "type": ["string", "null"],
+              "maxLength": 1000,
+              "description": "Redis authentication password"
+            },
+            "database": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15,
+              "default": 0,
+              "description": "Redis database number"
+            },
+            "pool_size": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 10,
+              "description": "Connection pool size"
+            },
+            "connect_timeout": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "5s",
+              "description": "Connection timeout (e.g., '5s', '1m')"
+            },
+            "read_timeout": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "3s",
+              "description": "Read timeout"
+            }
+          },
+          "additionalProperties": false
+        },
+        "default_ttl": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Default TTL for deduplication keys (e.g., '1h', '24h')"
+        },
+        "max_ttl": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "default": "24h",
+          "description": "Maximum allowed TTL"
+        },
+        "key_prefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "default": "dedup",
+          "description": "Prefix for all deduplication keys"
+        },
+        "storage_quota_mb": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "description": "Storage quotas per tenant in MB"
+        },
+        "cleanup_batch_size": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000,
+          "default": 1000,
+          "description": "Batch size for cleanup operations"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "OutboxConfiguration": {
+      "$id": "#/definitions/OutboxConfiguration",
+      "title": "Outbox Configuration",
+      "description": "Configuration settings for outbox pattern implementation",
+      "type": "object",
+      "required": ["enabled", "database_config"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether outbox pattern is enabled"
+        },
+        "database_config": {
+          "type": "object",
+          "required": ["connection_string"],
+          "properties": {
+            "connection_string": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Database connection string"
+            },
+            "max_connections": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 20,
+              "description": "Maximum database connections"
+            },
+            "idle_connections": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 5,
+              "description": "Number of idle connections"
+            }
+          },
+          "additionalProperties": false
+        },
+        "table_name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "default": "outbox_events",
+          "description": "Name of the outbox table"
+        },
+        "polling": {
+          "type": "object",
+          "properties": {
+            "interval": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "5s",
+              "description": "Polling interval for pending events"
+            },
+            "batch_size": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100,
+              "description": "Batch size for polling"
+            },
+            "max_age": {
+              "type": "string",
+              "pattern": "^\\d+[smhd]$",
+              "default": "5m",
+              "description": "Maximum age of events to poll"
+            }
+          },
+          "additionalProperties": false
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 3,
+              "description": "Maximum retry attempts"
+            },
+            "initial_delay": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "1s",
+              "description": "Initial retry delay"
+            },
+            "max_delay": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "5m",
+              "description": "Maximum retry delay"
+            },
+            "backoff_multiplier": {
+              "type": "number",
+              "minimum": 1.0,
+              "maximum": 10.0,
+              "default": 2.0,
+              "description": "Backoff multiplier for retry delays"
+            }
+          },
+          "additionalProperties": false
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "completed_events": {
+              "type": "string",
+              "pattern": "^\\d+[dhwmy]$",
+              "default": "7d",
+              "description": "Retention period for completed events"
+            },
+            "failed_events": {
+              "type": "string",
+              "pattern": "^\\d+[dhwmy]$",
+              "default": "30d",
+              "description": "Retention period for failed events"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MetricsDefinition": {
+      "$id": "#/definitions/MetricsDefinition",
+      "title": "Metrics Definition",
+      "description": "Definition of metrics collected by the exactly-once patterns system",
+      "type": "object",
+      "required": ["namespace", "metrics"],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "description": "Metrics namespace"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetricDefinition"
+          },
+          "minItems": 1,
+          "description": "List of metric definitions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MetricDefinition": {
+      "$id": "#/definitions/MetricDefinition",
+      "title": "Metric Definition",
+      "description": "Individual metric definition",
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "description": "Metric name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["counter", "gauge", "histogram", "summary"],
+          "description": "Metric type"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Human-readable metric description"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+          },
+          "uniqueItems": true,
+          "maxItems": 10,
+          "description": "Metric label names"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["bytes", "seconds", "milliseconds", "count", "percent", "ratio"],
+          "description": "Unit of measurement"
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Histogram buckets (only for histogram type)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SecurityConfiguration": {
+      "$id": "#/definitions/SecurityConfiguration",
+      "title": "Security Configuration",
+      "description": "Security settings for the exactly-once patterns system",
+      "type": "object",
+      "required": ["authentication", "authorization"],
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether authentication is required"
+            },
+            "jwt": {
+              "type": "object",
+              "properties": {
+                "signing_key": {
+                  "type": "string",
+                  "minLength": 32,
+                  "description": "JWT signing key (base64 encoded)"
+                },
+                "issuer": {
+                  "type": "string",
+                  "description": "JWT issuer"
+                },
+                "expiration": {
+                  "type": "string",
+                  "pattern": "^\\d+[smhd]$",
+                  "default": "24h",
+                  "description": "JWT token expiration"
+                }
+              },
+              "additionalProperties": false
+            },
+            "api_key": {
+              "type": "object",
+              "properties": {
+                "header_name": {
+                  "type": "string",
+                  "default": "X-API-Key",
+                  "description": "API key header name"
+                },
+                "allowed_keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 32
+                  },
+                  "description": "List of allowed API keys"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "authorization": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether authorization is enabled"
+            },
+            "rbac": {
+              "type": "object",
+              "properties": {
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/RoleDefinition"
+                  },
+                  "description": "Role-based access control roles"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "rate_limiting": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether rate limiting is enabled"
+            },
+            "requests_per_minute": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1000,
+              "description": "Maximum requests per minute per client"
+            },
+            "burst_size": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100,
+              "description": "Maximum burst size"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RoleDefinition": {
+      "$id": "#/definitions/RoleDefinition",
+      "title": "Role Definition",
+      "description": "RBAC role definition",
+      "type": "object",
+      "required": ["name", "permissions"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Role name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Role description"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dedup:read",
+              "dedup:write",
+              "dedup:delete",
+              "outbox:read",
+              "outbox:write",
+              "outbox:retry",
+              "metrics:read",
+              "admin:all"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "List of permissions for this role"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobPayload": {
+      "$id": "#/definitions/JobPayload",
+      "title": "Job Payload",
+      "description": "Structure of job data with idempotency support",
+      "type": "object",
+      "required": ["id", "data"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Unique job identifier (idempotency key)"
+        },
+        "data": {
+          "type": "object",
+          "description": "Job payload data",
+          "additionalProperties": true
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 20,
+          "description": "Job metadata"
+        },
+        "retry_policy": {
+          "type": "object",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 3
+            },
+            "backoff_strategy": {
+              "type": "string",
+              "enum": ["linear", "exponential"],
+              "default": "exponential"
+            },
+            "initial_delay": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "1s"
+            }
+          },
+          "additionalProperties": false
+        },
+        "scheduling": {
+          "type": "object",
+          "properties": {
+            "delay": {
+              "type": "string",
+              "pattern": "^\\d+[smhd]$",
+              "description": "Delay before processing"
+            },
+            "cron": {
+              "type": "string",
+              "description": "Cron expression for scheduled jobs"
+            },
+            "priority": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 5,
+              "description": "Job priority (1=highest, 10=lowest)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
