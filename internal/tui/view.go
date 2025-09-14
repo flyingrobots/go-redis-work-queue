@@ -34,6 +34,8 @@ func (m model) View() string {
 		panelColor = "#9ece6a"
 	case tabDLQ:
 		panelColor = "#f7768e"
+	case tabEventHooks:
+		panelColor = "#e0af68"
 	case tabSettings:
 		panelColor = "#bb9af7"
 	}

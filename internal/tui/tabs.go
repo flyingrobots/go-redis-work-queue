@@ -23,6 +23,7 @@ func (m model) buildTabBar() (string, []tabZone) {
 		{tabJobs, "Job Queue", "#7aa2f7"},
 		{tabWorkers, "Workers", "#9ece6a"},
 		{tabDLQ, "Dead Letter", "#f7768e"},
+		{tabEventHooks, "Event Hooks", "#e0af68"},
 		{tabSettings, "Settings", "#bb9af7"},
 	}
 

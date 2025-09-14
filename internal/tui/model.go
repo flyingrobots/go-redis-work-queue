@@ -147,5 +147,6 @@ const (
 	tabJobs tabID = iota
 	tabWorkers
 	tabDLQ
+	tabEventHooks
 	tabSettings
 )
