@@ -1,0 +1,218 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Title Bar -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="35" font-family="Monaco, Courier" font-size="18" fill="#f0f6fc">📦 Long-term Archives</text>
+  <text x="1100" y="35" font-family="Monaco, Courier" font-size="12" fill="#8b949e">Ctrl+H</text>
+
+  <!-- Left Panel: Archive Configuration -->
+  <rect x="20" y="80" width="360" height="700" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="30" y="105" font-family="Monaco, Courier" font-size="12" fill="#58a6ff" font-weight="bold">Archive Settings</text>
+
+  <!-- Storage Backend -->
+  <text x="30" y="135" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Storage Backend:</text>
+  <rect x="30" y="145" width="320" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="35" y="162" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">ClickHouse (primary)</text>
+  <rect x="300" y="150" width="45" height="15" fill="#238636" stroke="#238636" stroke-width="1" rx="3"/>
+  <text x="310" y="160" font-family="Monaco, Courier" font-size="9" fill="#fff">ACTIVE</text>
+
+  <!-- Retention Policy -->
+  <text x="30" y="190" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Retention Policy:</text>
+  <rect x="30" y="200" width="100" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="35" y="217" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">90 days</text>
+  <text x="140" y="217" font-family="Monaco, Courier" font-size="9" fill="#8b949e">in Redis</text>
+
+  <rect x="30" y="230" width="100" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="35" y="247" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">5 years</text>
+  <text x="140" y="247" font-family="Monaco, Courier" font-size="9" fill="#8b949e">in ClickHouse</text>
+
+  <!-- Export Status -->
+  <text x="30" y="280" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Export Status:</text>
+  <rect x="30" y="290" width="320" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="35" y="308" font-family="Monaco, Courier" font-size="9" fill="#39d353">✓ Exporter running</text>
+  <text x="35" y="323" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">Last batch: 2m ago (500 jobs)</text>
+  <text x="35" y="338" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">Lag: 12.5s | Rate: 250 jobs/s</text>
+
+  <!-- Schema Version -->
+  <text x="30" y="370" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Schema Version:</text>
+  <rect x="30" y="380" width="100" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="35" y="397" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">v1.2</text>
+  <rect x="140" y="385" width="40" height="15" fill="#58a6ff" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="148" y="395" font-family="Monaco, Courier" font-size="9" fill="#fff">UPDATE</text>
+
+  <!-- Recent Exports -->
+  <text x="30" y="430" font-family="Monaco, Courier" font-size="12" fill="#58a6ff" font-weight="bold">Recent Exports</text>
+  <rect x="30" y="445" width="320" height="320" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Export entries -->
+  <text x="35" y="465" font-family="Monaco, Courier" font-size="9" fill="#8b949e">Time        Count   Status     Backend</text>
+  <text x="35" y="480" font-family="Monaco, Courier" font-size="9" fill="#39d353">14:28:45    500     SUCCESS    ClickHouse</text>
+  <text x="35" y="495" font-family="Monaco, Courier" font-size="9" fill="#39d353">14:26:30    425     SUCCESS    ClickHouse</text>
+  <text x="35" y="510" font-family="Monaco, Courier" font-size="9" fill="#39d353">14:24:15    380     SUCCESS    ClickHouse</text>
+  <text x="35" y="525" font-family="Monaco, Courier" font-size="9" fill="#ffa657">14:22:00    290     RETRY      ClickHouse</text>
+  <text x="35" y="540" font-family="Monaco, Courier" font-size="9" fill="#39d353">14:20:45    445     SUCCESS    ClickHouse</text>
+  <text x="35" y="555" font-family="Monaco, Courier" font-size="9" fill="#39d353">14:18:30    320     SUCCESS    ClickHouse</text>
+
+  <!-- Center Panel: Query Interface -->
+  <rect x="400" y="80" width="480" height="700" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="410" y="105" font-family="Monaco, Courier" font-size="12" fill="#58a6ff" font-weight="bold">Archive Query Interface</text>
+
+  <!-- Query Editor -->
+  <text x="410" y="130" font-family="Monaco, Courier" font-size="10" fill="#8b949e">SQL Query:</text>
+  <rect x="410" y="140" width="460" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="415" y="155" font-family="Monaco, Courier" font-size="9" fill="#8b949e">1</text>
+  <text x="430" y="155" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">SELECT</text>
+  <text x="468" y="155" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">queue, outcome, count(*)</text>
+
+  <text x="415" y="170" font-family="Monaco, Courier" font-size="9" fill="#8b949e">2</text>
+  <text x="430" y="170" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">FROM</text>
+  <text x="456" y="170" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">jobs_archive</text>
+
+  <text x="415" y="185" font-family="Monaco, Courier" font-size="9" fill="#8b949e">3</text>
+  <text x="430" y="185" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">WHERE</text>
+  <text x="468" y="185" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">end_time >= now() - interval</text>
+  <text x="620" y="185" font-family="Monaco, Courier" font-size="9" fill="#39d353">'7 days'</text>
+
+  <text x="415" y="200" font-family="Monaco, Courier" font-size="9" fill="#8b949e">4</text>
+  <text x="430" y="200" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">GROUP BY</text>
+  <text x="480" y="200" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">queue, outcome</text>
+
+  <text x="415" y="215" font-family="Monaco, Courier" font-size="9" fill="#8b949e">5</text>
+  <text x="430" y="215" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">ORDER BY</text>
+  <text x="480" y="215" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">count(*)</text>
+  <text x="525" y="215" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">DESC</text>
+
+  <text x="415" y="235" font-family="Monaco, Courier" font-size="9" fill="#8b949e">6</text>
+  <text x="430" y="235" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">LIMIT</text>
+  <text x="462" y="235" font-family="Monaco, Courier" font-size="9" fill="#ffa657">20</text>
+
+  <!-- Query Actions -->
+  <rect x="410" y="270" width="60" height="25" fill="#238636" stroke="#238636" stroke-width="1" rx="3"/>
+  <text x="425" y="287" font-family="Monaco, Courier" font-size="10" fill="#fff">Execute</text>
+
+  <rect x="480" y="270" width="50" height="25" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="495" y="287" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">Clear</text>
+
+  <rect x="540" y="270" width="70" height="25" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="555" y="287" font-family="Monaco, Courier" font-size="10" fill="#f0f6fc">Template</text>
+
+  <!-- Results Table -->
+  <text x="410" y="320" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Query Results (executed 0.45s ago):</text>
+  <rect x="410" y="330" width="460" height="280" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Table Headers -->
+  <rect x="410" y="330" width="460" height="25" fill="#1f2937" stroke="#30363d" stroke-width="1"/>
+  <text x="415" y="347" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc" font-weight="bold">Queue</text>
+  <text x="520" y="347" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc" font-weight="bold">Outcome</text>
+  <text x="640" y="347" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc" font-weight="bold">Count</text>
+  <text x="750" y="347" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc" font-weight="bold">% Total</text>
+
+  <!-- Table Rows -->
+  <text x="415" y="367" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">email-queue</text>
+  <text x="520" y="367" font-family="Monaco, Courier" font-size="9" fill="#39d353">success</text>
+  <text x="640" y="367" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">25,842</text>
+  <text x="750" y="367" font-family="Monaco, Courier" font-size="9" fill="#8b949e">42.3%</text>
+
+  <text x="415" y="382" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">user-tasks</text>
+  <text x="520" y="382" font-family="Monaco, Courier" font-size="9" fill="#39d353">success</text>
+  <text x="640" y="382" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">18,291</text>
+  <text x="750" y="382" font-family="Monaco, Courier" font-size="9" fill="#8b949e">29.9%</text>
+
+  <text x="415" y="397" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">payment-proc</text>
+  <text x="520" y="397" font-family="Monaco, Courier" font-size="9" fill="#39d353">success</text>
+  <text x="640" y="397" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">8,456</text>
+  <text x="750" y="397" font-family="Monaco, Courier" font-size="9" fill="#8b949e">13.8%</text>
+
+  <text x="415" y="412" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">email-queue</text>
+  <text x="520" y="412" font-family="Monaco, Courier" font-size="9" fill="#f85149">failed</text>
+  <text x="640" y="412" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">2,834</text>
+  <text x="750" y="412" font-family="Monaco, Courier" font-size="9" fill="#8b949e">4.6%</text>
+
+  <text x="415" y="427" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">batch-reports</text>
+  <text x="520" y="427" font-family="Monaco, Courier" font-size="9" fill="#39d353">success</text>
+  <text x="640" y="427" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">2,102</text>
+  <text x="750" y="427" font-family="Monaco, Courier" font-size="9" fill="#8b949e">3.4%</text>
+
+  <text x="415" y="442" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">user-tasks</text>
+  <text x="520" y="442" font-family="Monaco, Courier" font-size="9" fill="#f85149">failed</text>
+  <text x="640" y="442" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">1,892</text>
+  <text x="750" y="442" font-family="Monaco, Courier" font-size="9" fill="#8b949e">3.1%</text>
+
+  <!-- Pagination -->
+  <text x="415" y="590" font-family="Monaco, Courier" font-size="9" fill="#8b949e">Showing 6 of 847 results</text>
+  <text x="780" y="590" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">[1] 2 3 ... 142 →</text>
+
+  <!-- Right Panel: Schema & Templates -->
+  <rect x="900" y="80" width="280" height="700" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="910" y="105" font-family="Monaco, Courier" font-size="12" fill="#58a6ff" font-weight="bold">Schema & Templates</text>
+
+  <!-- Archive Schema -->
+  <text x="910" y="130" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Archive Schema (v1.2):</text>
+  <rect x="910" y="140" width="260" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="915" y="157" font-family="Monaco, Courier" font-size="9" fill="#8b949e">Core Fields:</text>
+  <text x="915" y="172" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• job_id</text>
+  <text x="970" y="172" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(String, PK)</text>
+  <text x="915" y="185" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• queue</text>
+  <text x="970" y="185" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(String, Indexed)</text>
+  <text x="915" y="198" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• priority</text>
+  <text x="970" y="198" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(UInt8)</text>
+  <text x="915" y="211" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• enqueue_time</text>
+  <text x="985" y="211" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(DateTime)</text>
+  <text x="915" y="224" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• start_time</text>
+  <text x="985" y="224" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(DateTime)</text>
+  <text x="915" y="237" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• end_time</text>
+  <text x="970" y="237" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(DateTime, TTL)</text>
+  <text x="915" y="250" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• outcome</text>
+  <text x="970" y="250" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(Enum)</text>
+  <text x="915" y="263" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• retries</text>
+  <text x="970" y="263" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(UInt16)</text>
+  <text x="915" y="276" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• worker_id</text>
+  <text x="985" y="276" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(String)</text>
+  <text x="915" y="289" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• payload_size</text>
+  <text x="985" y="289" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(UInt32)</text>
+  <text x="915" y="302" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• trace_id</text>
+  <text x="970" y="302" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(String)</text>
+  <text x="915" y="315" font-family="Monaco, Courier" font-size="8" fill="#58a6ff">• payload_hash</text>
+  <text x="985" y="315" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(String)</text>
+  <text x="915" y="328" font-family="Monaco, Courier" font-size="8" fill="#8b949e">• payload_sample</text>
+  <text x="1005" y="328" font-family="Monaco, Courier" font-size="8" fill="#8b949e">(Optional)</text>
+
+  <!-- Query Templates -->
+  <text x="910" y="365" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Common Query Templates:</text>
+  <rect x="910" y="375" width="260" height="150" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="915" y="392" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">📊 Queue Success Rates</text>
+  <text x="915" y="407" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">⏱️ Performance Trends</text>
+  <text x="915" y="422" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">🔍 Error Investigation</text>
+  <text x="915" y="437" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">📈 Retry Patterns</text>
+  <text x="915" y="452" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">🏷️ Worker Performance</text>
+  <text x="915" y="467" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">🕐 Hourly Volume</text>
+  <text x="915" y="482" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">📋 Compliance Report</text>
+  <text x="915" y="497" font-family="Monaco, Courier" font-size="9" fill="#58a6ff">🧹 Retention Preview</text>
+
+  <!-- Actions -->
+  <text x="910" y="545" font-family="Monaco, Courier" font-size="10" fill="#8b949e">Archive Actions:</text>
+  <rect x="910" y="555" width="260" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <rect x="920" y="570" width="80" height="20" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="942" y="582" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">Export CSV</text>
+
+  <rect x="1010" y="570" width="80" height="20" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="1025" y="582" font-family="Monaco, Courier" font-size="9" fill="#f0f6fc">View Schema</text>
+
+  <rect x="920" y="600" width="80" height="20" fill="#bd4f36" stroke="#bd4f36" stroke-width="1" rx="3"/>
+  <text x="935" y="612" font-family="Monaco, Courier" font-size="9" fill="#fff">Force Export</text>
+
+  <rect x="1010" y="600" width="80" height="20" fill="#ffa657" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="1030" y="612" font-family="Monaco, Courier" font-size="9" fill="#000">Migrate</text>
+
+  <!-- Footer -->
+  <rect x="0" y="740" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="765" font-family="Monaco, Courier" font-size="12" fill="#8b949e">Archive Rate: 250 jobs/s</text>
+  <text x="20" y="785" font-family="Monaco, Courier" font-size="12" fill="#8b949e">Storage: 2.1TB (ClickHouse) | 450GB (Redis)</text>
+
+  <text x="500" y="765" font-family="Monaco, Courier" font-size="12" fill="#8b949e">Retention: 90d Redis → 5y ClickHouse</text>
+  <text x="500" y="785" font-family="Monaco, Courier" font-size="12" fill="#8b949e">Next cleanup: in 6d 14h</text>
+
+  <text x="950" y="775" font-family="Monaco, Courier" font-size="12" fill="#58a6ff">ESC: Back | F1: Help</text>
+</svg>

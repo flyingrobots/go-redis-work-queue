@@ -1,0 +1,166 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .text { fill: #f0f6fc; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 12px; }
+      .text-small { fill: #8b949e; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 10px; }
+      .text-title { fill: #f0f6fc; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 18px; font-weight: bold; }
+      .success { fill: #39d353; }
+      .warning { fill: #ffa657; }
+      .error { fill: #f85149; }
+      .primary { fill: #58a6ff; }
+      .btn-primary { fill: #238636; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .btn-secondary { fill: #30363d; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .input { fill: #0d1117; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .table-header { fill: #1f2937; }
+      .border { stroke: #30363d; stroke-width: 1; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" class="bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" class="panel"/>
+  <text x="20" y="35" class="text-title">RBAC & Token Management</text>
+  <text x="1100" y="35" class="success">admin@queue.com</text>
+  <text x="1100" y="50" class="text-small">Super Admin</text>
+
+  <!-- Left Panel: User Management -->
+  <rect x="20" y="80" width="350" height="700" class="panel"/>
+  <text x="30" y="105" class="text-title">Users & Roles</text>
+
+  <!-- Search bar -->
+  <rect x="30" y="120" width="330" height="30" class="input"/>
+  <text x="40" y="138" class="text-small">🔍 Search users...</text>
+
+  <!-- User list -->
+  <rect x="30" y="160" width="330" height="30" class="table-header"/>
+  <text x="40" y="178" class="text">User</text>
+  <text x="200" y="178" class="text">Role</text>
+  <text x="280" y="178" class="text">Status</text>
+
+  <!-- User rows -->
+  <text x="40" y="208" class="text">alice@company.com</text>
+  <text x="200" y="208" class="primary">admin</text>
+  <text x="280" y="208" class="success">●</text>
+
+  <text x="40" y="238" class="text">bob@company.com</text>
+  <text x="200" y="238" class="text">operator</text>
+  <text x="280" y="238" class="success">●</text>
+
+  <text x="40" y="268" class="text">charlie@company.com</text>
+  <text x="200" y="268" class="text">viewer</text>
+  <text x="280" y="268" class="warning">●</text>
+
+  <text x="40" y="298" class="text">dave@company.com</text>
+  <text x="200" y="298" class="text">maintainer</text>
+  <text x="280" y="298" class="success">●</text>
+
+  <!-- Add User button -->
+  <rect x="30" y="720" width="100" height="30" class="btn-primary"/>
+  <text x="65" y="738" class="text">+ Add User</text>
+
+  <!-- Center Panel: Token Management -->
+  <rect x="390" y="80" width="420" height="700" class="panel"/>
+  <text x="400" y="105" class="text-title">API Tokens</text>
+
+  <!-- Token creation form -->
+  <rect x="400" y="120" width="400" height="150" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="410" y="140" class="text">Create New Token</text>
+
+  <text x="410" y="165" class="text-small">Name:</text>
+  <rect x="410" y="170" width="180" height="25" class="input"/>
+  <text x="415" y="185" class="text-small">production-api-token</text>
+
+  <text x="610" y="165" class="text-small">Expires:</text>
+  <rect x="610" y="170" width="180" height="25" class="input"/>
+  <text x="615" y="185" class="text-small">30 days</text>
+
+  <text x="410" y="210" class="text-small">Scopes:</text>
+  <rect x="410" y="215" width="380" height="25" class="input"/>
+  <text x="415" y="230" class="text-small">stats:read, queues:list, jobs:enqueue</text>
+
+  <rect x="720" y="245" width="70" height="20" class="btn-primary"/>
+  <text x="745" y="257" class="text-small">Create</text>
+
+  <!-- Active tokens list -->
+  <text x="400" y="300" class="text">Active Tokens</text>
+
+  <rect x="400" y="310" width="400" height="25" class="table-header"/>
+  <text x="410" y="325" class="text-small">Name</text>
+  <text x="550" y="325" class="text-small">Created</text>
+  <text x="650" y="325" class="text-small">Expires</text>
+  <text x="750" y="325" class="text-small">Status</text>
+
+  <!-- Token rows -->
+  <text x="410" y="350" class="text-small">ci-pipeline</text>
+  <text x="550" y="350" class="text-small">2 days ago</text>
+  <text x="650" y="350" class="text-small">28 days</text>
+  <text x="750" y="350" class="success">Active</text>
+
+  <text x="410" y="370" class="text-small">monitoring-service</text>
+  <text x="550" y="370" class="text-small">1 week ago</text>
+  <text x="650" y="370" class="text-small">23 days</text>
+  <text x="750" y="370" class="success">Active</text>
+
+  <text x="410" y="390" class="text-small">old-integration</text>
+  <text x="550" y="390" class="text-small">3 months ago</text>
+  <text x="650" y="390" class="text-small">expired</text>
+  <text x="750" y="390" class="error">Revoked</text>
+
+  <!-- Right Panel: Audit Log -->
+  <rect x="830" y="80" width="350" height="700" class="panel"/>
+  <text x="840" y="105" class="text-title">Audit Trail</text>
+
+  <!-- Filters -->
+  <rect x="840" y="120" width="150" height="25" class="input"/>
+  <text x="845" y="135" class="text-small">Filter by action...</text>
+
+  <rect x="1000" y="120" width="170" height="25" class="input"/>
+  <text x="1005" y="135" class="text-small">Last 7 days</text>
+
+  <!-- Audit entries -->
+  <text x="840" y="165" class="text-small">Recent Activity</text>
+
+  <rect x="840" y="175" width="330" height="350" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Entry 1 -->
+  <text x="850" y="195" class="success">TOKEN_CREATED</text>
+  <text x="850" y="208" class="text-small">alice@company.com created token 'ci-pipeline'</text>
+  <text x="850" y="220" class="text-small">Scopes: stats:read, jobs:enqueue</text>
+  <text x="850" y="232" class="text-small">2024-01-15 10:30:15 UTC</text>
+
+  <!-- Entry 2 -->
+  <text x="850" y="255" class="warning">DLQ_PURGED</text>
+  <text x="850" y="268" class="text-small">bob@company.com purged DLQ 'email-queue'</text>
+  <text x="850" y="280" class="text-small">147 jobs affected</text>
+  <text x="850" y="292" class="text-small">2024-01-15 09:15:22 UTC</text>
+
+  <!-- Entry 3 -->
+  <text x="850" y="315" class="error">TOKEN_REVOKED</text>
+  <text x="850" y="328" class="text-small">alice@company.com revoked token 'old-integration'</text>
+  <text x="850" y="340" class="text-small">Reason: Security breach</text>
+  <text x="850" y="352" class="text-small">2024-01-14 16:45:33 UTC</text>
+
+  <!-- Entry 4 -->
+  <text x="850" y="375" class="primary">ACCESS_DENIED</text>
+  <text x="850" y="388" class="text-small">charlie@company.com denied dlq:purge</text>
+  <text x="850" y="400" class="text-small">Queue: payment-processing</text>
+  <text x="850" y="412" class="text-small">2024-01-14 14:20:18 UTC</text>
+
+  <!-- Export button -->
+  <rect x="840" y="540" width="100" height="25" class="btn-secondary"/>
+  <text x="875" y="555" class="text-small">Export Log</text>
+
+  <!-- Bottom status bar -->
+  <rect x="0" y="785" width="1200" height="15" fill="#1f2937"/>
+  <text x="20" y="795" class="text-small">Tokens: 12 active, 3 expired | Users: 45 active | Last audit sync: 2 min ago</text>
+  <text x="1000" y="795" class="text-small">ESC: Exit | TAB: Switch panels | /: Search</text>
+
+  <!-- Panel borders -->
+  <rect x="20" y="80" width="350" height="700" class="border"/>
+  <rect x="390" y="80" width="420" height="700" class="border"/>
+  <rect x="830" y="80" width="350" height="700" class="border"/>
+</svg>

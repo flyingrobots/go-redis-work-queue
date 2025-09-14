@@ -1,0 +1,144 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="25" fill="#f0f6fc" font-family="Monaco, monospace" font-size="16" font-weight="bold">Distributed Tracing - Job Queue System</text>
+  <text x="20" y="45" fill="#8b949e" font-family="Monaco, monospace" font-size="12">Trace ID: 6a8ca01c-45a8-4c8e-b9f2-d5e3c4a1b2f0 | Queue: high-priority | Jobs: 1,247 traced</text>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="60" width="1200" height="40" fill="#0d1117"/>
+  <rect x="20" y="75" width="100" height="20" fill="#238636" rx="4"/>
+  <text x="30" y="87" fill="#f0f6fc" font-family="Monaco, monospace" font-size="11" font-weight="bold">Traces</text>
+  <rect x="130" y="75" width="80" height="20" fill="#30363d" rx="4"/>
+  <text x="140" y="87" fill="#8b949e" font-family="Monaco, monospace" font-size="11">Spans</text>
+  <rect x="220" y="75" width="80" height="20" fill="#30363d" rx="4"/>
+  <text x="230" y="87" fill="#8b949e" font-family="Monaco, monospace" font-size="11">Metrics</text>
+
+  <!-- Left Panel - Trace List -->
+  <rect x="20" y="120" width="350" height="640" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="30" y="140" fill="#f0f6fc" font-family="Monaco, monospace" font-size="12" font-weight="bold">Recent Traces</text>
+
+  <!-- Search/Filter -->
+  <rect x="30" y="150" width="320" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="35" y="167" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Filter: error=true queue=high-priority</text>
+
+  <!-- Trace Entries -->
+  <!-- Trace 1 - Selected/Error -->
+  <rect x="30" y="185" width="320" height="45" fill="#f851491a" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="35" y="200" fill="#f85149" font-family="Monaco, monospace" font-size="10" font-weight="bold">ERROR</text>
+  <text x="75" y="200" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10">user_signup</text>
+  <text x="35" y="213" fill="#8b949e" font-family="Monaco, monospace" font-size="9">6a8ca01c...b2f0</text>
+  <text x="35" y="225" fill="#8b949e" font-family="Monaco, monospace" font-size="9">2min ago | 3.2s | 4 spans | high-priority</text>
+
+  <!-- Trace 2 - Success -->
+  <rect x="30" y="240" width="320" height="45" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="35" y="255" fill="#39d353" font-family="Monaco, monospace" font-size="10" font-weight="bold">OK</text>
+  <text x="60" y="255" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10">payment_process</text>
+  <text x="35" y="268" fill="#8b949e" font-family="Monaco, monospace" font-size="9">7b9db12d...c3e1</text>
+  <text x="35" y="280" fill="#8b949e" font-family="Monaco, monospace" font-size="9">5min ago | 1.8s | 6 spans | high-priority</text>
+
+  <!-- Trace 3 - Success -->
+  <rect x="30" y="295" width="320" height="45" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="35" y="310" fill="#39d353" font-family="Monaco, monospace" font-size="10" font-weight="bold">OK</text>
+  <text x="60" y="310" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10">email_batch</text>
+  <text x="35" y="323" fill="#8b949e" font-family="Monaco, monospace" font-size="9">8c0ec23e...d4f2</text>
+  <text x="35" y="335" fill="#8b949e" font-family="Monaco, monospace" font-size="9">8min ago | 0.9s | 3 spans | low-priority</text>
+
+  <!-- More traces... -->
+  <text x="35" y="370" fill="#8b949e" font-family="Monaco, monospace" font-size="10">+ 1,244 more traces...</text>
+
+  <!-- Stats Summary -->
+  <rect x="30" y="400" width="320" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="35" y="420" fill="#f0f6fc" font-family="Monaco, monospace" font-size="11" font-weight="bold">Last Hour Stats</text>
+  <text x="35" y="435" fill="#39d353" font-family="Monaco, monospace" font-size="10">✓ 1,203 successful</text>
+  <text x="35" y="450" fill="#f85149" font-family="Monaco, monospace" font-size="10">✗ 44 failed</text>
+  <text x="35" y="465" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Avg latency: 1.4s</text>
+
+  <!-- Center Panel - Waterfall View -->
+  <rect x="390" y="120" width="550" height="640" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="400" y="140" fill="#f0f6fc" font-family="Monaco, monospace" font-size="12" font-weight="bold">Trace Waterfall - user_signup</text>
+  <text x="400" y="155" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Duration: 3.247s | Started: 2024-01-15T10:30:42.123Z</text>
+
+  <!-- Waterfall Timeline Header -->
+  <rect x="400" y="170" width="520" height="20" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="410" y="182" fill="#8b949e" font-family="Monaco, monospace" font-size="9">0ms</text>
+  <text x="540" y="182" fill="#8b949e" font-family="Monaco, monospace" font-size="9">1.6s</text>
+  <text x="800" y="182" fill="#8b949e" font-family="Monaco, monospace" font-size="9">3.2s</text>
+
+  <!-- Span 1 - queue.enqueue -->
+  <rect x="410" y="200" width="30" height="20" fill="#238636" rx="2"/>
+  <text x="450" y="213" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">queue.enqueue</text>
+  <text x="570" y="213" fill="#8b949e" font-family="Monaco, monospace" font-size="9">23ms</text>
+
+  <!-- Span 2 - queue.dequeue -->
+  <rect x="450" y="230" width="25" height="20" fill="#58a6ff" rx="2"/>
+  <text x="485" y="243" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">queue.dequeue</text>
+  <text x="570" y="243" fill="#8b949e" font-family="Monaco, monospace" font-size="9">18ms</text>
+
+  <!-- Span 3 - job.process (parent) -->
+  <rect x="485" y="260" width="280" height="20" fill="#ffa657" rx="2"/>
+  <text x="495" y="273" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">job.process</text>
+  <text x="570" y="273" fill="#8b949e" font-family="Monaco, monospace" font-size="9">2.847s</text>
+
+  <!-- Span 4 - database.query (child) -->
+  <rect x="500" y="290" width="180" height="20" fill="#39d353" rx="2"/>
+  <text x="510" y="303" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">database.query</text>
+  <text x="570" y="303" fill="#8b949e" font-family="Monaco, monospace" font-size="9">1.832s</text>
+
+  <!-- Span 5 - http.request (child, failed) -->
+  <rect x="690" y="290" width="60" height="20" fill="#f85149" rx="2"/>
+  <text x="700" y="303" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">http.request</text>
+  <text x="760" y="303" fill="#8b949e" font-family="Monaco, monospace" font-size="9">612ms</text>
+
+  <!-- Span 6 - retry logic -->
+  <rect x="760" y="320" width="90" height="20" fill="#ffa657" rx="2"/>
+  <text x="770" y="333" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">retry.attempt</text>
+  <text x="570" y="333" fill="#8b949e" font-family="Monaco, monospace" font-size="9">912ms</text>
+
+  <!-- Error details -->
+  <rect x="400" y="360" width="520" height="80" fill="#f851491a" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="410" y="380" fill="#f85149" font-family="Monaco, monospace" font-size="11" font-weight="bold">Error Details</text>
+  <text x="410" y="395" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Span: http.request</text>
+  <text x="410" y="408" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Error: connection timeout after 500ms</text>
+  <text x="410" y="421" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">URL: https://api.example.com/users</text>
+  <text x="410" y="434" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Retry: 1/3 attempts</text>
+
+  <!-- Right Panel - Span Details -->
+  <rect x="960" y="120" width="220" height="640" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="970" y="140" fill="#f0f6fc" font-family="Monaco, monospace" font-size="12" font-weight="bold">Span Details</text>
+
+  <!-- Selected Span Info -->
+  <text x="970" y="160" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Selected: http.request</text>
+
+  <!-- Span attributes -->
+  <rect x="970" y="170" width="200" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="980" y="190" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10" font-weight="bold">Attributes</text>
+  <text x="980" y="205" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">http.method:</text>
+  <text x="980" y="217" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">POST</text>
+  <text x="980" y="235" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">http.url:</text>
+  <text x="980" y="247" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">api.example.com/users</text>
+  <text x="980" y="265" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">http.status_code:</text>
+  <text x="980" y="277" fill="#f85149" font-family="Monaco, monospace" font-size="9">0 (timeout)</text>
+  <text x="980" y="295" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">queue.name:</text>
+  <text x="980" y="307" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">high-priority</text>
+  <text x="980" y="325" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">job.id:</text>
+  <text x="980" y="337" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">job_12345</text>
+  <text x="980" y="355" fill="#58a6ff" font-family="Monaco, monospace" font-size="9">retry.count:</text>
+  <text x="980" y="367" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">1</text>
+
+  <!-- Actions -->
+  <rect x="970" y="390" width="200" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="980" y="410" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10" font-weight="bold">Actions</text>
+  <rect x="980" y="420" width="180" height="20" fill="#238636" rx="3"/>
+  <text x="1020" y="433" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Open in APM</text>
+  <rect x="980" y="450" width="180" height="20" fill="#58a6ff" rx="3"/>
+  <text x="1020" y="463" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Copy Trace ID</text>
+  <rect x="980" y="480" width="180" height="20" fill="#ffa657" rx="3"/>
+  <text x="1020" y="493" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">View Related Jobs</text>
+
+  <!-- Footer -->
+  <rect x="0" y="770" width="1200" height="30" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="788" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Press 'o' to open in APM | 't' to copy trace ID | 'r' to view related | 'q' to quit</text>
+  <text x="900" y="788" fill="#8b949e" font-family="Monaco, monospace" font-size="10">Connected to Jaeger</text>
+</svg>

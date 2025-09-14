@@ -1,0 +1,110 @@
+<svg viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Title bar -->
+  <rect x="0" y="0" width="400" height="35" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="15" y="22" fill="#f0f6fc" font-family="monospace" font-size="12">Budget Control</text>
+  <text x="320" y="22" fill="#58a6ff" font-family="monospace" font-size="10">B</text>
+
+  <!-- Tab Navigation -->
+  <rect x="10" y="45" width="380" height="30" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <rect x="15" y="50" width="60" height="20" fill="#238636" rx="4"/>
+  <text x="35" y="62" fill="#f0f6fc" font-family="monospace" font-size="9">Overview</text>
+
+  <rect x="85" y="50" width="60" height="20" fill="#30363d" rx="4"/>
+  <text x="109" y="62" fill="#8b949e" font-family="monospace" font-size="9">Trends</text>
+
+  <rect x="155" y="50" width="60" height="20" fill="#30363d" rx="4"/>
+  <text x="177" y="62" fill="#8b949e" font-family="monospace" font-size="9">Controls</text>
+
+  <rect x="225" y="50" width="60" height="20" fill="#30363d" rx="4"/>
+  <text x="248" y="62" fill="#8b949e" font-family="monospace" font-size="9">Alerts</text>
+
+  <!-- Monthly Budget Summary -->
+  <rect x="10" y="90" width="380" height="100" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="110" fill="#f0f6fc" font-family="monospace" font-size="12">January 2024 Budget</text>
+  <text x="20" y="130" fill="#39d353" font-family="monospace" font-size="16" font-weight="bold">$2,500.00</text>
+  <text x="20" y="150" fill="#8b949e" font-family="monospace" font-size="9">Spent: $1,847.32 (73.9%)</text>
+
+  <!-- Progress bar -->
+  <rect x="20" y="160" width="360" height="6" fill="#0d1117" rx="3"/>
+  <rect x="20" y="160" width="266" height="6" fill="#39d353" rx="3"/>
+
+  <!-- Forecast -->
+  <text x="20" y="180" fill="#8b949e" font-family="monospace" font-size="9">Forecast: $2,284.50 (91.4%)</text>
+
+  <!-- Tenant Budget Cards -->
+  <text x="10" y="215" fill="#f0f6fc" font-family="monospace" font-size="12">Tenant Budgets</text>
+
+  <!-- prod-api -->
+  <rect x="10" y="230" width="380" height="70" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="250" fill="#f0f6fc" font-family="monospace" font-size="11">prod-api</text>
+  <text x="320" y="250" fill="#39d353" font-family="monospace" font-size="11">$1,200</text>
+  <rect x="20" y="260" width="340" height="8" fill="#0d1117" rx="4"/>
+  <rect x="20" y="260" width="238" height="8" fill="#39d353" rx="4"/>
+  <text x="20" y="285" fill="#8b949e" font-family="monospace" font-size="9">Used: $840.50 (70.0%) | Remaining: $359.50</text>
+
+  <!-- analytics -->
+  <rect x="10" y="310" width="380" height="70" fill="#161b22" stroke="#f85149" stroke-width="2" rx="4"/>
+  <text x="20" y="330" fill="#f0f6fc" font-family="monospace" font-size="11">analytics</text>
+  <text x="320" y="330" fill="#39d353" font-family="monospace" font-size="11">$800</text>
+  <text x="360" y="330" fill="#f85149" font-family="monospace" font-size="10">⚠</text>
+  <rect x="20" y="340" width="340" height="8" fill="#0d1117" rx="4"/>
+  <rect x="20" y="340" width="272" height="8" fill="#ffa657" rx="4"/>
+  <text x="20" y="365" fill="#8b949e" font-family="monospace" font-size="9">Used: $640.00 (80.0%) | Remaining: $160.00</text>
+
+  <!-- staging -->
+  <rect x="10" y="390" width="380" height="70" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="410" fill="#f0f6fc" font-family="monospace" font-size="11">staging</text>
+  <text x="320" y="410" fill="#39d353" font-family="monospace" font-size="11">$300</text>
+  <rect x="20" y="420" width="340" height="8" fill="#0d1117" rx="4"/>
+  <rect x="20" y="420" width="136" height="8" fill="#39d353" rx="4"/>
+  <text x="20" y="445" fill="#8b949e" font-family="monospace" font-size="9">Used: $120.00 (40.0%) | Remaining: $180.00</text>
+
+  <!-- Cost Breakdown -->
+  <text x="10" y="485" fill="#f0f6fc" font-family="monospace" font-size="12">Cost Breakdown</text>
+
+  <rect x="10" y="500" width="380" height="120" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- CPU Time -->
+  <text x="20" y="520" fill="#f0f6fc" font-family="monospace" font-size="10">CPU Time</text>
+  <text x="320" y="520" fill="#f0f6fc" font-family="monospace" font-size="10">$1,124.80</text>
+  <rect x="20" y="525" width="340" height="4" fill="#58a6ff" rx="2"/>
+
+  <!-- Memory -->
+  <text x="20" y="545" fill="#f0f6fc" font-family="monospace" font-size="10">Memory Usage</text>
+  <text x="320" y="545" fill="#f0f6fc" font-family="monospace" font-size="10">$432.15</text>
+  <rect x="20" y="550" width="130" height="4" fill="#39d353" rx="2"/>
+
+  <!-- Payload Size -->
+  <text x="20" y="570" fill="#f0f6fc" font-family="monospace" font-size="10">Payload Size</text>
+  <text x="320" y="570" fill="#f0f6fc" font-family="monospace" font-size="10">$186.22</text>
+  <rect x="20" y="575" width="56" height="4" fill="#ffa657" rx="2"/>
+
+  <!-- Redis Ops -->
+  <text x="20" y="595" fill="#f0f6fc" font-family="monospace" font-size="10">Redis Ops</text>
+  <text x="320" y="595" fill="#f0f6fc" font-family="monospace" font-size="10">$104.15</text>
+  <rect x="20" y="600" width="31" height="4" fill="#f85149" rx="2"/>
+
+  <!-- Mini Chart -->
+  <text x="10" y="645" fill="#f0f6fc" font-family="monospace" font-size="12">7-Day Trend</text>
+
+  <rect x="10" y="660" width="380" height="80" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <!-- Simple sparkline -->
+  <polyline points="20,720 60,710 100,705 140,700 180,695 220,690 260,685 300,682 340,680 370,678"
+           fill="none" stroke="#39d353" stroke-width="2"/>
+  <text x="20" y="735" fill="#8b949e" font-family="monospace" font-size="9">Daily spend trending down 5%</text>
+
+  <!-- Quick Actions -->
+  <text x="10" y="765" fill="#f0f6fc" font-family="monospace" font-size="12">Quick Actions</text>
+
+  <rect x="10" y="780" width="120" height="15" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="50" y="791" fill="#f0f6fc" font-family="monospace" font-size="8">Export</text>
+
+  <rect x="140" y="780" width="120" height="15" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="4"/>
+  <text x="180" y="791" fill="#58a6ff" font-family="monospace" font-size="8">Settings</text>
+
+  <rect x="270" y="780" width="120" height="15" fill="#30363d" stroke="#ffa657" stroke-width="1" rx="4"/>
+  <text x="315" y="791" fill="#ffa657" font-family="monospace" font-size="8">Alerts</text>
+</svg>

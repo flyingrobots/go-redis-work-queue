@@ -1,0 +1,154 @@
+<svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="600" fill="#1a1b26"/>
+
+  <!-- Compact Cluster Selector -->
+  <rect x="0" y="0" width="400" height="30" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <circle cx="10" cy="15" r="4" fill="#9ece6a"/>
+  <text x="20" y="18" fill="#9ece6a" font-family="monospace" font-size="9" font-weight="bold">PROD-US-E</text>
+  <text x="85" y="18" fill="#565f89" font-family="monospace" font-size="8">▼</text>
+  <text x="110" y="18" fill="#565f89" font-family="monospace" font-size="8">5 clusters</text>
+  <text x="320" y="18" fill="#7aa2f7" font-family="monospace" font-size="8">[Compare]</text>
+  <text x="370" y="18" fill="#f7768e" font-family="monospace" font-size="8">[!]</text>
+
+  <!-- View Mode Tabs (swipeable) -->
+  <rect x="5" y="35" width="390" height="25" fill="#1a1b26"/>
+
+  <rect x="10" y="38" width="70" height="20" fill="#414868" rx="2"/>
+  <text x="25" y="50" fill="#c0caf5" font-family="monospace" font-size="8" font-weight="bold">Overview</text>
+
+  <rect x="85" y="38" width="70" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="100" y="50" fill="#7aa2f7" font-family="monospace" font-size="8">Compare</text>
+
+  <rect x="160" y="38" width="70" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="175" y="50" fill="#7aa2f7" font-family="monospace" font-size="8">Actions</text>
+
+  <!-- Pagination dots -->
+  <circle cx="370" cy="48" r="3" fill="#7aa2f7"/>
+  <circle cx="380" cy="48" r="2" fill="#565f89"/>
+  <circle cx="390" cy="48" r="2" fill="#565f89"/>
+
+  <!-- Main Content: Cluster Cards (vertical stack for mobile) -->
+
+  <!-- Global Summary Card (always visible) -->
+  <rect x="5" y="65" width="390" height="60" fill="#24283b" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="10" y="80" fill="#7aa2f7" font-family="monospace" font-size="9" font-weight="bold">Global Summary</text>
+  <text x="10" y="95" fill="#c0caf5" font-family="monospace" font-size="8">Jobs: 107K | Workers: 125/145 | DLQ: 1,093</text>
+  <text x="10" y="108" fill="#9ece6a" font-family="monospace" font-size="8">Health: 93%</text>
+  <text x="90" y="108" fill="#e0af68" font-family="monospace" font-size="8">⚠ 2 issues</text>
+  <text x="300" y="108" fill="#565f89" font-family="monospace" font-size="8">US: 78% | EU: 21%</text>
+
+  <!-- Cluster Card 1: PROD-US-EAST (compact, swipeable) -->
+  <rect x="5" y="130" width="390" height="85" fill="#1a1b26" stroke="#9ece6a" stroke-width="2" rx="4"/>
+
+  <!-- Header with status -->
+  <rect x="5" y="130" width="390" height="25" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="15" cy="142" r="4" fill="#9ece6a"/>
+  <text x="25" y="145" fill="#9ece6a" font-family="monospace" font-size="9" font-weight="bold">PROD-US-EAST</text>
+  <text x="330" y="145" fill="#565f89" font-family="monospace" font-size="8">Primary</text>
+
+  <!-- Two-row stats layout -->
+  <text x="10" y="170" fill="#c0caf5" font-family="monospace" font-size="8">Q: 12 | Jobs: 45K | Rate: 1.2K/s</text>
+  <text x="10" y="183" fill="#c0caf5" font-family="monospace" font-size="8">Workers: 48/50</text>
+  <text x="100" y="183" fill="#e0af68" font-family="monospace" font-size="8">DLQ: 127</text>
+  <text x="170" y="183" fill="#9ece6a" font-family="monospace" font-size="8">Health: 98%</text>
+
+  <!-- Mini sparkline -->
+  <rect x="260" y="165" width="60" height="20" fill="#24283b" rx="2"/>
+  <rect x="265" y="177" width="3" height="5" fill="#9ece6a" opacity="0.8"/>
+  <rect x="270" y="175" width="3" height="7" fill="#9ece6a" opacity="0.8"/>
+  <rect x="275" y="173" width="3" height="9" fill="#9ece6a" opacity="0.8"/>
+  <rect x="280" y="174" width="3" height="8" fill="#9ece6a" opacity="0.8"/>
+
+  <!-- Quick actions -->
+  <rect x="330" y="165" width="55" height="20" fill="#3b4261" rx="2"/>
+  <text x="345" y="177" fill="#7aa2f7" font-family="monospace" font-size="8">View →</text>
+
+  <!-- Touch target indicator -->
+  <rect x="10" y="195" width="375" height="15" fill="#1a1b26"/>
+  <text x="170" y="205" fill="#565f89" font-family="monospace" font-size="7">Tap to expand</text>
+
+  <!-- Cluster Card 2: PROD-US-WEST -->
+  <rect x="5" y="220" width="390" height="85" fill="#1a1b26" stroke="#7aa2f7" stroke-width="1" rx="4"/>
+
+  <rect x="5" y="220" width="390" height="25" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="15" cy="232" r="4" fill="#7aa2f7"/>
+  <text x="25" y="235" fill="#7aa2f7" font-family="monospace" font-size="9" font-weight="bold">PROD-US-WEST</text>
+  <text x="330" y="235" fill="#565f89" font-family="monospace" font-size="8">Secondary</text>
+
+  <text x="10" y="260" fill="#c0caf5" font-family="monospace" font-size="8">Q: 12 | Jobs: 38K | Rate: 980/s</text>
+  <text x="10" y="273" fill="#c0caf5" font-family="monospace" font-size="8">Workers: 42/45</text>
+  <text x="100" y="273" fill="#e0af68" font-family="monospace" font-size="8">DLQ: 89</text>
+  <text x="170" y="273" fill="#9ece6a" font-family="monospace" font-size="8">Health: 96%</text>
+
+  <rect x="260" y="255" width="60" height="20" fill="#24283b" rx="2"/>
+  <rect x="265" y="267" width="3" height="5" fill="#7aa2f7" opacity="0.8"/>
+  <rect x="270" y="265" width="3" height="7" fill="#7aa2f7" opacity="0.8"/>
+  <rect x="275" y="264" width="3" height="8" fill="#7aa2f7" opacity="0.8"/>
+
+  <rect x="330" y="255" width="55" height="20" fill="#3b4261" rx="2"/>
+  <text x="345" y="267" fill="#7aa2f7" font-family="monospace" font-size="8">View →</text>
+
+  <!-- Cluster Card 3: STAGING (showing issue) -->
+  <rect x="5" y="310" width="390" height="85" fill="#1a1b26" stroke="#e0af68" stroke-width="1" rx="4"/>
+
+  <rect x="5" y="310" width="390" height="25" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="15" cy="322" r="4" fill="#e0af68"/>
+  <text x="25" y="325" fill="#e0af68" font-family="monospace" font-size="9" font-weight="bold">STAGING</text>
+  <text x="330" y="325" fill="#f7768e" font-family="monospace" font-size="8">⚠ Issue</text>
+
+  <text x="10" y="350" fill="#c0caf5" font-family="monospace" font-size="8">Q: 8 | Jobs: 1.2K | Rate: 45/s</text>
+  <text x="10" y="363" fill="#c0caf5" font-family="monospace" font-size="8">Workers: 5/10</text>
+  <text x="100" y="363" fill="#f7768e" font-family="monospace" font-size="8">DLQ: 847!</text>
+  <text x="170" y="363" fill="#e0af68" font-family="monospace" font-size="8">Health: 72%</text>
+
+  <!-- Issue indicator -->
+  <rect x="10" y="373" width="375" height="18" fill="#3d2c2c" rx="2"/>
+  <text x="15" y="384" fill="#f7768e" font-family="monospace" font-size="7">⚠ High DLQ count - needs attention</text>
+
+  <!-- Scroll indicator -->
+  <text x="170" y="410" fill="#565f89" font-family="monospace" font-size="8">↓ 2 more ↓</text>
+
+  <!-- Floating Action Button (FAB) for quick actions -->
+  <circle cx="360" cy="440" r="25" fill="#283745" stroke="#9ece6a" stroke-width="2"/>
+  <text x="350" y="445" fill="#9ece6a" font-family="monospace" font-size="14" font-weight="bold">⚡</text>
+
+  <!-- Bottom Navigation (always visible) -->
+  <rect x="0" y="470" width="400" height="130" fill="#24283b" stroke="#414868" stroke-width="1"/>
+
+  <!-- Quick Actions Panel -->
+  <text x="10" y="485" fill="#7aa2f7" font-family="monospace" font-size="9" font-weight="bold">Quick Actions</text>
+
+  <!-- Multi-select chips -->
+  <rect x="10" y="495" width="80" height="20" fill="#414868" rx="10"/>
+  <text x="15" y="507" fill="#c0caf5" font-family="monospace" font-size="8">✓ PROD-E</text>
+
+  <rect x="95" y="495" width="80" height="20" fill="#414868" rx="10"/>
+  <text x="100" y="507" fill="#c0caf5" font-family="monospace" font-size="8">✓ PROD-W</text>
+
+  <rect x="180" y="495" width="70" height="20" fill="#3b4261" stroke="#565f89" stroke-width="1" rx="10"/>
+  <text x="185" y="507" fill="#565f89" font-family="monospace" font-size="8">STAGING</text>
+
+  <rect x="255" y="495" width="50" height="20" fill="#3b4261" stroke="#565f89" stroke-width="1" rx="10"/>
+  <text x="265" y="507" fill="#565f89" font-family="monospace" font-size="8">+2</text>
+
+  <!-- Action buttons (full width) -->
+  <rect x="10" y="520" width="185" height="30" fill="#3b4261" stroke="#9ece6a" stroke-width="1" rx="3"/>
+  <text x="70" y="538" fill="#9ece6a" font-family="monospace" font-size="9">Sync Config</text>
+
+  <rect x="200" y="520" width="185" height="30" fill="#3b4261" stroke="#bb9af7" stroke-width="1" rx="3"/>
+  <text x="260" y="538" fill="#bb9af7" font-family="monospace" font-size="9">Compare</text>
+
+  <rect x="10" y="555" width="185" height="30" fill="#3b4261" stroke="#e0af68" stroke-width="1" rx="3"/>
+  <text x="70" y="573" fill="#e0af68" font-family="monospace" font-size="9">Load Balance</text>
+
+  <rect x="200" y="555" width="185" height="30" fill="#3d2c2c" stroke="#f7768e" stroke-width="1" rx="3"/>
+  <text x="255" y="573" fill="#f7768e" font-family="monospace" font-size="9">Emergency Stop</text>
+
+  <!-- Mobile gestures hint -->
+  <g opacity="0.4">
+    <text x="150" y="430" fill="#565f89" font-family="monospace" font-size="7">Swipe cards for actions</text>
+    <text x="140" y="180" fill="#565f89" font-family="monospace" font-size="6">→ Swipe right to drain</text>
+    <text x="140" y="270" fill="#565f89" font-family="monospace" font-size="6">→ Swipe right to drain</text>
+  </g>
+</svg>

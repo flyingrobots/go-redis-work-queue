@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22"/>
+  <text x="15" y="32" font-family="monospace" font-size="16" font-weight="bold" fill="#58a6ff">⚖️ Capacity Planner</text>
+  <text x="385" y="32" font-family="monospace" font-size="10" fill="#39d353" text-anchor="end">AUTO</text>
+
+  <!-- Tab Navigation -->
+  <g id="tabs">
+    <rect x="10" y="60" width="380" height="40" fill="#161b22" stroke="#30363d" rx="4"/>
+    <rect x="15" y="65" width="120" height="30" fill="#238636" rx="3"/>
+    <text x="75" y="85" font-family="monospace" font-size="11" fill="#ffffff" text-anchor="middle">Current</text>
+    <text x="195" y="85" font-family="monospace" font-size="11" fill="#8b949e" text-anchor="middle">Plan</text>
+    <text x="315" y="85" font-family="monospace" font-size="11" fill="#8b949e" text-anchor="middle">Simulate</text>
+  </g>
+
+  <!-- Current State View (Mobile) -->
+  <g id="current-mobile">
+    <!-- Quick Stats Cards -->
+    <rect x="10" y="110" width="185" height="80" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="130" font-family="monospace" font-size="10" fill="#58a6ff">Arrival Rate</text>
+    <text x="20" y="150" font-family="monospace" font-size="16" fill="#f0f6fc">1,234/min</text>
+    <text x="20" y="170" font-family="monospace" font-size="9" fill="#39d353">↑ 12%</text>
+
+    <rect x="205" y="110" width="185" height="80" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="215" y="130" font-family="monospace" font-size="10" fill="#58a6ff">Workers</text>
+    <text x="215" y="150" font-family="monospace" font-size="16" fill="#f0f6fc">48 replicas</text>
+    <text x="215" y="170" font-family="monospace" font-size="9" fill="#ffa657">78% util</text>
+
+    <rect x="10" y="200" width="185" height="80" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="220" font-family="monospace" font-size="10" fill="#58a6ff">Backlog</text>
+    <text x="20" y="240" font-family="monospace" font-size="16" fill="#f85149">3,421</text>
+    <text x="20" y="260" font-family="monospace" font-size="9" fill="#f85149">Above SLO</text>
+
+    <rect x="205" y="200" width="185" height="80" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="215" y="220" font-family="monospace" font-size="10" fill="#58a6ff">p95 Latency</text>
+    <text x="215" y="240" font-family="monospace" font-size="16" fill="#f85149">8.7s</text>
+    <text x="215" y="260" font-family="monospace" font-size="9" fill="#8b949e">Target: 5.0s</text>
+
+    <!-- SLO Status Bar -->
+    <rect x="10" y="290" width="380" height="60" fill="#161b22" stroke="#f85149" stroke-width="2" rx="4"/>
+    <text x="20" y="310" font-family="monospace" font-size="11" fill="#f85149">⚠ SLO BREACH</text>
+    <text x="20" y="330" font-family="monospace" font-size="9" fill="#8b949e">Error budget: 30% remaining</text>
+    <rect x="20" y="335" width="360" height="6" fill="#30363d" rx="3"/>
+    <rect x="20" y="335" width="108" height="6" fill="#f85149" rx="3"/>
+
+    <!-- Worker Pools List -->
+    <text x="15" y="375" font-family="monospace" font-size="12" font-weight="bold" fill="#f0f6fc">Worker Pools</text>
+
+    <!-- Pool 1 -->
+    <rect x="10" y="385" width="380" height="55" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="405" font-family="monospace" font-size="11" fill="#58a6ff">high-priority</text>
+    <text x="20" y="420" font-family="monospace" font-size="9" fill="#8b949e">24 replicas | CPU: 68%</text>
+    <rect x="310" y="395" width="70" height="25" fill="#238636" rx="3"/>
+    <text x="345" y="410" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">Healthy</text>
+
+    <!-- Pool 2 -->
+    <rect x="10" y="445" width="380" height="55" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="465" font-family="monospace" font-size="11" fill="#58a6ff">default</text>
+    <text x="20" y="480" font-family="monospace" font-size="9" fill="#8b949e">16 replicas | CPU: 82%</text>
+    <rect x="310" y="455" width="70" height="25" fill="#f85149" rx="3"/>
+    <text x="345" y="470" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">Stressed</text>
+
+    <!-- Pool 3 -->
+    <rect x="10" y="505" width="380" height="55" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="525" font-family="monospace" font-size="11" fill="#58a6ff">batch</text>
+    <text x="20" y="540" font-family="monospace" font-size="9" fill="#8b949e">8 replicas | CPU: 45%</text>
+    <rect x="310" y="515" width="70" height="25" fill="#238636" rx="3"/>
+    <text x="345" y="530" font-family="monospace" font-size="10" fill="#ffffff" text-anchor="middle">Healthy</text>
+
+    <!-- Action Button -->
+    <rect x="10" y="570" width="380" height="45" fill="#238636" rx="4"/>
+    <text x="200" y="598" font-family="monospace" font-size="14" fill="#ffffff" text-anchor="middle">View Recommended Plan →</text>
+
+    <!-- Mini Chart -->
+    <rect x="10" y="625" width="380" height="165" fill="#161b22" stroke="#30363d" rx="4"/>
+    <text x="20" y="645" font-family="monospace" font-size="10" fill="#8b949e">Arrival Rate Trend (1h)</text>
+
+    <!-- Simple line chart -->
+    <polyline points="30,750 80,740 130,735 180,730 230,725 280,735 330,745 370,760"
+              fill="none" stroke="#58a6ff" stroke-width="1.5"/>
+    <!-- Forecast line -->
+    <polyline points="330,745 370,760"
+              fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.5"/>
+
+    <!-- X-axis labels -->
+    <text x="30" y="775" font-family="monospace" font-size="8" fill="#8b949e">-60m</text>
+    <text x="200" y="775" font-family="monospace" font-size="8" fill="#8b949e" text-anchor="middle">-30m</text>
+    <text x="370" y="775" font-family="monospace" font-size="8" fill="#8b949e" text-anchor="end">now</text>
+  </g>
+</svg>

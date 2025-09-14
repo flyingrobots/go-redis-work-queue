@@ -1,0 +1,127 @@
+<svg viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header Bar -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="30" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Smart Dedup</text>
+  <text x="280" y="30" fill="#39d353" font-family="monospace" font-size="12">73.2%</text>
+
+  <!-- Tab Navigation -->
+  <rect x="0" y="50" width="400" height="40" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <rect x="10" y="60" width="70" height="20" fill="#58a6ff" rx="3"/>
+  <text x="32" y="73" fill="#f0f6fc" font-family="monospace" font-size="10">Stats</text>
+
+  <rect x="90" y="60" width="70" height="20" fill="#30363d" rx="3"/>
+  <text x="110" y="73" fill="#8b949e" font-family="monospace" font-size="10">Chunks</text>
+
+  <rect x="170" y="60" width="70" height="20" fill="#30363d" rx="3"/>
+  <text x="185" y="73" fill="#8b949e" font-family="monospace" font-size="10">Config</text>
+
+  <rect x="250" y="60" width="70" height="20" fill="#30363d" rx="3"/>
+  <text x="270" y="73" fill="#8b949e" font-family="monospace" font-size="10">Tools</text>
+
+  <!-- Stats Panel -->
+  <rect x="10" y="100" width="380" height="680" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+
+  <!-- Storage Summary Card -->
+  <rect x="20" y="115" width="360" height="80" fill="#0d1117" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="30" y="140" fill="#39d353" font-family="monospace" font-size="12" font-weight="bold">Storage Efficiency</text>
+  <text x="30" y="158" fill="#f0f6fc" font-family="monospace" font-size="10">Original: 2.4 GB → Compressed: 642 MB</text>
+  <text x="30" y="173" fill="#39d353" font-family="monospace" font-size="10">✓ Saved 1.76 GB (73.2% reduction)</text>
+  <text x="30" y="188" fill="#8b949e" font-family="monospace" font-size="9">4,829 chunks | 24,615 job refs</text>
+
+  <!-- Dedup Trend Mini Chart -->
+  <rect x="20" y="205" width="360" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="230" fill="#58a6ff" font-family="monospace" font-size="12" font-weight="bold">24h Dedup Trend</text>
+
+  <!-- Mini chart bars -->
+  <rect x="40" y="250" width="12" height="40" fill="#39d353"/>
+  <rect x="55" y="240" width="12" height="50" fill="#39d353"/>
+  <rect x="70" y="235" width="12" height="55" fill="#39d353"/>
+  <rect x="85" y="230" width="12" height="60" fill="#58a6ff"/>
+  <rect x="100" y="225" width="12" height="65" fill="#58a6ff"/>
+  <rect x="115" y="220" width="12" height="70" fill="#58a6ff"/>
+  <rect x="130" y="215" width="12" height="75" fill="#ffa657"/>
+  <rect x="145" y="210" width="12" height="80" fill="#ffa657"/>
+  <rect x="160" y="205" width="12" height="85" fill="#ffa657"/>
+  <rect x="175" y="200" width="12" height="90" fill="#ffa657"/>
+
+  <text x="40" y="305" fill="#8b949e" font-family="monospace" font-size="8">0h</text>
+  <text x="100" y="305" fill="#8b949e" font-family="monospace" font-size="8">12h</text>
+  <text x="160" y="305" fill="#8b949e" font-family="monospace" font-size="8">24h</text>
+
+  <!-- Performance Metrics -->
+  <rect x="20" y="335" width="170" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="355" fill="#ffa657" font-family="monospace" font-size="11" font-weight="bold">Performance</text>
+  <text x="30" y="375" fill="#f0f6fc" font-family="monospace" font-size="9">Dedup: 3.2ms</text>
+  <text x="30" y="390" fill="#f0f6fc" font-family="monospace" font-size="9">Rebuild: 1.8ms</text>
+  <text x="30" y="405" fill="#39d353" font-family="monospace" font-size="9">CPU: +2.1%</text>
+  <text x="30" y="420" fill="#58a6ff" font-family="monospace" font-size="9">Memory: -73%</text>
+
+  <!-- GC Status -->
+  <rect x="200" y="335" width="180" height="100" fill="#0d1117" stroke="#238636" stroke-width="1" rx="4"/>
+  <text x="210" y="355" fill="#39d353" font-family="monospace" font-size="11" font-weight="bold">Garbage Collection</text>
+  <text x="210" y="375" fill="#f0f6fc" font-family="monospace" font-size="9">Last run: 2min ago</text>
+  <text x="210" y="390" fill="#39d353" font-family="monospace" font-size="9">Freed: 45MB</text>
+  <text x="210" y="405" fill="#8b949e" font-family="monospace" font-size="9">Next: 58min</text>
+  <text x="210" y="420" fill="#39d353" font-family="monospace" font-size="9">Status: Healthy</text>
+
+  <!-- Top Chunks List -->
+  <rect x="20" y="445" width="360" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="470" fill="#ffa657" font-family="monospace" font-size="12" font-weight="bold">Most Referenced Chunks</text>
+
+  <!-- Chunk 1 -->
+  <rect x="30" y="485" width="340" height="25" fill="#1f2937" rx="3"/>
+  <text x="35" y="500" fill="#f0f6fc" font-family="monospace" font-size="9">hash:a7b9c2d1...</text>
+  <text x="320" y="500" fill="#39d353" font-family="monospace" font-size="9">1,247</text>
+  <rect x="35" y="505" width="200" height="1" fill="#30363d"/>
+  <rect x="35" y="505" width="180" height="1" fill="#39d353"/>
+
+  <!-- Chunk 2 -->
+  <rect x="30" y="515" width="340" height="25" fill="#1f2937" rx="3"/>
+  <text x="35" y="530" fill="#f0f6fc" font-family="monospace" font-size="9">hash:e3f4a8b2...</text>
+  <text x="330" y="530" fill="#39d353" font-family="monospace" font-size="9">892</text>
+  <rect x="35" y="535" width="200" height="1" fill="#30363d"/>
+  <rect x="35" y="535" width="120" height="1" fill="#39d353"/>
+
+  <!-- Chunk 3 -->
+  <rect x="30" y="545" width="340" height="25" fill="#1f2937" rx="3"/>
+  <text x="35" y="560" fill="#f0f6fc" font-family="monospace" font-size="9">hash:b1c8f9e4...</text>
+  <text x="330" y="560" fill="#39d353" font-family="monospace" font-size="9">634</text>
+  <rect x="35" y="565" width="200" height="1" fill="#30363d"/>
+  <rect x="35" y="565" width="90" height="1" fill="#39d353"/>
+
+  <!-- Chunk 4 -->
+  <rect x="30" y="575" width="340" height="25" fill="#1f2937" rx="3"/>
+  <text x="35" y="590" fill="#f0f6fc" font-family="monospace" font-size="9">hash:d2a5c7b9...</text>
+  <text x="330" y="590" fill="#58a6ff" font-family="monospace" font-size="9">421</text>
+  <rect x="35" y="595" width="200" height="1" fill="#30363d"/>
+  <rect x="35" y="595" width="60" height="1" fill="#58a6ff"/>
+
+  <!-- Chunk 5 -->
+  <rect x="30" y="605" width="340" height="25" fill="#1f2937" rx="3"/>
+  <text x="35" y="620" fill="#f0f6fc" font-family="monospace" font-size="9">hash:f8a3b5c7...</text>
+  <text x="330" y="620" fill="#58a6ff" font-family="monospace" font-size="9">328</text>
+  <rect x="35" y="625" width="200" height="1" fill="#30363d"/>
+  <rect x="35" y="625" width="50" height="1" fill="#58a6ff"/>
+
+  <!-- Action Buttons -->
+  <rect x="20" y="655" width="170" height="30" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="85" y="675" fill="#f0f6fc" font-family="monospace" font-size="10">Force GC</text>
+
+  <rect x="200" y="655" width="180" height="30" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="4"/>
+  <text x="270" y="675" fill="#f0f6fc" font-family="monospace" font-size="10">Analyze</text>
+
+  <!-- Quick Stats Summary -->
+  <rect x="20" y="695" width="360" height="70" fill="#0d1117" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="30" y="715" fill="#39d353" font-family="monospace" font-size="11" font-weight="bold">System Health</text>
+  <text x="30" y="735" fill="#f0f6fc" font-family="monospace" font-size="9">✓ All chunks verified</text>
+  <text x="180" y="735" fill="#f0f6fc" font-family="monospace" font-size="9">✓ No orphaned refs</text>
+  <text x="30" y="750" fill="#39d353" font-family="monospace" font-size="9">✓ Optimal performance</text>
+  <text x="180" y="750" fill="#39d353" font-family="monospace" font-size="9">✓ Memory efficient</text>
+
+  <!-- Footer -->
+  <rect x="0" y="780" width="400" height="20" fill="#0d1117"/>
+  <text x="10" y="795" fill="#8b949e" font-family="monospace" font-size="8">Tab: switch | h: help | q: quit</text>
+</svg>

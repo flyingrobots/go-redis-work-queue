@@ -1,0 +1,174 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header Bar -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="35" fill="#f0f6fc" font-family="monospace" font-size="18" font-weight="bold">Smart Payload Deduplication</text>
+  <text x="1050" y="35" fill="#8b949e" font-family="monospace" font-size="12">Memory Saved: 73.2%</text>
+
+  <!-- Left Panel: Dedup Stats -->
+  <rect x="20" y="80" width="350" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="35" y="110" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Deduplication Statistics</text>
+
+  <!-- Storage Metrics -->
+  <rect x="35" y="130" width="320" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="50" y="155" fill="#39d353" font-family="monospace" font-size="12" font-weight="bold">Storage Efficiency</text>
+  <text x="50" y="175" fill="#f0f6fc" font-family="monospace" font-size="10">Original Size:  2.4 GB</text>
+  <text x="50" y="190" fill="#f0f6fc" font-family="monospace" font-size="10">Compressed:    642 MB</text>
+  <text x="50" y="205" fill="#39d353" font-family="monospace" font-size="10">Saved:         1.76 GB (73.2%)</text>
+  <text x="50" y="225" fill="#8b949e" font-family="monospace" font-size="10">Chunks:        4,829 unique</text>
+  <text x="50" y="240" fill="#8b949e" font-family="monospace" font-size="10">Refs:          24,615 jobs</text>
+
+  <!-- Dedup Ratio Chart -->
+  <rect x="35" y="270" width="320" height="140" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="50" y="295" fill="#58a6ff" font-family="monospace" font-size="12" font-weight="bold">Dedup Ratio Trend</text>
+  <!-- Chart bars -->
+  <rect x="55" y="320" width="15" height="60" fill="#39d353"/>
+  <rect x="75" y="300" width="15" height="80" fill="#39d353"/>
+  <rect x="95" y="285" width="15" height="95" fill="#39d353"/>
+  <rect x="115" y="275" width="15" height="105" fill="#58a6ff"/>
+  <rect x="135" y="270" width="15" height="110" fill="#58a6ff"/>
+  <rect x="155" y="268" width="15" height="112" fill="#58a6ff"/>
+  <rect x="175" y="265" width="15" height="115" fill="#ffa657"/>
+  <rect x="195" y="260" width="15" height="120" fill="#ffa657"/>
+  <text x="55" y="395" fill="#8b949e" font-family="monospace" font-size="9">24h</text>
+  <text x="95" y="395" fill="#8b949e" font-family="monospace" font-size="9">12h</text>
+  <text x="135" y="395" fill="#8b949e" font-family="monospace" font-size="9">6h</text>
+  <text x="175" y="395" fill="#8b949e" font-family="monospace" font-size="9">now</text>
+
+  <!-- Popular Chunks -->
+  <rect x="35" y="430" width="320" height="160" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="50" y="455" fill="#ffa657" font-family="monospace" font-size="12" font-weight="bold">Most Referenced Chunks</text>
+
+  <text x="50" y="480" fill="#f0f6fc" font-family="monospace" font-size="10">hash:a7b9c2d1...</text>
+  <text x="280" y="480" fill="#39d353" font-family="monospace" font-size="10">1,247</text>
+  <rect x="50" y="485" width="200" height="2" fill="#30363d"/>
+  <rect x="50" y="485" width="180" height="2" fill="#39d353"/>
+
+  <text x="50" y="505" fill="#f0f6fc" font-family="monospace" font-size="10">hash:e3f4a8b2...</text>
+  <text x="280" y="505" fill="#39d353" font-family="monospace" font-size="10">892</text>
+  <rect x="50" y="510" width="200" height="2" fill="#30363d"/>
+  <rect x="50" y="510" width="120" height="2" fill="#39d353"/>
+
+  <text x="50" y="530" fill="#f0f6fc" font-family="monospace" font-size="10">hash:b1c8f9e4...</text>
+  <text x="280" y="530" fill="#39d353" font-family="monospace" font-size="10">634</text>
+  <rect x="50" y="535" width="200" height="2" fill="#30363d"/>
+  <rect x="50" y="535" width="90" height="2" fill="#39d353"/>
+
+  <text x="50" y="555" fill="#f0f6fc" font-family="monospace" font-size="10">hash:d2a5c7b9...</text>
+  <text x="280" y="555" fill="#58a6ff" font-family="monospace" font-size="10">421</text>
+  <rect x="50" y="560" width="200" height="2" fill="#30363d"/>
+  <rect x="50" y="560" width="60" height="2" fill="#58a6ff"/>
+
+  <!-- GC Status -->
+  <rect x="35" y="610" width="320" height="60" fill="#0d1117" stroke="#238636" stroke-width="1" rx="4"/>
+  <text x="50" y="635" fill="#39d353" font-family="monospace" font-size="12" font-weight="bold">Garbage Collection</text>
+  <text x="50" y="655" fill="#f0f6fc" font-family="monospace" font-size="10">Last run: 2min ago | Freed: 45MB</text>
+
+  <!-- Center Panel: Chunking Visualization -->
+  <rect x="390" y="80" width="420" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="405" y="110" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Payload Chunking Visualization</text>
+
+  <!-- Payload Example -->
+  <rect x="405" y="130" width="390" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="420" y="155" fill="#58a6ff" font-family="monospace" font-size="12" font-weight="bold">Original Payload (Sample)</text>
+
+  <!-- JSON-like content with chunk highlighting -->
+  <rect x="420" y="170" width="360" height="15" fill="#2d4a22" rx="2"/>
+  <text x="425" y="182" fill="#39d353" font-family="monospace" font-size="10">{"user": {"id": 12345, "name": "John Doe",</text>
+
+  <rect x="420" y="190" width="360" height="15" fill="#3a2d2d" rx="2"/>
+  <text x="425" y="202" fill="#f85149" font-family="monospace" font-size="10">"email": "john@example.com"}, "timestamp":</text>
+
+  <rect x="420" y="210" width="360" height="15" fill="#2d3a4a" rx="2"/>
+  <text x="425" y="222" fill="#58a6ff" font-family="monospace" font-size="10">"2024-01-15T10:30:00Z", "action": "signup",</text>
+
+  <rect x="420" y="230" width="360" height="15" fill="#4a3a2d" rx="2"/>
+  <text x="425" y="242" fill="#ffa657" font-family="monospace" font-size="10">"metadata": {"source": "web", "version": 2}}</text>
+
+  <!-- Chunk Breakdown -->
+  <rect x="405" y="350" width="390" height="280" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="420" y="375" fill="#ffa657" font-family="monospace" font-size="12" font-weight="bold">Chunk Breakdown</text>
+
+  <!-- Chunk 1 -->
+  <rect x="420" y="395" width="360" height="45" fill="#2d4a22" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="430" y="410" fill="#39d353" font-family="monospace" font-size="9">Chunk A: User Data (32 bytes)</text>
+  <text x="430" y="425" fill="#8b949e" font-family="monospace" font-size="8">hash: a7b9c2d1... | refs: 1,247 jobs</text>
+
+  <!-- Chunk 2 -->
+  <rect x="420" y="450" width="360" height="45" fill="#3a2d2d" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="430" y="465" fill="#f85149" font-family="monospace" font-size="9">Chunk B: Contact Info (28 bytes)</text>
+  <text x="430" y="480" fill="#8b949e" font-family="monospace" font-size="8">hash: e3f4a8b2... | refs: 892 jobs</text>
+
+  <!-- Chunk 3 -->
+  <rect x="420" y="505" width="360" height="45" fill="#2d3a4a" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="430" y="520" fill="#58a6ff" font-family="monospace" font-size="9">Chunk C: Timestamp (24 bytes)</text>
+  <text x="430" y="535" fill="#8b949e" font-family="monospace" font-size="8">hash: b1c8f9e4... | refs: 634 jobs</text>
+
+  <!-- Chunk 4 -->
+  <rect x="420" y="560" width="360" height="45" fill="#4a3a2d" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="430" y="575" fill="#ffa657" font-family="monospace" font-size="9">Chunk D: Metadata (36 bytes)</text>
+  <text x="430" y="590" fill="#8b949e" font-family="monospace" font-size="8">hash: d2a5c7b9... | refs: 421 jobs</text>
+
+  <!-- Right Panel: Controls & Settings -->
+  <rect x="830" y="80" width="350" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="845" y="110" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Deduplication Controls</text>
+
+  <!-- Settings -->
+  <rect x="845" y="130" width="320" height="180" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="860" y="155" fill="#58a6ff" font-family="monospace" font-size="12" font-weight="bold">Configuration</text>
+
+  <text x="860" y="180" fill="#f0f6fc" font-family="monospace" font-size="10">Chunk Size:      </text>
+  <rect x="970" y="170" width="60" height="15" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="2"/>
+  <text x="985" y="182" fill="#f0f6fc" font-family="monospace" font-size="10">4KB</text>
+
+  <text x="860" y="200" fill="#f0f6fc" font-family="monospace" font-size="10">Min Similarity:  </text>
+  <rect x="970" y="190" width="60" height="15" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="2"/>
+  <text x="985" y="202" fill="#f0f6fc" font-family="monospace" font-size="10">85%</text>
+
+  <text x="860" y="220" fill="#f0f6fc" font-family="monospace" font-size="10">Compression:     </text>
+  <rect x="970" y="210" width="60" height="15" fill="#30363d" stroke="#39d353" stroke-width="1" rx="2"/>
+  <text x="975" y="222" fill="#39d353" font-family="monospace" font-size="10">zstd</text>
+
+  <text x="860" y="240" fill="#f0f6fc" font-family="monospace" font-size="10">GC Interval:     </text>
+  <rect x="970" y="230" width="60" height="15" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="2"/>
+  <text x="980" y="242" fill="#f0f6fc" font-family="monospace" font-size="10">1h</text>
+
+  <text x="860" y="275" fill="#39d353" font-family="monospace" font-size="10">☑ Auto-deduplication enabled</text>
+  <text x="860" y="295" fill="#f0f6fc" font-family="monospace" font-size="10">☐ Aggressive chunking</text>
+
+  <!-- Performance Metrics -->
+  <rect x="845" y="330" width="320" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="860" y="355" fill="#ffa657" font-family="monospace" font-size="12" font-weight="bold">Performance Impact</text>
+
+  <text x="860" y="380" fill="#f0f6fc" font-family="monospace" font-size="10">Dedup Overhead:  3.2ms avg</text>
+  <text x="860" y="395" fill="#f0f6fc" font-family="monospace" font-size="10">Reconstruction:  1.8ms avg</text>
+  <text x="860" y="410" fill="#39d353" font-family="monospace" font-size="10">Memory Saved:    73.2%</text>
+  <text x="860" y="425" fill="#58a6ff" font-family="monospace" font-size="10">CPU Usage:       +2.1%</text>
+
+  <!-- Actions -->
+  <rect x="845" y="470" width="320" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="860" y="495" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Actions</text>
+
+  <rect x="860" y="510" width="120" height="25" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="905" y="527" fill="#f0f6fc" font-family="monospace" font-size="10">Force GC</text>
+
+  <rect x="1000" y="510" width="120" height="25" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="1035" y="527" fill="#f0f6fc" font-family="monospace" font-size="10">Analyze</text>
+
+  <rect x="860" y="545" width="120" height="25" fill="#bd2c00" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="895" y="562" fill="#f0f6fc" font-family="monospace" font-size="10">Reset Stats</text>
+
+  <rect x="1000" y="545" width="120" height="25" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="1045" y="562" fill="#f0f6fc" font-family="monospace" font-size="10">Export</text>
+
+  <!-- Alert Status -->
+  <rect x="845" y="610" width="320" height="60" fill="#0d1117" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="860" y="635" fill="#39d353" font-family="monospace" font-size="12" font-weight="bold">Status: Optimal</text>
+  <text x="860" y="655" fill="#8b949e" font-family="monospace" font-size="10">All chunks healthy | No integrity issues</text>
+
+  <!-- Footer -->
+  <rect x="0" y="780" width="1200" height="20" fill="#0d1117"/>
+  <text x="20" y="795" fill="#8b949e" font-family="monospace" font-size="10">Press 'h' for help | Tab to switch panels | 'q' to quit</text>
+</svg>

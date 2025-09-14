@@ -1,0 +1,227 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="35" font-family="monospace" font-size="18" fill="#f0f6fc" font-weight="bold">Multi-Tenant Control Center</text>
+  <text x="1000" y="35" font-family="monospace" font-size="12" fill="#8b949e">Tenant: acme-corp</text>
+
+  <!-- Left Panel: Tenant Manager -->
+  <rect x="20" y="80" width="350" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="30" y="110" font-family="monospace" font-size="14" fill="#f0f6fc" font-weight="bold">🏢 TENANT MANAGER</text>
+
+  <!-- Tenant List -->
+  <rect x="30" y="130" width="330" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Active Tenant -->
+  <rect x="35" y="135" width="320" height="30" fill="#238636" fill-opacity="0.1" stroke="#39d353" stroke-width="1" rx="3"/>
+  <circle cx="50" cy="150" r="3" fill="#39d353"/>
+  <text x="65" y="155" font-family="monospace" font-size="12" fill="#f0f6fc">acme-corp</text>
+  <text x="280" y="155" font-family="monospace" font-size="10" fill="#39d353">ACTIVE</text>
+
+  <!-- Other Tenants -->
+  <rect x="35" y="170" width="320" height="25" fill="transparent"/>
+  <circle cx="50" cy="182" r="3" fill="#8b949e"/>
+  <text x="65" y="187" font-family="monospace" font-size="12" fill="#8b949e">beta-startup</text>
+  <text x="280" y="187" font-family="monospace" font-size="10" fill="#8b949e">IDLE</text>
+
+  <rect x="35" y="200" width="320" height="25" fill="transparent"/>
+  <circle cx="50" cy="212" r="3" fill="#ffa657"/>
+  <text x="65" y="217" font-family="monospace" font-size="12" fill="#8b949e">enterprise-ltd</text>
+  <text x="260" y="217" font-family="monospace" font-size="10" fill="#ffa657">QUOTA_WARN</text>
+
+  <rect x="35" y="230" width="320" height="25" fill="transparent"/>
+  <circle cx="50" cy="242" r="3" fill="#f85149"/>
+  <text x="65" y="247" font-family="monospace" font-size="12" fill="#8b949e">demo-account</text>
+  <text x="270" y="247" font-family="monospace" font-size="10" fill="#f85149">SUSPENDED</text>
+
+  <!-- Quota Summary -->
+  <text x="30" y="370" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">QUOTA OVERVIEW</text>
+  <rect x="30" y="380" width="330" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="40" y="405" font-family="monospace" font-size="10" fill="#8b949e">Jobs/Hour:</text>
+  <text x="280" y="405" font-family="monospace" font-size="10" fill="#39d353">847/1000</text>
+  <!-- Progress bar -->
+  <rect x="40" y="410" width="250" height="8" fill="#30363d" rx="4"/>
+  <rect x="40" y="410" width="212" height="8" fill="#39d353" rx="4"/>
+
+  <text x="40" y="435" font-family="monospace" font-size="10" fill="#8b949e">Storage:</text>
+  <text x="280" y="435" font-family="monospace" font-size="10" fill="#ffa657">1.2GB/2GB</text>
+  <rect x="40" y="440" width="250" height="8" fill="#30363d" rx="4"/>
+  <rect x="40" y="440" width="150" height="8" fill="#ffa657" rx="4"/>
+
+  <text x="40" y="465" font-family="monospace" font-size="10" fill="#8b949e">Active Keys:</text>
+  <text x="280" y="465" font-family="monospace" font-size="10" fill="#39d353">23/100</text>
+  <rect x="40" y="470" width="250" height="8" fill="#30363d" rx="4"/>
+  <rect x="40" y="470" width="58" height="8" fill="#39d353" rx="4"/>
+
+  <!-- Actions -->
+  <text x="30" y="530" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">ACTIONS</text>
+  <rect x="30" y="540" width="160" height="30" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="100" y="560" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">+ New Tenant</text>
+
+  <rect x="200" y="540" width="160" height="30" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1" rx="4"/>
+  <text x="280" y="560" font-family="monospace" font-size="10" fill="#58a6ff" text-anchor="middle">Edit Quotas</text>
+
+  <!-- Center Panel: Queue View with Tenant Scoping -->
+  <rect x="390" y="80" width="480" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="400" y="110" font-family="monospace" font-size="14" fill="#f0f6fc" font-weight="bold">⚡ TENANT QUEUES: acme-corp</text>
+
+  <!-- Queue Headers -->
+  <rect x="400" y="130" width="460" height="30" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="410" y="150" font-family="monospace" font-size="10" fill="#8b949e">QUEUE</text>
+  <text x="550" y="150" font-family="monospace" font-size="10" fill="#8b949e">JOBS</text>
+  <text x="620" y="150" font-family="monospace" font-size="10" fill="#8b949e">WORKERS</text>
+  <text x="700" y="150" font-family="monospace" font-size="10" fill="#8b949e">RATE</text>
+  <text x="770" y="150" font-family="monospace" font-size="10" fill="#8b949e">STATUS</text>
+
+  <!-- Queue Rows -->
+  <!-- Queue 1: payments -->
+  <rect x="400" y="165" width="460" height="35" fill="transparent" stroke="#30363d" stroke-width="0.5"/>
+  <text x="410" y="185" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:payments</text>
+  <text x="550" y="185" font-family="monospace" font-size="10" fill="#39d353">127</text>
+  <text x="620" y="185" font-family="monospace" font-size="10" fill="#58a6ff">3/5</text>
+  <text x="700" y="185" font-family="monospace" font-size="10" fill="#ffa657">45/s</text>
+  <rect x="770" y="175" width="40" height="15" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="790" y="185" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">OK</text>
+
+  <!-- Queue 2: emails -->
+  <rect x="400" y="200" width="460" height="35" fill="transparent" stroke="#30363d" stroke-width="0.5"/>
+  <text x="410" y="220" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:emails</text>
+  <text x="550" y="220" font-family="monospace" font-size="10" fill="#39d353">45</text>
+  <text x="620" y="220" font-family="monospace" font-size="10" fill="#58a6ff">2/2</text>
+  <text x="700" y="220" font-family="monospace" font-size="10" fill="#39d353">12/s</text>
+  <rect x="770" y="210" width="40" height="15" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="790" y="220" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">OK</text>
+
+  <!-- Queue 3: reports -->
+  <rect x="400" y="235" width="460" height="35" fill="transparent" stroke="#30363d" stroke-width="0.5"/>
+  <text x="410" y="255" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:reports</text>
+  <text x="550" y="255" font-family="monospace" font-size="10" fill="#ffa657">892</text>
+  <text x="620" y="255" font-family="monospace" font-size="10" fill="#f85149">0/3</text>
+  <text x="700" y="255" font-family="monospace" font-size="10" fill="#8b949e">0/s</text>
+  <rect x="770" y="245" width="50" height="15" fill="#ffa657" fill-opacity="0.2" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="795" y="255" font-family="monospace" font-size="8" fill="#ffa657" text-anchor="middle">BACKLOG</text>
+
+  <!-- Encryption Status Panel -->
+  <text x="400" y="300" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">🔐 ENCRYPTION STATUS</text>
+  <rect x="400" y="310" width="460" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="410" y="335" font-family="monospace" font-size="10" fill="#8b949e">Envelope Encryption:</text>
+  <text x="750" y="335" font-family="monospace" font-size="10" fill="#39d353">✓ ENABLED</text>
+
+  <text x="410" y="355" font-family="monospace" font-size="10" fill="#8b949e">Key Rotation:</text>
+  <text x="720" y="355" font-family="monospace" font-size="10" fill="#39d353">Last: 2d ago</text>
+
+  <text x="410" y="375" font-family="monospace" font-size="10" fill="#8b949e">KMS Provider:</text>
+  <text x="750" y="375" font-family="monospace" font-size="10" fill="#58a6ff">AWS KMS</text>
+
+  <!-- Rate Limit Panel -->
+  <text x="400" y="420" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">🚦 RATE LIMITS</text>
+  <rect x="400" y="430" width="460" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="410" y="455" font-family="monospace" font-size="10" fill="#8b949e">Global Rate:</text>
+  <text x="750" y="455" font-family="monospace" font-size="10" fill="#39d353">100/s (current: 57)</text>
+
+  <text x="410" y="475" font-family="monospace" font-size="10" fill="#8b949e">Burst Capacity:</text>
+  <text x="750" y="475" font-family="monospace" font-size="10" fill="#39d353">500 tokens (available: 443)</text>
+
+  <text x="410" y="495" font-family="monospace" font-size="10" fill="#8b949e">Throttle Status:</text>
+  <rect x="650" y="485" width="60" height="15" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="680" y="495" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">NORMAL</text>
+
+  <text x="410" y="515" font-family="monospace" font-size="10" fill="#8b949e">Next Reset:</text>
+  <text x="750" y="515" font-family="monospace" font-size="10" fill="#8b949e">in 47s</text>
+
+  <!-- Audit Trail Preview -->
+  <text x="400" y="560" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">📋 RECENT AUDIT EVENTS</text>
+  <rect x="400" y="570" width="460" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Audit entries -->
+  <text x="410" y="595" font-family="monospace" font-size="9" fill="#8b949e">10:34:12 | acme-corp | user:alice | ENQUEUE | t:acme-corp:payments | job_12345</text>
+  <text x="410" y="615" font-family="monospace" font-size="9" fill="#8b949e">10:33:45 | acme-corp | user:bob   | DECRYPT | payload_67890 | SUCCESS</text>
+  <text x="410" y="635" font-family="monospace" font-size="9" fill="#ffa657">10:32:21 | acme-corp | user:carol | ACCESS  | t:beta-startup:* | DENIED</text>
+  <text x="410" y="655" font-family="monospace" font-size="9" fill="#8b949e">10:31:58 | acme-corp | system     | ROTATE  | DEK_rotation | SUCCESS</text>
+  <text x="410" y="675" font-family="monospace" font-size="9" fill="#8b949e">10:30:12 | acme-corp | user:alice | CREATE  | t:acme-corp:reports | SUCCESS</text>
+
+  <!-- Right Panel: Security & Compliance -->
+  <rect x="890" y="80" width="290" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="900" y="110" font-family="monospace" font-size="14" fill="#f0f6fc" font-weight="bold">🛡️ SECURITY CENTER</text>
+
+  <!-- Access Control -->
+  <text x="900" y="140" font-family="monospace" font-size="11" fill="#58a6ff" font-weight="bold">ACCESS CONTROL</text>
+  <rect x="900" y="150" width="270" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="910" y="170" font-family="monospace" font-size="10" fill="#8b949e">Active Users:</text>
+  <text x="1120" y="170" font-family="monospace" font-size="10" fill="#39d353">7</text>
+
+  <text x="910" y="190" font-family="monospace" font-size="10" fill="#8b949e">API Keys:</text>
+  <text x="1120" y="190" font-family="monospace" font-size="10" fill="#39d353">3</text>
+
+  <text x="910" y="210" font-family="monospace" font-size="10" fill="#8b949e">Failed Logins:</text>
+  <text x="1120" y="210" font-family="monospace" font-size="10" fill="#f85149">2</text>
+
+  <text x="910" y="230" font-family="monospace" font-size="10" fill="#8b949e">Cross-Tenant:</text>
+  <text x="1100" y="230" font-family="monospace" font-size="10" fill="#f85149">BLOCKED</text>
+
+  <!-- Data Protection -->
+  <text x="900" y="280" font-family="monospace" font-size="11" fill="#58a6ff" font-weight="bold">DATA PROTECTION</text>
+  <rect x="900" y="290" width="270" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="910" y="310" font-family="monospace" font-size="10" fill="#8b949e">Encrypted Payloads:</text>
+  <text x="1100" y="310" font-family="monospace" font-size="10" fill="#39d353">127/127</text>
+
+  <text x="910" y="330" font-family="monospace" font-size="10" fill="#8b949e">Key Health:</text>
+  <rect x="1050" y="320" width="40" height="15" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="1070" y="330" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">GOOD</text>
+
+  <text x="910" y="350" font-family="monospace" font-size="10" fill="#8b949e">Backup Status:</text>
+  <text x="1100" y="350" font-family="monospace" font-size="10" fill="#39d353">✓ SYNCED</text>
+
+  <text x="910" y="370" font-family="monospace" font-size="10" fill="#8b949e">Next Rotation:</text>
+  <text x="1100" y="370" font-family="monospace" font-size="10" fill="#8b949e">in 5d</text>
+
+  <text x="910" y="390" font-family="monospace" font-size="10" fill="#8b949e">Compliance:</text>
+  <text x="1100" y="390" font-family="monospace" font-size="10" fill="#39d353">SOC2 ✓</text>
+
+  <!-- Alerts & Monitoring -->
+  <text x="900" y="440" font-family="monospace" font-size="11" fill="#58a6ff" font-weight="bold">ALERTS & MONITORING</text>
+  <rect x="900" y="450" width="270" height="140" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Alert items -->
+  <rect x="910" y="465" width="250" height="20" fill="#ffa657" fill-opacity="0.1" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="920" y="479" font-family="monospace" font-size="9" fill="#ffa657">⚠ Quota at 85% - Consider upgrade</text>
+
+  <rect x="910" y="490" width="250" height="20" fill="#39d353" fill-opacity="0.1" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="920" y="504" font-family="monospace" font-size="9" fill="#39d353">✓ Key rotation completed successfully</text>
+
+  <rect x="910" y="515" width="250" height="20" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="920" y="529" font-family="monospace" font-size="9" fill="#58a6ff">ℹ New API key created for user:alice</text>
+
+  <text x="910" y="555" font-family="monospace" font-size="10" fill="#8b949e">Error Rate (24h):</text>
+  <text x="1100" y="555" font-family="monospace" font-size="10" fill="#39d353">0.02%</text>
+
+  <text x="910" y="575" font-family="monospace" font-size="10" fill="#8b949e">Avg Response:</text>
+  <text x="1100" y="575" font-family="monospace" font-size="10" fill="#39d353">12ms</text>
+
+  <!-- Tenant Switcher -->
+  <text x="900" y="620" font-family="monospace" font-size="11" fill="#58a6ff" font-weight="bold">TENANT SWITCHER</text>
+  <rect x="900" y="630" width="270" height="140" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <rect x="910" y="645" width="250" height="25" fill="#238636" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="920" y="662" font-family="monospace" font-size="10" fill="#39d353">→ acme-corp (current)</text>
+
+  <rect x="910" y="675" width="250" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="920" y="692" font-family="monospace" font-size="10" fill="#8b949e">  beta-startup</text>
+
+  <rect x="910" y="705" width="250" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="920" y="722" font-family="monospace" font-size="10" fill="#8b949e">  enterprise-ltd</text>
+
+  <rect x="910" y="735" width="250" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="920" y="752" font-family="monospace" font-size="10" fill="#8b949e">  demo-account (suspended)</text>
+
+  <!-- Footer -->
+  <rect x="0" y="790" width="1200" height="10" fill="#161b22"/>
+  <text x="20" y="802" font-family="monospace" font-size="9" fill="#8b949e">Multi-Tenant Mode | Press 'T' to switch tenant | Ctrl+T for new tenant | '?' for help</text>
+</svg>

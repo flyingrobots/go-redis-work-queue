@@ -1,0 +1,237 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel-bg { fill: #161b22; }
+      .border { stroke: #30363d; stroke-width: 1; fill: none; }
+      .text-primary { fill: #f0f6fc; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; }
+      .text-secondary { fill: #8b949e; font-family: 'Monaco', 'Menlo', monospace; font-size: 11px; }
+      .text-small { fill: #8b949e; font-family: 'Monaco', 'Menlo', monospace; font-size: 10px; }
+      .success { fill: #39d353; }
+      .error { fill: #f85149; }
+      .warning { fill: #ffa657; }
+      .processing { fill: #58a6ff; }
+      .selected { fill: #1f2937; stroke: #58a6ff; stroke-width: 2; }
+      .tree-line { stroke: #30363d; stroke-width: 1; }
+      .button { fill: #238636; }
+      .button-text { fill: #ffffff; font-family: 'Monaco', 'Menlo', monospace; font-size: 11px; }
+    </style>
+  </defs>
+
+  <!-- Main Background -->
+  <rect width="1200" height="800" class="bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="50" class="panel-bg"/>
+  <rect x="0" y="50" width="1200" height="1" class="border"/>
+  <text x="20" y="30" class="text-primary">Job Genealogy Navigator</text>
+  <text x="1120" y="30" class="text-secondary">ESC: Exit</text>
+
+  <!-- Left Panel: View Controls -->
+  <rect x="0" y="50" width="300" height="750" class="panel-bg"/>
+  <rect x="300" y="50" width="1" height="750" class="border"/>
+
+  <!-- View Mode Controls -->
+  <text x="15" y="80" class="text-primary">View Mode</text>
+  <rect x="15" y="90" width="270" height="30" class="selected" rx="4"/>
+  <text x="25" y="108" class="text-primary">● Full Tree</text>
+
+  <rect x="15" y="125" width="270" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="140" class="text-secondary">○ Ancestors Only</text>
+
+  <rect x="15" y="155" width="270" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="170" class="text-secondary">○ Descendants Only</text>
+
+  <rect x="15" y="185" width="270" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="200" class="text-secondary">○ Blame Path</text>
+
+  <rect x="15" y="215" width="270" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="230" class="text-secondary">○ Impact Zone</text>
+
+  <!-- Layout Controls -->
+  <text x="15" y="270" class="text-primary">Layout</text>
+  <rect x="15" y="280" width="130" height="25" class="selected" rx="4"/>
+  <text x="25" y="295" class="text-primary">1. Top-Down</text>
+
+  <rect x="155" y="280" width="130" height="25" class="panel-bg" rx="4"/>
+  <text x="165" y="295" class="text-secondary">2. Timeline</text>
+
+  <rect x="15" y="310" width="130" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="325" class="text-secondary">3. Radial</text>
+
+  <rect x="155" y="310" width="130" height="25" class="panel-bg" rx="4"/>
+  <text x="165" y="325" class="text-secondary">4. Compact</text>
+
+  <!-- Filter Controls -->
+  <text x="15" y="365" class="text-primary">Filters</text>
+  <rect x="15" y="375" width="270" height="25" class="panel-bg" rx="4"/>
+  <text x="25" y="390" class="text-secondary">f: Status ▼</text>
+
+  <!-- Legend -->
+  <text x="15" y="430" class="text-primary">Status Legend</text>
+  <circle cx="25" cy="445" r="4" class="success"/>
+  <text x="35" y="448" class="text-small">SUCCESS</text>
+
+  <circle cx="25" cy="465" r="4" class="error"/>
+  <text x="35" y="468" class="text-small">FAILED</text>
+
+  <circle cx="25" cy="485" r="4" class="processing"/>
+  <text x="35" y="488" class="text-small">PROCESSING</text>
+
+  <circle cx="25" cy="505" r="4" class="warning"/>
+  <text x="35" y="508" class="text-small">RETRY</text>
+
+  <!-- Keyboard Shortcuts -->
+  <text x="15" y="540" class="text-primary">Shortcuts</text>
+  <text x="15" y="560" class="text-small">j/k: Navigate tree</text>
+  <text x="15" y="575" class="text-small">Enter: Focus job</text>
+  <text x="15" y="590" class="text-small">h/l: Collapse/Expand</text>
+  <text x="15" y="605" class="text-small">b: Blame mode</text>
+  <text x="15" y="620" class="text-small">i: Impact mode</text>
+  <text x="15" y="635" class="text-small">r: Refresh</text>
+  <text x="15" y="650" class="text-small">t: Time-lapse</text>
+
+  <!-- Current Selection Info -->
+  <text x="15" y="690" class="text-primary">Selected Job</text>
+  <rect x="15" y="700" width="270" height="80" class="panel-bg" rx="4"/>
+  <text x="25" y="718" class="text-small">ID: job-12347</text>
+  <text x="25" y="733" class="text-small">Type: send_notification</text>
+  <text x="25" y="748" class="text-small">Status: SUCCESS</text>
+  <text x="25" y="763" class="text-small">Children: 3 | Parents: 1</text>
+
+  <!-- Center Panel: Tree Visualization -->
+  <rect x="301" y="50" width="600" height="750" class="panel-bg"/>
+  <rect x="901" y="50" width="1" height="750" class="border"/>
+
+  <!-- Tree Header -->
+  <text x="320" y="80" class="text-primary">Job Family Tree: user-signup-batch-2024</text>
+  <text x="750" y="80" class="text-secondary">Depth: 4 | Nodes: 23</text>
+
+  <!-- Tree Visualization -->
+  <g transform="translate(320, 100)">
+    <!-- Root Job -->
+    <circle cx="0" cy="0" r="5" class="success"/>
+    <text x="10" y="4" class="text-primary">┌─ job-12340: user_signup_batch [SUCCESS]</text>
+
+    <!-- First Level Children -->
+    <line x1="0" y1="0" x2="0" y2="25" class="tree-line"/>
+    <line x1="0" y1="25" x2="15" y2="25" class="tree-line"/>
+    <circle cx="15" cy="25" r="4" class="success"/>
+    <text x="25" y="29" class="text-primary">├─ job-12341: validate_users [SUCCESS]</text>
+
+    <line x1="0" y1="25" x2="0" y2="50" class="tree-line"/>
+    <line x1="0" y1="50" x2="15" y2="50" class="tree-line"/>
+    <circle cx="15" cy="50" r="4" class="warning"/>
+    <text x="25" y="54" class="text-primary">├─┬─ job-12342: send_welcome [RETRY-2]</text>
+
+    <!-- Retry Chain -->
+    <line x1="15" y1="50" x2="15" y2="70" class="tree-line"/>
+    <line x1="15" y1="70" x2="30" y2="70" class="tree-line"/>
+    <circle cx="30" cy="70" r="3" class="error"/>
+    <text x="40" y="74" class="text-secondary">│ ├─ job-12343: send_welcome [RETRY-1-FAILED]</text>
+
+    <line x1="15" y1="70" x2="15" y2="90" class="tree-line"/>
+    <line x1="15" y1="90" x2="30" y2="90" class="tree-line"/>
+    <circle cx="30" cy="90" r="3" class="success"/>
+    <text x="40" y="94" class="text-secondary">│ └─ job-12344: send_welcome [RETRY-2-SUCCESS]</text>
+
+    <line x1="0" y1="50" x2="0" y2="115" class="tree-line"/>
+    <line x1="0" y1="115" x2="15" y2="115" class="tree-line"/>
+    <circle cx="15" cy="115" r="4" class="success"/>
+    <text x="25" y="119" class="text-primary">├─ job-12345: update_metrics [SUCCESS]</text>
+
+    <line x1="0" y1="115" x2="0" y2="140" class="tree-line"/>
+    <line x1="0" y1="140" x2="15" y2="140" class="tree-line"/>
+    <circle cx="15" cy="140" r="4" class="error"/>
+    <text x="25" y="144" class="text-primary">├─┬─ job-12346: create_account [FAILED]</text>
+
+    <!-- Failed Job Children -->
+    <line x1="15" y1="140" x2="15" y2="160" class="tree-line"/>
+    <line x1="15" y1="160" x2="30" y2="160" class="tree-line"/>
+    <circle cx="30" cy="160" r="3" class="processing"/>
+    <text x="40" y="164" class="text-secondary">│ ├─ job-12347: send_notification [PROCESSING] ←</text>
+
+    <line x1="15" y1="160" x2="15" y2="180" class="tree-line"/>
+    <line x1="15" y1="180" x2="30" y2="180" class="tree-line"/>
+    <circle cx="30" cy="180" r="3" class="success"/>
+    <text x="40" y="184" class="text-secondary">│ └─ job-12348: cleanup_temp [SUCCESS]</text>
+
+    <line x1="0" y1="140" x2="0" y2="205" class="tree-line"/>
+    <line x1="0" y1="205" x2="15" y2="205" class="tree-line"/>
+    <circle cx="15" cy="205" r="4" class="success"/>
+    <text x="25" y="209" class="text-primary">└─┬─ job-12349: finalize_batch [SUCCESS]</text>
+
+    <!-- Final Level -->
+    <line x1="15" y1="205" x2="15" y2="225" class="tree-line"/>
+    <line x1="15" y1="225" x2="30" y2="225" class="tree-line"/>
+    <circle cx="30" cy="225" r="3" class="success"/>
+    <text x="40" y="229" class="text-secondary">  └─ job-12350: send_summary [SUCCESS]</text>
+  </g>
+
+  <!-- Tree Stats -->
+  <rect x="320" y="680" width="560" height="60" class="panel-bg" rx="4"/>
+  <text x="330" y="700" class="text-small">Tree Statistics</text>
+  <text x="330" y="715" class="text-small">Total Jobs: 23 | Success: 18 | Failed: 2 | Processing: 1 | Retry: 2</text>
+  <text x="330" y="730" class="text-small">Max Depth: 4 generations | Avg Children: 2.3 | Failed Branches: 1</text>
+
+  <!-- Right Panel: Analysis -->
+  <rect x="902" y="50" width="298" height="750" class="panel-bg"/>
+
+  <!-- Impact Analysis -->
+  <text x="920" y="80" class="text-primary">Impact Analysis</text>
+  <rect x="920" y="90" width="260" height="100" class="panel-bg" rx="4"/>
+  <text x="930" y="108" class="text-small">Root Cause: job-12346</text>
+  <text x="930" y="123" class="text-small">Failure Type: Database timeout</text>
+  <text x="930" y="138" class="text-small">Affected Jobs: 2 descendants</text>
+  <text x="930" y="153" class="text-small">Recovery Status: In progress</text>
+  <text x="930" y="168" class="text-small">Est. Fix Time: 5 minutes</text>
+
+  <!-- Pattern Detection -->
+  <text x="920" y="210" class="text-primary">Patterns Detected</text>
+  <rect x="920" y="220" width="260" height="80" class="panel-bg" rx="4"/>
+  <text x="930" y="238" class="text-small">⚠ Retry Chain Pattern</text>
+  <text x="930" y="253" class="text-small">   send_welcome jobs failing</text>
+  <text x="930" y="268" class="text-small">   Recommendation: Check email service</text>
+  <text x="930" y="283" class="text-small">   Last seen: 2h ago</text>
+
+  <!-- Genealogy Metrics -->
+  <text x="920" y="320" class="text-primary">Family Metrics</text>
+  <rect x="920" y="330" width="260" height="120" class="panel-bg" rx="4"/>
+  <text x="930" y="348" class="text-small">Generation Distribution:</text>
+  <text x="930" y="363" class="text-small">  Gen 0: ████████ 1 job</text>
+  <text x="930" y="378" class="text-small">  Gen 1: ████████████ 5 jobs</text>
+  <text x="930" y="393" class="text-small">  Gen 2: ████████████████ 8 jobs</text>
+  <text x="930" y="408" class="text-small">  Gen 3: ██████████████ 9 jobs</text>
+  <text x="930" y="423" class="text-small">Avg Processing Time: 2.3s</text>
+  <text x="930" y="438" class="text-small">Total Resource Cost: $0.47</text>
+
+  <!-- Action Buttons -->
+  <text x="920" y="470" class="text-primary">Quick Actions</text>
+  <rect x="920" y="480" width="125" height="30" class="button" rx="4"/>
+  <text x="970" y="498" class="button-text">Retry Failed</text>
+
+  <rect x="1055" y="480" width="125" height="30" class="button" rx="4"/>
+  <text x="1100" y="498" class="button-text">Export Tree</text>
+
+  <rect x="920" y="520" width="125" height="30" class="button" rx="4"/>
+  <text x="965" y="538" class="button-text">Time Lapse</text>
+
+  <rect x="1055" y="520" width="125" height="30" class="button" rx="4"/>
+  <text x="1105" y="538" class="button-text">Blame Mode</text>
+
+  <!-- Related Families -->
+  <text x="920" y="580" class="text-primary">Similar Families</text>
+  <rect x="920" y="590" width="260" height="80" class="panel-bg" rx="4"/>
+  <text x="930" y="608" class="text-small">user-signup-batch-2023</text>
+  <text x="930" y="623" class="text-small">  Similarity: 87% | Status: Success</text>
+  <text x="930" y="638" class="text-small">payment-batch-2024</text>
+  <text x="930" y="653" class="text-small">  Similarity: 72% | Status: Mixed</text>
+
+  <!-- Navigation Help -->
+  <text x="920" y="690" class="text-primary">Navigation</text>
+  <rect x="920" y="700" width="260" height="80" class="panel-bg" rx="4"/>
+  <text x="930" y="718" class="text-small">Currently viewing: Full tree</text>
+  <text x="930" y="733" class="text-small">Selected: job-12347</text>
+  <text x="930" y="748" class="text-small">Press 'i' for impact analysis</text>
+  <text x="930" y="763" class="text-small">Press 'b' for blame path</text>
+</svg>

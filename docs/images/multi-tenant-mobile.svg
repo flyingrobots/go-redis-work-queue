@@ -1,0 +1,109 @@
+<svg width="400" height="800" viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="30" font-family="monospace" font-size="14" fill="#f0f6fc" font-weight="bold">Multi-Tenant</text>
+  <text x="300" y="30" font-family="monospace" font-size="10" fill="#8b949e">acme-corp</text>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="50" width="400" height="40" fill="#1f2937" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Active Tab -->
+  <rect x="5" y="55" width="80" height="30" fill="#238636" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="45" y="75" font-family="monospace" font-size="10" fill="#39d353" text-anchor="middle">TENANTS</text>
+
+  <!-- Other Tabs -->
+  <rect x="90" y="55" width="80" height="30" fill="transparent" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="130" y="75" font-family="monospace" font-size="10" fill="#8b949e" text-anchor="middle">QUEUES</text>
+
+  <rect x="175" y="55" width="80" height="30" fill="transparent" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="215" y="75" font-family="monospace" font-size="10" fill="#8b949e" text-anchor="middle">SECURITY</text>
+
+  <rect x="260" y="55" width="80" height="30" fill="transparent" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="300" y="75" font-family="monospace" font-size="10" fill="#8b949e" text-anchor="middle">AUDIT</text>
+
+  <!-- Content Area -->
+  <rect x="10" y="100" width="380" height="690" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+
+  <!-- Current Tenant Card -->
+  <text x="20" y="125" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">🏢 ACTIVE TENANT</text>
+  <rect x="20" y="135" width="360" height="80" fill="#0d1117" stroke="#39d353" stroke-width="2" rx="6"/>
+
+  <text x="30" y="155" font-family="monospace" font-size="14" fill="#39d353" font-weight="bold">acme-corp</text>
+  <text x="30" y="175" font-family="monospace" font-size="10" fill="#8b949e">Plan: Enterprise | Status: Active</text>
+
+  <text x="30" y="195" font-family="monospace" font-size="9" fill="#8b949e">Jobs: 847/1000 | Storage: 1.2/2GB | Keys: 23/100</text>
+
+  <!-- Quick Stats Grid -->
+  <text x="20" y="240" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">📊 QUICK STATS</text>
+
+  <!-- Stats Row 1 -->
+  <rect x="20" y="250" width="175" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="270" font-family="monospace" font-size="10" fill="#8b949e">Active Queues</text>
+  <text x="100" y="290" font-family="monospace" font-size="16" fill="#39d353" font-weight="bold">3</text>
+
+  <rect x="205" y="250" width="175" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="215" y="270" font-family="monospace" font-size="10" fill="#8b949e">Total Jobs</text>
+  <text x="270" y="290" font-family="monospace" font-size="16" fill="#39d353" font-weight="bold">1,064</text>
+
+  <!-- Stats Row 2 -->
+  <rect x="20" y="320" width="175" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="340" font-family="monospace" font-size="10" fill="#8b949e">Workers</text>
+  <text x="100" y="360" font-family="monospace" font-size="16" fill="#58a6ff" font-weight="bold">5/10</text>
+
+  <rect x="205" y="320" width="175" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="215" y="340" font-family="monospace" font-size="10" fill="#8b949e">Rate</text>
+  <text x="270" y="360" font-family="monospace" font-size="16" fill="#ffa657" font-weight="bold">57/s</text>
+
+  <!-- Queue List -->
+  <text x="20" y="410" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">⚡ QUEUE LIST</text>
+
+  <!-- Queue Card 1 -->
+  <rect x="20" y="420" width="360" height="50" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="440" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:payments</text>
+  <text x="30" y="455" font-family="monospace" font-size="9" fill="#39d353">127 jobs | 3 workers | 45/s</text>
+  <rect x="320" y="430" width="50" height="20" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="345" y="443" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">HEALTHY</text>
+
+  <!-- Queue Card 2 -->
+  <rect x="20" y="480" width="360" height="50" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="500" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:emails</text>
+  <text x="30" y="515" font-family="monospace" font-size="9" fill="#39d353">45 jobs | 2 workers | 12/s</text>
+  <rect x="320" y="490" width="50" height="20" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="345" y="503" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">HEALTHY</text>
+
+  <!-- Queue Card 3 -->
+  <rect x="20" y="540" width="360" height="50" fill="#0d1117" stroke="#ffa657" stroke-width="2" rx="4"/>
+  <text x="30" y="560" font-family="monospace" font-size="10" fill="#f0f6fc">t:acme-corp:reports</text>
+  <text x="30" y="575" font-family="monospace" font-size="9" fill="#ffa657">892 jobs | 0 workers | 0/s</text>
+  <rect x="320" y="550" width="50" height="20" fill="#ffa657" fill-opacity="0.2" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="345" y="563" font-family="monospace" font-size="8" fill="#ffa657" text-anchor="middle">BACKLOG</text>
+
+  <!-- Security Section -->
+  <text x="20" y="620" font-family="monospace" font-size="12" fill="#58a6ff" font-weight="bold">🔐 SECURITY STATUS</text>
+
+  <rect x="20" y="630" width="360" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="30" y="650" font-family="monospace" font-size="10" fill="#8b949e">Encryption:</text>
+  <text x="320" y="650" font-family="monospace" font-size="10" fill="#39d353">✓ ACTIVE</text>
+
+  <text x="30" y="670" font-family="monospace" font-size="10" fill="#8b949e">Key Health:</text>
+  <rect x="280" y="660" width="50" height="15" fill="#39d353" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="305" y="670" font-family="monospace" font-size="8" fill="#39d353" text-anchor="middle">GOOD</text>
+
+  <text x="30" y="690" font-family="monospace" font-size="10" fill="#8b949e">Access Control:</text>
+  <text x="270" y="690" font-family="monospace" font-size="10" fill="#39d353">7 users, 3 keys</text>
+
+  <!-- Action Buttons -->
+  <rect x="20" y="730" width="175" height="35" fill="#238636" stroke="#39d353" stroke-width="1" rx="6"/>
+  <text x="107" y="752" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">Switch Tenant</text>
+
+  <rect x="205" y="730" width="175" height="35" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1" rx="6"/>
+  <text x="292" y="752" font-family="monospace" font-size="10" fill="#58a6ff" text-anchor="middle">Manage Quotas</text>
+
+  <!-- Footer -->
+  <rect x="0" y="790" width="400" height="10" fill="#161b22"/>
+  <text x="10" y="802" font-family="monospace" font-size="8" fill="#8b949e">Swipe left/right to navigate tabs</text>
+</svg>

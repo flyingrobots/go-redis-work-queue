@@ -1,0 +1,158 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg" style="font-family: 'SF Mono', 'Monaco', monospace;">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header Bar -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="35" fill="#f0f6fc" font-size="18" font-weight="bold">Canary Deployment Control Center</text>
+  <text x="1020" y="35" fill="#8b949e" font-size="12">Status: Active • Workers: 12/15 • Rollout: 15%</text>
+
+  <!-- Left Panel: Deployment List -->
+  <rect x="20" y="80" width="380" height="680" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="40" y="110" fill="#f0f6fc" font-size="14" font-weight="bold">Active Canary Rollouts</text>
+
+  <!-- Deployment Item 1 - In Progress -->
+  <rect x="40" y="130" width="340" height="90" fill="#0d1117" stroke="#ffa657" stroke-width="1" rx="4"/>
+  <text x="55" y="150" fill="#ffa657" font-size="12" font-weight="bold">payments-processor</text>
+  <text x="55" y="165" fill="#8b949e" font-size="10">v2.1.4 → v2.1.5</text>
+  <rect x="55" y="175" width="200" height="8" fill="#21262d" rx="4"/>
+  <rect x="55" y="175" width="30" height="8" fill="#ffa657" rx="4"/>
+  <text x="270" y="182" fill="#ffa657" font-size="10">15%</text>
+  <text x="55" y="200" fill="#8b949e" font-size="10">Started: 14:32 • Errors: 0 • P95: 45ms (+2ms)</text>
+
+  <!-- Deployment Item 2 - Completed -->
+  <rect x="40" y="240" width="340" height="70" fill="#0d1117" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="55" y="260" fill="#39d353" font-size="12" font-weight="bold">email-sender</text>
+  <text x="55" y="275" fill="#8b949e" font-size="10">v1.8.2 → v1.8.3</text>
+  <text x="270" y="275" fill="#39d353" font-size="10">✓ Promoted</text>
+  <text x="55" y="290" fill="#8b949e" font-size="10">Duration: 45min • Zero errors</text>
+
+  <!-- Deployment Item 3 - Rolled Back -->
+  <rect x="40" y="330" width="340" height="70" fill="#0d1117" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="55" y="350" fill="#f85149" font-size="12" font-weight="bold">image-processor</text>
+  <text x="55" y="365" fill="#8b949e" font-size="10">v3.2.1 → v3.2.2</text>
+  <text x="270" y="365" fill="#f85149" font-size="10">⚠ Rolled Back</text>
+  <text x="55" y="380" fill="#8b949e" font-size="10">Reason: Error rate spike (12%)</text>
+
+  <!-- Create New Button -->
+  <rect x="40" y="420" width="340" height="40" fill="#238636" stroke="#238636" stroke-width="1" rx="4"/>
+  <text x="190" y="443" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">+ New Canary Deployment</text>
+
+  <!-- Center Panel: Traffic Split & Controls -->
+  <rect x="420" y="80" width="480" height="680" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="440" y="110" fill="#f0f6fc" font-size="14" font-weight="bold">payments-processor Canary Control</text>
+
+  <!-- Traffic Split Visual -->
+  <rect x="440" y="130" width="440" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="450" y="150" fill="#8b949e" font-size="11">Traffic Distribution</text>
+
+  <!-- Stable Traffic Bar -->
+  <rect x="450" y="160" width="340" height="25" fill="#21262d" rx="4"/>
+  <rect x="450" y="160" width="289" height="25" fill="#39d353" rx="4"/>
+  <text x="460" y="177" fill="#ffffff" font-size="12" font-weight="bold">Stable v2.1.4</text>
+  <text x="750" y="177" fill="#f0f6fc" font-size="12" font-weight="bold">85%</text>
+
+  <!-- Canary Traffic Bar -->
+  <rect x="450" y="195" width="340" height="25" fill="#21262d" rx="4"/>
+  <rect x="450" y="195" width="51" height="25" fill="#ffa657" rx="4"/>
+  <text x="460" y="212" fill="#ffffff" font-size="12" font-weight="bold">Canary v2.1.5</text>
+  <text x="750" y="212" fill="#f0f6fc" font-size="12" font-weight="bold">15%</text>
+
+  <!-- Traffic Split Slider -->
+  <text x="450" y="245" fill="#8b949e" font-size="11">Traffic Split Control</text>
+  <rect x="450" y="255" width="340" height="4" fill="#21262d" rx="2"/>
+  <circle cx="501" cy="257" r="8" fill="#ffa657" stroke="#ffa657" stroke-width="2"/>
+  <text x="450" y="275" fill="#8b949e" font-size="10">0%</text>
+  <text x="775" y="275" fill="#8b949e" font-size="10">100%</text>
+
+  <!-- Metrics Comparison -->
+  <text x="440" y="305" fill="#f0f6fc" font-size="14" font-weight="bold">Performance Metrics</text>
+
+  <!-- Metrics Grid -->
+  <rect x="440" y="320" width="200" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="450" y="340" fill="#8b949e" font-size="11">Latency (P95)</text>
+  <text x="450" y="355" fill="#39d353" font-size="14" font-weight="bold">Stable: 43ms</text>
+  <text x="450" y="375" fill="#ffa657" font-size="14" font-weight="bold">Canary: 45ms</text>
+  <text x="450" y="390" fill="#f85149" font-size="10">+4.7% slower</text>
+
+  <rect x="660" y="320" width="220" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="670" y="340" fill="#8b949e" font-size="11">Error Rate</text>
+  <text x="670" y="355" fill="#39d353" font-size="14" font-weight="bold">Stable: 0.12%</text>
+  <text x="670" y="375" fill="#39d353" font-size="14" font-weight="bold">Canary: 0.08%</text>
+  <text x="670" y="390" fill="#39d353" font-size="10">-33% better</text>
+
+  <!-- Automatic Rules -->
+  <text x="440" y="430" fill="#f0f6fc" font-size="14" font-weight="bold">Automatic Promotion Rules</text>
+
+  <rect x="440" y="450" width="440" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="450" y="470" fill="#39d353" font-size="12">✓ Error rate &lt; 1.0% (current: 0.08%)</text>
+  <text x="450" y="490" fill="#39d353" font-size="12">✓ P95 latency increase &lt; 10% (current: +4.7%)</text>
+  <text x="450" y="510" fill="#ffa657" font-size="12">⏳ Min canary duration: 30min (18min elapsed)</text>
+  <text x="450" y="530" fill="#8b949e" font-size="12">○ Manual approval required</text>
+  <text x="450" y="550" fill="#8b949e" font-size="10">Auto-promote when all conditions met</text>
+
+  <!-- Control Buttons -->
+  <rect x="440" y="600" width="100" height="35" fill="#238636" stroke="#238636" stroke-width="1" rx="4"/>
+  <text x="490" y="620" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">Promote</text>
+
+  <rect x="560" y="600" width="100" height="35" fill="#f85149" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="610" y="620" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">Rollback</text>
+
+  <rect x="680" y="600" width="100" height="35" fill="#30363d" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="730" y="620" fill="#f0f6fc" font-size="12" font-weight="bold" text-anchor="middle">Pause</text>
+
+  <rect x="800" y="600" width="100" height="35" fill="#58a6ff" stroke="#58a6ff" stroke-width="1" rx="4"/>
+  <text x="850" y="620" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">Configure</text>
+
+  <!-- Right Panel: Live Metrics -->
+  <rect x="920" y="80" width="260" height="680" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="940" y="110" fill="#f0f6fc" font-size="14" font-weight="bold">Live Monitoring</text>
+
+  <!-- Request Rate Chart -->
+  <rect x="940" y="130" width="220" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="950" y="150" fill="#8b949e" font-size="11">Requests/sec (Last 10min)</text>
+  <!-- Simple line chart -->
+  <path d="M 950 200 L 970 195 L 990 190 L 1010 185 L 1030 180 L 1050 175 L 1070 180 L 1090 185 L 1110 175 L 1130 170 L 1150 175"
+        stroke="#39d353" stroke-width="2" fill="none"/>
+  <path d="M 950 210 L 970 208 L 990 205 L 1010 200 L 1030 198 L 1050 195 L 1070 200 L 1090 205 L 1110 195 L 1130 190 L 1150 192"
+        stroke="#ffa657" stroke-width="2" fill="none"/>
+  <text x="950" y="235" fill="#39d353" font-size="10">■ Stable: 1,240 req/s</text>
+  <text x="950" y="247" fill="#ffa657" font-size="10">■ Canary: 218 req/s</text>
+
+  <!-- Error Rate Chart -->
+  <rect x="940" y="270" width="220" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="950" y="290" fill="#8b949e" font-size="11">Error Rate % (Last 10min)</text>
+  <!-- Simple line chart for errors -->
+  <path d="M 950 340 L 970 340 L 990 340 L 1010 340 L 1030 340 L 1050 340 L 1070 340 L 1090 340 L 1110 340 L 1130 340 L 1150 340"
+        stroke="#39d353" stroke-width="2" fill="none"/>
+  <path d="M 950 335 L 970 335 L 990 335 L 1010 335 L 1030 335 L 1050 335 L 1070 335 L 1090 335 L 1110 335 L 1130 335 L 1150 335"
+        stroke="#ffa657" stroke-width="2" fill="none"/>
+  <text x="950" y="375" fill="#39d353" font-size="10">■ Stable: 0.12%</text>
+  <text x="950" y="387" fill="#ffa657" font-size="10">■ Canary: 0.08%</text>
+
+  <!-- Worker Status -->
+  <text x="940" y="420" fill="#f0f6fc" font-size="13" font-weight="bold">Worker Status</text>
+
+  <rect x="940" y="440" width="220" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="950" y="460" fill="#39d353" font-size="12">Stable Workers: 10/12</text>
+  <text x="950" y="475" fill="#ffa657" font-size="12">Canary Workers: 2/3</text>
+  <text x="950" y="490" fill="#8b949e" font-size="12">Queue Depth: 156 jobs</text>
+  <text x="950" y="505" fill="#8b949e" font-size="12">Processing Rate: 1.4k/min</text>
+  <text x="950" y="520" fill="#8b949e" font-size="12">Avg Job Duration: 2.1s</text>
+
+  <!-- Recent Events -->
+  <text x="940" y="570" fill="#f0f6fc" font-size="13" font-weight="bold">Recent Events</text>
+
+  <rect x="940" y="590" width="220" height="160" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="950" y="610" fill="#39d353" font-size="10">15:45 Canary scaled to 15%</text>
+  <text x="950" y="625" fill="#8b949e" font-size="10">15:42 Auto-rule check passed</text>
+  <text x="950" y="640" fill="#8b949e" font-size="10">15:40 Metrics threshold OK</text>
+  <text x="950" y="655" fill="#ffa657" font-size="10">15:38 Canary scaled to 10%</text>
+  <text x="950" y="670" fill="#39d353" font-size="10">15:35 Canary workers healthy</text>
+  <text x="950" y="685" fill="#8b949e" font-size="10">15:32 Deployment started</text>
+  <text x="950" y="700" fill="#8b949e" font-size="10">15:30 Pre-flight checks OK</text>
+
+  <!-- Status Bar -->
+  <rect x="0" y="780" width="1200" height="20" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="793" fill="#8b949e" font-size="10">F1 Help | F2 Configure | F3 History | F4 Metrics | Ctrl+P Promote | Ctrl+R Rollback | ESC Exit</text>
+</svg>

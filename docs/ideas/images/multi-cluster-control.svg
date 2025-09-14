@@ -1,0 +1,254 @@
+<svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1000" height="700" fill="#1a1b26"/>
+
+  <!-- Tab Bar with Cluster Selector -->
+  <rect x="0" y="0" width="1000" height="30" fill="#24283b" stroke="#414868" stroke-width="1"/>
+
+  <!-- Cluster indicator/selector -->
+  <rect x="10" y="5" width="150" height="20" fill="#2a2e3f" rx="2"/>
+  <circle cx="20" cy="15" r="4" fill="#9ece6a"/>
+  <text x="30" y="18" fill="#9ece6a" font-family="monospace" font-size="10" font-weight="bold">PROD-US-EAST ▼</text>
+
+  <!-- Regular tabs -->
+  <rect x="170" y="5" width="55" height="20" fill="#414868" rx="2"/>
+  <text x="180" y="18" fill="#7aa2f7" font-family="monospace" font-size="10" font-weight="bold">🌐 Multi</text>
+  <text x="240" y="18" fill="#7aa2f7" font-family="monospace" font-size="10">Jobs</text>
+  <text x="290" y="18" fill="#7aa2f7" font-family="monospace" font-size="10">Workers</text>
+  <text x="360" y="18" fill="#7aa2f7" font-family="monospace" font-size="10">DLQ</text>
+  <text x="410" y="18" fill="#7aa2f7" font-family="monospace" font-size="10">Settings</text>
+
+  <!-- Quick cluster switcher -->
+  <text x="850" y="18" fill="#565f89" font-family="monospace" font-size="9">Quick: </text>
+  <text x="890" y="18" fill="#9ece6a" font-family="monospace" font-size="9" font-weight="bold">[1]</text>
+  <text x="910" y="18" fill="#565f89" font-family="monospace" font-size="9">2</text>
+  <text x="925" y="18" fill="#565f89" font-family="monospace" font-size="9">3</text>
+  <text x="940" y="18" fill="#565f89" font-family="monospace" font-size="9">4</text>
+  <text x="955" y="18" fill="#565f89" font-family="monospace" font-size="9">5</text>
+
+  <!-- Header -->
+  <rect x="0" y="30" width="1000" height="40" fill="#24283b"/>
+  <text x="20" y="55" fill="#c0caf5" font-family="monospace" font-size="14" font-weight="bold">Multi-Cluster Control Center</text>
+  <text x="820" y="55" fill="#565f89" font-family="monospace" font-size="11">5 clusters | 127K jobs/min</text>
+
+  <!-- Mode Selector -->
+  <rect x="10" y="80" width="980" height="35" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <rect x="20" y="88" width="100" height="20" fill="#414868" rx="2"/>
+  <text x="45" y="101" fill="#c0caf5" font-family="monospace" font-size="10" font-weight="bold">Overview</text>
+
+  <rect x="130" y="88" width="100" height="20" fill="#3b4261" stroke="#7aa2f7" stroke-width="1" rx="2"/>
+  <text x="155" y="101" fill="#7aa2f7" font-family="monospace" font-size="10">Compare</text>
+
+  <rect x="240" y="88" width="100" height="20" fill="#3b4261" stroke="#bb9af7" stroke-width="1" rx="2"/>
+  <text x="265" y="101" fill="#bb9af7" font-family="monospace" font-size="10">Replicate</text>
+
+  <rect x="350" y="88" width="100" height="20" fill="#3b4261" stroke="#e0af68" stroke-width="1" rx="2"/>
+  <text x="375" y="101" fill="#e0af68" font-family="monospace" font-size="10">Failover</text>
+
+  <!-- Actions -->
+  <rect x="750" y="88" width="100" height="20" fill="#3b4261" stroke="#9ece6a" stroke-width="1" rx="2"/>
+  <text x="775" y="101" fill="#9ece6a" font-family="monospace" font-size="10">🔄 Sync All</text>
+
+  <rect x="860" y="88" width="120" height="20" fill="#3d2c2c" stroke="#f7768e" stroke-width="1" rx="2"/>
+  <text x="880" y="101" fill="#f7768e" font-family="monospace" font-size="10">⚠ Emergency Stop</text>
+
+  <!-- Main Content: Overview Mode -->
+
+  <!-- Cluster Cards Grid (2x3) -->
+
+  <!-- Card 1: PROD-US-EAST -->
+  <rect x="10" y="125" width="320" height="180" fill="#1a1b26" stroke="#9ece6a" stroke-width="2" rx="4"/>
+
+  <!-- Header -->
+  <rect x="10" y="125" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="25" cy="140" r="5" fill="#9ece6a"/>
+  <text x="35" y="145" fill="#9ece6a" font-family="monospace" font-size="11" font-weight="bold">PROD-US-EAST</text>
+  <text x="250" y="145" fill="#565f89" font-family="monospace" font-size="9">Primary</text>
+
+  <!-- Stats -->
+  <text x="20" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Queues: 12</text>
+  <text x="120" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Jobs: 45,231</text>
+  <text x="230" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Rate: 1,250/s</text>
+
+  <text x="20" y="195" fill="#c0caf5" font-family="monospace" font-size="10">Workers: 48/50</text>
+  <text x="120" y="195" fill="#e0af68" font-family="monospace" font-size="10">DLQ: 127</text>
+  <text x="230" y="195" fill="#9ece6a" font-family="monospace" font-size="10">Health: 98%</text>
+
+  <!-- Mini chart -->
+  <rect x="20" y="210" width="290" height="40" fill="#24283b" rx="2"/>
+  <!-- Chart bars -->
+  <rect x="30" y="235" width="5" height="10" fill="#9ece6a" opacity="0.8"/>
+  <rect x="40" y="230" width="5" height="15" fill="#9ece6a" opacity="0.8"/>
+  <rect x="50" y="225" width="5" height="20" fill="#9ece6a" opacity="0.8"/>
+  <rect x="60" y="228" width="5" height="17" fill="#9ece6a" opacity="0.8"/>
+  <rect x="70" y="230" width="5" height="15" fill="#9ece6a" opacity="0.8"/>
+
+  <!-- Actions -->
+  <rect x="20" y="260" width="60" height="25" fill="#3b4261" rx="2"/>
+  <text x="35" y="276" fill="#7aa2f7" font-family="monospace" font-size="9">View</text>
+
+  <rect x="90" y="260" width="60" height="25" fill="#3b4261" rx="2"/>
+  <text x="105" y="276" fill="#bb9af7" font-family="monospace" font-size="9">Drain</text>
+
+  <rect x="160" y="260" width="60" height="25" fill="#3b4261" rx="2"/>
+  <text x="175" y="276" fill="#e0af68" font-family="monospace" font-size="9">Scale</text>
+
+  <!-- Card 2: PROD-US-WEST -->
+  <rect x="340" y="125" width="320" height="180" fill="#1a1b26" stroke="#7aa2f7" stroke-width="1" rx="4"/>
+
+  <rect x="340" y="125" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="355" cy="140" r="5" fill="#7aa2f7"/>
+  <text x="365" y="145" fill="#7aa2f7" font-family="monospace" font-size="11" font-weight="bold">PROD-US-WEST</text>
+  <text x="570" y="145" fill="#565f89" font-family="monospace" font-size="9">Secondary</text>
+
+  <text x="350" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Queues: 12</text>
+  <text x="450" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Jobs: 38,102</text>
+  <text x="560" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Rate: 980/s</text>
+
+  <text x="350" y="195" fill="#c0caf5" font-family="monospace" font-size="10">Workers: 42/45</text>
+  <text x="450" y="195" fill="#e0af68" font-family="monospace" font-size="10">DLQ: 89</text>
+  <text x="560" y="195" fill="#9ece6a" font-family="monospace" font-size="10">Health: 96%</text>
+
+  <rect x="350" y="210" width="290" height="40" fill="#24283b" rx="2"/>
+  <rect x="360" y="235" width="5" height="10" fill="#7aa2f7" opacity="0.8"/>
+  <rect x="370" y="232" width="5" height="13" fill="#7aa2f7" opacity="0.8"/>
+  <rect x="380" y="228" width="5" height="17" fill="#7aa2f7" opacity="0.8"/>
+  <rect x="390" y="230" width="5" height="15" fill="#7aa2f7" opacity="0.8"/>
+
+  <rect x="350" y="260" width="60" height="25" fill="#3b4261" rx="2"/>
+  <text x="365" y="276" fill="#7aa2f7" font-family="monospace" font-size="9">View</text>
+
+  <rect x="420" y="260" width="60" height="25" fill="#3b4261" rx="2"/>
+  <text x="435" y="276" fill="#bb9af7" font-family="monospace" font-size="9">Drain</text>
+
+  <!-- Card 3: PROD-EU-WEST -->
+  <rect x="670" y="125" width="320" height="180" fill="#1a1b26" stroke="#bb9af7" stroke-width="1" rx="4"/>
+
+  <rect x="670" y="125" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="685" cy="140" r="5" fill="#bb9af7"/>
+  <text x="695" y="145" fill="#bb9af7" font-family="monospace" font-size="11" font-weight="bold">PROD-EU-WEST</text>
+  <text x="900" y="145" fill="#565f89" font-family="monospace" font-size="9">Secondary</text>
+
+  <text x="680" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Queues: 10</text>
+  <text x="780" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Jobs: 22,847</text>
+  <text x="890" y="175" fill="#c0caf5" font-family="monospace" font-size="10">Rate: 520/s</text>
+
+  <text x="680" y="195" fill="#c0caf5" font-family="monospace" font-size="10">Workers: 28/30</text>
+  <text x="780" y="195" fill="#9ece6a" font-family="monospace" font-size="10">DLQ: 12</text>
+  <text x="890" y="195" fill="#9ece6a" font-family="monospace" font-size="10">Health: 99%</text>
+
+  <!-- Card 4: STAGING -->
+  <rect x="10" y="315" width="320" height="180" fill="#1a1b26" stroke="#565f89" stroke-width="1" rx="4"/>
+
+  <rect x="10" y="315" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="25" cy="330" r="5" fill="#e0af68"/>
+  <text x="35" y="335" fill="#e0af68" font-family="monospace" font-size="11" font-weight="bold">STAGING</text>
+  <text x="250" y="335" fill="#565f89" font-family="monospace" font-size="9">Test</text>
+
+  <text x="20" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Queues: 8</text>
+  <text x="120" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Jobs: 1,203</text>
+  <text x="230" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Rate: 45/s</text>
+
+  <text x="20" y="385" fill="#c0caf5" font-family="monospace" font-size="10">Workers: 5/10</text>
+  <text x="120" y="385" fill="#f7768e" font-family="monospace" font-size="10">DLQ: 847</text>
+  <text x="230" y="385" fill="#e0af68" font-family="monospace" font-size="10">Health: 72%</text>
+
+  <!-- Card 5: DEV -->
+  <rect x="340" y="315" width="320" height="180" fill="#1a1b26" stroke="#565f89" stroke-width="1" rx="4"/>
+
+  <rect x="340" y="315" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <circle cx="355" cy="330" r="5" fill="#565f89"/>
+  <text x="365" y="335" fill="#565f89" font-family="monospace" font-size="11" font-weight="bold">DEV</text>
+  <text x="580" y="335" fill="#565f89" font-family="monospace" font-size="9">Test</text>
+
+  <text x="350" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Queues: 5</text>
+  <text x="450" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Jobs: 102</text>
+  <text x="560" y="365" fill="#c0caf5" font-family="monospace" font-size="10">Rate: 2/s</text>
+
+  <text x="350" y="385" fill="#c0caf5" font-family="monospace" font-size="10">Workers: 2/5</text>
+  <text x="450" y="385" fill="#c0caf5" font-family="monospace" font-size="10">DLQ: 8</text>
+  <text x="560" y="385" fill="#9ece6a" font-family="monospace" font-size="10">Health: 100%</text>
+
+  <!-- Global Actions Panel -->
+  <rect x="670" y="315" width="320" height="180" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <rect x="670" y="315" width="320" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <text x="680" y="335" fill="#7aa2f7" font-family="monospace" font-size="11" font-weight="bold">⚡ Quick Actions</text>
+
+  <!-- Multi-select -->
+  <text x="680" y="360" fill="#565f89" font-family="monospace" font-size="10">Select clusters:</text>
+  <rect x="680" y="370" width="15" height="15" fill="#7aa2f7" rx="2"/>
+  <text x="683" y="381" fill="#1a1b26" font-family="monospace" font-size="10" font-weight="bold">✓</text>
+  <text x="700" y="381" fill="#c0caf5" font-family="monospace" font-size="9">PROD-US-EAST</text>
+
+  <rect x="680" y="390" width="15" height="15" fill="#7aa2f7" rx="2"/>
+  <text x="683" y="401" fill="#1a1b26" font-family="monospace" font-size="10" font-weight="bold">✓</text>
+  <text x="700" y="401" fill="#c0caf5" font-family="monospace" font-size="9">PROD-US-WEST</text>
+
+  <rect x="680" y="410" width="15" height="15" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="700" y="421" fill="#c0caf5" font-family="monospace" font-size="9">PROD-EU-WEST</text>
+
+  <!-- Bulk actions -->
+  <rect x="680" y="440" width="90" height="30" fill="#3b4261" stroke="#9ece6a" stroke-width="1" rx="3"/>
+  <text x="700" y="458" fill="#9ece6a" font-family="monospace" font-size="10">Sync Config</text>
+
+  <rect x="780" y="440" width="90" height="30" fill="#3b4261" stroke="#bb9af7" stroke-width="1" rx="3"/>
+  <text x="795" y="458" fill="#bb9af7" font-family="monospace" font-size="10">Compare Stats</text>
+
+  <rect x="880" y="440" width="90" height="30" fill="#3d2c2c" stroke="#f7768e" stroke-width="1" rx="3"/>
+  <text x="900" y="458" fill="#f7768e" font-family="monospace" font-size="10">Purge DLQ</text>
+
+  <!-- Bottom Status Summary -->
+  <rect x="10" y="510" width="980" height="140" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <text x="20" y="530" fill="#7aa2f7" font-family="monospace" font-size="11" font-weight="bold">Global Summary</text>
+
+  <!-- Aggregate stats -->
+  <rect x="20" y="540" width="230" height="90" fill="#24283b" rx="2"/>
+  <text x="30" y="560" fill="#565f89" font-family="monospace" font-size="10">Total Clusters: 5</text>
+  <text x="30" y="575" fill="#c0caf5" font-family="monospace" font-size="10">Total Jobs: 107,485</text>
+  <text x="30" y="590" fill="#c0caf5" font-family="monospace" font-size="10">Total Workers: 125/145</text>
+  <text x="30" y="605" fill="#e0af68" font-family="monospace" font-size="10">Total DLQ: 1,093</text>
+  <text x="30" y="620" fill="#9ece6a" font-family="monospace" font-size="10">Avg Health: 93%</text>
+
+  <!-- Regional distribution -->
+  <rect x="260" y="540" width="350" height="90" fill="#24283b" rx="2"/>
+  <text x="270" y="560" fill="#565f89" font-family="monospace" font-size="10">Regional Distribution:</text>
+
+  <!-- US bar -->
+  <text x="270" y="580" fill="#c0caf5" font-family="monospace" font-size="9">US</text>
+  <rect x="300" y="570" width="200" height="12" fill="#3b4261" rx="2"/>
+  <rect x="300" y="570" width="140" height="12" fill="#7aa2f7" rx="2"/>
+  <text x="510" y="580" fill="#565f89" font-family="monospace" font-size="9">83,333 (78%)</text>
+
+  <!-- EU bar -->
+  <text x="270" y="600" fill="#c0caf5" font-family="monospace" font-size="9">EU</text>
+  <rect x="300" y="590" width="200" height="12" fill="#3b4261" rx="2"/>
+  <rect x="300" y="590" width="45" height="12" fill="#bb9af7" rx="2"/>
+  <text x="510" y="600" fill="#565f89" font-family="monospace" font-size="9">22,847 (21%)</text>
+
+  <!-- Test bar -->
+  <text x="270" y="620" fill="#c0caf5" font-family="monospace" font-size="9">Test</text>
+  <rect x="300" y="610" width="200" height="12" fill="#3b4261" rx="2"/>
+  <rect x="300" y="610" width="5" height="12" fill="#e0af68" rx="2"/>
+  <text x="510" y="620" fill="#565f89" font-family="monospace" font-size="9">1,305 (1%)</text>
+
+  <!-- Health indicators -->
+  <rect x="620" y="540" width="360" height="90" fill="#24283b" rx="2"/>
+  <text x="630" y="560" fill="#565f89" font-family="monospace" font-size="10">Critical Issues:</text>
+
+  <circle cx="640" cy="575" r="4" fill="#f7768e"/>
+  <text x="650" y="580" fill="#f7768e" font-family="monospace" font-size="9">STAGING: High DLQ count (847)</text>
+
+  <circle cx="640" cy="593" r="4" fill="#e0af68"/>
+  <text x="650" y="598" fill="#e0af68" font-family="monospace" font-size="9">PROD-US-WEST: 3 workers offline</text>
+
+  <circle cx="640" cy="611" r="4" fill="#e0af68"/>
+  <text x="650" y="616" fill="#e0af68" font-family="monospace" font-size="9">PROD-EU-WEST: Latency spike detected</text>
+
+  <!-- Status Bar -->
+  <rect x="0" y="660" width="1000" height="40" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <text x="20" y="680" fill="#565f89" font-family="monospace" font-size="10">Multi-Cluster | 5 active | 2 selected</text>
+  <text x="400" y="680" fill="#9ece6a" font-family="monospace" font-size="10">✓ All clusters connected</text>
+  <text x="750" y="680" fill="#565f89" font-family="monospace" font-size="10">Press ? for help | C to compare</text>
+</svg>

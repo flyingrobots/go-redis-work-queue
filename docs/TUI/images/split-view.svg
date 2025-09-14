@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+  <rect width="100%" height="100%" fill="#0f0f14"/>
+  <!-- Split panels -->
+  <rect x="20" y="20" width="330" height="320" fill="#1d1f27" stroke="#7aa2f7"/>
+  <rect x="370" y="20" width="330" height="320" fill="#1d1f27" stroke="#9ece6a"/>
+  <!-- Titles -->
+  <g font-family="monospace" font-size="13" fill="#e8e8e8">
+    <text x="36" y="44">Job Queue</text>
+    <text x="386" y="44">Workers</text>
+  </g>
+  <!-- Vertical splitter handle -->
+  <rect x="360" y="20" width="8" height="320" fill="#444"/>
+</svg>
+

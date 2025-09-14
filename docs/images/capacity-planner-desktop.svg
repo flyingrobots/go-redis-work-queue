@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22"/>
+  <text x="20" y="38" font-family="monospace" font-size="20" font-weight="bold" fill="#58a6ff">⚖️ Automatic Capacity Planner</text>
+  <text x="1100" y="38" font-family="monospace" font-size="14" fill="#8b949e" text-anchor="end">Auto-Apply: ON</text>
+
+  <!-- Left Panel - Current State (400px) -->
+  <g id="current-state">
+    <rect x="10" y="70" width="380" height="720" fill="#161b22" stroke="#30363d" rx="6"/>
+    <text x="30" y="100" font-family="monospace" font-size="16" font-weight="bold" fill="#f0f6fc">Current State</text>
+
+    <!-- Metrics Summary -->
+    <rect x="30" y="120" width="340" height="140" fill="#0d1117" stroke="#30363d" rx="4"/>
+    <text x="45" y="145" font-family="monospace" font-size="12" fill="#58a6ff">Arrival Rate (λ)</text>
+    <text x="45" y="165" font-family="monospace" font-size="18" fill="#f0f6fc">1,234 jobs/min</text>
+    <text x="45" y="185" font-family="monospace" font-size="10" fill="#39d353">↑ 12% from baseline</text>
+
+    <text x="210" y="145" font-family="monospace" font-size="12" fill="#58a6ff">Service Time (μ)</text>
+    <text x="210" y="165" font-family="monospace" font-size="18" fill="#f0f6fc">2.3s avg</text>
+    <text x="210" y="185" font-family="monospace" font-size="10" fill="#8b949e">p95: 4.7s</text>
+
+    <text x="45" y="210" font-family="monospace" font-size="12" fill="#58a6ff">Current Workers</text>
+    <text x="45" y="230" font-family="monospace" font-size="18" fill="#f0f6fc">48 replicas</text>
+    <text x="45" y="245" font-family="monospace" font-size="10" fill="#ffa657">78% utilization</text>
+
+    <text x="210" y="210" font-family="monospace" font-size="12" fill="#58a6ff">Backlog</text>
+    <text x="210" y="230" font-family="monospace" font-size="18" fill="#ffa657">3,421 jobs</text>
+    <text x="210" y="245" font-family="monospace" font-size="10" fill="#f85149">Above SLO</text>
+
+    <!-- Worker Pools -->
+    <text x="30" y="290" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">Worker Pools</text>
+    <rect x="30" y="305" width="340" height="180" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <!-- Pool 1 -->
+    <rect x="40" y="315" width="320" height="50" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="50" y="335" font-family="monospace" font-size="12" fill="#58a6ff">high-priority</text>
+    <text x="50" y="350" font-family="monospace" font-size="10" fill="#8b949e">Replicas: 24 | CPU: 68% | Mem: 45%</text>
+    <rect x="270" y="325" width="80" height="30" fill="#238636" rx="3"/>
+    <text x="310" y="345" font-family="monospace" font-size="11" fill="#ffffff" text-anchor="middle">Healthy</text>
+
+    <!-- Pool 2 -->
+    <rect x="40" y="370" width="320" height="50" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="50" y="390" font-family="monospace" font-size="12" fill="#58a6ff">default</text>
+    <text x="50" y="405" font-family="monospace" font-size="10" fill="#8b949e">Replicas: 16 | CPU: 82% | Mem: 61%</text>
+    <rect x="270" y="380" width="80" height="30" fill="#da3633" rx="3"/>
+    <text x="310" y="400" font-family="monospace" font-size="11" fill="#ffffff" text-anchor="middle">Stressed</text>
+
+    <!-- Pool 3 -->
+    <rect x="40" y="425" width="320" height="50" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="50" y="445" font-family="monospace" font-size="12" fill="#58a6ff">batch</text>
+    <text x="50" y="460" font-family="monospace" font-size="10" fill="#8b949e">Replicas: 8 | CPU: 45% | Mem: 32%</text>
+    <rect x="270" y="435" width="80" height="30" fill="#238636" rx="3"/>
+    <text x="310" y="455" font-family="monospace" font-size="11" fill="#ffffff" text-anchor="middle">Healthy</text>
+
+    <!-- SLO Status -->
+    <text x="30" y="515" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">SLO Status</text>
+    <rect x="30" y="530" width="340" height="100" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <text x="45" y="555" font-family="monospace" font-size="11" fill="#8b949e">p95 Latency Target:</text>
+    <text x="200" y="555" font-family="monospace" font-size="11" fill="#39d353">5.0s</text>
+    <text x="45" y="575" font-family="monospace" font-size="11" fill="#8b949e">p95 Latency Actual:</text>
+    <text x="200" y="575" font-family="monospace" font-size="11" fill="#f85149">8.7s</text>
+
+    <text x="45" y="595" font-family="monospace" font-size="11" fill="#8b949e">Max Backlog Target:</text>
+    <text x="200" y="595" font-family="monospace" font-size="11" fill="#39d353">1,000</text>
+    <text x="45" y="615" font-family="monospace" font-size="11" fill="#8b949e">Current Backlog:</text>
+    <text x="200" y="615" font-family="monospace" font-size="11" fill="#f85149">3,421</text>
+
+    <!-- Error Budget -->
+    <rect x="30" y="640" width="340" height="60" fill="#0d1117" stroke="#30363d" rx="4"/>
+    <text x="45" y="660" font-family="monospace" font-size="11" fill="#8b949e">Error Budget Remaining:</text>
+    <rect x="45" y="670" width="310" height="15" fill="#161b22" stroke="#30363d" rx="2"/>
+    <rect x="45" y="670" width="93" height="15" fill="#f85149" rx="2"/>
+    <text x="200" y="682" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">30% (2.1 days)</text>
+  </g>
+
+  <!-- Center Panel - Capacity Plan (400px) -->
+  <g id="capacity-plan">
+    <rect x="400" y="70" width="390" height="720" fill="#161b22" stroke="#30363d" rx="6"/>
+    <text x="420" y="100" font-family="monospace" font-size="16" font-weight="bold" fill="#f0f6fc">Recommended Plan</text>
+
+    <!-- Plan Summary -->
+    <rect x="420" y="120" width="350" height="100" fill="#0d1117" stroke="#39d353" stroke-width="2" rx="4"/>
+    <text x="435" y="145" font-family="monospace" font-size="12" fill="#39d353">✓ Plan will meet SLO targets</text>
+    <text x="435" y="165" font-family="monospace" font-size="11" fill="#8b949e">Total Workers: 48 → 72 (+24)</text>
+    <text x="435" y="185" font-family="monospace" font-size="11" fill="#8b949e">Est. Cost Impact: +$380/day</text>
+    <text x="435" y="205" font-family="monospace" font-size="11" fill="#8b949e">Backlog Drain Time: ~4.2 min</text>
+
+    <!-- Time-Segmented Plan -->
+    <text x="420" y="250" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">Scaling Timeline</text>
+
+    <!-- Timeline visualization -->
+    <rect x="420" y="270" width="350" height="200" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <!-- Time axis -->
+    <line x1="450" y1="440" x2="740" y2="440" stroke="#30363d" stroke-width="1"/>
+    <text x="450" y="455" font-family="monospace" font-size="9" fill="#8b949e">Now</text>
+    <text x="520" y="455" font-family="monospace" font-size="9" fill="#8b949e">+15m</text>
+    <text x="590" y="455" font-family="monospace" font-size="9" fill="#8b949e">+30m</text>
+    <text x="660" y="455" font-family="monospace" font-size="9" fill="#8b949e">+45m</text>
+    <text x="730" y="455" font-family="monospace" font-size="9" fill="#8b949e">+60m</text>
+
+    <!-- Worker count axis -->
+    <line x1="450" y1="280" x2="450" y2="440" stroke="#30363d" stroke-width="1"/>
+    <text x="430" y="285" font-family="monospace" font-size="9" fill="#8b949e">80</text>
+    <text x="430" y="330" font-family="monospace" font-size="9" fill="#8b949e">60</text>
+    <text x="430" y="375" font-family="monospace" font-size="9" fill="#8b949e">40</text>
+    <text x="430" y="420" font-family="monospace" font-size="9" fill="#8b949e">20</text>
+
+    <!-- Current line -->
+    <line x1="450" y1="360" x2="740" y2="360" stroke="#f85149" stroke-width="1" stroke-dasharray="5,5" opacity="0.5"/>
+
+    <!-- Recommended scaling curve -->
+    <polyline points="450,360 490,340 530,320 570,310 610,305 650,305 690,308 730,310"
+              fill="none" stroke="#39d353" stroke-width="2"/>
+
+    <!-- Confidence bands -->
+    <polygon points="450,360 490,345 530,328 570,320 610,318 650,318 690,320 730,322 730,298 690,296 650,292 610,292 570,295 530,312 490,335 450,360"
+             fill="#39d353" opacity="0.1"/>
+
+    <!-- Detailed Steps -->
+    <text x="420" y="500" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">Scaling Steps</text>
+
+    <rect x="420" y="520" width="350" height="260" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <!-- Step 1 -->
+    <rect x="430" y="530" width="330" height="60" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="440" y="548" font-family="monospace" font-size="11" fill="#39d353">Step 1: Immediate (T+0)</text>
+    <text x="440" y="565" font-family="monospace" font-size="10" fill="#8b949e">high-priority: 24 → 36 (+12)</text>
+    <text x="440" y="580" font-family="monospace" font-size="10" fill="#8b949e">Reason: Backlog critical, SLO breach</text>
+
+    <!-- Step 2 -->
+    <rect x="430" y="595" width="330" height="60" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="440" y="613" font-family="monospace" font-size="11" fill="#ffa657">Step 2: T+5min (cooldown)</text>
+    <text x="440" y="630" font-family="monospace" font-size="10" fill="#8b949e">default: 16 → 24 (+8)</text>
+    <text x="440" y="645" font-family="monospace" font-size="10" fill="#8b949e">Reason: λ spike detected, forecast ↑</text>
+
+    <!-- Step 3 -->
+    <rect x="430" y="660" width="330" height="60" fill="#161b22" stroke="#30363d" rx="3"/>
+    <text x="440" y="678" font-family="monospace" font-size="11" fill="#58a6ff">Step 3: T+15min</text>
+    <text x="440" y="695" font-family="monospace" font-size="10" fill="#8b949e">batch: 8 → 12 (+4)</text>
+    <text x="440" y="710" font-family="monospace" font-size="10" fill="#8b949e">Reason: Batch window approaching</text>
+
+    <!-- Safety note -->
+    <rect x="430" y="725" width="330" height="45" fill="#1f2937" stroke="#ffa657" rx="3"/>
+    <text x="440" y="745" font-family="monospace" font-size="10" fill="#ffa657">⚠ Safety: Max step size: 15 replicas</text>
+    <text x="440" y="760" font-family="monospace" font-size="10" fill="#ffa657">Cooldown period: 5 min minimum</text>
+  </g>
+
+  <!-- Right Panel - What-If Simulator (400px) -->
+  <g id="simulator">
+    <rect x="800" y="70" width="390" height="720" fill="#161b22" stroke="#30363d" rx="6"/>
+    <text x="820" y="100" font-family="monospace" font-size="16" font-weight="bold" fill="#f0f6fc">What-If Simulator</text>
+
+    <!-- Controls -->
+    <text x="820" y="130" font-family="monospace" font-size="12" fill="#58a6ff">Adjust Parameters</text>
+
+    <!-- SLO Target Slider -->
+    <text x="820" y="160" font-family="monospace" font-size="11" fill="#8b949e">p95 Latency Target</text>
+    <rect x="820" y="170" width="350" height="30" fill="#0d1117" stroke="#30363d" rx="3"/>
+    <line x1="830" y1="185" x2="1160" y2="185" stroke="#30363d" stroke-width="2"/>
+    <circle cx="980" cy="185" r="8" fill="#58a6ff"/>
+    <text x="980" y="215" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">5.0s</text>
+
+    <!-- Safety Margin Slider -->
+    <text x="820" y="240" font-family="monospace" font-size="11" fill="#8b949e">Safety Margin</text>
+    <rect x="820" y="250" width="350" height="30" fill="#0d1117" stroke="#30363d" rx="3"/>
+    <line x1="830" y1="265" x2="1160" y2="265" stroke="#30363d" stroke-width="2"/>
+    <circle cx="920" cy="265" r="8" fill="#58a6ff"/>
+    <text x="920" y="295" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">15%</text>
+
+    <!-- Forecast Window -->
+    <text x="820" y="320" font-family="monospace" font-size="11" fill="#8b949e">Forecast Window</text>
+    <rect x="820" y="330" width="350" height="30" fill="#0d1117" stroke="#30363d" rx="3"/>
+    <line x1="830" y1="345" x2="1160" y2="345" stroke="#30363d" stroke-width="2"/>
+    <circle cx="1050" cy="345" r="8" fill="#58a6ff"/>
+    <text x="1050" y="375" font-family="monospace" font-size="10" fill="#f0f6fc" text-anchor="middle">60 min</text>
+
+    <!-- Simulation Results -->
+    <text x="820" y="410" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">Simulation Results</text>
+
+    <!-- Chart -->
+    <rect x="820" y="430" width="350" height="200" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <!-- Backlog projection -->
+    <text x="830" y="450" font-family="monospace" font-size="10" fill="#8b949e">Backlog Projection</text>
+
+    <!-- Graph axes -->
+    <line x1="850" y1="600" x2="1140" y2="600" stroke="#30363d"/>
+    <line x1="850" y1="470" x2="850" y2="600" stroke="#30363d"/>
+
+    <!-- Current backlog line -->
+    <polyline points="850,520 900,515 950,510 1000,508 1050,507 1100,507 1140,507"
+              fill="none" stroke="#f85149" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="1145" y="510" font-family="monospace" font-size="9" fill="#f85149">No action</text>
+
+    <!-- With plan line -->
+    <polyline points="850,520 900,490 950,470 1000,465 1050,463 1100,463 1140,463"
+              fill="none" stroke="#39d353" stroke-width="2"/>
+    <text x="1145" y="466" font-family="monospace" font-size="9" fill="#39d353">With plan</text>
+
+    <!-- Cost Analysis -->
+    <text x="820" y="660" font-family="monospace" font-size="14" font-weight="bold" fill="#f0f6fc">Cost Analysis</text>
+
+    <rect x="820" y="680" width="350" height="100" fill="#0d1117" stroke="#30363d" rx="4"/>
+
+    <text x="835" y="705" font-family="monospace" font-size="11" fill="#8b949e">Current Monthly Cost:</text>
+    <text x="1050" y="705" font-family="monospace" font-size="11" fill="#f0f6fc" text-anchor="end">$8,640</text>
+
+    <text x="835" y="725" font-family="monospace" font-size="11" fill="#8b949e">Projected Monthly Cost:</text>
+    <text x="1050" y="725" font-family="monospace" font-size="11" fill="#ffa657" text-anchor="end">$12,960</text>
+
+    <text x="835" y="745" font-family="monospace" font-size="11" fill="#8b949e">SLO Violation Cost (est):</text>
+    <text x="1050" y="745" font-family="monospace" font-size="11" fill="#f85149" text-anchor="end">$15,000</text>
+
+    <rect x="835" y="755" width="320" height="1" fill="#30363d"/>
+
+    <text x="835" y="770" font-family="monospace" font-size="11" fill="#39d353">Net Benefit:</text>
+    <text x="1050" y="770" font-family="monospace" font-size="11" fill="#39d353" text-anchor="end">+$10,680</text>
+  </g>
+</svg>
