@@ -1,6 +1,6 @@
 {
   "task_id": "P2.T005",
-  "created_at": "2025-09-14T19:07:07.291913+00:00",
+  "created_at": "2025-09-14T19:41:47.124590Z",
   "task": {
     "id": "P2.T005",
     "feature_id": "F002",
@@ -191,11 +191,17 @@
       ]
     }
   },
-  "dependencies_completed": [],
+  "dependencies": [],
   "instructions": {
     "on_complete": "Move this file to finished-tasks/P2.T005.json",
-    "on_failure": "Move this file to failed-tasks/P2.T005.json with error details",
-    "on_help_needed": "Move to help-me/P2.T005.json with 'help_request' field explaining the issue",
-    "working_dir": "claude-XXX/P2.T005.json (where XXX is your worker ID)"
+    "on_failure": "Move this file to failed-tasks/P2.T005.json",
+    "on_help_needed": "Move to help-me/P2.T005.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    }
   }
 }

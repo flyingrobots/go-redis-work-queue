@@ -17,6 +17,7 @@ func TestManager_ProcessWithIdempotency(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
 	cfg.Idempotency.Storage.Memory.MaxKeys = 100
+	cfg.Metrics.Enabled = false // Disable metrics to avoid registration conflicts
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -96,6 +97,7 @@ func TestManager_ProcessWithIdempotency_DisabledIdempotency(t *testing.T) {
 
 func TestManager_GenerateIdempotencyKey(t *testing.T) {
 	cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
 
@@ -128,6 +130,7 @@ func TestManager_GenerateIdempotencyKey(t *testing.T) {
 func TestManager_Hooks(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -180,13 +183,14 @@ func TestManager_StoreInOutbox(t *testing.T) {
 			Payload:     json.RawMessage(`{"test": true}`),
 		}
 
-		err := manager.StoreInOutbox(context.Background(), nil, event)
+		err := manager.StoreInOutbox(context.Background(), event)
 		assert.Equal(t, ErrOutboxDisabled, err)
 	})
 
 	t.Run("outbox enabled but storage not implemented", func(t *testing.T) {
 		cfg := DefaultConfig()
 		cfg.Outbox.Enabled = true
+		cfg.Metrics.Enabled = false
 
 		log := zaptest.NewLogger(t)
 		manager := NewManager(cfg, nil, log)
@@ -197,7 +201,7 @@ func TestManager_StoreInOutbox(t *testing.T) {
 			Payload:     json.RawMessage(`{"test": true}`),
 		}
 
-		err := manager.StoreInOutbox(context.Background(), nil, event)
+		err := manager.StoreInOutbox(context.Background(), event)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "outbox storage not initialized")
 	})
@@ -206,6 +210,7 @@ func TestManager_StoreInOutbox(t *testing.T) {
 func TestManager_PublishOutboxEvents(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Outbox.Enabled = false
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -217,6 +222,7 @@ func TestManager_PublishOutboxEvents(t *testing.T) {
 func TestManager_GetDedupStats(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -248,6 +254,7 @@ func TestManager_GetDedupStats(t *testing.T) {
 func TestManager_CleanupExpiredKeys(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -259,6 +266,7 @@ func TestManager_CleanupExpiredKeys(t *testing.T) {
 func TestManager_CleanupOutboxEvents(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Outbox.Enabled = false
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(t)
 	manager := NewManager(cfg, nil, log)
@@ -292,6 +300,7 @@ func BenchmarkManager_ProcessWithIdempotency(b *testing.B) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
 	cfg.Idempotency.Storage.Memory.MaxKeys = 10000
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(b)
 	manager := NewManager(cfg, nil, log)
@@ -323,6 +332,7 @@ func BenchmarkManager_ProcessWithIdempotency(b *testing.B) {
 func BenchmarkManager_ProcessWithIdempotency_Duplicate(b *testing.B) {
 	cfg := DefaultConfig()
 	cfg.Idempotency.Storage.Type = "memory"
+	cfg.Metrics.Enabled = false
 
 	log := zaptest.NewLogger(b)
 	manager := NewManager(cfg, nil, log)

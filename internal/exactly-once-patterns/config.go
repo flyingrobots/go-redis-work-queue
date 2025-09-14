@@ -101,6 +101,18 @@ type OutboxConfig struct {
 	// Enabled controls whether outbox pattern is active
 	Enabled bool `mapstructure:"enabled"`
 
+	// StorageType specifies the storage backend ("redis", "database")
+	StorageType string `mapstructure:"storage_type"`
+
+	// KeyPrefix is prepended to all outbox keys in Redis storage
+	KeyPrefix string `mapstructure:"key_prefix"`
+
+	// TableName for storing outbox events in database
+	TableName string `mapstructure:"table_name"`
+
+	// RetentionPeriod for outbox events
+	RetentionPeriod time.Duration `mapstructure:"retention_period"`
+
 	// PollInterval for checking unpublished events
 	PollInterval time.Duration `mapstructure:"poll_interval"`
 
@@ -194,6 +206,10 @@ func DefaultConfig() *Config {
 		},
 		Outbox: OutboxConfig{
 			Enabled:         false, // Disabled by default as it requires database setup
+			StorageType:     "redis",
+			KeyPrefix:       "outbox:",
+			TableName:       "outbox_events",
+			RetentionPeriod: 7 * 24 * time.Hour,
 			PollInterval:    5 * time.Second,
 			BatchSize:       50,
 			MaxRetries:      5,

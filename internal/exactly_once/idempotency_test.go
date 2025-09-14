@@ -84,8 +84,7 @@ func TestRedisIdempotencyManager_TTLExpiry(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, isDuplicate)
 
-	// Wait for TTL to expire (need to fast-forward time in miniredis)
-	mr := client.Options().Addr
+	// Wait for TTL to expire
 	// Note: In real tests, you'd need to access the miniredis instance and fast-forward time
 	// For now, we'll use a longer TTL that's testable
 	time.Sleep(1100 * time.Millisecond)

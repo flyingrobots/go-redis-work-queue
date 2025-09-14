@@ -63,7 +63,7 @@ func ExampleTransactionalOutbox(manager *Manager) error {
 	fmt.Println("Starting database transaction...")
 
 	// Store the event in the outbox as part of the transaction
-	err := manager.StoreInOutbox(ctx, nil, event) // tx would be your database transaction
+	err := manager.StoreInOutbox(ctx, event) // tx would be your database transaction
 	if err != nil {
 		return fmt.Errorf("failed to store outbox event: %w", err)
 	}

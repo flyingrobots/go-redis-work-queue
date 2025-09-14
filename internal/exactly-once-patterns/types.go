@@ -29,16 +29,22 @@ type DedupEntry struct {
 
 // OutboxEvent represents an event that needs to be published from the outbox pattern
 type OutboxEvent struct {
-	ID           string            `json:"id"`
-	AggregateID  string            `json:"aggregate_id"`
-	EventType    string            `json:"event_type"`
-	Payload      json.RawMessage   `json:"payload"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	CreatedAt    time.Time         `json:"created_at"`
-	PublishedAt  *time.Time        `json:"published_at,omitempty"`
-	Retries      int               `json:"retries"`
-	MaxRetries   int               `json:"max_retries"`
-	NextRetryAt  *time.Time        `json:"next_retry_at,omitempty"`
+	ID             string                 `json:"id"`
+	AggregateID    string                 `json:"aggregate_id"`
+	AggregateType  string                 `json:"aggregate_type,omitempty"`
+	EventType      string                 `json:"event_type"`
+	Payload        json.RawMessage        `json:"payload"`
+	Headers        map[string]string      `json:"headers,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	PublishedAt    *time.Time             `json:"published_at,omitempty"`
+	Retries        int                    `json:"retries"`
+	RetryCount     int                    `json:"retry_count"`
+	MaxRetries     int                    `json:"max_retries"`
+	NextRetryAt    *time.Time             `json:"next_retry_at,omitempty"`
+	LastError      string                 `json:"last_error,omitempty"`
+	LastAttemptAt  *time.Time             `json:"last_attempt_at,omitempty"`
+	Status         string                 `json:"status,omitempty"`
 }
 
 // DedupStats represents statistics about deduplication
@@ -104,23 +110,6 @@ type IdempotencyStorage interface {
 	Stats(ctx context.Context, queueName, tenantID string) (*DedupStats, error)
 }
 
-// OutboxStorage defines the interface for transactional outbox operations
-type OutboxStorage interface {
-	// Store saves an event to the outbox within a transaction
-	Store(ctx context.Context, tx interface{}, event OutboxEvent) error
-
-	// GetUnpublished retrieves unpublished events ready for processing
-	GetUnpublished(ctx context.Context, limit int) ([]OutboxEvent, error)
-
-	// MarkPublished marks events as successfully published
-	MarkPublished(ctx context.Context, eventIDs []string) error
-
-	// MarkFailed marks events as failed with retry logic
-	MarkFailed(ctx context.Context, eventIDs []string, nextRetryAt time.Time) error
-
-	// Cleanup removes old processed events
-	Cleanup(ctx context.Context, olderThan time.Time) error
-}
 
 // ProcessingHook defines hooks that can be called during processing
 type ProcessingHook interface {

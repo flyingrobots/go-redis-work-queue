@@ -160,7 +160,7 @@ func (m *Manager) GenerateIdempotencyKey(queueName, tenantID string, customSuffi
 }
 
 // StoreInOutbox stores an event in the transactional outbox
-func (m *Manager) StoreInOutbox(ctx context.Context, tx interface{}, event OutboxEvent) error {
+func (m *Manager) StoreInOutbox(ctx context.Context, event OutboxEvent) error {
 	if !m.cfg.Outbox.Enabled {
 		return ErrOutboxDisabled
 	}
@@ -179,8 +179,11 @@ func (m *Manager) StoreInOutbox(ctx context.Context, tx interface{}, event Outbo
 	if event.MaxRetries == 0 {
 		event.MaxRetries = m.cfg.Outbox.MaxRetries
 	}
+	if event.Status == "" {
+		event.Status = "pending"
+	}
 
-	return m.outbox.Store(ctx, tx, event)
+	return m.outbox.Store(ctx, event)
 }
 
 // PublishOutboxEvents processes unpublished events from the outbox
@@ -193,9 +196,9 @@ func (m *Manager) PublishOutboxEvents(ctx context.Context) error {
 		return fmt.Errorf("outbox storage not initialized")
 	}
 
-	events, err := m.outbox.GetUnpublished(ctx, m.cfg.Outbox.BatchSize)
+	events, err := m.outbox.GetPending(ctx, m.cfg.Outbox.BatchSize)
 	if err != nil {
-		return fmt.Errorf("failed to get unpublished events: %w", err)
+		return fmt.Errorf("failed to get pending events: %w", err)
 	}
 
 	if len(events) == 0 {
@@ -223,9 +226,11 @@ func (m *Manager) PublishOutboxEvents(ctx context.Context) error {
 
 	// Mark successfully published events
 	if len(published) > 0 {
-		if err := m.outbox.MarkPublished(ctx, published); err != nil {
-			m.log.Error("Failed to mark events as published", zap.Error(err))
-			return err
+		for _, eventID := range published {
+			if err := m.outbox.MarkPublished(ctx, eventID); err != nil {
+				m.log.Error("Failed to mark event as published",
+					zap.String("event_id", eventID), zap.Error(err))
+			}
 		}
 
 		if m.metrics != nil {
@@ -235,9 +240,11 @@ func (m *Manager) PublishOutboxEvents(ctx context.Context) error {
 
 	// Mark failed events with retry schedule
 	if len(failed) > 0 {
-		nextRetryAt := m.calculateNextRetry(1) // TODO: track actual retry count
-		if err := m.outbox.MarkFailed(ctx, failed, nextRetryAt); err != nil {
-			m.log.Error("Failed to mark events as failed", zap.Error(err))
+		for _, eventID := range failed {
+			if err := m.outbox.MarkFailed(ctx, eventID, fmt.Errorf("publishing failed")); err != nil {
+				m.log.Error("Failed to mark event as failed",
+					zap.String("event_id", eventID), zap.Error(err))
+			}
 		}
 
 		if m.metrics != nil {
@@ -286,7 +293,24 @@ func (m *Manager) CleanupOutboxEvents(ctx context.Context) error {
 
 // Close shuts down the manager and releases resources
 func (m *Manager) Close() error {
-	// TODO: Close connections, stop background workers, etc.
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Unregister metrics if enabled
+	if m.metrics != nil {
+		m.metrics.Unregister()
+	}
+
+	// Execute cleanup hooks
+	for _, hook := range m.hooks {
+		if cleanup, ok := hook.(interface{ Cleanup() error }); ok {
+			if err := cleanup.Cleanup(); err != nil {
+				m.log.Warn("Hook cleanup failed", zap.Error(err))
+			}
+		}
+	}
+
+	m.log.Info("Exactly-once manager closed successfully")
 	return nil
 }
 
@@ -309,9 +333,18 @@ func (m *Manager) createIdempotencyStorage() IdempotencyStorage {
 
 // createOutboxStorage creates the appropriate outbox storage backend
 func (m *Manager) createOutboxStorage() OutboxStorage {
-	// TODO: Implement outbox storage backends
-	m.log.Warn("Outbox storage not yet implemented")
-	return nil
+	switch m.cfg.Outbox.StorageType {
+	case "redis":
+		return NewRedisOutboxStorage(m.rdb, m.cfg, m.log)
+	case "database":
+		// Note: Database connection must be configured separately
+		m.log.Warn("Database outbox storage requires SQL connection to be configured")
+		return NewRedisOutboxStorage(m.rdb, m.cfg, m.log)
+	default:
+		m.log.Warn("Unknown outbox storage type, falling back to Redis",
+			zap.String("type", m.cfg.Outbox.StorageType))
+		return NewRedisOutboxStorage(m.rdb, m.cfg, m.log)
+	}
 }
 
 // publishEvent publishes a single outbox event to its configured destinations

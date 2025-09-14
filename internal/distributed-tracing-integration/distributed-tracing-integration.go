@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
 	"go.opentelemetry.io/otel/trace"
 )
 
