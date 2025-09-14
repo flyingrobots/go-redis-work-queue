@@ -549,7 +549,7 @@ func TestValidateDAG_CompensationEdges(t *testing.T) {
 				Type: CompensateNode,
 				Name: "Compensate Task",
 				Position: Position{X: 100, Y: 100},
-				Job: &JobConfig{
+				CompensationJob: &JobConfig{
 					Queue: "compensation",
 					Type:  "compensate_task",
 				},

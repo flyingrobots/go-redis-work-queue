@@ -198,9 +198,9 @@ func (d *DAGBuilder) validateCycles(workflow *WorkflowDefinition, result *Valida
 		recursionStack[nodeID] = true
 		path = append(path, nodeID)
 
-		// Visit all adjacent nodes
+		// Visit all adjacent nodes (but skip LoopbackEdges for cycle detection)
 		for _, edge := range workflow.GetOutgoingEdges(nodeID) {
-			if dfs(edge.To, path) {
+			if edge.Type != LoopbackEdge && dfs(edge.To, path) {
 				return true
 			}
 		}
@@ -564,7 +564,7 @@ func (d *DAGBuilder) hasCycle(workflow *WorkflowDefinition) bool {
 		recursionStack[nodeID] = true
 
 		for _, edge := range workflow.GetOutgoingEdges(nodeID) {
-			if dfs(edge.To) {
+			if edge.Type != LoopbackEdge && dfs(edge.To) {
 				return true
 			}
 		}
