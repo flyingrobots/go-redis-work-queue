@@ -267,6 +267,10 @@ class SLAPSCoordinator:
 
     def create_task_prompt(self, task_id: str) -> str:
         """Create prompt for Claude CLI"""
+        # For testing, use a simple prompt
+        if hasattr(self, 'test_mode') and self.test_mode:
+            return f"This is test task {task_id}. Just respond with 'Task {task_id} completed successfully' and nothing else."
+
         task_data = next(t for t in self.tasks_config["tasks"] if t["id"] == task_id)
 
         # Create a simplified prompt that focuses on execution
@@ -341,23 +345,32 @@ Please execute this task following the requirements above."""
             with open(prompt_file, 'w') as f:
                 f.write(prompt)
 
-            # Launch Claude CLI process with streaming JSON output
+            # Launch Claude CLI process - use text for now, stream-json seems buffered
             cmd = [
                 "claude",
                 "-p",  # Print mode (non-interactive)
                 "--model", self.model,  # Use sonnet by default
                 "--dangerously-skip-permissions",
-                "--output-format", "stream-json",
+                "--output-format", "text",  # Text mode for now
+                "--verbose",  # Show what's happening
                 "--max-turns", "10",  # Limit turns for safety
-                f"Execute this task: {prompt}"
+                prompt  # Prompt as last argument
             ]
+
+            print(f"[LAUNCH] Running: {' '.join(cmd[:6])}... '{prompt[:50]}...'")  # Debug
+
+            # Use unbuffered mode and force line buffering
+            env = os.environ.copy()
+            env['PYTHONUNBUFFERED'] = '1'  # In case claude uses python
 
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1  # Line buffered
+                bufsize=0,  # Unbuffered
+                env=env,
+                preexec_fn=os.setsid  # Create new process group
             )
 
             # Make stdout non-blocking
@@ -388,65 +401,20 @@ Please execute this task following the requirements above."""
         if not task or not task.process:
             return
 
-        try:
-            # Non-blocking read from stdout
-            while True:
-                line = task.process.stdout.readline()
-                if not line:
-                    break
-
-                line = line.strip()
-                if not line:
-                    continue
-
-                task.output_buffer.append(line)
-
-                # Try to parse as JSON
-                try:
-                    data = json.loads(line)
-
-                    # Update progress
-                    if "percent" in data:
-                        task.progress = data["percent"]
-
-                    # Check for checkpoints
-                    if data.get("status") == "checkpoint":
-                        task.checkpoints.append(data.get("message", ""))
-                        print(f"[CHECKPOINT] {task_id}: {data.get('message')}")
-
-                    # Check for completion
-                    if data.get("status") == "done":
-                        self.complete_task(task_id)
-
-                    # Check for errors
-                    if data.get("status") == "error":
-                        task.error_count += 1
-                        # Check circuit breaker
-                        remediation = self.circuit_breaker.check_output(
-                            task_id,
-                            data.get("message", "")
-                        )
-                        if remediation:
-                            self.apply_hot_update(task_id, remediation)
-
-                    # Log progress
-                    if task.progress % 25 == 0 and task.progress > 0:
-                        print(f"[PROGRESS] {task_id}: {task.progress}%")
-
-                except json.JSONDecodeError:
-                    # Not JSON, might be plain output
-                    pass
-
-        except Exception:
-            # No data available (non-blocking)
-            pass
-
-        # Check if process finished
-        if task.process.poll() is not None:
-            returncode = task.process.returncode
+        # For now, just check if process is done (text mode)
+        returncode = task.process.poll()
+        if returncode is not None:
+            # Process finished
             if returncode == 0:
+                print(f"[DONE] {task_id} completed successfully")
                 self.complete_task(task_id)
             else:
+                # Read any error output
+                try:
+                    stderr = task.process.stderr.read()
+                    print(f"[ERROR] {task_id} stderr: {stderr[:200]}")
+                except:
+                    pass
                 self.fail_task(task_id, f"Process exited with code {returncode}")
 
     def complete_task(self, task_id: str):
@@ -604,6 +572,10 @@ if __name__ == "__main__":
         model=args.model
     )
 
+    # Override system resource limits from command line
+    coordinator.system_resource_manager.max_cpu_percent = args.max_cpu
+    coordinator.system_resource_manager.max_memory_percent = args.max_memory
+
     if args.dry_run:
         # Just show the initial tasks
         initial = coordinator.get_ready_tasks()
@@ -615,6 +587,7 @@ if __name__ == "__main__":
     if args.test:
         # Limit to first 3 tasks for testing
         print("[TEST MODE] Limiting to first 3 tasks")
+        coordinator.test_mode = True  # Flag for simple prompts
         keep = list(coordinator.tasks.keys())[:3]
         coordinator.tasks = {k: v for k, v in coordinator.tasks.items() if k in keep}
         coordinator.dependencies = {k: set() for k in keep}
