@@ -38,6 +38,7 @@ class TaskExecution:
     output_buffer: List[str] = field(default_factory=list)
     error_count: int = 0
     retry_count: int = 0
+    held_resources: List[str] = field(default_factory=list)
 
 class ResourceManager:
     """Manages exclusive and shared resources"""
@@ -159,12 +160,21 @@ class SLAPSCoordinator:
             self.dependencies[task_id] = set()
             self.dependents[task_id] = set()
 
-        # Parse dependencies from DAG
-        for edge in self.dag.get("edges", []):
+        # Parse dependencies from DAG (stored as edges)
+        dag_deps = self.dag.get("dependencies", [])
+        for edge in dag_deps:
             from_task = edge["from"]
             to_task = edge["to"]
-            self.dependencies[to_task].add(from_task)
-            self.dependents[from_task].add(to_task)
+            if to_task in self.dependencies:
+                self.dependencies[to_task].add(from_task)
+            if from_task in self.dependents:
+                self.dependents[from_task].add(to_task)
+
+        # Debug: Show dependency counts
+        deps_count = sum(1 for deps in self.dependencies.values() if deps)
+        no_deps = [t for t, deps in self.dependencies.items() if not deps]
+        print(f"[DEBUG] Tasks with dependencies: {deps_count}/{len(self.tasks)}")
+        print(f"[DEBUG] Initial tasks (no deps): {len(no_deps)}")
 
         # Initialize components
         self.resource_manager = ResourceManager(
@@ -219,10 +229,47 @@ Please execute this task following the requirements above."""
 
         return prompt
 
+    def get_task_resources(self, task_id: str) -> List[str]:
+        """Determine which resources a task needs"""
+        task_data = next(t for t in self.tasks_config["tasks"] if t["id"] == task_id)
+        resources = []
+
+        # Check if task needs exclusive resources based on type
+        if "Deploy" in task_data["title"]:
+            resources.append("deployment_slot")
+        if "schema" in task_data.get("description", "").lower():
+            resources.append("redis_schema")
+        if "Test" in task_data["title"]:
+            resources.append("test_redis")
+        if any(x in task_data["title"] for x in ["Build", "Test", "Deploy"]):
+            resources.append("ci_runners")
+
+        # Check resource_requirements in task spec
+        if "resource_requirements" in task_data:
+            if "exclusive_locks" in task_data["resource_requirements"]:
+                resources.extend(task_data["resource_requirements"]["exclusive_locks"])
+            if "shared_resources" in task_data["resource_requirements"]:
+                resources.extend(task_data["resource_requirements"]["shared_resources"])
+
+        return resources
+
     def launch_task(self, task_id: str) -> bool:
         """Launch a task as a Claude CLI subprocess"""
         try:
             task = self.tasks[task_id]
+
+            # Check resource availability
+            required_resources = self.get_task_resources(task_id)
+            if required_resources:
+                if not self.resource_manager.acquire(task_id, required_resources):
+                    # Resources not available, task stays in READY state
+                    task.state = TaskState.READY
+                    print(f"[BLOCKED] {task_id} waiting for resources: {required_resources}")
+                    return False
+
+            # Store which resources this task holds
+            task.held_resources = required_resources
+
             prompt = self.create_task_prompt(task_id)
 
             # Write prompt to temp file (CLI might have length limits)
@@ -349,7 +396,9 @@ Please execute this task following the requirements above."""
         print(f"[COMPLETED] {task_id} in {duration:.1f}s")
 
         # Release resources
-        # (would need to track which resources this task holds)
+        if task.held_resources:
+            self.resource_manager.release(task_id, task.held_resources)
+            print(f"[RESOURCES] Released {task.held_resources} from {task_id}")
 
         # Trigger dependent tasks (Rolling Frontier!)
         for dependent_id in self.dependents.get(task_id, []):
@@ -368,6 +417,11 @@ Please execute this task following the requirements above."""
         if task:
             task.state = TaskState.FAILED
             task.end_time = datetime.now(timezone.utc)
+
+            # Release resources
+            if task.held_resources:
+                self.resource_manager.release(task_id, task.held_resources)
+                print(f"[RESOURCES] Released {task.held_resources} from failed {task_id}")
 
         self.failed_tasks.add(task_id)
         self.tasks_failed += 1
@@ -401,17 +455,34 @@ Please execute this task following the requirements above."""
         for task_id in initial_tasks:
             self.launch_task(task_id)
 
+        # Track tasks waiting for resources
+        blocked_tasks = []
+
         # Main monitoring loop
-        while self.running_tasks or self.get_ready_tasks():
+        while self.running_tasks or self.get_ready_tasks() or blocked_tasks:
             # Monitor running tasks
             for task_id in list(self.running_tasks.keys()):
                 self.monitor_task(task_id)
+
+            # Retry blocked tasks (resources might be free now)
+            still_blocked = []
+            for task_id in blocked_tasks:
+                if len(self.running_tasks) < 8:  # Max 8 parallel
+                    if self.launch_task(task_id):
+                        print(f"[UNBLOCKED] {task_id} acquired resources")
+                    else:
+                        still_blocked.append(task_id)
+                else:
+                    still_blocked.append(task_id)
+            blocked_tasks = still_blocked
 
             # Launch newly ready tasks (Rolling Frontier!)
             ready = self.get_ready_tasks()
             for task_id in ready:
                 if len(self.running_tasks) < 8:  # Max 8 parallel
-                    self.launch_task(task_id)
+                    if not self.launch_task(task_id):
+                        # Task blocked on resources
+                        blocked_tasks.append(task_id)
 
             # Brief sleep to prevent CPU spinning
             time.sleep(0.1)
