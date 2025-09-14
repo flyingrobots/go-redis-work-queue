@@ -155,7 +155,7 @@ func TestOutboxEvent(t *testing.T) {
 	})
 
 	t.Run("JSON serialization", func(t *testing.T) {
-		payload := json.RawMessage(`{"test": true}`)
+		payload := json.RawMessage(`{"test":true}`)
 		event := OutboxEvent{
 			ID:          "event-123",
 			AggregateID: "agg-456",

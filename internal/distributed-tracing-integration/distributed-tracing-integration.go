@@ -72,6 +72,11 @@ func (t *TracingIntegration) GetTraceURL(traceID string) string {
 	return t.config.GetTraceURL(traceID)
 }
 
+// GetConfig returns the tracing configuration
+func (t *TracingIntegration) GetConfig() TracingUIConfig {
+	return t.config
+}
+
 // GetCurrentTraceInfo extracts trace information from the current context
 func (t *TracingIntegration) GetCurrentTraceInfo(ctx context.Context) *TraceInfo {
 	span := trace.SpanFromContext(ctx)

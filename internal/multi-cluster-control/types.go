@@ -201,9 +201,7 @@ type Manager interface {
 	// Monitoring and stats
 	GetStats(ctx context.Context, clusterName string) (*ClusterStats, error)
 	GetAllStats(ctx context.Context) (map[string]*ClusterStats, error)
-	CompareClust
-
-ers(ctx context.Context, clusters []string) (*CompareResult, error)
+	CompareClusters(ctx context.Context, clusters []string) (*CompareResult, error)
 	GetHealth(ctx context.Context, clusterName string) (*HealthStatus, error)
 
 	// Multi-cluster actions

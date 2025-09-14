@@ -263,7 +263,7 @@ func (m *ManagerImpl) healthCheck() {
 func (m *ManagerImpl) collectStats(ctx context.Context, conn *ClusterConnection) (*ClusterStats, error) {
 	// Create a temporary config for the admin.Stats call
 	tempCfg := &config.Config{
-		Worker: config.WorkerConfig{
+		Worker: config.Worker{
 			Queues: map[string]string{
 				"default": "jobqueue:queue:default",
 				"high":    "jobqueue:queue:high",

@@ -44,8 +44,8 @@ func NewManager(cfg *Config, rdb *redis.Client, log *zap.Logger) *Manager {
 		m.storage = m.createIdempotencyStorage()
 	}
 
-	// Initialize outbox storage if enabled
-	if cfg.Outbox.Enabled {
+	// Initialize outbox storage if enabled and Redis client is available
+	if cfg.Outbox.Enabled && rdb != nil {
 		m.outbox = m.createOutboxStorage()
 	}
 

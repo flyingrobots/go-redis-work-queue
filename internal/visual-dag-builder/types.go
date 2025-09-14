@@ -93,6 +93,13 @@ type LoopConfig struct {
 	BreakCondition string `json:"break_condition" yaml:"break_condition"`
 }
 
+// DelayConfig defines delay node settings
+type DelayConfig struct {
+	Duration   time.Duration `json:"duration" yaml:"duration"`
+	Dynamic    bool          `json:"dynamic" yaml:"dynamic"`     // if true, use expression
+	Expression string        `json:"expression" yaml:"expression"` // expression to calculate delay
+}
+
 // Node represents a single node in the workflow DAG
 type Node struct {
 	ID           string                 `json:"id" yaml:"id"`
@@ -116,6 +123,9 @@ type Node struct {
 
 	// Loop configuration
 	Loop         *LoopConfig            `json:"loop,omitempty" yaml:"loop,omitempty"`
+
+	// Delay configuration
+	DelayConfig  *DelayConfig           `json:"delay_config,omitempty" yaml:"delay_config,omitempty"`
 
 	// Compensation configuration
 	CompensationJob *JobConfig          `json:"compensation_job,omitempty" yaml:"compensation_job,omitempty"`

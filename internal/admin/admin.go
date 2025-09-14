@@ -372,11 +372,11 @@ func PeekWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client,
 
 		// Generate trace actions for jobs with trace information
 		if job.TraceID != "" {
-			actions := distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.config)
+			actions := distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.GetConfig())
 			result.TraceActions[job.ID] = actions
 
 			// Add formatted trace info
-			traceInfo := distributed_tracing_integration.FormatTraceForDisplay(job, tracing.config)
+			traceInfo := distributed_tracing_integration.FormatTraceForDisplay(job, tracing.GetConfig())
 			result.TraceInfo = append(result.TraceInfo, fmt.Sprintf("Job %s: %s", job.ID, traceInfo))
 		} else {
 			result.TraceInfo = append(result.TraceInfo, fmt.Sprintf("Job %s: No trace information", job.ID))
@@ -426,7 +426,7 @@ func InfoWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client,
 	// Generate trace actions and URL if trace info is available
 	if job.TraceID != "" {
 		tracing := distributed_tracing_integration.NewWithDefaults()
-		result.TraceActions = distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.config)
+		result.TraceActions = distributed_tracing_integration.GenerateTraceActions(job.TraceID, tracing.GetConfig())
 		result.TraceURL = tracing.GetTraceURL(job.TraceID)
 	}
 
@@ -440,5 +440,5 @@ func GetTraceActions(traceID string) []distributed_tracing_integration.TraceActi
 	}
 
 	tracing := distributed_tracing_integration.NewWithDefaults()
-	return distributed_tracing_integration.GenerateTraceActions(traceID, tracing.config)
+	return distributed_tracing_integration.GenerateTraceActions(traceID, tracing.GetConfig())
 }
