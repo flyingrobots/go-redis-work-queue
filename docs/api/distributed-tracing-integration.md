@@ -273,13 +273,89 @@ Adjusts sampling based on traffic patterns and errors.
 
 ## TUI Integration
 
-The TUI displays trace information for jobs:
+### Enhanced Admin Functions
 
-- Trace ID shown in job details
-- Span ID for correlation
-- "Open Trace" action to view in backend
-- Copy trace ID to clipboard
-- Filter jobs by trace ID
+The distributed tracing integration provides enhanced admin functions that display trace information:
+
+#### PeekWithTracing
+
+```go
+// Enhanced peek with trace information
+result, err := admin.PeekWithTracing(ctx, cfg, rdb, "high", 10)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Display jobs with trace information
+for _, job := range result.TraceJobs {
+    fmt.Printf("Job %s: %s [Trace: %s]\n",
+        job.ID, job.FilePath, job.TraceID[:8])
+}
+
+// Available trace actions for each job
+for jobID, actions := range result.TraceActions {
+    fmt.Printf("Trace actions for %s:\n", jobID)
+    for _, action := range actions {
+        switch action.Type {
+        case "copy":
+            fmt.Printf("  - %s: %s\n", action.Label, action.Command)
+        case "open":
+            fmt.Printf("  - %s: %s\n", action.Label, action.URL)
+        case "view":
+            fmt.Printf("  - %s: %s\n", action.Label, action.Description)
+        }
+    }
+}
+```
+
+#### InfoWithTracing
+
+```go
+// Get detailed job information with trace data
+info, err := admin.InfoWithTracing(ctx, cfg, rdb, "high", 0)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Job: %s\n", info.JobID)
+fmt.Printf("Queue: %s\n", info.Queue)
+if info.Job != nil && info.Job.TraceID != "" {
+    fmt.Printf("Trace ID: %s\n", info.Job.TraceID)
+    fmt.Printf("Span ID: %s\n", info.Job.SpanID)
+    fmt.Printf("Trace URL: %s\n", info.TraceURL)
+}
+```
+
+### Configuration for TUI Trace Actions
+
+Configure trace viewer URLs for TUI integration:
+
+```go
+tracing := distributed_tracing_integration.New(distributed_tracing_integration.TracingUIConfig{
+    JaegerBaseURL:      "http://localhost:16686",
+    ZipkinBaseURL:      "http://localhost:9411",
+    CustomTraceURL:     "https://my-trace-viewer.com/trace/{traceID}",
+    EnableCopyActions:  true,
+    EnableOpenActions:  true,
+    DefaultTraceViewer: "jaeger",
+})
+```
+
+### Available Trace Actions
+
+The TUI provides these actions for each traced job:
+
+1. **Copy Trace ID**: Copy trace ID to clipboard
+   - Command: `echo 'abc123def456' | pbcopy`
+   - Description: "Copy trace ID to clipboard"
+
+2. **Open Trace**: Open trace in browser
+   - URL: `http://localhost:16686/trace/abc123def456`
+   - Command: `open 'http://localhost:16686/trace/abc123def456'`
+   - Description: "Open trace in jaeger"
+
+3. **View Trace ID**: Display trace information
+   - Description: "Trace ID: abc123def456"
 
 ## Security Considerations
 

@@ -2,12 +2,10 @@
 package rbacandtokens
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"

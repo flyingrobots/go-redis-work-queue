@@ -3,7 +3,6 @@ package exactlyonce
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"

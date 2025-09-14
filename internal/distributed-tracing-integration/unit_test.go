@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
@@ -18,8 +16,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestGetErrorType(t *testing.T) {

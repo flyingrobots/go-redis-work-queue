@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 	"github.com/spf13/viper"
 )
 

@@ -186,7 +186,7 @@ func ExampleAdminAPI(manager *Manager, log *zap.Logger) error {
 func ExampleBatchProcessing(manager *Manager, jobs []map[string]interface{}) error {
 	ctx := context.Background()
 
-	for i, jobData := range jobs {
+	for i, _ := range jobs {
 		jobID := fmt.Sprintf("batch-job-%d", i)
 
 		// Generate idempotency key

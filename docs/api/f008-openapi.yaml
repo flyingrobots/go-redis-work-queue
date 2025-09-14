@@ -1,0 +1,1392 @@
+openapi: 3.0.3
+info:
+  title: RBAC and Tokens API
+  description: |
+    Authentication and authorization API for the go-redis-work-queue system.
+    Provides token-based authentication with role-based access control (RBAC),
+    fine-grained permissions, and comprehensive audit logging.
+
+    ## Authentication
+    All endpoints require a bearer token in the Authorization header.
+    Tokens are issued through the token management endpoints and carry
+    specific scopes and resource constraints.
+
+    ## Authorization
+    Each endpoint requires specific scopes. Users must have the appropriate
+    role or explicit scope grant to access protected resources.
+
+    ## Audit Trail
+    All authentication and authorization events are logged for compliance
+    and security monitoring.
+
+    ## Rate Limiting
+    API endpoints are rate-limited per token. Rate limit information is
+    returned in response headers.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/api/v1
+    description: Production server
+  - url: https://staging-api.example.com/api/v1
+    description: Staging server
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Token-based authentication management
+  - name: Users
+    description: User account management
+  - name: Roles
+    description: Role and permission management
+  - name: Audit
+    description: Audit log querying and reporting
+
+paths:
+  /auth/tokens:
+    get:
+      tags:
+        - Authentication
+      summary: List authentication tokens
+      description: Retrieve a list of authentication tokens for the current user or all users (admin only)
+      operationId: listTokens
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          description: Filter tokens by specific user (admin only)
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter tokens by status
+          schema:
+            type: string
+            enum: [active, expired, revoked]
+        - name: limit
+          in: query
+          description: Maximum number of tokens to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of tokens to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successfully retrieved token list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:tokens']
+      x-rate-limit: 100/minute
+
+    post:
+      tags:
+        - Authentication
+      summary: Create authentication token
+      description: Create a new authentication token with specified scopes and resource constraints
+      operationId: createToken
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTokenRequest'
+      responses:
+        '201':
+          description: Successfully created token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:tokens']
+      x-rate-limit: 10/minute
+
+  /auth/tokens/{token_id}:
+    get:
+      tags:
+        - Authentication
+      summary: Get token details
+      description: Retrieve detailed information about a specific authentication token
+      operationId: getToken
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          description: Unique token identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved token details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:tokens']
+      x-rate-limit: 100/minute
+
+    delete:
+      tags:
+        - Authentication
+      summary: Revoke authentication token
+      description: Immediately revoke an authentication token, preventing further use
+      operationId: revokeToken
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          description: Unique token identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully revoked token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:tokens']
+      x-rate-limit: 50/minute
+
+  /auth/keys/rotate:
+    post:
+      tags:
+        - Authentication
+      summary: Rotate signing keys
+      description: Rotate the cryptographic keys used for token signing and validation
+      operationId: rotateKeys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully rotated keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyRotationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:system']
+      x-rate-limit: 5/hour
+
+  /auth/users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: Retrieve a list of user accounts with their roles and permissions
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter users by status
+          schema:
+            type: string
+            enum: [active, disabled, pending]
+        - name: role
+          in: query
+          description: Filter users by role
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of users to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of users to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successfully retrieved user list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 100/minute
+
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create a new user account with specified roles and permissions
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Successfully created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 20/minute
+
+  /auth/users/{user_id}:
+    get:
+      tags:
+        - Users
+      summary: Get user details
+      description: Retrieve detailed information about a specific user account
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 100/minute
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user account information, roles, and permissions
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Successfully updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 50/minute
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete a user account and revoke all associated tokens
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Successfully deleted user
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 20/minute
+
+  /auth/users/{user_id}/roles:
+    put:
+      tags:
+        - Users
+      summary: Update user roles
+      description: Update the roles assigned to a specific user
+      operationId: updateUserRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRolesRequest'
+      responses:
+        '200':
+          description: Successfully updated user roles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:users']
+      x-rate-limit: 50/minute
+
+  /auth/roles:
+    get:
+      tags:
+        - Roles
+      summary: List roles
+      description: Retrieve a list of available roles and their permissions
+      operationId: listRoles
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved role list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:roles']
+      x-rate-limit: 100/minute
+
+    post:
+      tags:
+        - Roles
+      summary: Create role
+      description: Create a new role with specified permissions and inheritance
+      operationId: createRole
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Successfully created role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:roles']
+      x-rate-limit: 10/minute
+
+  /auth/roles/{role_name}:
+    get:
+      tags:
+        - Roles
+      summary: Get role details
+      description: Retrieve detailed information about a specific role
+      operationId: getRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role_name
+          in: path
+          required: true
+          description: Role name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:roles']
+      x-rate-limit: 100/minute
+
+    put:
+      tags:
+        - Roles
+      summary: Update role
+      description: Update role permissions and inheritance
+      operationId: updateRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role_name
+          in: path
+          required: true
+          description: Role name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: Successfully updated role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:roles']
+      x-rate-limit: 20/minute
+
+    delete:
+      tags:
+        - Roles
+      summary: Delete role
+      description: Delete a role and remove it from all user assignments
+      operationId: deleteRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role_name
+          in: path
+          required: true
+          description: Role name
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Successfully deleted role
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:roles']
+      x-rate-limit: 10/minute
+
+  /audit/events:
+    get:
+      tags:
+        - Audit
+      summary: Query audit events
+      description: Search and retrieve audit events with filtering and pagination
+      operationId: queryAuditEvents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_time
+          in: query
+          description: Start time for audit event query (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for audit event query (ISO 8601 format)
+          schema:
+            type: string
+            format: date-time
+        - name: event_types
+          in: query
+          description: Filter by specific event types (comma-separated)
+          schema:
+            type: string
+        - name: actors
+          in: query
+          description: Filter by specific actors/users (comma-separated)
+          schema:
+            type: string
+        - name: resources
+          in: query
+          description: Filter by specific resources (comma-separated)
+          schema:
+            type: string
+        - name: results
+          in: query
+          description: Filter by event results (success, denied, error)
+          schema:
+            type: string
+            enum: [success, denied, error]
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Number of events to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successfully retrieved audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:audit']
+      x-rate-limit: 100/minute
+
+  /audit/events/export:
+    post:
+      tags:
+        - Audit
+      summary: Export audit events
+      description: Export audit events in various formats for compliance reporting
+      operationId: exportAuditEvents
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportAuditRequest'
+      responses:
+        '200':
+          description: Successfully exported audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportAuditResponse'
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-required-scopes: ['admin:audit']
+      x-rate-limit: 10/hour
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT or PASETO token with appropriate scopes
+
+  schemas:
+    CreateTokenRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          description: Human-readable token name
+          example: "ci-pipeline-token"
+        description:
+          type: string
+          description: Optional token description
+          example: "Token for CI/CD pipeline operations"
+        scopes:
+          type: array
+          items:
+            type: string
+          description: List of permission scopes
+          example: ["stats:read", "jobs:enqueue"]
+        resources:
+          type: object
+          additionalProperties:
+            type: string
+          description: Resource constraints
+          example:
+            queues: "test-*,staging-*"
+            cluster: "us-east-1"
+        expires_in:
+          type: string
+          description: Token expiration duration (e.g., "30d", "24h", "1w")
+          example: "30d"
+
+    CreateTokenResponse:
+      type: object
+      properties:
+        token_id:
+          type: string
+          description: Unique token identifier
+          example: "tok_abc123def456"
+        token:
+          type: string
+          description: The actual bearer token (only returned once)
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Token creation timestamp
+        scopes:
+          type: array
+          items:
+            type: string
+          description: Granted permission scopes
+        resources:
+          type: object
+          additionalProperties:
+            type: string
+          description: Resource constraints
+
+    TokenListResponse:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenSummary'
+        total:
+          type: integer
+          description: Total number of tokens
+        has_more:
+          type: boolean
+          description: Whether more results are available
+
+    TokenSummary:
+      type: object
+      properties:
+        token_id:
+          type: string
+          description: Unique token identifier
+        name:
+          type: string
+          description: Human-readable token name
+        created_at:
+          type: string
+          format: date-time
+          description: Token creation timestamp
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration timestamp
+        last_used:
+          type: string
+          format: date-time
+          description: Last usage timestamp
+        scopes:
+          type: array
+          items:
+            type: string
+          description: Granted permission scopes
+        status:
+          type: string
+          enum: [active, expired, revoked]
+          description: Current token status
+
+    TokenDetail:
+      allOf:
+        - $ref: '#/components/schemas/TokenSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+              description: Token description
+            resources:
+              type: object
+              additionalProperties:
+                type: string
+              description: Resource constraints
+            usage_stats:
+              type: object
+              properties:
+                total_requests:
+                  type: integer
+                  description: Total number of requests made
+                last_request_at:
+                  type: string
+                  format: date-time
+                  description: Timestamp of last request
+                success_rate:
+                  type: number
+                  format: float
+                  description: Percentage of successful requests
+
+    RevokeTokenResponse:
+      type: object
+      properties:
+        revoked:
+          type: boolean
+          description: Whether the token was successfully revoked
+        revoked_at:
+          type: string
+          format: date-time
+          description: Revocation timestamp
+
+    KeyRotationResponse:
+      type: object
+      properties:
+        rotated:
+          type: boolean
+          description: Whether keys were successfully rotated
+        old_key_id:
+          type: string
+          description: Previous key identifier
+        new_key_id:
+          type: string
+          description: New key identifier
+        rotated_at:
+          type: string
+          format: date-time
+          description: Rotation timestamp
+        overlap_period:
+          type: string
+          description: Duration for which old keys remain valid
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - name
+        - roles
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        name:
+          type: string
+          description: User full name
+        roles:
+          type: array
+          items:
+            type: string
+          description: Initial role assignments
+        resources:
+          type: object
+          additionalProperties:
+            type: string
+          description: Resource constraints
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User full name
+        status:
+          type: string
+          enum: [active, disabled, pending]
+          description: User account status
+
+    UpdateUserRolesRequest:
+      type: object
+      required:
+        - roles
+      properties:
+        roles:
+          type: array
+          items:
+            type: string
+          description: New role assignments
+        resources:
+          type: object
+          additionalProperties:
+            type: string
+          description: Resource constraints
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+        total:
+          type: integer
+          description: Total number of users
+        has_more:
+          type: boolean
+          description: Whether more results are available
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        name:
+          type: string
+          description: User full name
+        roles:
+          type: array
+          items:
+            type: string
+          description: Assigned roles
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        last_login:
+          type: string
+          format: date-time
+          description: Last login timestamp
+        status:
+          type: string
+          enum: [active, disabled, pending]
+          description: Account status
+
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            resources:
+              type: object
+              additionalProperties:
+                type: string
+              description: Resource constraints
+            permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Permission'
+              description: Effective permissions from all roles
+            active_tokens:
+              type: integer
+              description: Number of active authentication tokens
+
+    Permission:
+      type: object
+      properties:
+        action:
+          type: string
+          description: Permission action/scope
+        resources:
+          type: array
+          items:
+            type: string
+          description: Resource patterns this permission applies to
+        conditions:
+          type: object
+          additionalProperties: true
+          description: Additional permission conditions
+
+    CreateRoleRequest:
+      type: object
+      required:
+        - name
+        - description
+        - permissions
+      properties:
+        name:
+          type: string
+          description: Role name (unique identifier)
+        description:
+          type: string
+          description: Human-readable role description
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+          description: List of permissions granted by this role
+        inherits_from:
+          type: array
+          items:
+            type: string
+          description: Parent roles to inherit permissions from
+
+    UpdateRoleRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          description: Human-readable role description
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+          description: List of permissions granted by this role
+        inherits_from:
+          type: array
+          items:
+            type: string
+          description: Parent roles to inherit permissions from
+
+    RoleListResponse:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleSummary'
+
+    RoleSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Role name
+        description:
+          type: string
+          description: Role description
+        permission_count:
+          type: integer
+          description: Number of permissions granted
+        user_count:
+          type: integer
+          description: Number of users assigned this role
+        created_at:
+          type: string
+          format: date-time
+          description: Role creation timestamp
+
+    RoleDetail:
+      allOf:
+        - $ref: '#/components/schemas/RoleSummary'
+        - type: object
+          properties:
+            permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Permission'
+              description: Permissions granted by this role
+            inherits_from:
+              type: array
+              items:
+                type: string
+              description: Parent roles
+            inherited_permissions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Permission'
+              description: Permissions inherited from parent roles
+            updated_at:
+              type: string
+              format: date-time
+              description: Last modification timestamp
+
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        event_type:
+          type: string
+          enum: [TOKEN_CREATED, TOKEN_REVOKED, TOKEN_EXPIRED, USER_CREATED, USER_DELETED, ROLE_ASSIGNED, ROLE_REVOKED, ACCESS_GRANTED, ACCESS_DENIED, QUEUE_CREATED, QUEUE_DELETED, JOB_ENQUEUED, DLQ_PURGED, SYSTEM_SHUTDOWN]
+          description: Type of audit event
+        actor:
+          type: string
+          description: User or system that performed the action
+        action:
+          type: string
+          description: Action that was performed
+        resource:
+          type: string
+          description: Resource that was accessed or modified
+        result:
+          type: string
+          enum: [success, denied, error]
+          description: Result of the action
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional event-specific details
+        request_id:
+          type: string
+          description: Correlation ID for request tracking
+        user_agent:
+          type: string
+          description: Client user agent string
+        remote_addr:
+          type: string
+          description: Source IP address
+        duration:
+          type: integer
+          description: Operation duration in milliseconds
+
+    AuditEventListResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        total:
+          type: integer
+          description: Total number of matching events
+        has_more:
+          type: boolean
+          description: Whether more results are available
+
+    ExportAuditRequest:
+      type: object
+      required:
+        - format
+      properties:
+        format:
+          type: string
+          enum: [json, csv, xlsx]
+          description: Export format
+        start_time:
+          type: string
+          format: date-time
+          description: Start time for audit events
+        end_time:
+          type: string
+          format: date-time
+          description: End time for audit events
+        event_types:
+          type: array
+          items:
+            type: string
+          description: Filter by event types
+        include_details:
+          type: boolean
+          default: true
+          description: Whether to include event details
+
+    ExportAuditResponse:
+      type: object
+      properties:
+        export_id:
+          type: string
+          description: Unique export identifier
+        download_url:
+          type: string
+          format: uri
+          description: URL to download the export file
+        expires_at:
+          type: string
+          format: date-time
+          description: When the download link expires
+        event_count:
+          type: integer
+          description: Number of events in the export
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type/code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        request_id:
+          type: string
+          description: Request correlation ID
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "invalid_request"
+            message: "Invalid token expiration format"
+            details:
+              field: "expires_in"
+              provided: "invalid-format"
+              expected: "Duration string like '30d', '24h', '1w'"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            message: "Valid authentication token required"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            message: "Insufficient permissions for this operation"
+            details:
+              required_scope: "admin:tokens"
+              user_scopes: ["stats:read", "jobs:enqueue"]
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "not_found"
+            message: "Token not found"
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "conflict"
+            message: "User already exists with this email"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "rate_limit_exceeded"
+            message: "Too many requests"
+      headers:
+        X-RateLimit-Limit:
+          description: Request limit per time window
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Remaining requests in current window
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: Time when rate limit resets
+          schema:
+            type: integer
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "internal_error"
+            message: "An unexpected error occurred"
