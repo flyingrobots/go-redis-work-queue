@@ -366,7 +366,7 @@ func (hf *HashFunction) Hash(shingle uint64) uint64 {
 // extractShingles extracts k-shingles from data
 func extractShingles(data []byte, k int) []uint64 {
 	if len(data) < k {
-		return []uint64{crc32.ChecksumIEEE(data)}
+		return []uint64{uint64(crc32.ChecksumIEEE(data))}
 	}
 
 	shingles := make([]uint64, 0, len(data)-k+1)

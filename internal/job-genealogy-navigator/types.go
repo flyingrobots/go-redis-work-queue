@@ -68,6 +68,24 @@ type JobRelationship struct {
 }
 
 // JobNode represents a job in the genealogy tree
+// JobDetails represents detailed information about a job (for compatibility with tests)
+type JobDetails struct {
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Status      JobStatus              `json:"status"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+	StartedAt   *time.Time             `json:"started_at,omitempty"`
+	CompletedAt *time.Time             `json:"completed_at,omitempty"`
+	Queue       string                 `json:"queue,omitempty"`
+	Priority    int                    `json:"priority"`
+	Attempts    int                    `json:"attempts"`
+	MaxAttempts int                    `json:"max_attempts"`
+	Error       string                 `json:"error,omitempty"`
+	Result      interface{}            `json:"result,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
 type JobNode struct {
 	ID           string                 `json:"id"`
 	Name         string                 `json:"name"`
@@ -80,6 +98,7 @@ type JobNode struct {
 	QueueName    string                 `json:"queue_name"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 	Error        string                 `json:"error,omitempty"`
+	JobDetails   *JobDetails            `json:"job_details,omitempty"`
 
 	// Tree structure
 	ParentID     string   `json:"parent_id,omitempty"`

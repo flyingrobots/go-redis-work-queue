@@ -139,6 +139,356 @@ func TestCoverageBasics(t *testing.T) {
 	if !found {
 		t.Error("test-backend should be registered")
 	}
+
+	// Test error conditions and edge cases
+	testErrorConditions(t, registry, manager)
+	testIteratorEdgeCases(t)
+	testErrorCodeCoverage(t)
+	testBackendConfigAndCRUD(t, manager)
+}
+
+func testErrorConditions(t *testing.T, registry *BackendRegistry, manager *BackendManager) {
+	// Test registry with non-existent backend
+	_, err := registry.Create("non-existent", nil)
+	if err == nil {
+		t.Error("Creating non-existent backend should fail")
+	}
+
+	err = registry.Validate("non-existent", nil)
+	if err == nil {
+		t.Error("Validating non-existent backend should fail")
+	}
+
+	// Test manager with no backend
+	_, err = manager.GetBackend("non-existent-queue")
+	if err == nil {
+		t.Error("Getting non-existent backend should fail")
+	}
+
+	err = manager.RemoveBackend("non-existent-queue")
+	if err == nil {
+		t.Error("Removing non-existent backend should fail")
+	}
+
+	// Test manager operations
+	queues := manager.ListQueues()
+	if queues == nil {
+		t.Error("Queues list should not be nil")
+	}
+
+	healthResults := manager.HealthCheck(context.Background())
+	if healthResults == nil {
+		t.Error("Health results should not be nil")
+	}
+
+	stats, err := manager.Stats(context.Background())
+	if stats == nil && err != nil {
+		t.Error("Stats should be accessible when no backends exist")
+	}
+
+	// Test manager close
+	err = manager.Close()
+	if err != nil {
+		t.Errorf("Manager close should not fail: %v", err)
+	}
+}
+
+func testIteratorEdgeCases(t *testing.T) {
+	// Test empty iterator
+	emptyIter := NewJobIterator([]*Job{})
+	if emptyIter.Next() {
+		t.Error("Empty iterator should not have next")
+	}
+	if emptyIter.Job() != nil {
+		t.Error("Empty iterator job should be nil")
+	}
+	emptyIter.Close()
+
+	// Test iterator with nil jobs
+	jobs := []*Job{nil, {ID: "1"}, nil}
+	iter := NewJobIterator(jobs)
+	count := 0
+	for iter.Next() {
+		count++
+	}
+	if count != 3 {
+		t.Errorf("Expected 3 iterations, got %d", count)
+	}
+}
+
+func testErrorCodeCoverage(t *testing.T) {
+	// Test all error codes
+	testCases := []struct {
+		err  error
+		code string
+	}{
+		{ErrBackendNotFound, "BACKEND_NOT_FOUND"},
+		{ErrQueueNotFound, "QUEUE_NOT_FOUND"},
+		{ErrJobNotFound, "JOB_NOT_FOUND"},
+		{ErrJobAlreadyAcked, "JOB_ALREADY_ACKED"},
+		{ErrJobProcessing, "JOB_PROCESSING"},
+		{ErrInvalidConfiguration, "INVALID_CONFIGURATION"},
+		{ErrConnectionFailed, "CONNECTION_FAILED"},
+		{ErrOperationNotSupported, "OPERATION_NOT_SUPPORTED"},
+		{ErrTimeout, "TIMEOUT"},
+		{ErrQueueEmpty, "QUEUE_EMPTY"},
+		{ErrMigrationInProgress, "MIGRATION_IN_PROGRESS"},
+		{ErrMigrationFailed, "MIGRATION_FAILED"},
+		{ErrConsumerGroupExists, "CONSUMER_GROUP_EXISTS"},
+		{ErrStreamNotFound, "STREAM_NOT_FOUND"},
+		{ErrInvalidJobData, "INVALID_JOB_DATA"},
+		{ErrCircuitBreakerOpen, "CIRCUIT_BREAKER_OPEN"},
+		{ErrRateLimited, "RATE_LIMITED"},
+	}
+
+	for _, tc := range testCases {
+		code := ErrorCode(tc.err)
+		if code != tc.code {
+			t.Errorf("Expected error code %s, got %s", tc.code, code)
+		}
+	}
+
+	// Test wrapped errors
+	backendErr := NewBackendError("test", "op", ErrTimeout)
+	code := ErrorCode(backendErr)
+	// BackendError wrapping ErrTimeout should still return TIMEOUT due to errors.Is() check
+	if code != "TIMEOUT" {
+		t.Errorf("Backend error wrapping timeout should have TIMEOUT code, got %s", code)
+	}
+
+	// Test backend error with nil underlying error
+	pureBackendErr := NewBackendError("test", "op", nil)
+	code = ErrorCode(pureBackendErr)
+	if code != "BACKEND_ERROR" {
+		t.Errorf("Pure backend error should have BACKEND_ERROR code, got %s", code)
+	}
+
+	configErr := NewConfigurationError("field", "value", "msg")
+	if ErrorCode(configErr) != "CONFIGURATION_ERROR" {
+		t.Error("Config error should have CONFIGURATION_ERROR code")
+	}
+
+	migrationErr := NewMigrationError("phase", "src", "tgt", "job", "msg", nil)
+	if ErrorCode(migrationErr) != "MIGRATION_ERROR" {
+		t.Error("Migration error should have MIGRATION_ERROR code")
+	}
+
+	connErr := NewConnectionError("backend", "url", nil)
+	if ErrorCode(connErr) != "CONNECTION_ERROR" {
+		t.Error("Connection error should have CONNECTION_ERROR code")
+	}
+
+	validationErr := NewValidationError("backend", "field", "value", "rule", "msg")
+	if ErrorCode(validationErr) != "VALIDATION_ERROR" {
+		t.Error("Validation error should have VALIDATION_ERROR code")
+	}
+
+	opErr := NewOperationError("backend", "queue", "op", "job", nil)
+	if ErrorCode(opErr) != "OPERATION_ERROR" {
+		t.Error("Operation error should have OPERATION_ERROR code")
+	}
+
+	// Test retryability
+	if !IsRetryable(ErrTimeout) {
+		t.Error("Timeout should be retryable")
+	}
+
+	if !IsRetryable(ErrConnectionFailed) {
+		t.Error("Connection failed should be retryable")
+	}
+
+	if !IsRetryable(ErrRateLimited) {
+		t.Error("Rate limited should be retryable")
+	}
+
+	if IsRetryable(ErrCircuitBreakerOpen) {
+		t.Error("Circuit breaker open should not be retryable")
+	}
+
+	if IsRetryable(ErrJobNotFound) {
+		t.Error("Job not found should not be retryable")
+	}
+
+	// Test permanence
+	if !IsPermanent(ErrJobNotFound) {
+		t.Error("Job not found should be permanent")
+	}
+
+	if !IsPermanent(ErrInvalidConfiguration) {
+		t.Error("Invalid configuration should be permanent")
+	}
+
+	if IsPermanent(ErrTimeout) {
+		t.Error("Timeout should not be permanent")
+	}
+
+	// Test temporariness
+	if !IsTemporary(ErrConnectionFailed) {
+		t.Error("Connection failed should be temporary")
+	}
+
+	if IsTemporary(ErrJobNotFound) {
+		t.Error("Job not found should not be temporary")
+	}
+}
+
+func testBackendConfigAndCRUD(t *testing.T, manager *BackendManager) {
+	// Test backend registration and creation
+	factory := &MockFactory{}
+	config := MockConfig{URL: "test://localhost"}
+
+	// Test factory create
+	backend, err := factory.Create(config)
+	if err != nil {
+		t.Errorf("Factory create should not fail: %v", err)
+	}
+	if backend == nil {
+		t.Error("Created backend should not be nil")
+	}
+
+	// Test factory validate
+	err = factory.Validate(config)
+	if err != nil {
+		t.Errorf("Factory validate should not fail: %v", err)
+	}
+
+	// Test backend capabilities
+	caps := backend.Capabilities()
+	if caps.AtomicAck {
+		t.Error("Mock backend should not support atomic ack")
+	}
+
+	// Test backend stats
+	stats, err := backend.Stats(context.Background())
+	if err != nil {
+		t.Errorf("Backend stats should not fail: %v", err)
+	}
+	if stats == nil {
+		t.Error("Backend stats should not be nil")
+	}
+
+	// Test backend health
+	health := backend.Health(context.Background())
+	if health.Status != HealthStatusHealthy {
+		t.Errorf("Expected healthy status, got %s", health.Status)
+	}
+
+	// Test backend close
+	err = backend.Close()
+	if err != nil {
+		t.Errorf("Backend close should not fail: %v", err)
+	}
+
+	// Test error message formatting
+	testErrorMessages(t)
+	testMigrationEdgeCases(t, manager)
+}
+
+func testErrorMessages(t *testing.T) {
+	// Test all error message methods
+	backendErr := NewBackendError("test-backend", "test-operation", ErrTimeout)
+	msg := backendErr.Error()
+	if msg == "" {
+		t.Error("Backend error message should not be empty")
+	}
+	if backendErr.Unwrap() != ErrTimeout {
+		t.Error("Backend error should unwrap to timeout")
+	}
+
+	configErr := NewConfigurationError("test-field", "test-value", "test message")
+	msg = configErr.Error()
+	if msg == "" {
+		t.Error("Configuration error message should not be empty")
+	}
+
+	migrationErr := NewMigrationError("test-phase", "src", "tgt", "job123", "test message", ErrTimeout)
+	msg = migrationErr.Error()
+	if msg == "" {
+		t.Error("Migration error message should not be empty")
+	}
+	if migrationErr.Unwrap() != ErrTimeout {
+		t.Error("Migration error should unwrap to timeout")
+	}
+
+	connErr := NewConnectionError("test-backend", "redis://localhost", ErrConnectionFailed)
+	msg = connErr.Error()
+	if msg == "" {
+		t.Error("Connection error message should not be empty")
+	}
+	if connErr.Unwrap() != ErrConnectionFailed {
+		t.Error("Connection error should unwrap to connection failed")
+	}
+
+	validationErr := NewValidationError("test-backend", "field", "value", "rule", "validation message")
+	msg = validationErr.Error()
+	if msg == "" {
+		t.Error("Validation error message should not be empty")
+	}
+
+	opErr := NewOperationError("backend", "queue", "operation", "job123", ErrJobNotFound)
+	msg = opErr.Error()
+	if msg == "" {
+		t.Error("Operation error message should not be empty")
+	}
+	if opErr.Unwrap() != ErrJobNotFound {
+		t.Error("Operation error should unwrap to job not found")
+	}
+}
+
+func testMigrationEdgeCases(t *testing.T, manager *BackendManager) {
+	// Test migration manager edge cases
+	migrationManager := NewMigrationManager(manager)
+
+	// Test getting status of non-existent migration
+	_, err := migrationManager.GetMigrationStatus("non-existent")
+	if err == nil {
+		t.Error("Getting non-existent migration status should fail")
+	}
+
+	// Test cancelling non-existent migration
+	err = migrationManager.CancelMigration("non-existent")
+	if err == nil {
+		t.Error("Cancelling non-existent migration should fail")
+	}
+
+	// Test list active migrations when none exist
+	active := migrationManager.ListActiveMigrations()
+	if active == nil {
+		t.Error("Active migrations list should not be nil")
+	}
+	if len(active) != 0 {
+		t.Error("Active migrations list should be empty initially")
+	}
+
+	// Test migration tool planning with non-existent queue
+	tool := NewMigrationTool(manager)
+	_, err = tool.PlanMigration(context.Background(), "non-existent", MigrationOptions{})
+	if err == nil {
+		t.Error("Planning migration for non-existent queue should fail")
+	}
+
+	// Test migration tool execution with non-existent queue
+	_, err = tool.ExecuteMigration(context.Background(), "non-existent", MigrationOptions{})
+	if err == nil {
+		t.Error("Executing migration for non-existent queue should fail")
+	}
+
+	// Test monitoring non-existent migration
+	_, err = tool.MonitorMigration("non-existent")
+	if err == nil {
+		t.Error("Monitoring non-existent migration should fail")
+	}
+
+	// Test quick migrate with non-existent queue
+	_, err = tool.QuickMigrate(context.Background(), "non-existent", "target")
+	if err == nil {
+		t.Error("Quick migrate for non-existent queue should fail")
+	}
+}
+
+// MockConfig for testing
+type MockConfig struct {
+	URL string
 }
 
 // MockFactory for testing

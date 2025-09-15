@@ -283,7 +283,7 @@ func (r *ASCIIRenderer) renderRadial(genealogy *JobGenealogy, layout *TreeLayout
 
 		for i, childID := range rootNode.ChildIDs {
 			if child, exists := genealogy.Nodes[childID]; exists && r.shouldShowNode(child, state) {
-				_ = float64(i) * angleStep // angle calculation for potential future radial improvements
+				angle := float64(i) * angleStep
 				x := centerX + int(float64(radius)*1.5) // ASCII is wider than tall
 				y := centerY + int(float64(radius)*0.8)
 
@@ -609,7 +609,7 @@ func (r *ASCIIRenderer) computeRadialLayout(genealogy *JobGenealogy, layout *Tre
 			angleStep := 360.0 / float64(len(rootNode.ChildIDs))
 
 			for i, childID := range rootNode.ChildIDs {
-				_ = float64(i) * angleStep // angle calculation for potential future radial improvements
+				angle := float64(i) * angleStep
 				x := centerX + int(float64(radius)*1.5) // ASCII aspect ratio adjustment
 				y := centerY + radius
 

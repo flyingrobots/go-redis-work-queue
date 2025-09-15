@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	storage "github.com/go-redis/redis-work-queue/internal/storage-backends"
+	storage "github.com/flyingrobots/go-redis-work-queue/internal/storage-backends"
 )
 
 // MigrationE2ETestSuite provides comprehensive end-to-end tests for migration scenarios

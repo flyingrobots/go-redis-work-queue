@@ -185,11 +185,12 @@ func (zc *ZstdCompressor) BuildDictionary(samples [][]byte) error {
 		combinedSamples = append(combinedSamples, sample...)
 	}
 
-	// Build dictionary
-	dictionary := zstd.BuildDict(zstd.DictConfig{
-		SampleData: combinedSamples,
-		DictSize:   zc.dictSize,
-	})
+	// TODO: Build dictionary (API not available in current zstd version)
+	// For now, just use the combined samples as a simple dictionary
+	dictionary := combinedSamples
+	if len(dictionary) > zc.dictSize {
+		dictionary = dictionary[:zc.dictSize]
+	}
 
 	zc.mu.Lock()
 	zc.dictionary = dictionary
@@ -346,11 +347,12 @@ func (db *DictionaryBuilder) BuildDictionary(dictSize int) ([]byte, error) {
 		combinedData = append(combinedData, sample...)
 	}
 
-	// Build dictionary
-	dictionary := zstd.BuildDict(zstd.DictConfig{
-		SampleData: combinedData,
-		DictSize:   dictSize,
-	})
+	// TODO: Build dictionary (API not available in current zstd version)
+	// For now, just use the combined data as a simple dictionary
+	dictionary := combinedData
+	if len(dictionary) > dictSize {
+		dictionary = dictionary[:dictSize]
+	}
 
 	return dictionary, nil
 }

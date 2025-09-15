@@ -142,6 +142,9 @@ type DeduplicationManager interface {
 	// Configuration
 	UpdateConfig(config *Config) error
 	GetConfig() *Config
+
+	// Lifecycle
+	Close() error
 }
 
 // ChunkStore defines the interface for chunk storage operations
@@ -255,18 +258,7 @@ func (e *DeduplicationError) Error() string {
 	return e.Message
 }
 
-// Common error codes
-const (
-	ErrCodeChunkNotFound       = "CHUNK_NOT_FOUND"
-	ErrCodePayloadNotFound     = "PAYLOAD_NOT_FOUND"
-	ErrCodeChecksumMismatch    = "CHECKSUM_MISMATCH"
-	ErrCodeCompressionFailed   = "COMPRESSION_FAILED"
-	ErrCodeDecompressionFailed = "DECOMPRESSION_FAILED"
-	ErrCodeInvalidConfig       = "INVALID_CONFIG"
-	ErrCodeStorageFull         = "STORAGE_FULL"
-	ErrCodeReferenceCorruption = "REFERENCE_CORRUPTION"
-	ErrCodeGCFailed            = "GC_FAILED"
-)
+// Error codes are defined in errors.go
 
 // Helper functions for error creation
 func NewDeduplicationError(code, message string, cause error) *DeduplicationError {
