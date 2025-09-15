@@ -52,7 +52,7 @@ func TestNewManager(t *testing.T) {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
 
-	if manager == nil {
+	if mgr == nil {
 		t.Fatal("Manager should not be nil")
 	}
 }
@@ -224,7 +224,7 @@ func TestRecordAttempt(t *testing.T) {
 		ProcessingTime:  5 * time.Second,
 	}
 
-	err = manager.RecordAttempt(attempt)
+	err = mgr.RecordAttempt(attempt)
 	if err != nil {
 		t.Fatalf("Failed to record attempt: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestRecordAttempt(t *testing.T) {
 	successAttempt.Success = true
 	successAttempt.Status = "completed"
 
-	err = manager.RecordAttempt(successAttempt)
+	err = mgr.RecordAttempt(successAttempt)
 	if err != nil {
 		t.Fatalf("Failed to record successful attempt: %v", err)
 	}
@@ -297,14 +297,14 @@ func TestGetStats(t *testing.T) {
 	}
 
 	for _, attempt := range attempts {
-		err := manager.RecordAttempt(attempt)
+		err := mgr.RecordAttempt(attempt)
 		if err != nil {
 			t.Fatalf("Failed to record attempt: %v", err)
 		}
 	}
 
 	// Get stats
-	stats, err := manager.GetStats("test_job", "timeout", 24*time.Hour)
+	stats, err := mgr.GetStats("test_job", "timeout", 24*time.Hour)
 	if err != nil {
 		t.Fatalf("Failed to get stats: %v", err)
 	}
@@ -362,7 +362,7 @@ func TestPreviewRetrySchedule(t *testing.T) {
 		Queue:         "default",
 	}
 
-	preview, err := manager.PreviewRetrySchedule(features, 3)
+	preview, err := mgr.PreviewRetrySchedule(features, 3)
 	if err != nil {
 		t.Fatalf("Failed to generate preview: %v", err)
 	}

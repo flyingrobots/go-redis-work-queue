@@ -215,56 +215,6 @@ func (m *BackendManager) Close() error {
 	return nil
 }
 
-// MigrationManager handles queue migrations between backends
-type MigrationManager struct {
-	backendManager *BackendManager
-}
-
-// NewMigrationManager creates a new migration manager
-func NewMigrationManager(backendManager *BackendManager) *MigrationManager {
-	return &MigrationManager{
-		backendManager: backendManager,
-	}
-}
-
-// Migrate moves jobs from one backend to another
-func (m *MigrationManager) Migrate(ctx context.Context, queueName string, opts MigrationOptions) (*MigrationStatus, error) {
-	// Get source and target backends
-	sourceBackend, err := m.backendManager.GetBackend(queueName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get source backend: %w", err)
-	}
-
-	// For now, return a basic migration status
-	// This would be expanded with actual migration logic
-	status := &MigrationStatus{
-		Phase:        MigrationPhaseValidation,
-		TotalJobs:    0,
-		MigratedJobs: 0,
-		FailedJobs:   0,
-		Progress:     0.0,
-		StartedAt:    time.Now(),
-	}
-
-	// Validate compatibility
-	caps := sourceBackend.Capabilities()
-	if !caps.Persistence {
-		return status, fmt.Errorf("source backend does not support persistence")
-	}
-
-	// Get queue length
-	length, err := sourceBackend.Length(ctx)
-	if err != nil {
-		status.Phase = MigrationPhaseFailed
-		status.LastError = err
-		return status, fmt.Errorf("failed to get queue length: %w", err)
-	}
-
-	status.TotalJobs = length
-	status.Phase = MigrationPhaseCompleted
-
-	return status, nil
-}
 
 // Iterator implementations
 

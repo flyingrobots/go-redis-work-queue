@@ -324,9 +324,9 @@ func (r *RedisListsBackend) Stats(ctx context.Context) (*BackendStats, error) {
 	if client, ok := r.client.(*redis.Client); ok {
 		poolStats := client.PoolStats()
 		stats.ConnectionPool = &PoolStats{
-			Active:  poolStats.Hits,
-			Idle:    poolStats.Misses,
-			Total:   poolStats.Hits + poolStats.Misses,
+			Active:  int(poolStats.Hits),
+			Idle:    int(poolStats.Misses),
+			Total:   int(poolStats.Hits + poolStats.Misses),
 			MaxOpen: 0, // Not available from go-redis
 			MaxIdle: 0, // Not available from go-redis
 		}
