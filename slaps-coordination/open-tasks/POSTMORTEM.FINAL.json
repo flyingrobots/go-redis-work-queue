@@ -1,0 +1,57 @@
+{
+  "task_id": "POSTMORTEM.FINAL",
+  "created_at": "2025-09-14T22:59:28.894530Z",
+  "task": {
+    "id": "POSTMORTEM.FINAL",
+    "feature_id": "SLAPS_REFLECTION",
+    "title": "Coordinator Final Summary and Analysis",
+    "description": "Collect all worker reflections and create the final SLAPS post-mortem document.",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "Comprehensive document",
+        "breakdown": "Collect, analyze, synthesize, conclude"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "Read all 10 worker reflection documents",
+          "Include excerpts from each worker's perspective",
+          "Identify common themes and patterns",
+          "Highlight unique insights from individual workers",
+          "Add coordinator's perspective and analysis",
+          "Draw conclusions about distributed AI coordination",
+          "Document lessons learned",
+          "Create final comprehensive post-mortem",
+          "Save to docs/SLAPS/FINAL-POSTMORTEM.md"
+        ]
+      }
+    },
+    "execution_guidance": {
+      "sections": [
+        "Executive Summary",
+        "Individual Worker Perspectives (excerpts from all 10)",
+        "Common Themes Across Workers",
+        "Unique Experiences and Edge Cases",
+        "Technical Challenges and Solutions",
+        "Emergent Behaviors Observed",
+        "Coordinator's Analysis",
+        "Lessons for Future Distributed AI Systems",
+        "Conclusions"
+      ]
+    },
+    "dependencies": [
+      "POSTMORTEM.001",
+      "POSTMORTEM.002",
+      "POSTMORTEM.003",
+      "POSTMORTEM.004",
+      "POSTMORTEM.005",
+      "POSTMORTEM.006",
+      "POSTMORTEM.007",
+      "POSTMORTEM.008",
+      "POSTMORTEM.009",
+      "POSTMORTEM.010"
+    ],
+    "resources_required": [
+      "all_worker_reflections"
+    ]
+  }
+}

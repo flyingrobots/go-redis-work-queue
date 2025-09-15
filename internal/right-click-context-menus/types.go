@@ -108,29 +108,4 @@ type (
 	}
 )
 
-// Error types
-type ContextMenuError struct {
-	Message string
-	Code    string
-}
-
-func (e ContextMenuError) Error() string {
-	return e.Message
-}
-
-var (
-	ErrInvalidContext = &ContextMenuError{
-		Message: "invalid context for menu action",
-		Code:    "INVALID_CONTEXT",
-	}
-
-	ErrActionNotFound = &ContextMenuError{
-		Message: "action not found in registry",
-		Code:    "ACTION_NOT_FOUND",
-	}
-
-	ErrZoneNotFound = &ContextMenuError{
-		Message: "bubble zone not found",
-		Code:    "ZONE_NOT_FOUND",
-	}
-)
+// Note: Error types are defined in errors.go
