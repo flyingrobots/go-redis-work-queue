@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/example/go-redis-work-queue/schemas/policy-simulator.json",
+  "$id": "https://github.com/flyingrobots/go-redis-work-queue/schemas/policy-simulator.json",
   "title": "Policy Simulator Data Models",
   "description": "JSON Schema definitions for the Policy Simulator system data models and API contracts",
   "definitions": {

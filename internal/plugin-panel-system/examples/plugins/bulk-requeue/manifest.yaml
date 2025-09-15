@@ -28,5 +28,5 @@ metadata:
   category: operations
   keywords: [requeue, bulk, operations, failed, jobs]
   homepage: https://example.com/plugins/bulk-requeue
-  issues: https://github.com/example/plugins/issues
+  issues: https://github.com/flyingrobots/plugins/issues
   warning: "This plugin can modify job queues. Use with caution."

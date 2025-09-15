@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	queuev1 "github.com/example/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
+	queuev1 "github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
 )
 
 // QueueReconciler reconciles a Queue object

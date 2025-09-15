@@ -438,7 +438,7 @@ import (
     "context"
     "log"
 
-    voice "github.com/example/go-redis-work-queue/internal/terminal-voice-commands"
+    voice "github.com/flyingrobots/go-redis-work-queue/internal/terminal-voice-commands"
 )
 
 type MyTUI struct {

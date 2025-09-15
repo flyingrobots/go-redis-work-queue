@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	queuev1 "github.com/example/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
+	queuev1 "github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
 )
 
 // MockMetricsClient for testing

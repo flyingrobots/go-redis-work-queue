@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
@@ -20,9 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	queuev1 "github.com/example/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
-	"github.com/example/go-redis-work-queue/internal/kubernetes-operator/controllers"
-	"github.com/example/go-redis-work-queue/internal/kubernetes-operator/webhooks"
+	queuev1 "github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
+	"github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/controllers"
+	"github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/webhooks"
 	//+kubebuilder:scaffold:imports
 )
 

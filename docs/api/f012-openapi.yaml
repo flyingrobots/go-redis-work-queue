@@ -24,7 +24,7 @@ info:
   version: 1.0.0
   contact:
     name: Go Redis Work Queue Team
-    url: https://github.com/example/go-redis-work-queue
+    url: https://github.com/flyingrobots/go-redis-work-queue
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -813,7 +813,7 @@ components:
           default: 3
         retryDelay:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '1m'
 
     RetentionPolicy:
@@ -821,7 +821,7 @@ components:
       properties:
         maxAge:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h|d)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h|d)$'
           default: '7d'
         maxSize:
           type: string
@@ -852,15 +852,15 @@ components:
         targetLatencyP95:
           type: string
           description: Target 95th percentile latency
-          pattern: '^[0-9]+(ns|us|µs|ms|s)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s)$'
           default: '100ms'
         scaleUpCooldown:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '3m'
         scaleDownCooldown:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '5m'
 
     UpdateStrategy:
@@ -900,7 +900,7 @@ components:
           default: 300
         forceAfter:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '10m'
 
     # Operational Schemas
@@ -1174,7 +1174,7 @@ components:
           default: 5
         recoveryTimeout:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '60s'
 
     RetryConfig:
@@ -1194,11 +1194,11 @@ components:
           default: exponential
         initialDelay:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '1s'
         maxDelay:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '30s'
 
     TimeoutConfig:
@@ -1206,11 +1206,11 @@ components:
       properties:
         jobTimeout:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '5m'
         shutdownTimeout:
           type: string
-          pattern: '^[0-9]+(ns|us|µs|ms|s|m|h)$'
+          pattern: '^[0-9]+(ns|us|ï¿½s|ms|s|m|h)$'
           default: '30s'
 
     SecurityConfig:

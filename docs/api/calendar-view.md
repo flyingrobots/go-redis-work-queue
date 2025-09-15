@@ -591,7 +591,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/example/go-redis-work-queue/internal/calendar-view"
+    "github.com/flyingrobots/go-redis-work-queue/internal/calendar-view"
 )
 
 func main() {
