@@ -1,0 +1,1106 @@
+openapi: 3.0.3
+info:
+  title: Calendar View API
+  description: API for calendar-based visualization and management of scheduled jobs and recurring rules
+  version: 1.0.0
+  contact:
+    name: Queue Management Team
+    email: team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.example.com/v1
+    description: Production server
+
+paths:
+  /schedules/window:
+    get:
+      summary: Get schedule window for calendar view
+      description: Retrieves aggregated job counts and density data for a specified time window
+      operationId: getScheduleWindow
+      tags:
+        - Calendar Data
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Start timestamp for the window (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2025-09-14T00:00:00Z"
+        - name: till
+          in: query
+          required: true
+          description: End timestamp for the window (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2025-10-14T23:59:59Z"
+        - name: queue
+          in: query
+          description: Filter by specific queue name
+          schema:
+            type: string
+            example: "high-priority"
+        - name: timezone
+          in: query
+          description: Display timezone for local time conversion
+          schema:
+            type: string
+            default: "UTC"
+            example: "America/New_York"
+        - name: granularity
+          in: query
+          description: Time bucket granularity
+          schema:
+            type: string
+            enum: [hour, day, week]
+            default: "day"
+      responses:
+        '200':
+          description: Schedule window data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWindow'
+        '400':
+          description: Invalid time window or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Time window too large or invalid timezone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /schedules/detailed:
+    get:
+      summary: Get detailed schedule for specific date
+      description: Retrieves individual scheduled jobs and recurring rules for a specific date
+      operationId: getDetailedSchedule
+      tags:
+        - Calendar Data
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Specific date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2025-09-14"
+        - name: timezone
+          in: query
+          description: Display timezone
+          schema:
+            type: string
+            default: "UTC"
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of jobs to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Detailed schedule retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  timezone:
+                    type: string
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduledJob'
+                  recurring_rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecurringRule'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      has_more:
+                        type: boolean
+
+  /schedules/{job_id}/reschedule:
+    post:
+      summary: Reschedule a specific job
+      description: Changes the scheduled time for an existing job
+      operationId: rescheduleJob
+      tags:
+        - Schedule Management
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          description: Unique job identifier
+          schema:
+            type: string
+            example: "job_12345"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequest'
+      responses:
+        '200':
+          description: Job rescheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  old_time:
+                    type: string
+                    format: date-time
+                  new_time:
+                    type: string
+                    format: date-time
+                  local_time:
+                    type: string
+                    description: Human-readable local time
+                  rescheduled_at:
+                    type: string
+                    format: date-time
+                  rescheduled_by:
+                    type: string
+                  audit_id:
+                    type: string
+        '400':
+          description: Invalid reschedule request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Job cannot be rescheduled (already running, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /schedules/bulk-reschedule:
+    post:
+      summary: Reschedule multiple jobs
+      description: Changes the scheduled time for multiple jobs in a single operation
+      operationId: bulkRescheduleJobs
+      tags:
+        - Schedule Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      job_id:
+                        type: string
+                      new_time:
+                        type: string
+                        format: date-time
+                    required: [job_id, new_time]
+                reason:
+                  type: string
+                  maxLength: 256
+                timezone:
+                  type: string
+                  default: "UTC"
+              required: [jobs]
+      responses:
+        '200':
+          description: Bulk reschedule completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  successful:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        job_id:
+                          type: string
+                        old_time:
+                          type: string
+                          format: date-time
+                        new_time:
+                          type: string
+                          format: date-time
+                  failed:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        job_id:
+                          type: string
+                        error:
+                          type: string
+                  audit_id:
+                    type: string
+
+  /schedules/rules:
+    get:
+      summary: List recurring rules
+      description: Retrieves a list of recurring scheduling rules
+      operationId: listRecurringRules
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: status
+          in: query
+          description: Filter by rule status
+          schema:
+            type: string
+            enum: [active, paused, disabled, expired]
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: owner
+          in: query
+          description: Filter by rule owner
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecurringRule'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      has_more:
+                        type: boolean
+
+    post:
+      summary: Create a new recurring rule
+      description: Creates a new rule for generating recurring scheduled jobs
+      operationId: createRecurringRule
+      tags:
+        - Recurring Rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                cron:
+                  type: string
+                  description: Standard 5-field cron expression
+                  pattern: '^[0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+$'
+                timezone:
+                  type: string
+                  default: "UTC"
+                queue:
+                  type: string
+                job_template:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    payload:
+                      type: object
+                    priority:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                    timeout:
+                      type: integer
+                      description: Job timeout in seconds
+                  required: [type]
+                options:
+                  type: object
+                  properties:
+                    max_concurrent:
+                      type: integer
+                      minimum: 1
+                      default: 1
+                    jitter_seconds:
+                      type: integer
+                      minimum: 0
+                      maximum: 3600
+                      default: 0
+                    retry_policy:
+                      type: string
+                      enum: [none, linear, exponential]
+                      default: "none"
+                    catchup:
+                      type: boolean
+                      default: false
+                metadata:
+                  type: object
+                  properties:
+                    owner:
+                      type: string
+                    description:
+                      type: string
+                    tags:
+                      type: array
+                      items:
+                        type: string
+              required: [name, cron, queue, job_template]
+      responses:
+        '201':
+          description: Rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringRule'
+        '400':
+          description: Invalid rule configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /schedules/rules/{rule_id}:
+    get:
+      summary: Get recurring rule details
+      description: Retrieves detailed information about a specific recurring rule
+      operationId: getRecurringRule
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rule details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringRule'
+        '404':
+          description: Rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update recurring rule
+      description: Updates configuration for an existing recurring rule
+      operationId: updateRecurringRule
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                cron:
+                  type: string
+                  pattern: '^[0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+$'
+                timezone:
+                  type: string
+                queue:
+                  type: string
+                job_template:
+                  type: object
+                options:
+                  type: object
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Rule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringRule'
+        '400':
+          description: Invalid update parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete recurring rule
+      description: Permanently deletes a recurring rule (does not affect already scheduled jobs)
+      operationId: deleteRecurringRule
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Rule deleted successfully
+        '404':
+          description: Rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Rule cannot be deleted (has pending jobs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /schedules/rules/{rule_id}/pause:
+    post:
+      summary: Pause recurring rule
+      description: Temporarily disables a recurring rule
+      operationId: pauseRecurringRule
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 256
+                resume_after:
+                  type: string
+                  format: date-time
+                  description: Optional automatic resume time
+      responses:
+        '200':
+          description: Rule paused successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [paused]
+                  paused_at:
+                    type: string
+                    format: date-time
+                  paused_by:
+                    type: string
+                  next_run:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  resume_after:
+                    type: string
+                    format: date-time
+                    nullable: true
+
+  /schedules/rules/{rule_id}/resume:
+    post:
+      summary: Resume recurring rule
+      description: Re-enables a paused recurring rule
+      operationId: resumeRecurringRule
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 256
+      responses:
+        '200':
+          description: Rule resumed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [active]
+                  resumed_at:
+                    type: string
+                    format: date-time
+                  resumed_by:
+                    type: string
+                  next_run:
+                    type: string
+                    format: date-time
+
+  /schedules/rules/{rule_id}/next-runs:
+    get:
+      summary: Get upcoming executions for rule
+      description: Calculates the next N execution times for a recurring rule
+      operationId: getRuleNextRuns
+      tags:
+        - Recurring Rules
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: count
+          in: query
+          description: Number of future executions to calculate
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: from
+          in: query
+          description: Calculate from this time (default: now)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Next runs calculated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                  next_runs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scheduled_at:
+                          type: string
+                          format: date-time
+                        local_time:
+                          type: string
+                        sequence:
+                          type: integer
+
+  /calendar/config:
+    get:
+      summary: Get calendar configuration
+      description: Retrieves current calendar view configuration
+      operationId: getCalendarConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarConfiguration'
+
+    put:
+      summary: Update calendar configuration
+      description: Updates calendar view configuration
+      operationId: updateCalendarConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarConfiguration'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarConfiguration'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /calendar/timezones:
+    get:
+      summary: List supported timezones
+      description: Retrieves list of supported timezones with current offset information
+      operationId: listTimezones
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Timezones retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezones:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: "America/New_York"
+                        display_name:
+                          type: string
+                          example: "Eastern Time"
+                        current_offset:
+                          type: string
+                          example: "-04:00"
+                        dst_active:
+                          type: boolean
+
+  /calendar/health:
+    get:
+      summary: Check calendar system health
+      description: Checks health of calendar-related services and data stores
+      operationId: checkCalendarHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health check completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum: [pass, warn, fail]
+                        response_time_ms:
+                          type: integer
+                        details:
+                          type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  schemas:
+    ScheduleWindow:
+      type: object
+      properties:
+        window:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            till:
+              type: string
+              format: date-time
+            timezone:
+              type: string
+            granularity:
+              type: string
+              enum: [hour, day, week]
+          required: [from, till, timezone, granularity]
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeBucket'
+        summary:
+          type: object
+          properties:
+            total_jobs:
+              type: integer
+              minimum: 0
+            peak_day:
+              type: string
+              format: date-time
+            peak_count:
+              type: integer
+              minimum: 0
+            avg_daily:
+              type: number
+              minimum: 0
+      required: [window, buckets]
+
+    TimeBucket:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        local_time:
+          type: string
+          format: date-time
+        job_count:
+          type: integer
+          minimum: 0
+        queues:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        density_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        job_types:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        estimated_duration:
+          type: integer
+          minimum: 0
+      required: [timestamp, local_time, job_count, density_score]
+
+    ScheduledJob:
+      type: object
+      properties:
+        id:
+          type: string
+        queue:
+          type: string
+        job_type:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        local_time:
+          type: string
+        source:
+          type: string
+          enum: [manual, recurring_rule, api, retry]
+        rule_id:
+          type: string
+        estimated_duration:
+          type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        can_reschedule:
+          type: boolean
+        reschedule_count:
+          type: integer
+          minimum: 0
+      required: [id, queue, scheduled_at, source]
+
+    RecurringRule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cron:
+          type: string
+        timezone:
+          type: string
+        queue:
+          type: string
+        job_template:
+          type: object
+          properties:
+            type:
+              type: string
+            payload:
+              type: object
+            priority:
+              type: integer
+            timeout:
+              type: integer
+          required: [type]
+        options:
+          type: object
+          properties:
+            max_concurrent:
+              type: integer
+            jitter_seconds:
+              type: integer
+            retry_policy:
+              type: string
+            catchup:
+              type: boolean
+            max_history:
+              type: integer
+        status:
+          type: string
+          enum: [active, paused, disabled, expired]
+        next_run:
+          type: string
+          format: date-time
+        last_run:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        paused_at:
+          type: string
+          format: date-time
+        paused_by:
+          type: string
+        metadata:
+          type: object
+          properties:
+            owner:
+              type: string
+            description:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+      required: [id, name, cron, timezone, queue, job_template, status]
+
+    RescheduleRequest:
+      type: object
+      properties:
+        new_time:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          default: "UTC"
+        reason:
+          type: string
+          maxLength: 256
+        notify:
+          type: boolean
+          default: false
+        cascade:
+          type: boolean
+          default: false
+      required: [new_time]
+
+    CalendarConfiguration:
+      type: object
+      properties:
+        default_timezone:
+          type: string
+          default: "UTC"
+        supported_timezones:
+          type: array
+          items:
+            type: string
+        view_settings:
+          type: object
+          properties:
+            default_view:
+              type: string
+              enum: [month, week, day]
+              default: "month"
+            week_start:
+              type: string
+              enum: [sunday, monday]
+              default: "monday"
+            time_format:
+              type: string
+              enum: [12h, 24h]
+              default: "24h"
+            density_colors:
+              type: object
+              properties:
+                low:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                medium:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                high:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                critical:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+        limits:
+          type: object
+          properties:
+            max_window_days:
+              type: integer
+              minimum: 1
+              maximum: 365
+              default: 365
+            max_jobs_per_request:
+              type: integer
+              minimum: 1
+              maximum: 10000
+              default: 1000
+            max_rules_per_user:
+              type: integer
+              minimum: 1
+              maximum: 1000
+              default: 50
+      required: [default_timezone, supported_timezones]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+          pattern: '^[A-Z_]+$'
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          description: API path where error occurred
+      required: [error]
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+tags:
+  - name: Calendar Data
+    description: Operations for retrieving calendar view data
+  - name: Schedule Management
+    description: Operations for managing scheduled jobs
+  - name: Recurring Rules
+    description: Operations for managing recurring scheduling rules
+  - name: Configuration
+    description: Calendar configuration and settings
+  - name: Health
+    description: Health checks for calendar services

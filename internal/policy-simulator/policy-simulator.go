@@ -646,3 +646,136 @@ func (ps *PolicySimulator) getModelAssumptions(model *QueueingModel) *Simulation
 		},
 	}
 }
+
+// validatePolicyConfig validates policy configuration
+func validatePolicyConfig(config *PolicyConfig) error {
+	if config.MaxRetries < 0 {
+		return ErrInvalidPolicy.WithDetails("max_retries cannot be negative")
+	}
+	if config.InitialBackoff <= 0 {
+		return ErrInvalidPolicy.WithDetails("initial_backoff must be positive")
+	}
+	if config.MaxBackoff <= 0 {
+		return ErrInvalidPolicy.WithDetails("max_backoff must be positive")
+	}
+	if config.BackoffStrategy != "exponential" && config.BackoffStrategy != "linear" && config.BackoffStrategy != "constant" {
+		return ErrInvalidPolicy.WithDetails("backoff_strategy must be exponential, linear, or constant")
+	}
+	if config.MaxRatePerSecond < 0 {
+		return ErrInvalidPolicy.WithDetails("max_rate_per_second cannot be negative")
+	}
+	if config.BurstSize < 0 {
+		return ErrInvalidPolicy.WithDetails("burst_size cannot be negative")
+	}
+	if config.MaxConcurrency <= 0 {
+		return ErrInvalidPolicy.WithDetails("max_concurrency must be positive")
+	}
+	if config.QueueSize < 0 {
+		return ErrInvalidPolicy.WithDetails("queue_size cannot be negative")
+	}
+	if config.ProcessingTimeout <= 0 {
+		return ErrInvalidPolicy.WithDetails("processing_timeout must be positive")
+	}
+	if config.AckTimeout <= 0 {
+		return ErrInvalidPolicy.WithDetails("ack_timeout must be positive")
+	}
+	if config.DLQEnabled && config.DLQThreshold <= 0 {
+		return ErrInvalidPolicy.WithDetails("dlq_threshold must be positive when DLQ is enabled")
+	}
+	return nil
+}
+
+// validateTrafficPattern validates traffic pattern configuration
+func validateTrafficPattern(pattern *TrafficPattern) error {
+	if pattern.BaseRate < 0 {
+		return ErrInvalidTrafficPattern.WithDetails("base_rate cannot be negative")
+	}
+	if pattern.Duration <= 0 {
+		return ErrInvalidTrafficPattern.WithDetails("duration must be positive")
+	}
+	if pattern.Probability < 0 || pattern.Probability > 1 {
+		return ErrInvalidTrafficPattern.WithDetails("probability must be between 0 and 1")
+	}
+	for i, variation := range pattern.Variations {
+		if variation.StartTime < 0 {
+			return ErrInvalidTrafficPattern.WithDetails(fmt.Sprintf("variation %d start_time cannot be negative", i))
+		}
+		if variation.EndTime <= variation.StartTime {
+			return ErrInvalidTrafficPattern.WithDetails(fmt.Sprintf("variation %d end_time must be after start_time", i))
+		}
+		if variation.Multiplier < 0 {
+			return ErrInvalidTrafficPattern.WithDetails(fmt.Sprintf("variation %d multiplier cannot be negative", i))
+		}
+	}
+	return nil
+}
+
+// calculateQueueingMetrics calculates metrics using queueing theory
+func calculateQueueingMetrics(model *QueueingModel) *SimulationMetrics {
+	metrics := &SimulationMetrics{}
+
+	switch model.Type {
+	case ModelMM1:
+		// M/M/1 queueing model
+		rho := model.ArrivalRate / model.ServiceRate
+		if rho >= 1 {
+			// Unstable system
+			metrics.Utilization = 1.0
+			metrics.AvgQueueDepth = 1000000 // Very high
+			metrics.AvgWaitTime = 1000000   // Very high
+		} else {
+			metrics.Utilization = rho
+			metrics.AvgQueueDepth = rho * rho / (1 - rho)
+			metrics.AvgWaitTime = (rho / (model.ServiceRate * (1 - rho))) * 1000 // Convert to ms
+		}
+
+	case ModelMMC:
+		// M/M/c queueing model (simplified)
+		rho := model.ArrivalRate / (float64(model.Servers) * model.ServiceRate)
+		if rho >= 1 {
+			// Unstable system
+			metrics.Utilization = 1.0
+			metrics.AvgQueueDepth = 1000000
+			metrics.AvgWaitTime = 1000000
+		} else {
+			metrics.Utilization = rho
+			// Simplified approximation for M/M/c
+			metrics.AvgQueueDepth = rho * rho / (1 - rho) / float64(model.Servers)
+			metrics.AvgWaitTime = (metrics.AvgQueueDepth / model.ArrivalRate) * 1000
+		}
+
+	case ModelSimple:
+		// Simple Little's Law model
+		if model.ServiceRate > 0 {
+			metrics.ProcessingRate = model.ServiceRate * float64(model.Servers)
+			if model.ArrivalRate <= metrics.ProcessingRate {
+				metrics.Utilization = model.ArrivalRate / metrics.ProcessingRate
+				metrics.AvgQueueDepth = model.ArrivalRate / (metrics.ProcessingRate - model.ArrivalRate)
+				metrics.AvgWaitTime = (metrics.AvgQueueDepth / model.ArrivalRate) * 1000
+			} else {
+				metrics.Utilization = 1.0
+				metrics.AvgQueueDepth = 1000000
+				metrics.AvgWaitTime = 1000000
+			}
+		}
+
+	default:
+		// Default to simple model
+		metrics.Utilization = 0.5
+		metrics.AvgQueueDepth = 1.0
+		metrics.AvgWaitTime = 100.0
+	}
+
+	// Ensure reasonable bounds
+	if metrics.Utilization > 1.0 {
+		metrics.Utilization = 1.0
+	}
+	if metrics.AvgQueueDepth > 10000 {
+		metrics.AvgQueueDepth = 10000
+	}
+	if metrics.AvgWaitTime > 60000 {
+		metrics.AvgWaitTime = 60000
+	}
+
+	return metrics
+}

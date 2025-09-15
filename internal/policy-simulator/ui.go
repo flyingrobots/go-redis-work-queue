@@ -209,7 +209,9 @@ func (ui *PolicySimulatorUI) initializeInputs() {
 	// Focus first input
 	if len(ui.policyInputs) > 0 {
 		ui.activeInput = "max_retries"
-		ui.policyInputs[ui.activeInput].Focus()
+		input := ui.policyInputs[ui.activeInput]
+		input.Focus()
+		ui.policyInputs[ui.activeInput] = input
 	}
 }
 

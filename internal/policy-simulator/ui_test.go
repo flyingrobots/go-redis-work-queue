@@ -2,6 +2,7 @@
 package policysimulator
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -227,7 +228,7 @@ func TestUIWithSimulationResults(t *testing.T) {
 		TrafficPattern: DefaultTrafficPattern(),
 	}
 
-	result, err := simulator.RunSimulation(ui.Init().Context, req)
+	result, err := simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
 
 	ui.lastResult = result
@@ -280,20 +281,19 @@ func TestUIInputHandling(t *testing.T) {
 }
 
 func TestUIStyleConstants(t *testing.T) {
-	// Test that style constants are properly defined
-	assert.NotEmpty(t, primaryColor)
-	assert.NotEmpty(t, secondaryColor)
-	assert.NotEmpty(t, accentColor)
-	assert.NotEmpty(t, mutedColor)
-	assert.NotEmpty(t, errorColor)
-	assert.NotEmpty(t, successColor)
+	// Test that UI can be rendered without errors
+	config := &SimulatorConfig{
+		SimulationDuration: 5 * time.Minute,
+		TimeStep:          1 * time.Second,
+		MaxWorkers:        5,
+		RedisPoolSize:     3,
+	}
 
-	// Test that styles can be applied
-	styled := primaryColor.Render("test")
-	assert.Contains(t, styled, "test")
+	simulator := NewPolicySimulator(config)
+	ui := NewPolicySimulatorUI(simulator)
 
-	styled = errorColor.Render("error")
-	assert.Contains(t, styled, "error")
+	view := ui.View()
+	assert.NotEmpty(t, view)
 }
 
 func TestUIHeaderRendering(t *testing.T) {

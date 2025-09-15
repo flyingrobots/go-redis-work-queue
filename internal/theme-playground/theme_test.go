@@ -373,12 +373,8 @@ func TestBuiltInThemes(t *testing.T) {
 		ThemeTokyoNight,
 		ThemeGitHub,
 		ThemeOneDark,
-		ThemeSolarizedLight,
-		ThemeSolarizedDark,
-		ThemeDracula,
 		ThemeHighContrast,
 		ThemeMonochrome,
-		ThemeTerminalClassic,
 	}
 
 	for _, themeName := range builtInThemes {

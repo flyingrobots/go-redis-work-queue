@@ -1,0 +1,1233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.example.com/schemas/json-payload-studio/v1",
+  "title": "JSON Payload Studio Schema Definitions",
+  "description": "JSON Schema definitions for JSON Payload Studio data structures and API validation",
+
+  "definitions": {
+    "TemplateId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique template identifier using alphanumeric characters, underscores, and hyphens"
+    },
+
+    "DraftId": {
+      "type": "string",
+      "pattern": "^draft_[a-zA-Z0-9_-]+$",
+      "description": "Unique draft identifier with draft_ prefix"
+    },
+
+    "JobId": {
+      "type": "string",
+      "pattern": "^job_[a-zA-Z0-9_-]+$",
+      "description": "Unique job identifier with job_ prefix"
+    },
+
+    "ScheduleId": {
+      "type": "string",
+      "pattern": "^sched_[a-zA-Z0-9_-]+$",
+      "description": "Unique schedule identifier with sched_ prefix"
+    },
+
+    "BatchId": {
+      "type": "string",
+      "pattern": "^batch_[a-zA-Z0-9_-]+$",
+      "description": "Unique batch identifier with batch_ prefix"
+    },
+
+    "QueueName": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Queue name using alphanumeric characters, underscores, and hyphens"
+    },
+
+    "UserId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "User identifier string"
+    },
+
+    "SemanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version number (major.minor.patch)"
+    },
+
+    "CronExpression": {
+      "type": "string",
+      "pattern": "^\\s*(?:[*]|(?:[0-5]?\\d))\\s+(?:[*]|(?:[01]?\\d|2[0-3]))\\s+(?:[*]|(?:[012]?\\d|3[01]))\\s+(?:[*]|(?:[0]?\\d|1[0-2]))\\s+(?:[*]|(?:[0-6]))\\s*$",
+      "description": "Valid cron expression for job scheduling"
+    },
+
+    "Duration": {
+      "type": "string",
+      "pattern": "^\\d+[μmn]?s$|^\\d+m$|^\\d+h$|^\\d+d$",
+      "description": "Duration string (e.g., '30s', '5m', '2h', '1d')"
+    },
+
+    "Position": {
+      "type": "object",
+      "required": ["line", "column"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Line number (1-based)"
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Column number (1-based)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Position in a text document"
+    },
+
+    "TextRange": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {
+          "$ref": "#/definitions/Position",
+          "description": "Start position of the range"
+        },
+        "end": {
+          "$ref": "#/definitions/Position",
+          "description": "End position of the range"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Range of text in a document"
+    },
+
+    "TemplateCategory": {
+      "type": "string",
+      "enum": ["user", "payment", "email", "batch", "custom", "system"],
+      "description": "Template category for organization and filtering"
+    },
+
+    "VariableType": {
+      "type": "string",
+      "enum": ["string", "number", "boolean", "object", "array"],
+      "description": "Data type for template variables"
+    },
+
+    "ValidationSeverity": {
+      "type": "string",
+      "enum": ["error", "warning", "info"],
+      "description": "Severity level for validation issues"
+    },
+
+    "CompletionKind": {
+      "type": "string",
+      "enum": ["property", "value", "snippet", "function"],
+      "description": "Type of autocomplete suggestion"
+    },
+
+    "SnippetCategory": {
+      "type": "string",
+      "enum": ["builtin", "faker", "custom", "environment"],
+      "description": "Category of snippet functions"
+    },
+
+    "SafetyIssueType": {
+      "type": "string",
+      "enum": ["pii_detected", "size_limit", "rate_limit", "production_warning"],
+      "description": "Type of safety issue detected"
+    },
+
+    "SafetySeverity": {
+      "type": "string",
+      "enum": ["info", "warning", "error", "block"],
+      "description": "Severity level for safety issues"
+    },
+
+    "JobStatus": {
+      "type": "string",
+      "enum": ["success", "failed", "scheduled"],
+      "description": "Status of job operation"
+    },
+
+    "ScheduleType": {
+      "type": "string",
+      "enum": ["delayed", "cron"],
+      "description": "Type of job schedule"
+    },
+
+    "VariableDefinition": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/VariableType",
+          "description": "Variable data type"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Human-readable variable description"
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether the variable is required"
+            },
+            "pattern": {
+              "type": "string",
+              "description": "Regex pattern for string validation"
+            },
+            "minLength": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Minimum string length"
+            },
+            "maxLength": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum string length"
+            },
+            "minimum": {
+              "type": "number",
+              "description": "Minimum numeric value"
+            },
+            "maximum": {
+              "type": "number",
+              "description": "Maximum numeric value"
+            },
+            "enum": {
+              "type": "array",
+              "items": {"type": ["string", "number", "boolean"]},
+              "description": "Allowed enum values"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Validation rules for the variable"
+        },
+        "default": {
+          "description": "Default value for the variable"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Template": {
+      "type": "object",
+      "required": ["templateId", "name", "category", "payload"],
+      "properties": {
+        "templateId": {
+          "$ref": "#/definitions/TemplateId",
+          "description": "Unique template identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable template name"
+        },
+        "category": {
+          "$ref": "#/definitions/TemplateCategory",
+          "description": "Template category for organization"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Template description and usage notes"
+        },
+        "version": {
+          "$ref": "#/definitions/SemanticVersion",
+          "description": "Template version number"
+        },
+        "author": {
+          "$ref": "#/definitions/UserId",
+          "description": "Template author identifier"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Template creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Template categorization tags"
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "JSON Schema identifier"
+            },
+            "version": {
+              "type": "string",
+              "description": "Schema version"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Associated JSON Schema for validation"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Template payload with variable placeholders"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/VariableDefinition"
+          },
+          "description": "Variable definitions for template interpolation"
+        },
+        "defaults": {
+          "type": "object",
+          "properties": {
+            "priority": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 5,
+              "description": "Default job priority"
+            },
+            "retryCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "default": 3,
+              "description": "Default retry count"
+            },
+            "timeout": {
+              "$ref": "#/definitions/Duration",
+              "description": "Default job timeout"
+            }
+          },
+          "additionalProperties": true,
+          "description": "Default job options for this template"
+        },
+        "safety": {
+          "type": "object",
+          "properties": {
+            "maxBatchSize": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "description": "Maximum allowed batch size for this template"
+            },
+            "requireConfirmation": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["production", "staging", "development"]
+              },
+              "uniqueItems": true,
+              "description": "Environments requiring confirmation"
+            },
+            "redactFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Fields to redact in logs and displays"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Safety configuration for template usage"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationIssue": {
+      "type": "object",
+      "required": ["severity", "type", "message"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique issue identifier"
+        },
+        "severity": {
+          "$ref": "#/definitions/ValidationSeverity",
+          "description": "Issue severity level"
+        },
+        "type": {
+          "type": "string",
+          "description": "Issue type classification"
+        },
+        "path": {
+          "type": "string",
+          "description": "JSON path to the issue location"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable issue description"
+        },
+        "position": {
+          "$ref": "#/definitions/Position",
+          "description": "Line and column position in editor"
+        },
+        "suggestion": {
+          "type": "string",
+          "description": "Suggested fix for the issue"
+        },
+        "fixable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the issue can be auto-fixed"
+        },
+        "autoFix": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["insert", "replace", "delete"],
+              "description": "Type of auto-fix action"
+            },
+            "content": {
+              "type": "string",
+              "description": "Content for the auto-fix"
+            },
+            "range": {
+              "$ref": "#/definitions/TextRange",
+              "description": "Text range for the auto-fix"
+            }
+          },
+          "required": ["action"],
+          "additionalProperties": false,
+          "description": "Auto-fix action and content"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationResult": {
+      "type": "object",
+      "required": ["valid"],
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "Whether the payload is valid"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Validation score (0-100)"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "errors": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of validation errors"
+            },
+            "warnings": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of validation warnings"
+            },
+            "suggestions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of improvement suggestions"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Summary of validation results"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationIssue"
+          },
+          "description": "List of validation issues found"
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["optimization", "best_practice", "security"],
+                "description": "Type of suggestion"
+              },
+              "message": {
+                "type": "string",
+                "description": "Suggestion message"
+              },
+              "template": {
+                "type": "string",
+                "description": "Template for implementing the suggestion"
+              }
+            },
+            "required": ["type", "message"],
+            "additionalProperties": false
+          },
+          "description": "List of improvement suggestions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CompletionItem": {
+      "type": "object",
+      "required": ["label", "insertText"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display label for the completion"
+        },
+        "insertText": {
+          "type": "string",
+          "description": "Text to insert when selected"
+        },
+        "detail": {
+          "type": "string",
+          "description": "Additional detail about the completion"
+        },
+        "documentation": {
+          "type": "string",
+          "description": "Documentation for the completion"
+        },
+        "kind": {
+          "$ref": "#/definitions/CompletionKind",
+          "description": "Type of completion item"
+        },
+        "sortText": {
+          "type": "string",
+          "description": "Sort order for the completion"
+        },
+        "filterText": {
+          "type": "string",
+          "description": "Text used for filtering completions"
+        },
+        "preselect": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this completion should be preselected"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SnippetFunction": {
+      "type": "object",
+      "required": ["name", "description", "syntax"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_.]*$",
+          "description": "Function name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Function description"
+        },
+        "syntax": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Function syntax template"
+        },
+        "category": {
+          "$ref": "#/definitions/SnippetCategory",
+          "description": "Function category"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "description": "Usage examples"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["string", "number", "boolean", "object", "array"]
+              },
+              "required": {
+                "type": "boolean",
+                "default": false
+              },
+              "description": {
+                "type": "string"
+              },
+              "default": {
+                "description": "Default parameter value"
+              }
+            },
+            "required": ["type"],
+            "additionalProperties": false
+          },
+          "description": "Parameter definitions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobOptions": {
+      "type": "object",
+      "properties": {
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Job priority (1=lowest, 10=highest)"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of retry attempts"
+        },
+        "timeout": {
+          "$ref": "#/definitions/Duration",
+          "description": "Job execution timeout"
+        },
+        "delaySeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delay before job execution in seconds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobSchedule": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ScheduleType",
+          "description": "Type of schedule"
+        },
+        "runAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Execution time for delayed jobs"
+        },
+        "cronExpression": {
+          "$ref": "#/definitions/CronExpression",
+          "description": "Cron expression for recurring jobs"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "UTC",
+          "description": "Timezone for schedule interpretation"
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "type": {"const": "delayed"},
+            "runAt": {"type": "string", "format": "date-time"}
+          },
+          "required": ["runAt"]
+        },
+        {
+          "properties": {
+            "type": {"const": "cron"},
+            "cronExpression": {"$ref": "#/definitions/CronExpression"}
+          },
+          "required": ["cronExpression"]
+        }
+      ]
+    },
+
+    "OperationConfirmation": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "enum": ["production", "staging", "development"],
+          "description": "Environment confirmation"
+        },
+        "acknowledged": {
+          "type": "boolean",
+          "description": "User acknowledgment of operation risks"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Reason for the operation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BatchVariable": {
+      "type": "object",
+      "properties": {
+        "counter": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "integer",
+              "default": 1,
+              "description": "Starting counter value"
+            },
+            "increment": {
+              "type": "integer",
+              "default": 1,
+              "description": "Counter increment per job"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Counter variable for batch jobs"
+        },
+        "random": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number",
+              "description": "Minimum random value"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum random value"
+            }
+          },
+          "required": ["min", "max"],
+          "additionalProperties": false,
+          "description": "Random value generation for batch jobs"
+        },
+        "sequence": {
+          "type": "object",
+          "properties": {
+            "values": {
+              "type": "array",
+              "items": {"type": ["string", "number", "boolean"]},
+              "description": "Sequence of values to cycle through"
+            }
+          },
+          "required": ["values"],
+          "additionalProperties": false,
+          "description": "Sequential value assignment for batch jobs"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SafetyIssue": {
+      "type": "object",
+      "required": ["type", "severity", "message"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/SafetyIssueType",
+          "description": "Type of safety issue"
+        },
+        "severity": {
+          "$ref": "#/definitions/SafetySeverity",
+          "description": "Issue severity level"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable issue description"
+        },
+        "recommendation": {
+          "type": "string",
+          "description": "Recommended action to address the issue"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location in payload where issue was detected"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional issue-specific details"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobHistoryEntry": {
+      "type": "object",
+      "required": ["id", "queueName", "status", "enqueuedAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "History entry identifier"
+        },
+        "jobId": {
+          "$ref": "#/definitions/JobId",
+          "description": "Associated job ID"
+        },
+        "templateId": {
+          "$ref": "#/definitions/TemplateId",
+          "description": "Template used (if any)"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Job payload (may be redacted)"
+        },
+        "queueName": {
+          "$ref": "#/definitions/QueueName",
+          "description": "Target queue name"
+        },
+        "status": {
+          "$ref": "#/definitions/JobStatus",
+          "description": "Job operation status"
+        },
+        "enqueuedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Enqueue timestamp"
+        },
+        "executedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Execution timestamp (if completed)"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Completion timestamp (if finished)"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if operation failed"
+        },
+        "options": {
+          "$ref": "#/definitions/JobOptions",
+          "description": "Job options used"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "userAgent": {
+              "type": "string",
+              "description": "Client user agent"
+            },
+            "ipAddress": {
+              "type": "string",
+              "description": "Client IP address"
+            },
+            "environment": {
+              "type": "string",
+              "description": "Environment where job was enqueued"
+            }
+          },
+          "additionalProperties": true,
+          "description": "Additional metadata about the job operation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Draft": {
+      "type": "object",
+      "required": ["draftId", "name", "payload", "createdAt"],
+      "properties": {
+        "draftId": {
+          "$ref": "#/definitions/DraftId",
+          "description": "Unique draft identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Draft name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional draft description"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Saved payload content"
+        },
+        "templateId": {
+          "$ref": "#/definitions/TemplateId",
+          "description": "Associated template ID (if based on template)"
+        },
+        "queueName": {
+          "$ref": "#/definitions/QueueName",
+          "description": "Target queue name (if specified)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Draft creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Draft categorization tags"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ProcessedSnippet": {
+      "type": "object",
+      "required": ["snippet", "value"],
+      "properties": {
+        "snippet": {
+          "type": "string",
+          "description": "Original snippet expression"
+        },
+        "value": {
+          "description": "Evaluated snippet value (any type)"
+        },
+        "position": {
+          "$ref": "#/definitions/Position",
+          "description": "Position in template where snippet was found"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if snippet evaluation failed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BatchResult": {
+      "type": "object",
+      "required": ["batchId", "count"],
+      "properties": {
+        "batchId": {
+          "$ref": "#/definitions/BatchId",
+          "description": "Unique batch operation identifier"
+        },
+        "jobIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobId"
+          },
+          "description": "List of successfully created job IDs"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs successfully created"
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs that failed to create"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Index of failed job in batch"
+              },
+              "error": {
+                "type": "string",
+                "description": "Error message for failed job"
+              }
+            },
+            "required": ["index", "error"],
+            "additionalProperties": false
+          },
+          "description": "Errors for failed job creations"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalRequested": {
+              "type": "integer",
+              "description": "Total number of jobs requested"
+            },
+            "successRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Success rate (0.0 to 1.0)"
+            },
+            "duration": {
+              "$ref": "#/definitions/Duration",
+              "description": "Total batch operation duration"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Summary statistics for the batch operation"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "oneOf": [
+    {
+      "$ref": "#/definitions/Template",
+      "title": "Template Schema"
+    },
+    {
+      "$ref": "#/definitions/ValidationResult",
+      "title": "Validation Result Schema"
+    },
+    {
+      "$ref": "#/definitions/SnippetFunction",
+      "title": "Snippet Function Schema"
+    },
+    {
+      "$ref": "#/definitions/JobHistoryEntry",
+      "title": "Job History Entry Schema"
+    },
+    {
+      "$ref": "#/definitions/Draft",
+      "title": "Draft Schema"
+    },
+    {
+      "$ref": "#/definitions/BatchResult",
+      "title": "Batch Result Schema"
+    }
+  ],
+
+  "examples": {
+    "template": {
+      "templateId": "user_signup_v2",
+      "name": "User Signup Template v2",
+      "category": "user",
+      "description": "Enhanced user registration template with comprehensive validation",
+      "version": "2.1.0",
+      "author": "dev_team",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T15:30:00Z",
+      "tags": ["user", "registration", "onboarding", "validation"],
+      "schema": {
+        "id": "user_signup_schema",
+        "version": "1.0"
+      },
+      "payload": {
+        "type": "user_signup",
+        "version": "2.1",
+        "user": {
+          "email": "{{input:email|required|format:email}}",
+          "name": "{{input:name|required|minLength:2}}",
+          "plan": "{{select:free,pro,premium|default:free}}",
+          "metadata": {
+            "source": "{{select:web,mobile,api|default:web}}",
+            "campaign": "{{input:campaign|optional}}"
+          }
+        },
+        "timestamp": "{{now()}}",
+        "request_id": "{{uuid()}}",
+        "environment": "{{env.ENVIRONMENT|default:development}}"
+      },
+      "variables": {
+        "email": {
+          "type": "string",
+          "description": "User's email address",
+          "validation": {
+            "required": true,
+            "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+          }
+        },
+        "name": {
+          "type": "string",
+          "description": "User's full name",
+          "validation": {
+            "required": true,
+            "minLength": 2,
+            "maxLength": 100
+          }
+        }
+      },
+      "defaults": {
+        "priority": 5,
+        "retryCount": 3,
+        "timeout": "30s"
+      },
+      "safety": {
+        "maxBatchSize": 1000,
+        "requireConfirmation": ["production"],
+        "redactFields": ["password", "secret", "token"]
+      }
+    },
+
+    "validationResult": {
+      "valid": false,
+      "score": 75,
+      "summary": {
+        "errors": 2,
+        "warnings": 1,
+        "suggestions": 3
+      },
+      "issues": [
+        {
+          "id": "err_001",
+          "severity": "error",
+          "type": "missing_required_field",
+          "path": "$.user.name",
+          "message": "Required property 'name' is missing",
+          "position": {"line": 3, "column": 15},
+          "suggestion": "Add required field 'name' to user object",
+          "fixable": true,
+          "autoFix": {
+            "action": "insert",
+            "content": "\"name\": \"{{input:name}}\","
+          }
+        },
+        {
+          "id": "warn_001",
+          "severity": "warning",
+          "type": "type_mismatch",
+          "path": "$.user.age",
+          "message": "Field 'age' should be number, not string",
+          "position": {"line": 5, "column": 10},
+          "suggestion": "Convert string to number or update schema"
+        }
+      ],
+      "suggestions": [
+        {
+          "type": "optimization",
+          "message": "Consider adding request_id for request tracing",
+          "template": "\"request_id\": \"{{uuid()}}\""
+        },
+        {
+          "type": "security",
+          "message": "Add timestamp to prevent replay attacks",
+          "template": "\"timestamp\": \"{{now()}}\""
+        }
+      ]
+    },
+
+    "snippetFunction": {
+      "name": "faker.email",
+      "description": "Generate a realistic fake email address",
+      "syntax": "{{faker.email([domain])}}",
+      "category": "faker",
+      "examples": [
+        "{{faker.email()}} -> john.doe@example.com",
+        "{{faker.email('company.com')}} -> jane.smith@company.com"
+      ],
+      "parameters": {
+        "domain": {
+          "type": "string",
+          "required": false,
+          "description": "Optional domain for the email address"
+        }
+      }
+    },
+
+    "jobHistoryEntry": {
+      "id": "hist_123456789",
+      "jobId": "job_abc123def456",
+      "templateId": "user_signup_v2",
+      "payload": {
+        "type": "user_signup",
+        "user": {
+          "email": "[REDACTED]",
+          "name": "John Doe",
+          "plan": "free"
+        },
+        "timestamp": "2024-01-15T15:45:30Z",
+        "request_id": "req_xyz789"
+      },
+      "queueName": "user_registration",
+      "status": "success",
+      "enqueuedAt": "2024-01-15T15:45:30Z",
+      "executedAt": "2024-01-15T15:45:35Z",
+      "completedAt": "2024-01-15T15:45:37Z",
+      "options": {
+        "priority": 5,
+        "retryCount": 3,
+        "timeout": "30s"
+      },
+      "metadata": {
+        "userAgent": "JSON-Studio/1.0",
+        "ipAddress": "192.168.1.100",
+        "environment": "production"
+      }
+    },
+
+    "draft": {
+      "draftId": "draft_work_in_progress_123",
+      "name": "Payment Processing Test",
+      "description": "Testing payment flow with various scenarios",
+      "payload": {
+        "type": "payment_process",
+        "payment": {
+          "amount": 9999,
+          "currency": "USD",
+          "method": "credit_card"
+        },
+        "customer": {
+          "id": "cust_test_123",
+          "email": "test@example.com"
+        },
+        "metadata": {
+          "test_scenario": "successful_payment"
+        }
+      },
+      "templateId": "payment_process",
+      "queueName": "payment_processing",
+      "createdAt": "2024-01-15T14:30:00Z",
+      "updatedAt": "2024-01-15T15:45:00Z",
+      "tags": ["payment", "testing", "wip"]
+    },
+
+    "batchResult": {
+      "batchId": "batch_user_signup_20240115",
+      "jobIds": [
+        "job_001", "job_002", "job_003", "job_004", "job_005"
+      ],
+      "count": 5,
+      "failed": 2,
+      "errors": [
+        {
+          "index": 3,
+          "error": "Invalid email format in payload"
+        },
+        {
+          "index": 7,
+          "error": "Missing required field: user.name"
+        }
+      ],
+      "summary": {
+        "totalRequested": 10,
+        "successRate": 0.7,
+        "duration": "2.5s"
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ package policysimulator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +58,20 @@ func TestCreateSimulation(t *testing.T) {
 	assert.Equal(t, "Test API Simulation", result.Name)
 	assert.Equal(t, "Testing via API", result.Description)
 	assert.NotEmpty(t, result.ID)
-	assert.Equal(t, StatusCompleted, result.Status)
+
+	// Wait for simulation to complete (it runs asynchronously)
+	for i := 0; i < 100; i++ {
+		time.Sleep(100 * time.Millisecond)
+		simResult, err := handlers.simulator.GetSimulation(result.ID)
+		if err == nil && simResult.Status == StatusCompleted {
+			break
+		}
+	}
+
+	// Get final result
+	finalResult, err := handlers.simulator.GetSimulation(result.ID)
+	require.NoError(t, err)
+	assert.Equal(t, StatusCompleted, finalResult.Status)
 }
 
 func TestCreateSimulationInvalidBody(t *testing.T) {
@@ -89,12 +103,12 @@ func TestListSimulations(t *testing.T) {
 		TrafficPattern: DefaultTrafficPattern(),
 	}
 
-	_, err := simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+	_, err := simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
 
 	req.Name = "Test Sim 2"
 	req.Description = "Second test"
-	_, err = simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+	_, err = simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
 
 	// Test listing without filters
@@ -126,7 +140,7 @@ func TestListSimulationsWithLimit(t *testing.T) {
 			TrafficPattern: DefaultTrafficPattern(),
 		}
 
-		_, err := simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+		_, err := simulator.RunSimulation(context.Background(), req)
 		require.NoError(t, err)
 	}
 
@@ -157,7 +171,7 @@ func TestGetSimulation(t *testing.T) {
 		TrafficPattern: DefaultTrafficPattern(),
 	}
 
-	result, err := simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+	result, err := simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
 
 	// Test getting the simulation
@@ -201,7 +215,7 @@ func TestCreatePolicyChange(t *testing.T) {
 	req := CreatePolicyChangeRequest{
 		Description: "Test policy change",
 		Changes: map[string]interface{}{
-			"max_retries":        5,
+			"max_retries":        float64(5), // JSON unmarshaling converts to float64
 			"max_rate_per_second": 200.0,
 		},
 	}
@@ -267,6 +281,9 @@ func TestApplyPolicyChange(t *testing.T) {
 	change, err := simulator.CreatePolicyChange("Test apply", changes, "test-user")
 	require.NoError(t, err)
 
+	// Manually approve the change for testing
+	simulator.changes[change.ID].Status = ChangeStatusApproved
+
 	// Apply the change
 	req := ApplyPolicyChangeRequest{
 		Reason: "Testing apply functionality",
@@ -325,6 +342,9 @@ func TestRollbackPolicyChange(t *testing.T) {
 
 	change, err := simulator.CreatePolicyChange("Test rollback", changes, "test-user")
 	require.NoError(t, err)
+
+	// Manually approve the change for testing
+	simulator.changes[change.ID].Status = ChangeStatusApproved
 
 	err = simulator.ApplyPolicyChange(change.ID, "admin-user")
 	require.NoError(t, err)
@@ -420,8 +440,17 @@ func TestGetSimulationCharts(t *testing.T) {
 		TrafficPattern: DefaultTrafficPattern(),
 	}
 
-	result, err := simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+	result, err := simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
+
+	// Wait for simulation to complete
+	for i := 0; i < 100; i++ {
+		time.Sleep(100 * time.Millisecond)
+		simResult, err := simulator.GetSimulation(result.ID)
+		if err == nil && simResult.Status == StatusCompleted {
+			break
+		}
+	}
 
 	// Get charts for the simulation
 	httpReq := httptest.NewRequest("GET", "/api/policy-simulator/simulations/"+result.ID+"/charts", nil)
@@ -457,7 +486,7 @@ func TestGetSimulationChartsNotCompleted(t *testing.T) {
 		TrafficPattern: DefaultTrafficPattern(),
 	}
 
-	result, err := simulator.RunSimulation(httptest.NewRequest("", "", nil).Context(), req)
+	result, err := simulator.RunSimulation(context.Background(), req)
 	require.NoError(t, err)
 
 	// Manually change status to running

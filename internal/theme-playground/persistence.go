@@ -153,6 +153,26 @@ func (pm *PersistenceManager) savePreferences() error {
 	return nil
 }
 
+// savePreferencesUnsafe saves theme preferences without acquiring a lock
+func (pm *PersistenceManager) savePreferencesUnsafe() error {
+	if pm.preferences == nil {
+		pm.preferences = pm.createDefaultPreferences()
+	}
+
+	pm.preferences.UpdatedAt = time.Now()
+
+	data, err := json.MarshalIndent(pm.preferences, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal preferences: %w", err)
+	}
+
+	if err := os.WriteFile(pm.prefsFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write preferences file: %w", err)
+	}
+
+	return nil
+}
+
 // GetPreferences returns a copy of current preferences
 func (pm *PersistenceManager) GetPreferences() *ThemePreferences {
 	pm.mu.RLock()
@@ -259,6 +279,35 @@ func (pm *PersistenceManager) SaveCustomTheme(theme *Theme) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
+	// Update timestamps
+	now := time.Now()
+	if theme.CreatedAt.IsZero() {
+		theme.CreatedAt = now
+	}
+	theme.UpdatedAt = now
+
+	// Save to disk
+	filename := sanitizeFilename(theme.Name) + ".json"
+	themePath := filepath.Join(pm.themesDir, filename)
+
+	data, err := json.MarshalIndent(theme, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal theme: %w", err)
+	}
+
+	if err := os.WriteFile(themePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write theme file: %w", err)
+	}
+
+	// Update in-memory cache
+	pm.customThemes[theme.Name] = theme
+
+	return nil
+}
+
+// saveCustomThemeUnsafe saves a custom theme without acquiring a lock
+// This method should only be called when the caller already holds the lock
+func (pm *PersistenceManager) saveCustomThemeUnsafe(theme *Theme) error {
 	// Update timestamps
 	now := time.Now()
 	if theme.CreatedAt.IsZero() {
@@ -447,7 +496,7 @@ func (pm *PersistenceManager) RestoreThemes(backupPath string, overwrite bool) e
 	// Restore preferences if provided
 	if backup.Preferences != nil && overwrite {
 		pm.preferences = backup.Preferences
-		if err := pm.savePreferences(); err != nil {
+		if err := pm.savePreferencesUnsafe(); err != nil {
 			return fmt.Errorf("failed to restore preferences: %w", err)
 		}
 	}
