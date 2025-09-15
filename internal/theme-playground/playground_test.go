@@ -5,12 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestNewPlaygroundModel(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	if model == nil {
@@ -35,7 +34,7 @@ func TestNewPlaygroundModel(t *testing.T) {
 }
 
 func TestPlaygroundModel_Init(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	cmd := model.Init()
@@ -45,7 +44,7 @@ func TestPlaygroundModel_Init(t *testing.T) {
 }
 
 func TestPlaygroundModel_UpdateWindowSize(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	msg := tea.WindowSizeMsg{Width: 100, Height: 50}
@@ -66,7 +65,7 @@ func TestPlaygroundModel_UpdateWindowSize(t *testing.T) {
 }
 
 func TestPlaygroundModel_KeyHandling(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Set window size to make model ready
@@ -76,23 +75,23 @@ func TestPlaygroundModel_KeyHandling(t *testing.T) {
 
 	// Test help toggle
 	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}}
-	updatedModel, _ := model.Update(keyMsg)
+	updatedModel2, _ := model.Update(keyMsg)
 
-	m := updatedModel.(*PlaygroundModel)
+	m := updatedModel2.(*PlaygroundModel)
 	if !m.showHelp {
 		t.Error("Help should be shown after pressing '?'")
 	}
 
 	// Toggle help again
-	updatedModel, _ = m.Update(keyMsg)
-	m = updatedModel.(*PlaygroundModel)
+	updatedModel3, _ := m.Update(keyMsg)
+	m = updatedModel3.(*PlaygroundModel)
 	if m.showHelp {
 		t.Error("Help should be hidden after pressing '?' again")
 	}
 }
 
 func TestPlaygroundModel_View(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Test view when not ready
@@ -122,7 +121,7 @@ func TestPlaygroundModel_View(t *testing.T) {
 }
 
 func TestPlaygroundModel_PreviewMode(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Set window size to make model ready
@@ -130,7 +129,7 @@ func TestPlaygroundModel_PreviewMode(t *testing.T) {
 	updatedModel, _ := model.Update(msg)
 	model = updatedModel.(*PlaygroundModel)
 
-	m := model.(*PlaygroundModel)
+	m := model
 
 	// Enable preview mode manually for testing
 	m.previewMode = true
@@ -147,7 +146,7 @@ func TestPlaygroundModel_PreviewMode(t *testing.T) {
 }
 
 func TestPlaygroundModel_ThemePreview(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Set window size to make model ready
@@ -155,7 +154,7 @@ func TestPlaygroundModel_ThemePreview(t *testing.T) {
 	updatedModel, _ := model.Update(msg)
 	model = updatedModel.(*PlaygroundModel)
 
-	m := model.(*PlaygroundModel)
+	m := model
 
 	// Test theme preview rendering
 	preview := m.renderThemePreview(ThemeTokyoNight)
@@ -179,7 +178,7 @@ func TestPlaygroundModel_ThemePreview(t *testing.T) {
 }
 
 func TestThemeSelector(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	// Test compact selector
 	compactSelector := ThemeSelector(tm, true)
@@ -209,7 +208,7 @@ func TestThemeSelector(t *testing.T) {
 }
 
 func TestQuickThemeToggle(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	toggle := NewQuickThemeToggle(tm)
 
 	if toggle == nil {
@@ -244,7 +243,7 @@ func TestQuickThemeToggle(t *testing.T) {
 }
 
 func TestQuickThemeToggle_GetKeyHelp(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	toggle := NewQuickThemeToggle(tm)
 
 	help := toggle.GetKeyHelp()
@@ -301,7 +300,7 @@ func TestDefaultKeyMap(t *testing.T) {
 }
 
 func TestPlaygroundModel_UpdateTable(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Get initial row count
@@ -349,7 +348,7 @@ func TestPlaygroundModel_UpdateTable(t *testing.T) {
 }
 
 func TestPlaygroundModel_ErrorHandling(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Set window size to make model ready
@@ -357,7 +356,7 @@ func TestPlaygroundModel_ErrorHandling(t *testing.T) {
 	updatedModel, _ := model.Update(msg)
 	model = updatedModel.(*PlaygroundModel)
 
-	m := model.(*PlaygroundModel)
+	m := model
 
 	// Simulate error by trying to set invalid theme
 	m.selectedTheme = "nonexistent-theme"
@@ -395,7 +394,7 @@ func TestPreviewThemeMsg(t *testing.T) {
 }
 
 func BenchmarkPlaygroundModel_View(b *testing.B) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(b.TempDir())
 	model := NewPlaygroundModel(tm)
 
 	// Set window size to make model ready
@@ -410,7 +409,7 @@ func BenchmarkPlaygroundModel_View(b *testing.B) {
 }
 
 func BenchmarkThemeSelector(b *testing.B) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(b.TempDir())
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -419,7 +418,7 @@ func BenchmarkThemeSelector(b *testing.B) {
 }
 
 func BenchmarkQuickThemeToggle_HandleKey(b *testing.B) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(b.TempDir())
 	toggle := NewQuickThemeToggle(tm)
 	b.ResetTimer()
 

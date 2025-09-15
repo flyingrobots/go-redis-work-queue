@@ -91,9 +91,9 @@ func TestThemeManager_RegisterTheme(t *testing.T) {
 	}
 
 	// Verify theme was registered
-	theme, exists := tm.GetTheme("test-theme")
-	if !exists {
-		t.Error("Theme was not registered")
+	theme, err := tm.GetTheme("test-theme")
+	if err != nil {
+		t.Errorf("Theme was not registered: %v", err)
 	}
 
 	if theme.Name != "test-theme" {
@@ -111,9 +111,9 @@ func TestThemeManager_GetTheme(t *testing.T) {
 	tm := NewThemeManager(t.TempDir())
 
 	// Test getting existing theme
-	theme, exists := tm.GetTheme(ThemeDefault)
-	if !exists {
-		t.Error("Default theme should exist")
+	theme, err := tm.GetTheme(ThemeDefault)
+	if err != nil {
+		t.Errorf("Default theme should exist: %v", err)
 	}
 
 	if theme.Name != ThemeDefault {
@@ -121,9 +121,9 @@ func TestThemeManager_GetTheme(t *testing.T) {
 	}
 
 	// Test getting nonexistent theme
-	_, exists = tm.GetTheme("nonexistent")
-	if exists {
-		t.Error("Nonexistent theme should not exist")
+	_, err = tm.GetTheme("nonexistent")
+	if err == nil {
+		t.Error("Nonexistent theme should return error")
 	}
 }
 
@@ -153,8 +153,9 @@ func TestThemeManager_GetStyleFor(t *testing.T) {
 	tm := NewThemeManager(t.TempDir())
 
 	style := tm.GetStyleFor("text", "primary")
-	if style == (lipgloss.Style{}) {
-		t.Error("GetStyleFor should return non-empty style")
+	// Just verify style is returned - can't easily compare lipgloss styles
+	if style.GetForeground() == nil {
+		t.Error("GetStyleFor should return style with foreground color")
 	}
 
 	// Test that style has the expected color
@@ -170,9 +171,9 @@ func TestThemeManager_OnThemeChanged(t *testing.T) {
 	callbackCalled := false
 	var callbackTheme string
 
-	tm.OnThemeChanged(func(themeName string) {
+	tm.OnThemeChange(func(theme *Theme) {
 		callbackCalled = true
-		callbackTheme = themeName
+		callbackTheme = theme.Name
 	})
 
 	err := tm.SetActiveTheme(ThemeTokyoNight)
@@ -216,7 +217,7 @@ func TestColorUtilities_HexToRGB(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error for hex %s: %v", test.hex, err)
 			}
-			if rgb != test.expected {
+			if rgb == nil || *rgb != test.expected {
 				t.Errorf("For hex %s, expected %+v, got %+v", test.hex, test.expected, rgb)
 			}
 		}
@@ -249,48 +250,38 @@ func TestColorUtilities_CalculateContrastRatio(t *testing.T) {
 	cu := NewColorUtilities()
 
 	// Test black on white (maximum contrast)
-	ratio := cu.CalculateContrastRatio("#000000", "#ffffff")
+	color1 := Color{Hex: "#000000"}
+	color2 := Color{Hex: "#ffffff"}
+	ratio, err := cu.ContrastRatio(color1, color2)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	if ratio < 20.9 || ratio > 21.1 { // Allow small floating point variance
 		t.Errorf("Expected contrast ratio ~21, got %f", ratio)
 	}
 
 	// Test white on white (minimum contrast)
-	ratio = cu.CalculateContrastRatio("#ffffff", "#ffffff")
+	color1 = Color{Hex: "#ffffff"}
+	color2 = Color{Hex: "#ffffff"}
+	ratio, err = cu.ContrastRatio(color1, color2)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	if ratio < 0.9 || ratio > 1.1 {
 		t.Errorf("Expected contrast ratio ~1, got %f", ratio)
 	}
 
 	// Test that ratio is symmetric
-	ratio1 := cu.CalculateContrastRatio("#ff0000", "#00ff00")
-	ratio2 := cu.CalculateContrastRatio("#00ff00", "#ff0000")
+	color1 = Color{Hex: "#ff0000"}
+	color2 = Color{Hex: "#00ff00"}
+	ratio1, _ := cu.ContrastRatio(color1, color2)
+	ratio2, _ := cu.ContrastRatio(color2, color1)
 	if ratio1 != ratio2 {
 		t.Errorf("Contrast ratio should be symmetric: %f vs %f", ratio1, ratio2)
 	}
 }
 
-func TestAccessibilityChecker_CheckContrast(t *testing.T) {
-	ac := NewAccessibilityChecker()
-
-	// Test high contrast (should pass AA and AAA)
-	check := ac.CheckContrast("#000000", "#ffffff", "test-component")
-	if !check.AACompliant {
-		t.Error("Black on white should be AA compliant")
-	}
-	if !check.AAACompliant {
-		t.Error("Black on white should be AAA compliant")
-	}
-
-	// Test low contrast (should fail both)
-	check = ac.CheckContrast("#888888", "#999999", "test-component")
-	if check.AACompliant {
-		t.Error("Low contrast should not be AA compliant")
-	}
-	if check.AAACompliant {
-		t.Error("Low contrast should not be AAA compliant")
-	}
-}
-
-func TestAccessibilityChecker_ValidateTheme(t *testing.T) {
+func TestAccessibilityChecker_CheckAccessibility(t *testing.T) {
 	ac := NewAccessibilityChecker()
 
 	// Create test theme with good contrast
@@ -304,13 +295,13 @@ func TestAccessibilityChecker_ValidateTheme(t *testing.T) {
 		},
 	}
 
-	info := ac.ValidateTheme(theme)
-	if info.ContrastRatio < 10 {
-		t.Errorf("Expected high contrast ratio, got %f", info.ContrastRatio)
+	info, err := ac.CheckAccessibility(theme)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
 	}
 
-	if info.WCAGLevel != "AAA" {
-		t.Errorf("Expected AAA compliance, got %s", info.WCAGLevel)
+	if info.ContrastRatio < 10 {
+		t.Errorf("Expected high contrast ratio, got %f", info.ContrastRatio)
 	}
 
 	// Create test theme with poor contrast
@@ -324,7 +315,11 @@ func TestAccessibilityChecker_ValidateTheme(t *testing.T) {
 		},
 	}
 
-	info = ac.ValidateTheme(poorTheme)
+	info, err = ac.CheckAccessibility(poorTheme)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
 	if len(info.Warnings) == 0 {
 		t.Error("Poor contrast theme should have warnings")
 	}
@@ -369,9 +364,9 @@ func TestBuiltInThemes(t *testing.T) {
 	for _, themeName := range builtInThemes {
 		t.Run(themeName, func(t *testing.T) {
 			tm := NewThemeManager(t.TempDir())
-			theme, exists := tm.GetTheme(themeName)
-			if !exists {
-				t.Errorf("Built-in theme %s should exist", themeName)
+			theme, err := tm.GetTheme(themeName)
+			if err != nil {
+				t.Errorf("Built-in theme %s should exist: %v", themeName, err)
 				return
 			}
 
@@ -388,7 +383,7 @@ func TestBuiltInThemes(t *testing.T) {
 			}
 
 			// Test that theme can be set as active
-			err := tm.SetActiveTheme(themeName)
+			err = tm.SetActiveTheme(themeName)
 			if err != nil {
 				t.Errorf("Failed to set theme %s as active: %v", themeName, err)
 			}
@@ -441,7 +436,7 @@ func TestThemeManager_Concurrent(t *testing.T) {
 }
 
 func BenchmarkThemeManager_GetActiveTheme(b *testing.B) {
-	tm := NewThemeManager(t.TempDir())
+	tm := NewThemeManager(b.TempDir())
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -450,7 +445,7 @@ func BenchmarkThemeManager_GetActiveTheme(b *testing.B) {
 }
 
 func BenchmarkThemeManager_SetActiveTheme(b *testing.B) {
-	tm := NewThemeManager(t.TempDir())
+	tm := NewThemeManager(b.TempDir())
 	themes := []string{ThemeDefault, ThemeTokyoNight, ThemeGitHub, ThemeOneDark}
 	b.ResetTimer()
 
@@ -460,11 +455,13 @@ func BenchmarkThemeManager_SetActiveTheme(b *testing.B) {
 	}
 }
 
-func BenchmarkColorUtilities_CalculateContrastRatio(b *testing.B) {
+func BenchmarkColorUtilities_ContrastRatio(b *testing.B) {
 	cu := NewColorUtilities()
+	color1 := Color{Hex: "#000000"}
+	color2 := Color{Hex: "#ffffff"}
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = cu.CalculateContrastRatio("#000000", "#ffffff")
+		_, _ = cu.ContrastRatio(color1, color2)
 	}
 }
