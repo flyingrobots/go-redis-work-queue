@@ -1,0 +1,1383 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workqueue.io/schemas/f012-kubernetes-operator.json",
+  "title": "Kubernetes Operator Data Models",
+  "description": "JSON Schema definitions for the Go Redis Work Queue Kubernetes Operator CRDs and associated data structures",
+  "type": "object",
+  "definitions": {
+    "Queue": {
+      "type": "object",
+      "title": "Queue Custom Resource",
+      "description": "Defines a work queue with its configuration, policies, and operational parameters",
+      "required": ["apiVersion", "kind", "metadata", "spec"],
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "workqueue.io/v1",
+          "description": "API version for the Queue resource"
+        },
+        "kind": {
+          "type": "string",
+          "const": "Queue",
+          "description": "Resource type identifier"
+        },
+        "metadata": {
+          "$ref": "#/definitions/ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/QueueSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/QueueStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueSpec": {
+      "type": "object",
+      "title": "Queue Specification",
+      "description": "Desired state specification for a work queue",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_]*[a-zA-Z0-9])?$",
+          "maxLength": 255,
+          "description": "Queue name in Redis, must be unique within namespace"
+        },
+        "priorities": {
+          "type": "array",
+          "description": "Priority levels supported by this queue",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "default": [0],
+          "uniqueItems": true,
+          "maxItems": 10
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/RateLimit",
+          "description": "Rate limiting configuration for the queue"
+        },
+        "deadLetterQueue": {
+          "$ref": "#/definitions/DeadLetterQueueConfig",
+          "description": "Dead letter queue configuration for failed messages"
+        },
+        "retention": {
+          "$ref": "#/definitions/RetentionPolicy",
+          "description": "Message retention and cleanup policies"
+        },
+        "monitoring": {
+          "$ref": "#/definitions/MonitoringConfig",
+          "description": "Monitoring and observability configuration"
+        },
+        "redis": {
+          "$ref": "#/definitions/RedisConfig",
+          "description": "Redis connection and configuration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueStatus": {
+      "type": "object",
+      "title": "Queue Status",
+      "description": "Current operational status of the queue",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["Pending", "Ready", "Error", "Terminating"],
+          "description": "Current lifecycle phase of the queue"
+        },
+        "conditions": {
+          "type": "array",
+          "description": "Detailed conditions and status information",
+          "items": {
+            "$ref": "#/definitions/Condition"
+          }
+        },
+        "metrics": {
+          "$ref": "#/definitions/QueueMetrics",
+          "description": "Current queue performance metrics"
+        },
+        "lastReconcileTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last reconciliation attempt"
+        },
+        "redisConfiguration": {
+          "type": "object",
+          "description": "Applied Redis configuration status",
+          "properties": {
+            "keyPrefix": {
+              "type": "string"
+            },
+            "connectionStatus": {
+              "type": "string",
+              "enum": ["Connected", "Connecting", "Disconnected", "Error"]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkerPool": {
+      "type": "object",
+      "title": "WorkerPool Custom Resource",
+      "description": "Defines a pool of workers that process jobs from specified queues",
+      "required": ["apiVersion", "kind", "metadata", "spec"],
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "workqueue.io/v1",
+          "description": "API version for the WorkerPool resource"
+        },
+        "kind": {
+          "type": "string",
+          "const": "WorkerPool",
+          "description": "Resource type identifier"
+        },
+        "metadata": {
+          "$ref": "#/definitions/ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/WorkerPoolSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/WorkerPoolStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkerPoolSpec": {
+      "type": "object",
+      "title": "WorkerPool Specification",
+      "description": "Desired state specification for a worker pool",
+      "required": ["queues", "template"],
+      "properties": {
+        "queues": {
+          "type": "array",
+          "description": "List of queue names this worker pool will process",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_]*[a-zA-Z0-9])?$"
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        },
+        "template": {
+          "$ref": "#/definitions/PodTemplateSpec",
+          "description": "Pod template for worker instances"
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Desired number of worker replicas",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 1
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/AutoscalingSpec",
+          "description": "Horizontal Pod Autoscaler configuration"
+        },
+        "updateStrategy": {
+          "$ref": "#/definitions/UpdateStrategy",
+          "description": "Strategy for updating worker pods"
+        },
+        "drainPolicy": {
+          "$ref": "#/definitions/DrainPolicy",
+          "description": "Policy for gracefully draining workers"
+        },
+        "concurrency": {
+          "type": "object",
+          "description": "Worker concurrency and parallelism settings",
+          "properties": {
+            "maxConcurrentJobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 1,
+              "description": "Maximum concurrent jobs per worker"
+            },
+            "maxInFlightJobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 10,
+              "description": "Maximum in-flight jobs across all workers"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkerPoolStatus": {
+      "type": "object",
+      "title": "WorkerPool Status",
+      "description": "Current operational status of the worker pool",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["Pending", "Scaling", "Ready", "Updating", "Draining", "Error"],
+          "description": "Current lifecycle phase of the worker pool"
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Current number of replicas",
+          "minimum": 0
+        },
+        "readyReplicas": {
+          "type": "integer",
+          "description": "Number of replicas that are ready and serving",
+          "minimum": 0
+        },
+        "updatedReplicas": {
+          "type": "integer",
+          "description": "Number of replicas updated to the latest spec",
+          "minimum": 0
+        },
+        "availableReplicas": {
+          "type": "integer",
+          "description": "Number of replicas available for processing",
+          "minimum": 0
+        },
+        "conditions": {
+          "type": "array",
+          "description": "Detailed conditions and status information",
+          "items": {
+            "$ref": "#/definitions/Condition"
+          }
+        },
+        "autoscalingStatus": {
+          "$ref": "#/definitions/AutoscalingStatus",
+          "description": "Current autoscaling state and metrics"
+        },
+        "lastScaleTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last scaling operation"
+        },
+        "deployment": {
+          "type": "object",
+          "description": "Status of the underlying Kubernetes Deployment",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "generation": {
+              "type": "integer"
+            },
+            "observedGeneration": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Policy": {
+      "type": "object",
+      "title": "Policy Custom Resource",
+      "description": "Defines global policies and configuration that apply across queues and worker pools",
+      "required": ["apiVersion", "kind", "metadata", "spec"],
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "workqueue.io/v1",
+          "description": "API version for the Policy resource"
+        },
+        "kind": {
+          "type": "string",
+          "const": "Policy",
+          "description": "Resource type identifier"
+        },
+        "metadata": {
+          "$ref": "#/definitions/ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/PolicySpec"
+        },
+        "status": {
+          "$ref": "#/definitions/PolicyStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolicySpec": {
+      "type": "object",
+      "title": "Policy Specification",
+      "description": "Global policy configuration and defaults",
+      "properties": {
+        "circuitBreaker": {
+          "$ref": "#/definitions/CircuitBreakerConfig",
+          "description": "Circuit breaker configuration for failure handling"
+        },
+        "retry": {
+          "$ref": "#/definitions/RetryConfig",
+          "description": "Default retry behavior for failed jobs"
+        },
+        "timeout": {
+          "$ref": "#/definitions/TimeoutConfig",
+          "description": "Timeout configuration for job processing"
+        },
+        "security": {
+          "$ref": "#/definitions/SecurityConfig",
+          "description": "Security policies and authentication settings"
+        },
+        "monitoring": {
+          "$ref": "#/definitions/MonitoringConfig",
+          "description": "Global monitoring and observability settings"
+        },
+        "resourceLimits": {
+          "type": "object",
+          "description": "Global resource limits and quotas",
+          "properties": {
+            "maxQueuesPerNamespace": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            },
+            "maxWorkerPoolsPerNamespace": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "maxReplicasPerWorkerPool": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolicyStatus": {
+      "type": "object",
+      "title": "Policy Status",
+      "description": "Current status of policy application",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["Active", "Error"],
+          "description": "Current phase of the policy"
+        },
+        "appliedToQueues": {
+          "type": "array",
+          "description": "List of queues this policy is applied to",
+          "items": {
+            "type": "string"
+          }
+        },
+        "appliedToWorkerPools": {
+          "type": "array",
+          "description": "List of worker pools this policy is applied to",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "description": "Policy application conditions",
+          "items": {
+            "$ref": "#/definitions/Condition"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RateLimit": {
+      "type": "object",
+      "title": "Rate Limit Configuration",
+      "description": "Configuration for rate limiting job processing",
+      "properties": {
+        "requestsPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum requests per second allowed"
+        },
+        "burstSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum burst size for rate limiting"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["token_bucket", "sliding_window", "fixed_window"],
+          "default": "token_bucket",
+          "description": "Rate limiting algorithm to use"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeadLetterQueueConfig": {
+      "type": "object",
+      "title": "Dead Letter Queue Configuration",
+      "description": "Configuration for handling failed messages",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether dead letter queue is enabled"
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 3,
+          "description": "Maximum number of retry attempts before moving to DLQ"
+        },
+        "retryDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "1m",
+          "description": "Delay between retry attempts"
+        },
+        "retryBackoff": {
+          "type": "string",
+          "enum": ["exponential", "linear", "fixed"],
+          "default": "exponential",
+          "description": "Backoff strategy for retries"
+        },
+        "dlqName": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_]*[a-zA-Z0-9])?$",
+          "description": "Custom name for the dead letter queue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetentionPolicy": {
+      "type": "object",
+      "title": "Retention Policy",
+      "description": "Configuration for message and data retention",
+      "properties": {
+        "maxAge": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h|d)$",
+          "default": "7d",
+          "description": "Maximum age for messages before cleanup"
+        },
+        "maxSize": {
+          "type": "string",
+          "pattern": "^[0-9]+[KMGT]?B$",
+          "default": "1GB",
+          "description": "Maximum storage size before cleanup"
+        },
+        "compactionEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to enable log compaction"
+        },
+        "cleanupSchedule": {
+          "type": "string",
+          "pattern": "^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every [0-9]+(ns|us|탎|ms|s|m|h))|([0-9\\*\\-,/]+\\s+[0-9\\*\\-,/]+\\s+[0-9\\*\\-,/]+\\s+[0-9\\*\\-,/]+\\s+[0-9\\*\\-,/]+)$",
+          "default": "@daily",
+          "description": "Cron schedule for cleanup operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AutoscalingSpec": {
+      "type": "object",
+      "title": "Autoscaling Specification",
+      "description": "Configuration for horizontal pod autoscaling",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether autoscaling is enabled"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 1,
+          "description": "Minimum number of replicas"
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Maximum number of replicas"
+        },
+        "targetBacklogSize": {
+          "type": "integer",
+          "description": "Target queue backlog size per replica",
+          "minimum": 1,
+          "default": 10
+        },
+        "targetLatencyP95": {
+          "type": "string",
+          "description": "Target 95th percentile latency",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s)$",
+          "default": "100ms"
+        },
+        "scaleUpCooldown": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "3m",
+          "description": "Cooldown period after scaling up"
+        },
+        "scaleDownCooldown": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "5m",
+          "description": "Cooldown period after scaling down"
+        },
+        "metrics": {
+          "type": "array",
+          "description": "Custom metrics for autoscaling decisions",
+          "items": {
+            "$ref": "#/definitions/AutoscalingMetric"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AutoscalingMetric": {
+      "type": "object",
+      "title": "Autoscaling Metric",
+      "description": "Configuration for a custom autoscaling metric",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Metric name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Resource", "Pods", "Object", "External"],
+          "description": "Type of metric"
+        },
+        "target": {
+          "type": "object",
+          "description": "Target value for the metric",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Utilization", "Value", "AverageValue"]
+            },
+            "value": {
+              "type": "string",
+              "description": "Target value or utilization percentage"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateStrategy": {
+      "type": "object",
+      "title": "Update Strategy",
+      "description": "Strategy for updating worker pods",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["RollingUpdate", "Recreate"],
+          "default": "RollingUpdate",
+          "description": "Type of update strategy"
+        },
+        "rollingUpdate": {
+          "type": "object",
+          "description": "Rolling update configuration",
+          "properties": {
+            "maxUnavailable": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]+%$"
+                }
+              ],
+              "default": "25%",
+              "description": "Maximum number of pods that can be unavailable during update"
+            },
+            "maxSurge": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]+%$"
+                }
+              ],
+              "default": "25%",
+              "description": "Maximum number of pods that can be created above desired number"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "DrainPolicy": {
+      "type": "object",
+      "title": "Drain Policy",
+      "description": "Configuration for graceful worker draining",
+      "properties": {
+        "gracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600,
+          "default": 300,
+          "description": "Grace period for draining in seconds"
+        },
+        "forceAfter": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "10m",
+          "description": "Force termination after this duration"
+        },
+        "drainStrategy": {
+          "type": "string",
+          "enum": ["finish_current", "abort_all", "move_to_dlq"],
+          "default": "finish_current",
+          "description": "Strategy for handling in-progress jobs during drain"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AutoscalingStatus": {
+      "type": "object",
+      "title": "Autoscaling Status",
+      "description": "Current status of autoscaling operations",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether autoscaling is currently enabled"
+        },
+        "lastScaleTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last scaling operation"
+        },
+        "lastScaleReason": {
+          "type": "string",
+          "description": "Reason for the last scaling operation"
+        },
+        "currentMetrics": {
+          "type": "array",
+          "description": "Current metric values used for scaling decisions",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        "targetReplicas": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Target number of replicas based on current metrics"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueMetrics": {
+      "type": "object",
+      "title": "Queue Metrics",
+      "description": "Performance and operational metrics for a queue",
+      "properties": {
+        "backlogSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current number of pending messages in the queue"
+        },
+        "throughputPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Messages processed per second"
+        },
+        "averageLatency": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s)$",
+          "description": "Average processing latency"
+        },
+        "p95Latency": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s)$",
+          "description": "95th percentile processing latency"
+        },
+        "p99Latency": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s)$",
+          "description": "99th percentile processing latency"
+        },
+        "errorRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Error rate as percentage"
+        },
+        "deadLetterQueueSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of messages in dead letter queue"
+        },
+        "totalProcessed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of messages processed"
+        },
+        "totalErrors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of processing errors"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CircuitBreakerConfig": {
+      "type": "object",
+      "title": "Circuit Breaker Configuration",
+      "description": "Configuration for circuit breaker pattern implementation",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether circuit breaker is enabled"
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5,
+          "description": "Number of failures before opening circuit"
+        },
+        "recoveryTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "60s",
+          "description": "Time to wait before attempting recovery"
+        },
+        "halfOpenMaxCalls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 3,
+          "description": "Maximum calls allowed in half-open state"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetryConfig": {
+      "type": "object",
+      "title": "Retry Configuration",
+      "description": "Configuration for retry behavior on failures",
+      "properties": {
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum number of retry attempts"
+        },
+        "backoffStrategy": {
+          "type": "string",
+          "enum": ["exponential", "linear", "fixed"],
+          "default": "exponential",
+          "description": "Backoff strategy for retry delays"
+        },
+        "initialDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "1s",
+          "description": "Initial delay before first retry"
+        },
+        "maxDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "30s",
+          "description": "Maximum delay between retries"
+        },
+        "jitter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to add random jitter to delays"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimeoutConfig": {
+      "type": "object",
+      "title": "Timeout Configuration",
+      "description": "Configuration for various timeout values",
+      "properties": {
+        "jobTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "5m",
+          "description": "Maximum time allowed for job processing"
+        },
+        "shutdownTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "30s",
+          "description": "Maximum time to wait for graceful shutdown"
+        },
+        "healthCheckTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+          "default": "10s",
+          "description": "Timeout for health check operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityConfig": {
+      "type": "object",
+      "title": "Security Configuration",
+      "description": "Security policies and authentication settings",
+      "properties": {
+        "rbacEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether RBAC is enabled"
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod security context settings",
+          "properties": {
+            "runAsNonRoot": {
+              "type": "boolean",
+              "default": true
+            },
+            "runAsUser": {
+              "type": "integer",
+              "minimum": 1000,
+              "default": 1000
+            },
+            "runAsGroup": {
+              "type": "integer",
+              "minimum": 1000,
+              "default": 1000
+            },
+            "fsGroup": {
+              "type": "integer",
+              "minimum": 1000,
+              "default": 2000
+            },
+            "seccompProfile": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["RuntimeDefault", "Localhost", "Unconfined"]
+                }
+              }
+            }
+          }
+        },
+        "networkPolicies": {
+          "type": "object",
+          "description": "Network policy configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "denyAll": {
+              "type": "boolean",
+              "default": false
+            },
+            "allowedNamespaces": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "MonitoringConfig": {
+      "type": "object",
+      "title": "Monitoring Configuration",
+      "description": "Configuration for monitoring and observability",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether monitoring is enabled"
+        },
+        "prometheusEndpoint": {
+          "type": "string",
+          "default": "/metrics",
+          "description": "Endpoint path for Prometheus metrics"
+        },
+        "metricsPort": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 8080,
+          "description": "Port for metrics endpoint"
+        },
+        "tracingEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether distributed tracing is enabled"
+        },
+        "logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Logging level"
+        },
+        "serviceMonitor": {
+          "type": "object",
+          "description": "Prometheus ServiceMonitor configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^[0-9]+(ns|us|탎|ms|s|m|h)$",
+              "default": "30s"
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RedisConfig": {
+      "type": "object",
+      "title": "Redis Configuration",
+      "description": "Configuration for Redis connection and settings",
+      "properties": {
+        "connectionString": {
+          "type": "string",
+          "description": "Redis connection string (prefer secretRef for security)"
+        },
+        "secretRef": {
+          "type": "object",
+          "description": "Reference to secret containing Redis credentials",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the secret"
+            },
+            "key": {
+              "type": "string",
+              "default": "redis-url",
+              "description": "Key within the secret"
+            }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS configuration for Redis connection",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "secretRef": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "certKey": {
+                  "type": "string",
+                  "default": "tls.crt"
+                },
+                "keyKey": {
+                  "type": "string",
+                  "default": "tls.key"
+                },
+                "caKey": {
+                  "type": "string",
+                  "default": "ca.crt"
+                }
+              }
+            },
+            "insecureSkipVerify": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "poolSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Redis connection pool size"
+        },
+        "keyPrefix": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_]*[a-zA-Z0-9])?$",
+          "description": "Prefix for Redis keys"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectMeta": {
+      "type": "object",
+      "title": "Object Metadata",
+      "description": "Standard Kubernetes object metadata",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Name of the resource"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Namespace of the resource"
+        },
+        "labels": {
+          "type": "object",
+          "description": "Labels attached to the resource",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$",
+            "maxLength": 63
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations attached to the resource",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "creationTimestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "generation": {
+          "type": "integer",
+          "description": "Generation number for this resource"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier for this resource"
+        },
+        "resourceVersion": {
+          "type": "string",
+          "description": "Resource version for optimistic concurrency"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Condition": {
+      "type": "object",
+      "title": "Condition",
+      "description": "Standard Kubernetes condition type",
+      "required": ["type", "status"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of condition"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["True", "False", "Unknown"],
+          "description": "Status of the condition"
+        },
+        "lastTransitionTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the condition transitioned"
+        },
+        "lastUpdateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the condition was updated"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for the condition"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human readable message about the condition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PodTemplateSpec": {
+      "type": "object",
+      "title": "Pod Template Specification",
+      "description": "Template specification for worker pods",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Pod metadata template",
+          "properties": {
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "description": "Pod specification template",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "description": "List of containers in the pod",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/Container"
+              }
+            },
+            "restartPolicy": {
+              "type": "string",
+              "enum": ["Always", "OnFailure", "Never"],
+              "default": "Always"
+            },
+            "terminationGracePeriodSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 30
+            },
+            "serviceAccountName": {
+              "type": "string",
+              "description": "Service account for the pod"
+            },
+            "securityContext": {
+              "$ref": "#/definitions/SecurityConfig/properties/podSecurityContext"
+            },
+            "nodeSelector": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "tolerations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {"type": "string"},
+                  "operator": {"type": "string"},
+                  "value": {"type": "string"},
+                  "effect": {"type": "string"}
+                }
+              }
+            },
+            "affinity": {
+              "type": "object",
+              "description": "Pod affinity and anti-affinity rules"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Container": {
+      "type": "object",
+      "title": "Container Specification",
+      "description": "Container specification for worker pods",
+      "required": ["name", "image"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the container"
+        },
+        "image": {
+          "type": "string",
+          "description": "Container image"
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "enum": ["Always", "Never", "IfNotPresent"],
+          "default": "IfNotPresent"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "array",
+          "description": "Environment variables",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "valueFrom": {
+                "type": "object",
+                "properties": {
+                  "secretKeyRef": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "key": {"type": "string"}
+                    }
+                  },
+                  "configMapKeyRef": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "key": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource requirements and limits",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "description": "Resource requests",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[0-9]+(m|Ki|Mi|Gi|Ti|Pi|Ei)?$"
+              }
+            },
+            "limits": {
+              "type": "object",
+              "description": "Resource limits",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[0-9]+(m|Ki|Mi|Gi|Ti|Pi|Ei)?$"
+              }
+            }
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "containerPort": {"type": "integer"},
+              "protocol": {"type": "string", "enum": ["TCP", "UDP"]}
+            }
+          }
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/Probe"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/Probe"
+        },
+        "startupProbe": {
+          "$ref": "#/definitions/Probe"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Probe": {
+      "type": "object",
+      "title": "Health Probe Configuration",
+      "description": "Configuration for health, readiness, and startup probes",
+      "properties": {
+        "httpGet": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "port": {"oneOf": [{"type": "integer"}, {"type": "string"}]},
+            "scheme": {"type": "string", "enum": ["HTTP", "HTTPS"]}
+          }
+        },
+        "exec": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "properties": {
+            "port": {"oneOf": [{"type": "integer"}, {"type": "string"}]}
+          }
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

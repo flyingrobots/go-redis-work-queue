@@ -12,10 +12,10 @@
     "plugin_id": "test-plugin",
     "capability": "enqueue",
     "granted": true,
-    "granted_at": "2025-09-14T18:49:43.69867-07:00",
+    "granted_at": "2025-09-14T18:51:33.421877-07:00",
     "granted_by": "user",
     "usage_count": 0,
     "revoked": true,
-    "revoked_at": "2025-09-14T18:49:43.698964-07:00"
+    "revoked_at": "2025-09-14T18:51:33.422204-07:00"
   }
 ]
