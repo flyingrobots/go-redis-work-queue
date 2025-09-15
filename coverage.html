@@ -1,0 +1,3376 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>job-genealogy-navigator: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/cache.go (26.6%)</option>
+				
+				<option value="file1">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/config.go (67.2%)</option>
+				
+				<option value="file2">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/errors.go (47.3%)</option>
+				
+				<option value="file3">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/graph_store.go (0.0%)</option>
+				
+				<option value="file4">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/job-genealogy-navigator.go (0.0%)</option>
+				
+				<option value="file5">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/renderer.go (0.0%)</option>
+				
+				<option value="file6">github.com/flyingrobots/go-redis-work-queue/internal/job-genealogy-navigator/types.go (50.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "time"
+)
+
+// CacheEntry represents a cached item with expiration
+type CacheEntry struct {
+        Value     interface{}
+        ExpiresAt time.Time
+}
+
+// IsExpired checks if the cache entry has expired
+func (ce *CacheEntry) IsExpired() bool <span class="cov0" title="0">{
+        return time.Now().After(ce.ExpiresAt)
+}</span>
+
+// GetTree retrieves a cached genealogy tree
+func (gc *GenealogyCache) GetTree(jobID string) *JobGenealogy <span class="cov8" title="1">{
+        gc.mu.RLock()
+        defer gc.mu.RUnlock()
+
+        entry, exists := gc.trees[jobID]
+        if !exists || time.Now().After(entry.UpdatedAt.Add(gc.ttl)) </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">return entry</span>
+}
+
+// SetTree caches a genealogy tree
+func (gc *GenealogyCache) SetTree(jobID string, tree *JobGenealogy) <span class="cov8" title="1">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        // Enforce cache size limit
+        if len(gc.trees) &gt;= gc.maxSize </span><span class="cov0" title="0">{
+                gc.evictOldestTree()
+        }</span>
+
+        // Update timestamp and cache
+        <span class="cov8" title="1">tree.UpdatedAt = time.Now()
+        gc.trees[jobID] = tree</span>
+}
+
+// DeleteTree removes a tree from cache
+func (gc *GenealogyCache) DeleteTree(jobID string) <span class="cov8" title="1">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        delete(gc.trees, jobID)
+}</span>
+
+// GetLayout retrieves a cached layout
+func (gc *GenealogyCache) GetLayout(key string) *TreeLayout <span class="cov0" title="0">{
+        gc.mu.RLock()
+        defer gc.mu.RUnlock()
+
+        layout, exists := gc.layouts[key]
+        if !exists || time.Now().After(layout.ComputedAt.Add(gc.ttl)) </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">return layout</span>
+}
+
+// SetLayout caches a tree layout
+func (gc *GenealogyCache) SetLayout(key string, layout *TreeLayout) <span class="cov0" title="0">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        // Enforce cache size limit
+        if len(gc.layouts) &gt;= gc.maxSize </span><span class="cov0" title="0">{
+                gc.evictOldestLayout()
+        }</span>
+
+        <span class="cov0" title="0">layout.ComputedAt = time.Now()
+        gc.layouts[key] = layout</span>
+}
+
+// GetRelationships retrieves cached relationships
+func (gc *GenealogyCache) GetRelationships(jobID string) []JobRelationship <span class="cov0" title="0">{
+        gc.mu.RLock()
+        defer gc.mu.RUnlock()
+
+        return gc.relationships[jobID]
+}</span>
+
+// SetRelationships caches relationships for a job
+func (gc *GenealogyCache) SetRelationships(jobID string, relationships []JobRelationship) <span class="cov8" title="1">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        // Enforce cache size limit
+        if len(gc.relationships) &gt;= gc.maxSize </span><span class="cov0" title="0">{
+                gc.evictOldestRelationships()
+        }</span>
+
+        <span class="cov8" title="1">gc.relationships[jobID] = relationships</span>
+}
+
+// Cleanup removes expired entries from all caches
+func (gc *GenealogyCache) Cleanup() <span class="cov0" title="0">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        now := time.Now()
+        cutoff := now.Add(-gc.ttl)
+
+        // Clean trees
+        for id, tree := range gc.trees </span><span class="cov0" title="0">{
+                if tree.UpdatedAt.Before(cutoff) </span><span class="cov0" title="0">{
+                        delete(gc.trees, id)
+                }</span>
+        }
+
+        // Clean layouts
+        <span class="cov0" title="0">for key, layout := range gc.layouts </span><span class="cov0" title="0">{
+                if layout.ComputedAt.Before(cutoff) </span><span class="cov0" title="0">{
+                        delete(gc.layouts, key)
+                }</span>
+        }
+
+        // Clean relationships (they don't have timestamps, so just clear if cache is too big)
+        <span class="cov0" title="0">if len(gc.relationships) &gt; gc.maxSize </span><span class="cov0" title="0">{
+                // Keep only most recently accessed (approximate)
+                if len(gc.relationships) &gt; gc.maxSize/2 </span><span class="cov0" title="0">{
+                        for id := range gc.relationships </span><span class="cov0" title="0">{
+                                delete(gc.relationships, id)
+                                if len(gc.relationships) &lt;= gc.maxSize/2 </span><span class="cov0" title="0">{
+                                        break</span>
+                                }
+                        }
+                }
+        }
+}
+
+// Clear removes all cached data
+func (gc *GenealogyCache) Clear() <span class="cov0" title="0">{
+        gc.mu.Lock()
+        defer gc.mu.Unlock()
+
+        gc.trees = make(map[string]*JobGenealogy)
+        gc.layouts = make(map[string]*TreeLayout)
+        gc.relationships = make(map[string][]JobRelationship)
+}</span>
+
+// Stats returns cache statistics
+func (gc *GenealogyCache) Stats() map[string]interface{} <span class="cov8" title="1">{
+        gc.mu.RLock()
+        defer gc.mu.RUnlock()
+
+        return map[string]interface{}{
+                "trees_count":         len(gc.trees),
+                "layouts_count":       len(gc.layouts),
+                "relationships_count": len(gc.relationships),
+                "max_size":           gc.maxSize,
+                "ttl_seconds":        gc.ttl.Seconds(),
+        }
+}</span>
+
+// evictOldestTree removes the oldest tree entry
+func (gc *GenealogyCache) evictOldestTree() <span class="cov0" title="0">{
+        var oldestID string
+        var oldestTime time.Time
+
+        for id, tree := range gc.trees </span><span class="cov0" title="0">{
+                if oldestTime.IsZero() || tree.UpdatedAt.Before(oldestTime) </span><span class="cov0" title="0">{
+                        oldestTime = tree.UpdatedAt
+                        oldestID = id
+                }</span>
+        }
+
+        <span class="cov0" title="0">if oldestID != "" </span><span class="cov0" title="0">{
+                delete(gc.trees, oldestID)
+        }</span>
+}
+
+// evictOldestLayout removes the oldest layout entry
+func (gc *GenealogyCache) evictOldestLayout() <span class="cov0" title="0">{
+        var oldestKey string
+        var oldestTime time.Time
+
+        for key, layout := range gc.layouts </span><span class="cov0" title="0">{
+                if oldestTime.IsZero() || layout.ComputedAt.Before(oldestTime) </span><span class="cov0" title="0">{
+                        oldestTime = layout.ComputedAt
+                        oldestKey = key
+                }</span>
+        }
+
+        <span class="cov0" title="0">if oldestKey != "" </span><span class="cov0" title="0">{
+                delete(gc.layouts, oldestKey)
+        }</span>
+}
+
+// evictOldestRelationships removes the oldest relationships entry
+func (gc *GenealogyCache) evictOldestRelationships() <span class="cov0" title="0">{
+        // Since relationships don't have timestamps, just remove a random entry
+        for id := range gc.relationships </span><span class="cov0" title="0">{
+                delete(gc.relationships, id)
+                break</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "fmt"
+        "time"
+)
+
+// Validate validates the genealogy configuration
+func (c *GenealogyConfig) Validate() error <span class="cov8" title="1">{
+        if c.RedisKeyPrefix == "" </span><span class="cov8" title="1">{
+                return NewValidationError("redis_key_prefix", c.RedisKeyPrefix,
+                        "Redis key prefix cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">if c.CacheTTL &lt;= 0 </span><span class="cov8" title="1">{
+                return NewValidationError("cache_ttl", c.CacheTTL,
+                        "Cache TTL must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxTreeSize &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("max_tree_size", c.MaxTreeSize,
+                        "Max tree size must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxTreeSize &gt; 100000 </span><span class="cov8" title="1">{
+                return NewValidationError("max_tree_size", c.MaxTreeSize,
+                        "Max tree size is unreasonably large (max 100,000)")
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxGenerations &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("max_generations", c.MaxGenerations,
+                        "Max generations must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxGenerations &gt; 1000 </span><span class="cov0" title="0">{
+                return NewValidationError("max_generations", c.MaxGenerations,
+                        "Max generations is unreasonably large (max 1,000)")
+        }</span>
+
+        <span class="cov8" title="1">if !IsValidViewMode(c.DefaultViewMode) </span><span class="cov8" title="1">{
+                return NewValidationError("default_view_mode", c.DefaultViewMode,
+                        "Invalid default view mode")
+        }</span>
+
+        <span class="cov8" title="1">if !IsValidLayoutMode(c.DefaultLayoutMode) </span><span class="cov0" title="0">{
+                return NewValidationError("default_layout_mode", c.DefaultLayoutMode,
+                        "Invalid default layout mode")
+        }</span>
+
+        <span class="cov8" title="1">if c.NodeWidth &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("node_width", c.NodeWidth,
+                        "Node width must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.NodeHeight &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("node_height", c.NodeHeight,
+                        "Node height must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.HorizontalSpacing &lt; 0 </span><span class="cov0" title="0">{
+                return NewValidationError("horizontal_spacing", c.HorizontalSpacing,
+                        "Horizontal spacing cannot be negative")
+        }</span>
+
+        <span class="cov8" title="1">if c.VerticalSpacing &lt; 0 </span><span class="cov0" title="0">{
+                return NewValidationError("vertical_spacing", c.VerticalSpacing,
+                        "Vertical spacing cannot be negative")
+        }</span>
+
+        <span class="cov8" title="1">if c.RefreshInterval &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("refresh_interval", c.RefreshInterval,
+                        "Refresh interval must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.RelationshipTTL &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("relationship_ttl", c.RelationshipTTL,
+                        "Relationship TTL must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.TreeCacheTTL &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("tree_cache_ttl", c.TreeCacheTTL,
+                        "Tree cache TTL must be positive")
+        }</span>
+
+        <span class="cov8" title="1">if c.CleanupInterval &lt;= 0 </span><span class="cov0" title="0">{
+                return NewValidationError("cleanup_interval", c.CleanupInterval,
+                        "Cleanup interval must be positive")
+        }</span>
+
+        // Sanity checks for reasonable values
+        <span class="cov8" title="1">if c.RefreshInterval &lt; time.Second </span><span class="cov0" title="0">{
+                return NewValidationError("refresh_interval", c.RefreshInterval,
+                        "Refresh interval is too short (min 1s)")
+        }</span>
+
+        <span class="cov8" title="1">if c.RelationshipTTL &gt; 30*24*time.Hour </span><span class="cov0" title="0">{
+                return NewValidationError("relationship_ttl", c.RelationshipTTL,
+                        "Relationship TTL is too long (max 30 days)")
+        }</span>
+
+        <span class="cov8" title="1">if c.TreeCacheTTL &gt; time.Hour </span><span class="cov0" title="0">{
+                return NewValidationError("tree_cache_ttl", c.TreeCacheTTL,
+                        "Tree cache TTL is too long (max 1 hour)")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Clone creates a deep copy of the configuration
+func (c *GenealogyConfig) Clone() GenealogyConfig <span class="cov8" title="1">{
+        return GenealogyConfig{
+                RedisKeyPrefix:    c.RedisKeyPrefix,
+                CacheTTL:          c.CacheTTL,
+                MaxTreeSize:       c.MaxTreeSize,
+                MaxGenerations:    c.MaxGenerations,
+                DefaultViewMode:   c.DefaultViewMode,
+                DefaultLayoutMode: c.DefaultLayoutMode,
+                NodeWidth:         c.NodeWidth,
+                NodeHeight:        c.NodeHeight,
+                HorizontalSpacing: c.HorizontalSpacing,
+                VerticalSpacing:   c.VerticalSpacing,
+                EnableCaching:     c.EnableCaching,
+                LazyLoading:       c.LazyLoading,
+                BackgroundRefresh: c.BackgroundRefresh,
+                RefreshInterval:   c.RefreshInterval,
+                RelationshipTTL:   c.RelationshipTTL,
+                TreeCacheTTL:      c.TreeCacheTTL,
+                CleanupInterval:   c.CleanupInterval,
+        }
+}</span>
+
+// SetDefaults fills in missing values with defaults
+func (c *GenealogyConfig) SetDefaults() <span class="cov8" title="1">{
+        defaults := DefaultGenealogyConfig()
+
+        if c.RedisKeyPrefix == "" </span><span class="cov8" title="1">{
+                c.RedisKeyPrefix = defaults.RedisKeyPrefix
+        }</span>
+
+        <span class="cov8" title="1">if c.CacheTTL == 0 </span><span class="cov8" title="1">{
+                c.CacheTTL = defaults.CacheTTL
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxTreeSize == 0 </span><span class="cov8" title="1">{
+                c.MaxTreeSize = defaults.MaxTreeSize
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxGenerations == 0 </span><span class="cov8" title="1">{
+                c.MaxGenerations = defaults.MaxGenerations
+        }</span>
+
+        <span class="cov8" title="1">if c.DefaultViewMode == "" </span><span class="cov8" title="1">{
+                c.DefaultViewMode = defaults.DefaultViewMode
+        }</span>
+
+        <span class="cov8" title="1">if c.DefaultLayoutMode == "" </span><span class="cov8" title="1">{
+                c.DefaultLayoutMode = defaults.DefaultLayoutMode
+        }</span>
+
+        <span class="cov8" title="1">if c.NodeWidth == 0 </span><span class="cov8" title="1">{
+                c.NodeWidth = defaults.NodeWidth
+        }</span>
+
+        <span class="cov8" title="1">if c.NodeHeight == 0 </span><span class="cov8" title="1">{
+                c.NodeHeight = defaults.NodeHeight
+        }</span>
+
+        <span class="cov8" title="1">if c.RefreshInterval == 0 </span><span class="cov8" title="1">{
+                c.RefreshInterval = defaults.RefreshInterval
+        }</span>
+
+        <span class="cov8" title="1">if c.RelationshipTTL == 0 </span><span class="cov8" title="1">{
+                c.RelationshipTTL = defaults.RelationshipTTL
+        }</span>
+
+        <span class="cov8" title="1">if c.TreeCacheTTL == 0 </span><span class="cov8" title="1">{
+                c.TreeCacheTTL = defaults.TreeCacheTTL
+        }</span>
+
+        <span class="cov8" title="1">if c.CleanupInterval == 0 </span><span class="cov8" title="1">{
+                c.CleanupInterval = defaults.CleanupInterval
+        }</span>
+}
+
+// String returns a string representation of the configuration
+func (c *GenealogyConfig) String() string <span class="cov0" title="0">{
+        return fmt.Sprintf("GenealogyConfig{KeyPrefix: %s, CacheTTL: %v, MaxTreeSize: %d, ViewMode: %s, LayoutMode: %s}",
+                c.RedisKeyPrefix, c.CacheTTL, c.MaxTreeSize, c.DefaultViewMode, c.DefaultLayoutMode)
+}</span>
+
+// Validation functions for enum types
+
+// IsValidViewMode checks if a view mode is valid
+func IsValidViewMode(mode ViewMode) bool <span class="cov8" title="1">{
+        switch mode </span>{
+        case ViewModeFull, ViewModeAncestors, ViewModeDescendants, ViewModeBlamePath, ViewModeImpactZone:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+
+// IsValidLayoutMode checks if a layout mode is valid
+func IsValidLayoutMode(mode LayoutMode) bool <span class="cov8" title="1">{
+        switch mode </span>{
+        case LayoutModeTopDown, LayoutModeTimeline, LayoutModeRadial, LayoutModeCompact:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+
+// IsValidRelationshipType checks if a relationship type is valid
+func IsValidRelationshipType(relType RelationshipType) bool <span class="cov8" title="1">{
+        switch relType </span>{
+        case RelationshipRetry, RelationshipSpawn, RelationshipFork,
+                 RelationshipCallback, RelationshipCompensation,
+                 RelationshipContinuation, RelationshipBatchMember:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+
+// IsValidJobStatus checks if a job status is valid
+func IsValidJobStatus(status JobStatus) bool <span class="cov8" title="1">{
+        switch status </span>{
+        case JobStatusPending, JobStatusProcessing, JobStatusSuccess,
+                 JobStatusFailed, JobStatusRetry, JobStatusCancelled:<span class="cov8" title="1">
+                return true</span>
+        default:<span class="cov8" title="1">
+                return false</span>
+        }
+}
+
+// ParseViewMode converts a string to a ViewMode
+func ParseViewMode(s string) (ViewMode, error) <span class="cov8" title="1">{
+        switch s </span>{
+        case "full":<span class="cov8" title="1">
+                return ViewModeFull, nil</span>
+        case "ancestors":<span class="cov8" title="1">
+                return ViewModeAncestors, nil</span>
+        case "descendants":<span class="cov8" title="1">
+                return ViewModeDescendants, nil</span>
+        case "blame":<span class="cov8" title="1">
+                return ViewModeBlamePath, nil</span>
+        case "impact":<span class="cov8" title="1">
+                return ViewModeImpactZone, nil</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("invalid view mode %q: must be one of full, ancestors, descendants, blame, impact", s)</span>
+        }
+}
+
+// ParseLayoutMode converts a string to a LayoutMode
+func ParseLayoutMode(s string) (LayoutMode, error) <span class="cov8" title="1">{
+        switch s </span>{
+        case "topdown":<span class="cov8" title="1">
+                return LayoutModeTopDown, nil</span>
+        case "timeline":<span class="cov8" title="1">
+                return LayoutModeTimeline, nil</span>
+        case "radial":<span class="cov8" title="1">
+                return LayoutModeRadial, nil</span>
+        case "compact":<span class="cov8" title="1">
+                return LayoutModeCompact, nil</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("invalid layout mode %q: must be one of topdown, timeline, radial, compact", s)</span>
+        }
+}
+
+// ParseRelationshipType converts a string to a RelationshipType
+func ParseRelationshipType(s string) (RelationshipType, error) <span class="cov8" title="1">{
+        switch s </span>{
+        case "retry":<span class="cov8" title="1">
+                return RelationshipRetry, nil</span>
+        case "spawn":<span class="cov8" title="1">
+                return RelationshipSpawn, nil</span>
+        case "fork":<span class="cov8" title="1">
+                return RelationshipFork, nil</span>
+        case "callback":<span class="cov8" title="1">
+                return RelationshipCallback, nil</span>
+        case "compensation":<span class="cov8" title="1">
+                return RelationshipCompensation, nil</span>
+        case "continuation":<span class="cov8" title="1">
+                return RelationshipContinuation, nil</span>
+        case "batch_member":<span class="cov8" title="1">
+                return RelationshipBatchMember, nil</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("invalid relationship type %q", s)</span>
+        }
+}
+
+// ParseJobStatus converts a string to a JobStatus
+func ParseJobStatus(s string) (JobStatus, error) <span class="cov8" title="1">{
+        switch s </span>{
+        case "pending":<span class="cov8" title="1">
+                return JobStatusPending, nil</span>
+        case "processing":<span class="cov8" title="1">
+                return JobStatusProcessing, nil</span>
+        case "success":<span class="cov8" title="1">
+                return JobStatusSuccess, nil</span>
+        case "failed":<span class="cov8" title="1">
+                return JobStatusFailed, nil</span>
+        case "retry":<span class="cov8" title="1">
+                return JobStatusRetry, nil</span>
+        case "cancelled":<span class="cov8" title="1">
+                return JobStatusCancelled, nil</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("invalid job status %q", s)</span>
+        }
+}
+
+// Configuration presets
+
+// DevelopmentConfig returns a configuration optimized for development
+func DevelopmentConfig() GenealogyConfig <span class="cov0" title="0">{
+        config := DefaultGenealogyConfig()
+        config.CacheTTL = 1 * time.Minute
+        config.RefreshInterval = 10 * time.Second
+        config.RelationshipTTL = 2 * time.Hour
+        config.BackgroundRefresh = true
+        config.EnableCaching = true
+        config.LazyLoading = true
+        return config
+}</span>
+
+// ProductionConfig returns a configuration optimized for production
+func ProductionConfig() GenealogyConfig <span class="cov0" title="0">{
+        config := DefaultGenealogyConfig()
+        config.CacheTTL = 10 * time.Minute
+        config.RefreshInterval = 5 * time.Minute
+        config.RelationshipTTL = 7 * 24 * time.Hour // 1 week
+        config.TreeCacheTTL = 30 * time.Minute
+        config.BackgroundRefresh = true
+        config.EnableCaching = true
+        config.LazyLoading = true
+        config.MaxTreeSize = 50000
+        return config
+}</span>
+
+// TestingConfig returns a configuration optimized for testing
+func TestingConfig() GenealogyConfig <span class="cov0" title="0">{
+        config := DefaultGenealogyConfig()
+        config.CacheTTL = 1 * time.Second
+        config.RefreshInterval = 100 * time.Millisecond
+        config.RelationshipTTL = 5 * time.Minute
+        config.TreeCacheTTL = 10 * time.Second
+        config.CleanupInterval = 30 * time.Second
+        config.BackgroundRefresh = false
+        config.EnableCaching = false
+        config.LazyLoading = false
+        config.MaxTreeSize = 1000
+        return config
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "errors"
+        "fmt"
+)
+
+// Common genealogy errors
+var (
+        ErrJobNotFound          = errors.New("job not found")
+        ErrRelationshipNotFound = errors.New("relationship not found")
+        ErrCyclicRelationship   = errors.New("cyclic relationship detected")
+        ErrInvalidViewMode      = errors.New("invalid view mode")
+        ErrInvalidLayoutMode    = errors.New("invalid layout mode")
+        ErrTreeNotLoaded        = errors.New("genealogy tree not loaded")
+        ErrNodeNotSelected      = errors.New("no node selected")
+        ErrNavigationLimit      = errors.New("navigation limit reached")
+        ErrRenderingFailed      = errors.New("tree rendering failed")
+        ErrLayoutComputation    = errors.New("layout computation failed")
+        ErrCacheFailure         = errors.New("cache operation failed")
+        ErrStorageFailure       = errors.New("storage operation failed")
+)
+
+// GenealogyError represents genealogy-specific errors with context
+type GenealogyError struct {
+        Op      string // Operation that failed
+        JobID   string // Job ID (if applicable)
+        Message string // Human-readable message
+        Err     error  // Underlying error
+}
+
+func (e *GenealogyError) Error() string <span class="cov0" title="0">{
+        if e.JobID != "" </span><span class="cov0" title="0">{
+                return fmt.Sprintf("genealogy %s failed for job %s: %s", e.Op, e.JobID, e.Message)
+        }</span>
+        <span class="cov0" title="0">return fmt.Sprintf("genealogy %s failed: %s", e.Op, e.Message)</span>
+}
+
+func (e *GenealogyError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+// NewGenealogyError creates a new genealogy error
+func NewGenealogyError(op, jobID, message string, err error) *GenealogyError <span class="cov0" title="0">{
+        return &amp;GenealogyError{
+                Op:      op,
+                JobID:   jobID,
+                Message: message,
+                Err:     err,
+        }
+}</span>
+
+// ValidationError represents configuration or input validation errors
+type ValidationError struct {
+        Field   string
+        Value   interface{}
+        Message string
+}
+
+func (e *ValidationError) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("validation error in field %s (value: %v): %s",
+                e.Field, e.Value, e.Message)
+}</span>
+
+// NewValidationError creates a new validation error
+func NewValidationError(field string, value interface{}, message string) *ValidationError <span class="cov8" title="1">{
+        return &amp;ValidationError{
+                Field:   field,
+                Value:   value,
+                Message: message,
+        }
+}</span>
+
+// RenderingError represents errors during tree rendering
+type RenderingError struct {
+        LayoutMode  LayoutMode
+        ViewMode    ViewMode
+        TreeSize    int
+        Message     string
+        Err         error
+}
+
+func (e *RenderingError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("rendering failed (layout: %s, view: %s, size: %d): %s",
+                e.LayoutMode, e.ViewMode, e.TreeSize, e.Message)
+}</span>
+
+func (e *RenderingError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+// NewRenderingError creates a new rendering error
+func NewRenderingError(layoutMode LayoutMode, viewMode ViewMode, treeSize int, message string, err error) *RenderingError <span class="cov0" title="0">{
+        return &amp;RenderingError{
+                LayoutMode: layoutMode,
+                ViewMode:   viewMode,
+                TreeSize:   treeSize,
+                Message:    message,
+                Err:        err,
+        }
+}</span>
+
+// NavigationError represents navigation-related errors
+type NavigationError struct {
+        Direction   string
+        CurrentNode string
+        Message     string
+}
+
+func (e *NavigationError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("navigation failed: %s from node %s (%s)",
+                e.Direction, e.CurrentNode, e.Message)
+}</span>
+
+// NewNavigationError creates a new navigation error
+func NewNavigationError(direction, currentNode, message string) *NavigationError <span class="cov0" title="0">{
+        return &amp;NavigationError{
+                Direction:   direction,
+                CurrentNode: currentNode,
+                Message:     message,
+        }
+}</span>
+
+// StorageError represents storage backend errors
+type StorageError struct {
+        Operation string
+        Key       string
+        Message   string
+        Err       error
+}
+
+func (e *StorageError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("storage %s failed for key %s: %s",
+                e.Operation, e.Key, e.Message)
+}</span>
+
+func (e *StorageError) Unwrap() error <span class="cov8" title="1">{
+        return e.Err
+}</span>
+
+// NewStorageError creates a new storage error
+func NewStorageError(operation, key, message string, err error) *StorageError <span class="cov8" title="1">{
+        return &amp;StorageError{
+                Operation: operation,
+                Key:       key,
+                Message:   message,
+                Err:       err,
+        }
+}</span>
+
+// Error classification functions
+
+// IsJobNotFound returns true if the error indicates a job was not found
+func IsJobNotFound(err error) bool <span class="cov0" title="0">{
+        return errors.Is(err, ErrJobNotFound)
+}</span>
+
+// IsValidationError returns true if the error is a validation error
+func IsValidationError(err error) bool <span class="cov8" title="1">{
+        var validationErr *ValidationError
+        return errors.As(err, &amp;validationErr)
+}</span>
+
+// IsRenderingError returns true if the error is a rendering error
+func IsRenderingError(err error) bool <span class="cov8" title="1">{
+        var renderingErr *RenderingError
+        return errors.As(err, &amp;renderingErr)
+}</span>
+
+// IsNavigationError returns true if the error is a navigation error
+func IsNavigationError(err error) bool <span class="cov8" title="1">{
+        var navErr *NavigationError
+        return errors.As(err, &amp;navErr)
+}</span>
+
+// IsStorageError returns true if the error is a storage error
+func IsStorageError(err error) bool <span class="cov8" title="1">{
+        var storageErr *StorageError
+        return errors.As(err, &amp;storageErr)
+}</span>
+
+// IsRetryable returns true if the error might be resolved by retrying
+func IsRetryable(err error) bool <span class="cov8" title="1">{
+        if err == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        // Non-retryable errors
+        <span class="cov8" title="1">switch </span>{
+        case errors.Is(err, ErrJobNotFound):<span class="cov8" title="1">
+                return false</span>
+        case errors.Is(err, ErrInvalidViewMode):<span class="cov0" title="0">
+                return false</span>
+        case errors.Is(err, ErrInvalidLayoutMode):<span class="cov0" title="0">
+                return false</span>
+        case errors.Is(err, ErrCyclicRelationship):<span class="cov8" title="1">
+                return false</span>
+        case IsValidationError(err):<span class="cov8" title="1">
+                return false</span>
+        }
+
+        // Navigation errors are usually not retryable
+        <span class="cov8" title="1">if IsNavigationError(err) </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        // Storage and rendering errors might be retryable
+        <span class="cov8" title="1">return true</span>
+}
+
+// GetErrorCode returns a code for programmatic error handling
+func GetErrorCode(err error) string <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return "OK"
+        }</span>
+
+        <span class="cov8" title="1">switch </span>{
+        case errors.Is(err, ErrJobNotFound):<span class="cov8" title="1">
+                return "JOB_NOT_FOUND"</span>
+        case errors.Is(err, ErrRelationshipNotFound):<span class="cov0" title="0">
+                return "RELATIONSHIP_NOT_FOUND"</span>
+        case errors.Is(err, ErrCyclicRelationship):<span class="cov8" title="1">
+                return "CYCLIC_RELATIONSHIP"</span>
+        case errors.Is(err, ErrInvalidViewMode):<span class="cov0" title="0">
+                return "INVALID_VIEW_MODE"</span>
+        case errors.Is(err, ErrInvalidLayoutMode):<span class="cov0" title="0">
+                return "INVALID_LAYOUT_MODE"</span>
+        case errors.Is(err, ErrTreeNotLoaded):<span class="cov0" title="0">
+                return "TREE_NOT_LOADED"</span>
+        case errors.Is(err, ErrNodeNotSelected):<span class="cov0" title="0">
+                return "NODE_NOT_SELECTED"</span>
+        case errors.Is(err, ErrNavigationLimit):<span class="cov0" title="0">
+                return "NAVIGATION_LIMIT"</span>
+        case errors.Is(err, ErrRenderingFailed):<span class="cov0" title="0">
+                return "RENDERING_FAILED"</span>
+        case errors.Is(err, ErrLayoutComputation):<span class="cov0" title="0">
+                return "LAYOUT_COMPUTATION_FAILED"</span>
+        case errors.Is(err, ErrCacheFailure):<span class="cov0" title="0">
+                return "CACHE_FAILURE"</span>
+        case errors.Is(err, ErrStorageFailure):<span class="cov0" title="0">
+                return "STORAGE_FAILURE"</span>
+        case IsValidationError(err):<span class="cov8" title="1">
+                return "VALIDATION_ERROR"</span>
+        case IsRenderingError(err):<span class="cov0" title="0">
+                return "RENDERING_ERROR"</span>
+        case IsNavigationError(err):<span class="cov0" title="0">
+                return "NAVIGATION_ERROR"</span>
+        case IsStorageError(err):<span class="cov0" title="0">
+                return "STORAGE_ERROR"</span>
+        default:<span class="cov8" title="1">
+                return "UNKNOWN_ERROR"</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "strconv"
+        "time"
+
+        "github.com/go-redis/redis/v8"
+        "go.uber.org/zap"
+)
+
+// RedisGraphStore implements GraphStore using Redis as the backend
+type RedisGraphStore struct {
+        client redis.Cmdable
+        config GenealogyConfig
+        logger *zap.Logger
+}
+
+// NewRedisGraphStore creates a new Redis-backed graph store
+func NewRedisGraphStore(client redis.Cmdable, config GenealogyConfig, logger *zap.Logger) *RedisGraphStore <span class="cov0" title="0">{
+        if logger == nil </span><span class="cov0" title="0">{
+                logger = zap.NewNop()
+        }</span>
+
+        <span class="cov0" title="0">return &amp;RedisGraphStore{
+                client: client,
+                config: config,
+                logger: logger,
+        }</span>
+}
+
+// AddRelationship stores a parent-child relationship
+func (r *RedisGraphStore) AddRelationship(ctx context.Context, rel JobRelationship) error <span class="cov0" title="0">{
+        pipe := r.client.Pipeline()
+
+        // Store in parent-&gt;children index
+        childrenKey := r.getChildrenKey(rel.ParentID)
+        timestamp := float64(rel.Timestamp.Unix())
+        pipe.ZAdd(ctx, childrenKey, &amp;redis.Z{
+                Score:  timestamp,
+                Member: rel.ChildID,
+        })
+
+        // Store in child-&gt;parents index
+        parentsKey := r.getParentsKey(rel.ChildID)
+        pipe.ZAdd(ctx, parentsKey, &amp;redis.Z{
+                Score:  timestamp,
+                Member: rel.ParentID,
+        })
+
+        // Store relationship metadata
+        relationKey := r.getRelationshipKey(rel.ParentID, rel.ChildID)
+        relationData := map[string]interface{}{
+                "type":         string(rel.Type),
+                "spawn_reason": rel.SpawnReason,
+                "timestamp":    rel.Timestamp.Unix(),
+        }
+
+        if rel.Metadata != nil </span><span class="cov0" title="0">{
+                metadataJSON, err := json.Marshal(rel.Metadata)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to marshal relationship metadata: %w", err)
+                }</span>
+                <span class="cov0" title="0">relationData["metadata"] = string(metadataJSON)</span>
+        }
+
+        <span class="cov0" title="0">pipe.HMSet(ctx, relationKey, relationData)
+
+        // Set TTLs
+        if r.config.RelationshipTTL &gt; 0 </span><span class="cov0" title="0">{
+                pipe.Expire(ctx, childrenKey, r.config.RelationshipTTL)
+                pipe.Expire(ctx, parentsKey, r.config.RelationshipTTL)
+                pipe.Expire(ctx, relationKey, r.config.RelationshipTTL)
+        }</span>
+
+        <span class="cov0" title="0">_, err := pipe.Exec(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to add relationship %s-&gt;%s: %w", rel.ParentID, rel.ChildID, err)
+        }</span>
+
+        <span class="cov0" title="0">r.logger.Debug("Added job relationship",
+                zap.String("parent_id", rel.ParentID),
+                zap.String("child_id", rel.ChildID),
+                zap.String("type", string(rel.Type)))
+
+        return nil</span>
+}
+
+// GetRelationships retrieves all relationships for a job (both as parent and child)
+func (r *RedisGraphStore) GetRelationships(ctx context.Context, jobID string) ([]JobRelationship, error) <span class="cov0" title="0">{
+        relationships := make([]JobRelationship, 0)
+
+        // Get relationships where job is parent
+        parentRels, err := r.getRelationshipsAsParent(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">relationships = append(relationships, parentRels...)
+
+        // Get relationships where job is child
+        childRels, err := r.getRelationshipsAsChild(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">relationships = append(relationships, childRels...)
+
+        return relationships, nil</span>
+}
+
+// GetParents retrieves direct parents of a job
+func (r *RedisGraphStore) GetParents(ctx context.Context, jobID string) ([]string, error) <span class="cov0" title="0">{
+        parentsKey := r.getParentsKey(jobID)
+
+        members, err := r.client.ZRevRange(ctx, parentsKey, 0, -1).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                if err == redis.Nil </span><span class="cov0" title="0">{
+                        return []string{}, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get parents for job %s: %w", jobID, err)</span>
+        }
+
+        <span class="cov0" title="0">return members, nil</span>
+}
+
+// GetChildren retrieves direct children of a job
+func (r *RedisGraphStore) GetChildren(ctx context.Context, jobID string) ([]string, error) <span class="cov0" title="0">{
+        childrenKey := r.getChildrenKey(jobID)
+
+        members, err := r.client.ZRange(ctx, childrenKey, 0, -1).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                if err == redis.Nil </span><span class="cov0" title="0">{
+                        return []string{}, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get children for job %s: %w", jobID, err)</span>
+        }
+
+        <span class="cov0" title="0">return members, nil</span>
+}
+
+// GetAncestors retrieves all ancestors of a job (recursive parents)
+func (r *RedisGraphStore) GetAncestors(ctx context.Context, jobID string) ([]string, error) <span class="cov0" title="0">{
+        ancestors := make([]string, 0)
+        visited := make(map[string]bool)
+        queue := []string{jobID}
+
+        for len(queue) &gt; 0 </span><span class="cov0" title="0">{
+                currentID := queue[0]
+                queue = queue[1:]
+
+                if visited[currentID] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">visited[currentID] = true
+
+                parents, err := r.GetParents(ctx, currentID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">for _, parentID := range parents </span><span class="cov0" title="0">{
+                        if !visited[parentID] </span><span class="cov0" title="0">{
+                                ancestors = append(ancestors, parentID)
+                                queue = append(queue, parentID)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return ancestors, nil</span>
+}
+
+// GetDescendants retrieves all descendants of a job (recursive children)
+func (r *RedisGraphStore) GetDescendants(ctx context.Context, jobID string) ([]string, error) <span class="cov0" title="0">{
+        descendants := make([]string, 0)
+        visited := make(map[string]bool)
+        queue := []string{jobID}
+
+        for len(queue) &gt; 0 </span><span class="cov0" title="0">{
+                currentID := queue[0]
+                queue = queue[1:]
+
+                if visited[currentID] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">visited[currentID] = true
+
+                children, err := r.GetChildren(ctx, currentID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">for _, childID := range children </span><span class="cov0" title="0">{
+                        if !visited[childID] </span><span class="cov0" title="0">{
+                                descendants = append(descendants, childID)
+                                queue = append(queue, childID)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return descendants, nil</span>
+}
+
+// BuildGenealogy constructs a complete family tree for a job
+func (r *RedisGraphStore) BuildGenealogy(ctx context.Context, rootID string) (*JobGenealogy, error) <span class="cov0" title="0">{
+        // Find the true root by traversing ancestors
+        trueRootID, err := r.findTrueRoot(ctx, rootID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Get all descendants from true root
+        <span class="cov0" title="0">descendants, err := r.GetDescendants(ctx, trueRootID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Include the root itself
+        <span class="cov0" title="0">allJobIDs := append([]string{trueRootID}, descendants...)
+
+        // Build nodes map (job details will be populated by caller)
+        nodes := make(map[string]*JobNode)
+        for _, jobID := range allJobIDs </span><span class="cov0" title="0">{
+                nodes[jobID] = &amp;JobNode{
+                        ID:       jobID,
+                        ChildIDs: make([]string, 0),
+                }
+        }</span>
+
+        // Get all relationships for these jobs
+        <span class="cov0" title="0">relationships := make([]JobRelationship, 0)
+        for _, jobID := range allJobIDs </span><span class="cov0" title="0">{
+                jobRels, err := r.GetRelationships(ctx, jobID)
+                if err != nil </span><span class="cov0" title="0">{
+                        r.logger.Warn("Failed to get relationships for job",
+                                zap.String("job_id", jobID),
+                                zap.Error(err))
+                        continue</span>
+                }
+                <span class="cov0" title="0">relationships = append(relationships, jobRels...)</span>
+        }
+
+        // Build parent-child structure and generation map
+        <span class="cov0" title="0">generationMap := make(map[int][]string)
+        maxDepth := 0
+
+        // Set generations using BFS
+        visited := make(map[string]bool)
+        queue := []struct {
+                jobID      string
+                generation int
+        }{{trueRootID, 0}}
+
+        for len(queue) &gt; 0 </span><span class="cov0" title="0">{
+                current := queue[0]
+                queue = queue[1:]
+
+                if visited[current.jobID] </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">visited[current.jobID] = true
+
+                // Update node generation
+                if node, exists := nodes[current.jobID]; exists </span><span class="cov0" title="0">{
+                        node.Generation = current.generation
+                }</span>
+
+                // Add to generation map
+                <span class="cov0" title="0">if generationMap[current.generation] == nil </span><span class="cov0" title="0">{
+                        generationMap[current.generation] = make([]string, 0)
+                }</span>
+                <span class="cov0" title="0">generationMap[current.generation] = append(generationMap[current.generation], current.jobID)
+
+                if current.generation &gt; maxDepth </span><span class="cov0" title="0">{
+                        maxDepth = current.generation
+                }</span>
+
+                // Add children to queue
+                <span class="cov0" title="0">children, err := r.GetChildren(ctx, current.jobID)
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if node, exists := nodes[current.jobID]; exists </span><span class="cov0" title="0">{
+                        node.ChildIDs = children
+                }</span>
+
+                <span class="cov0" title="0">for _, childID := range children </span><span class="cov0" title="0">{
+                        if !visited[childID] </span><span class="cov0" title="0">{
+                                queue = append(queue, struct {
+                                        jobID      string
+                                        generation int
+                                }{childID, current.generation + 1})
+
+                                // Set parent reference
+                                if childNode, exists := nodes[childID]; exists </span><span class="cov0" title="0">{
+                                        childNode.ParentID = current.jobID
+                                }</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">genealogy := &amp;JobGenealogy{
+                RootID:        trueRootID,
+                Nodes:         nodes,
+                Relationships: r.deduplicateRelationships(relationships),
+                GenerationMap: generationMap,
+                MaxDepth:      maxDepth,
+                TotalJobs:     len(nodes),
+                CreatedAt:     time.Now(),
+                UpdatedAt:     time.Now(),
+        }
+
+        r.logger.Debug("Built genealogy",
+                zap.String("root_id", trueRootID),
+                zap.Int("total_jobs", genealogy.TotalJobs),
+                zap.Int("max_depth", maxDepth),
+                zap.Int("relationships", len(genealogy.Relationships)))
+
+        return genealogy, nil</span>
+}
+
+// RemoveRelationships removes all relationships for a job
+func (r *RedisGraphStore) RemoveRelationships(ctx context.Context, jobID string) error <span class="cov0" title="0">{
+        pipe := r.client.Pipeline()
+
+        // Get all relationships to remove metadata
+        relationships, err := r.GetRelationships(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Remove relationship metadata
+        <span class="cov0" title="0">for _, rel := range relationships </span><span class="cov0" title="0">{
+                relationKey := r.getRelationshipKey(rel.ParentID, rel.ChildID)
+                pipe.Del(ctx, relationKey)
+        }</span>
+
+        // Remove from children indexes
+        <span class="cov0" title="0">childrenKey := r.getChildrenKey(jobID)
+        pipe.Del(ctx, childrenKey)
+
+        // Remove from parents indexes
+        parentsKey := r.getParentsKey(jobID)
+        pipe.Del(ctx, parentsKey)
+
+        // Remove job from other jobs' children sets
+        for _, rel := range relationships </span><span class="cov0" title="0">{
+                if rel.ParentID == jobID </span><span class="cov0" title="0">{
+                        // Remove from parent's children set
+                        otherChildrenKey := r.getChildrenKey(rel.ChildID)
+                        pipe.ZRem(ctx, otherChildrenKey, jobID)
+                }</span> else<span class="cov0" title="0"> if rel.ChildID == jobID </span><span class="cov0" title="0">{
+                        // Remove from child's parents set
+                        otherParentsKey := r.getParentsKey(rel.ParentID)
+                        pipe.ZRem(ctx, otherParentsKey, jobID)
+                }</span>
+        }
+
+        <span class="cov0" title="0">_, err = pipe.Exec(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to remove relationships for job %s: %w", jobID, err)
+        }</span>
+
+        <span class="cov0" title="0">r.logger.Debug("Removed job relationships", zap.String("job_id", jobID))
+        return nil</span>
+}
+
+// Cleanup removes relationships older than the specified time
+func (r *RedisGraphStore) Cleanup(ctx context.Context, olderThan time.Time) error <span class="cov0" title="0">{
+        // This is a simplified cleanup - in production you'd want more sophisticated cleanup
+        // that scans for expired relationship keys
+
+        cutoffScore := float64(olderThan.Unix())
+
+        // Use SCAN to find all relationship keys
+        iter := r.client.Scan(ctx, 0, r.config.RedisKeyPrefix+":*", 100).Iterator()
+        deletedCount := 0
+
+        for iter.Next(ctx) </span><span class="cov0" title="0">{
+                key := iter.Val()
+
+                // Check if it's a sorted set (children or parents index)
+                if r.client.Type(ctx, key).Val() == "zset" </span><span class="cov0" title="0">{
+                        // Remove members older than cutoff
+                        removed, err := r.client.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("(%f", cutoffScore)).Result()
+                        if err != nil </span><span class="cov0" title="0">{
+                                r.logger.Warn("Failed to cleanup key", zap.String("key", key), zap.Error(err))
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">deletedCount += int(removed)
+
+                        // If set is empty, delete the key
+                        count, err := r.client.ZCard(ctx, key).Result()
+                        if err == nil &amp;&amp; count == 0 </span><span class="cov0" title="0">{
+                                r.client.Del(ctx, key)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">if err := iter.Err(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("error during cleanup scan: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">r.logger.Info("Completed relationship cleanup",
+                zap.Time("older_than", olderThan),
+                zap.Int("deleted_count", deletedCount))
+
+        return nil</span>
+}
+
+// Helper methods
+
+func (r *RedisGraphStore) getChildrenKey(parentID string) string <span class="cov0" title="0">{
+        return fmt.Sprintf("%s:children:%s", r.config.RedisKeyPrefix, parentID)
+}</span>
+
+func (r *RedisGraphStore) getParentsKey(childID string) string <span class="cov0" title="0">{
+        return fmt.Sprintf("%s:parents:%s", r.config.RedisKeyPrefix, childID)
+}</span>
+
+func (r *RedisGraphStore) getRelationshipKey(parentID, childID string) string <span class="cov0" title="0">{
+        return fmt.Sprintf("%s:relations:%s:%s", r.config.RedisKeyPrefix, parentID, childID)
+}</span>
+
+func (r *RedisGraphStore) getRelationshipsAsParent(ctx context.Context, jobID string) ([]JobRelationship, error) <span class="cov0" title="0">{
+        relationships := make([]JobRelationship, 0)
+
+        children, err := r.GetChildren(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">for _, childID := range children </span><span class="cov0" title="0">{
+                rel, err := r.getRelationshipMetadata(ctx, jobID, childID)
+                if err != nil </span><span class="cov0" title="0">{
+                        r.logger.Warn("Failed to get relationship metadata",
+                                zap.String("parent_id", jobID),
+                                zap.String("child_id", childID),
+                                zap.Error(err))
+                        continue</span>
+                }
+                <span class="cov0" title="0">if rel != nil </span><span class="cov0" title="0">{
+                        relationships = append(relationships, *rel)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return relationships, nil</span>
+}
+
+func (r *RedisGraphStore) getRelationshipsAsChild(ctx context.Context, jobID string) ([]JobRelationship, error) <span class="cov0" title="0">{
+        relationships := make([]JobRelationship, 0)
+
+        parents, err := r.GetParents(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">for _, parentID := range parents </span><span class="cov0" title="0">{
+                rel, err := r.getRelationshipMetadata(ctx, parentID, jobID)
+                if err != nil </span><span class="cov0" title="0">{
+                        r.logger.Warn("Failed to get relationship metadata",
+                                zap.String("parent_id", parentID),
+                                zap.String("child_id", jobID),
+                                zap.Error(err))
+                        continue</span>
+                }
+                <span class="cov0" title="0">if rel != nil </span><span class="cov0" title="0">{
+                        relationships = append(relationships, *rel)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return relationships, nil</span>
+}
+
+func (r *RedisGraphStore) getRelationshipMetadata(ctx context.Context, parentID, childID string) (*JobRelationship, error) <span class="cov0" title="0">{
+        relationKey := r.getRelationshipKey(parentID, childID)
+
+        data, err := r.client.HGetAll(ctx, relationKey).Result()
+        if err != nil </span><span class="cov0" title="0">{
+                if err == redis.Nil </span><span class="cov0" title="0">{
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov0" title="0">if len(data) == 0 </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+
+        <span class="cov0" title="0">rel := &amp;JobRelationship{
+                ParentID: parentID,
+                ChildID:  childID,
+        }
+
+        if relType, exists := data["type"]; exists </span><span class="cov0" title="0">{
+                rel.Type = RelationshipType(relType)
+        }</span>
+
+        <span class="cov0" title="0">if spawnReason, exists := data["spawn_reason"]; exists </span><span class="cov0" title="0">{
+                rel.SpawnReason = spawnReason
+        }</span>
+
+        <span class="cov0" title="0">if timestampStr, exists := data["timestamp"]; exists </span><span class="cov0" title="0">{
+                if timestamp, err := strconv.ParseInt(timestampStr, 10, 64); err == nil </span><span class="cov0" title="0">{
+                        rel.Timestamp = time.Unix(timestamp, 0)
+                }</span>
+        }
+
+        <span class="cov0" title="0">if metadataStr, exists := data["metadata"]; exists &amp;&amp; metadataStr != "" </span><span class="cov0" title="0">{
+                var metadata map[string]interface{}
+                if err := json.Unmarshal([]byte(metadataStr), &amp;metadata); err == nil </span><span class="cov0" title="0">{
+                        rel.Metadata = metadata
+                }</span>
+        }
+
+        <span class="cov0" title="0">return rel, nil</span>
+}
+
+func (r *RedisGraphStore) findTrueRoot(ctx context.Context, jobID string) (string, error) <span class="cov0" title="0">{
+        currentID := jobID
+        visited := make(map[string]bool)
+
+        for </span><span class="cov0" title="0">{
+                if visited[currentID] </span><span class="cov0" title="0">{
+                        // Cycle detected, return current
+                        return currentID, nil
+                }</span>
+                <span class="cov0" title="0">visited[currentID] = true
+
+                parents, err := r.GetParents(ctx, currentID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", err
+                }</span>
+
+                <span class="cov0" title="0">if len(parents) == 0 </span><span class="cov0" title="0">{
+                        // Found root
+                        return currentID, nil
+                }</span>
+
+                // Move to first parent (in case of multiple parents, this gives a deterministic result)
+                <span class="cov0" title="0">currentID = parents[0]</span>
+        }
+}
+
+func (r *RedisGraphStore) deduplicateRelationships(relationships []JobRelationship) []JobRelationship <span class="cov0" title="0">{
+        seen := make(map[string]bool)
+        deduplicated := make([]JobRelationship, 0)
+
+        for _, rel := range relationships </span><span class="cov0" title="0">{
+                key := fmt.Sprintf("%s-&gt;%s", rel.ParentID, rel.ChildID)
+                if !seen[key] </span><span class="cov0" title="0">{
+                        seen[key] = true
+                        deduplicated = append(deduplicated, rel)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return deduplicated</span>
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "context"
+        "fmt"
+        "sort"
+        "strings"
+        "sync"
+        "time"
+
+        "go.uber.org/zap"
+)
+
+// Navigator implements the GenealogyNavigator interface
+type Navigator struct {
+        config      GenealogyConfig
+        graphStore  GraphStore
+        jobProvider JobProvider
+        renderer    TreeRenderer
+        cache       *GenealogyCache
+        logger      *zap.Logger
+
+        // Navigation state
+        navState    *NavigationState
+        currentTree *JobGenealogy
+        currentLayout *TreeLayout
+        mu          sync.RWMutex
+
+        // Event handling
+        eventCallbacks []func(NavigationEvent)
+        eventMu        sync.RWMutex
+
+        // Lifecycle
+        ctx    context.Context
+        cancel context.CancelFunc
+        wg     sync.WaitGroup
+}
+
+// NewNavigator creates a new genealogy navigator
+func NewNavigator(config GenealogyConfig, graphStore GraphStore, jobProvider JobProvider, logger *zap.Logger) *Navigator <span class="cov0" title="0">{
+        if logger == nil </span><span class="cov0" title="0">{
+                logger = zap.NewNop()
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Navigator{
+                config:      config,
+                graphStore:  graphStore,
+                jobProvider: jobProvider,
+                cache:       NewGenealogyCache(1000, config.CacheTTL),
+                logger:      logger,
+                navState: &amp;NavigationState{
+                        ViewMode:      config.DefaultViewMode,
+                        LayoutMode:    config.DefaultLayoutMode,
+                        ExpandedNodes: make(map[string]bool),
+                        FocusPath:     make([]string, 0),
+                },
+                eventCallbacks: make([]func(NavigationEvent), 0),
+        }</span>
+}
+
+// Start initializes the navigator
+func (n *Navigator) Start(ctx context.Context) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.ctx, n.cancel = context.WithCancel(ctx)
+
+        // Start background refresh if enabled
+        if n.config.BackgroundRefresh </span><span class="cov0" title="0">{
+                n.wg.Add(1)
+                go n.backgroundRefreshLoop()
+        }</span>
+
+        // Start cleanup routine
+        <span class="cov0" title="0">n.wg.Add(1)
+        go n.cleanupLoop()
+
+        n.logger.Info("Genealogy navigator started",
+                zap.String("view_mode", string(n.navState.ViewMode)),
+                zap.String("layout_mode", string(n.navState.LayoutMode)))
+
+        return nil</span>
+}
+
+// Stop shuts down the navigator
+func (n *Navigator) Stop() error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        if n.cancel != nil </span><span class="cov0" title="0">{
+                n.cancel()
+        }</span>
+
+        <span class="cov0" title="0">done := make(chan struct{})
+        go func() </span><span class="cov0" title="0">{
+                n.wg.Wait()
+                close(done)
+        }</span>()
+
+        <span class="cov0" title="0">select </span>{
+        case &lt;-done:<span class="cov0" title="0">
+                n.logger.Info("Genealogy navigator stopped gracefully")</span>
+        case &lt;-time.After(5 * time.Second):<span class="cov0" title="0">
+                n.logger.Warn("Timeout waiting for genealogy navigator to stop")</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetGenealogy builds and returns the complete genealogy for a job
+func (n *Navigator) GetGenealogy(ctx context.Context, jobID string) (*JobGenealogy, error) <span class="cov0" title="0">{
+        // Check cache first
+        if n.config.EnableCaching </span><span class="cov0" title="0">{
+                if cached := n.cache.GetTree(jobID); cached != nil </span><span class="cov0" title="0">{
+                        n.logger.Debug("Genealogy cache hit", zap.String("job_id", jobID))
+                        return cached, nil
+                }</span>
+        }
+
+        // Build genealogy from graph store
+        <span class="cov0" title="0">genealogy, err := n.graphStore.BuildGenealogy(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to build genealogy for job %s: %w", jobID, err)
+        }</span>
+
+        // Populate job details
+        <span class="cov0" title="0">if err := n.populateJobDetails(ctx, genealogy); err != nil </span><span class="cov0" title="0">{
+                n.logger.Warn("Failed to populate some job details",
+                        zap.String("job_id", jobID),
+                        zap.Error(err))
+        }</span>
+
+        // Cache the result
+        <span class="cov0" title="0">if n.config.EnableCaching </span><span class="cov0" title="0">{
+                n.cache.SetTree(jobID, genealogy)
+        }</span>
+
+        <span class="cov0" title="0">n.logger.Debug("Built genealogy",
+                zap.String("job_id", jobID),
+                zap.Int("total_jobs", genealogy.TotalJobs),
+                zap.Int("max_depth", genealogy.MaxDepth))
+
+        return genealogy, nil</span>
+}
+
+// GetImpactAnalysis analyzes the impact of a job's failure
+func (n *Navigator) GetImpactAnalysis(ctx context.Context, jobID string) (*ImpactAnalysis, error) <span class="cov0" title="0">{
+        genealogy, err := n.GetGenealogy(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">descendants, err := n.graphStore.GetDescendants(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get descendants: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">analysis := &amp;ImpactAnalysis{
+                JobID:            jobID,
+                TotalDescendants: len(descendants),
+                AffectedQueues:   make([]string, 0),
+                CriticalPath:     make([]string, 0),
+        }
+
+        // Count direct children
+        if node, exists := genealogy.Nodes[jobID]; exists </span><span class="cov0" title="0">{
+                analysis.DirectChildren = len(node.ChildIDs)
+        }</span>
+
+        // Analyze descendants
+        <span class="cov0" title="0">failedCount := 0
+        queueSet := make(map[string]bool)
+        var totalCost time.Duration
+        var minTime, maxTime time.Time
+
+        for _, descendantID := range descendants </span><span class="cov0" title="0">{
+                if node, exists := genealogy.Nodes[descendantID]; exists </span><span class="cov0" title="0">{
+                        if node.Status == JobStatusFailed </span><span class="cov0" title="0">{
+                                failedCount++
+                        }</span>
+                        <span class="cov0" title="0">queueSet[node.QueueName] = true
+                        totalCost += node.Duration
+
+                        if minTime.IsZero() || node.CreatedAt.Before(minTime) </span><span class="cov0" title="0">{
+                                minTime = node.CreatedAt
+                        }</span>
+                        <span class="cov0" title="0">if node.CompletedAt != nil &amp;&amp; node.CompletedAt.After(maxTime) </span><span class="cov0" title="0">{
+                                maxTime = *node.CompletedAt
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">analysis.FailedDescendants = failedCount
+        analysis.ProcessingCost = totalCost
+        if !maxTime.IsZero() </span><span class="cov0" title="0">{
+                analysis.TimeSpan = maxTime.Sub(minTime)
+        }</span>
+
+        // Extract affected queues
+        <span class="cov0" title="0">for queue := range queueSet </span><span class="cov0" title="0">{
+                analysis.AffectedQueues = append(analysis.AffectedQueues, queue)
+        }</span>
+
+        // Find critical path (longest dependency chain)
+        <span class="cov0" title="0">analysis.CriticalPath = n.findCriticalPath(genealogy, jobID)
+
+        return analysis, nil</span>
+}
+
+// GetBlameAnalysis traces failure to root cause
+func (n *Navigator) GetBlameAnalysis(ctx context.Context, failedJobID string) (*BlameAnalysis, error) <span class="cov0" title="0">{
+        genealogy, err := n.GetGenealogy(ctx, failedJobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">failedNode, exists := genealogy.Nodes[failedJobID]
+        if !exists </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed job %s not found in genealogy", failedJobID)
+        }</span>
+
+        <span class="cov0" title="0">if failedNode.Status != JobStatusFailed </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("job %s is not in failed status", failedJobID)
+        }</span>
+
+        // Trace blame path to root cause
+        <span class="cov0" title="0">blamePath := n.traceBlamePath(genealogy, failedJobID)
+        rootCauseID := blamePath[0] // First in path is root cause
+
+        // Count retry attempts in chain
+        retryCount := 0
+        for i := 1; i &lt; len(blamePath); i++ </span><span class="cov0" title="0">{
+                // Check if this is a retry relationship
+                for _, rel := range genealogy.Relationships </span><span class="cov0" title="0">{
+                        if rel.ChildID == blamePath[i] &amp;&amp; rel.ParentID == blamePath[i-1] &amp;&amp; rel.Type == RelationshipRetry </span><span class="cov0" title="0">{
+                                retryCount++
+                                break</span>
+                        }
+                }
+        }
+
+        // Calculate time to failure
+        <span class="cov0" title="0">var timeToFailure time.Duration
+        if rootNode, exists := genealogy.Nodes[rootCauseID]; exists </span><span class="cov0" title="0">{
+                timeToFailure = failedNode.CreatedAt.Sub(rootNode.CreatedAt)
+        }</span>
+
+        <span class="cov0" title="0">analysis := &amp;BlameAnalysis{
+                FailedJobID:   failedJobID,
+                RootCauseID:   rootCauseID,
+                BlamePath:     blamePath,
+                FailureReason: failedNode.Error,
+                TimeToFailure: timeToFailure,
+                RetryAttempts: retryCount,
+        }
+
+        return analysis, nil</span>
+}
+
+// FocusOnJob sets focus to a specific job
+func (n *Navigator) FocusOnJob(ctx context.Context, jobID string) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        // Get or build genealogy for this job
+        genealogy, err := n.GetGenealogy(ctx, jobID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Update navigation state
+        <span class="cov0" title="0">n.navState.CurrentJobID = jobID
+        n.navState.FocusPath = []string{jobID}
+        n.navState.SelectedNode = jobID
+        n.currentTree = genealogy
+
+        // Recompute layout
+        if n.renderer != nil </span><span class="cov0" title="0">{
+                layout, err := n.renderer.ComputeLayout(genealogy, n.navState.LayoutMode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        n.logger.Warn("Failed to compute layout", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        n.currentLayout = layout
+                }</span>
+        }
+
+        // Emit navigation event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "focus_changed",
+                JobID:     jobID,
+                Timestamp: time.Now(),
+        })
+
+        n.logger.Debug("Focused on job", zap.String("job_id", jobID))
+        return nil</span>
+}
+
+// ExpandNode expands a node to show its children
+func (n *Navigator) ExpandNode(ctx context.Context, jobID string) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.navState.ExpandedNodes[jobID] = true
+
+        // If lazy loading is enabled, load children
+        if n.config.LazyLoading </span><span class="cov0" title="0">{
+                children, err := n.graphStore.GetChildren(ctx, jobID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get children for job %s: %w", jobID, err)
+                }</span>
+
+                // Load job details for children if not already in tree
+                <span class="cov0" title="0">if n.currentTree != nil </span><span class="cov0" title="0">{
+                        missingJobs := make([]string, 0)
+                        for _, childID := range children </span><span class="cov0" title="0">{
+                                if _, exists := n.currentTree.Nodes[childID]; !exists </span><span class="cov0" title="0">{
+                                        missingJobs = append(missingJobs, childID)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">if len(missingJobs) &gt; 0 </span><span class="cov0" title="0">{
+                                jobs, err := n.jobProvider.GetJobs(ctx, missingJobs)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        n.logger.Warn("Failed to load some child jobs", zap.Error(err))
+                                }</span> else<span class="cov0" title="0"> {
+                                        for id, job := range jobs </span><span class="cov0" title="0">{
+                                                n.currentTree.Nodes[id] = job
+                                        }</span>
+                                        <span class="cov0" title="0">n.currentTree.TotalJobs += len(jobs)</span>
+                                }
+                        }
+                }
+        }
+
+        // Recompute layout if renderer is available
+        <span class="cov0" title="0">if n.renderer != nil &amp;&amp; n.currentTree != nil </span><span class="cov0" title="0">{
+                layout, err := n.renderer.ComputeLayout(n.currentTree, n.navState.LayoutMode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        n.logger.Warn("Failed to recompute layout", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        n.currentLayout = layout
+                }</span>
+        }
+
+        // Emit navigation event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "node_expanded",
+                JobID:     jobID,
+                Timestamp: time.Now(),
+        })
+
+        return nil</span>
+}
+
+// CollapseNode collapses a node to hide its children
+func (n *Navigator) CollapseNode(ctx context.Context, jobID string) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.navState.ExpandedNodes[jobID] = false
+
+        // Recompute layout if renderer is available
+        if n.renderer != nil &amp;&amp; n.currentTree != nil </span><span class="cov0" title="0">{
+                layout, err := n.renderer.ComputeLayout(n.currentTree, n.navState.LayoutMode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        n.logger.Warn("Failed to recompute layout", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        n.currentLayout = layout
+                }</span>
+        }
+
+        // Emit navigation event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "node_collapsed",
+                JobID:     jobID,
+                Timestamp: time.Now(),
+        })
+
+        return nil</span>
+}
+
+// SetViewMode changes the current view mode
+func (n *Navigator) SetViewMode(mode ViewMode) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.navState.ViewMode = mode
+
+        // Recompute layout if needed
+        if n.renderer != nil &amp;&amp; n.currentTree != nil </span><span class="cov0" title="0">{
+                layout, err := n.renderer.ComputeLayout(n.currentTree, n.navState.LayoutMode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        n.logger.Warn("Failed to recompute layout for view mode change", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        n.currentLayout = layout
+                }</span>
+        }
+
+        // Emit event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "view_mode_changed",
+                Timestamp: time.Now(),
+                Data:      map[string]interface{}{"mode": string(mode)},
+        })
+
+        return nil</span>
+}
+
+// SetLayoutMode changes the current layout mode
+func (n *Navigator) SetLayoutMode(mode LayoutMode) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.navState.LayoutMode = mode
+
+        // Recompute layout
+        if n.renderer != nil &amp;&amp; n.currentTree != nil </span><span class="cov0" title="0">{
+                layout, err := n.renderer.ComputeLayout(n.currentTree, mode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        n.logger.Warn("Failed to recompute layout for layout mode change", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        n.currentLayout = layout
+                }</span>
+        }
+
+        // Emit event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "layout_mode_changed",
+                Timestamp: time.Now(),
+                Data:      map[string]interface{}{"mode": string(mode)},
+        })
+
+        return nil</span>
+}
+
+// Navigate handles directional navigation
+func (n *Navigator) Navigate(direction string) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        if n.currentTree == nil || n.navState.SelectedNode == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("no tree or node selected")
+        }</span>
+
+        <span class="cov0" title="0">currentNode, exists := n.currentTree.Nodes[n.navState.SelectedNode]
+        if !exists </span><span class="cov0" title="0">{
+                return fmt.Errorf("selected node not found in tree")
+        }</span>
+
+        <span class="cov0" title="0">var targetID string
+
+        switch direction </span>{
+        case "up", "parent":<span class="cov0" title="0">
+                if currentNode.ParentID != "" </span><span class="cov0" title="0">{
+                        targetID = currentNode.ParentID
+                }</span>
+        case "down", "child":<span class="cov0" title="0">
+                if len(currentNode.ChildIDs) &gt; 0 </span><span class="cov0" title="0">{
+                        targetID = currentNode.ChildIDs[0] // Select first child
+                }</span>
+        case "left", "previous_sibling":<span class="cov0" title="0">
+                targetID = n.findPreviousSibling(currentNode)</span>
+        case "right", "next_sibling":<span class="cov0" title="0">
+                targetID = n.findNextSibling(currentNode)</span>
+        default:<span class="cov0" title="0">
+                return fmt.Errorf("unknown navigation direction: %s", direction)</span>
+        }
+
+        <span class="cov0" title="0">if targetID == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("no target found for navigation direction: %s", direction)
+        }</span>
+
+        // Update selection
+        <span class="cov0" title="0">n.navState.SelectedNode = targetID
+        n.navState.FocusPath = append(n.navState.FocusPath, targetID)
+
+        // Keep focus path reasonable length
+        if len(n.navState.FocusPath) &gt; 20 </span><span class="cov0" title="0">{
+                n.navState.FocusPath = n.navState.FocusPath[1:]
+        }</span>
+
+        // Emit navigation event
+        <span class="cov0" title="0">n.emitEvent(NavigationEvent{
+                Type:      "navigation",
+                JobID:     targetID,
+                Direction: direction,
+                Timestamp: time.Now(),
+        })
+
+        return nil</span>
+}
+
+// Search finds jobs matching the search term
+func (n *Navigator) Search(term string) ([]*JobNode, error) <span class="cov0" title="0">{
+        n.mu.RLock()
+        currentTree := n.currentTree
+        n.mu.RUnlock()
+
+        if currentTree == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("no tree loaded")
+        }</span>
+
+        <span class="cov0" title="0">term = strings.ToLower(term)
+        matches := make([]*JobNode, 0)
+
+        for _, node := range currentTree.Nodes </span><span class="cov0" title="0">{
+                if strings.Contains(strings.ToLower(node.Name), term) ||
+                   strings.Contains(strings.ToLower(node.ID), term) ||
+                   strings.Contains(strings.ToLower(node.QueueName), term) </span><span class="cov0" title="0">{
+                        matches = append(matches, node)
+                }</span>
+        }
+
+        // Sort by relevance (exact matches first, then by creation time)
+        <span class="cov0" title="0">sort.Slice(matches, func(i, j int) bool </span><span class="cov0" title="0">{
+                iExact := strings.ToLower(matches[i].Name) == term || strings.ToLower(matches[i].ID) == term
+                jExact := strings.ToLower(matches[j].Name) == term || strings.ToLower(matches[j].ID) == term
+
+                if iExact &amp;&amp; !jExact </span><span class="cov0" title="0">{
+                        return true
+                }</span>
+                <span class="cov0" title="0">if !iExact &amp;&amp; jExact </span><span class="cov0" title="0">{
+                        return false
+                }</span>
+
+                <span class="cov0" title="0">return matches[i].CreatedAt.After(matches[j].CreatedAt)</span>
+        })
+
+        // Update search state
+        <span class="cov0" title="0">n.mu.Lock()
+        n.navState.SearchTerm = term
+        n.mu.Unlock()
+
+        return matches, nil</span>
+}
+
+// RenderCurrent renders the current tree state
+func (n *Navigator) RenderCurrent() ([]string, error) <span class="cov0" title="0">{
+        n.mu.RLock()
+        defer n.mu.RUnlock()
+
+        if n.renderer == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("no renderer configured")
+        }</span>
+
+        <span class="cov0" title="0">if n.currentTree == nil </span><span class="cov0" title="0">{
+                return []string{"No genealogy loaded"}, nil
+        }</span>
+
+        <span class="cov0" title="0">if n.currentLayout == nil </span><span class="cov0" title="0">{
+                // Compute layout if not available
+                layout, err := n.renderer.ComputeLayout(n.currentTree, n.navState.LayoutMode, n.renderer.GetViewport())
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to compute layout: %w", err)
+                }</span>
+                <span class="cov0" title="0">n.currentLayout = layout</span>
+        }
+
+        <span class="cov0" title="0">return n.renderer.RenderTree(n.currentTree, n.currentLayout, n.navState)</span>
+}
+
+// RefreshTree reloads the current tree from storage
+func (n *Navigator) RefreshTree() error <span class="cov0" title="0">{
+        n.mu.Lock()
+        currentJobID := n.navState.CurrentJobID
+        n.mu.Unlock()
+
+        if currentJobID == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("no current job to refresh")
+        }</span>
+
+        // Clear cache for this tree
+        <span class="cov0" title="0">if n.config.EnableCaching </span><span class="cov0" title="0">{
+                n.cache.DeleteTree(currentJobID)
+        }</span>
+
+        // Reload genealogy
+        <span class="cov0" title="0">ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer cancel()
+
+        return n.FocusOnJob(ctx, currentJobID)</span>
+}
+
+// GetNavigationState returns the current navigation state
+func (n *Navigator) GetNavigationState() *NavigationState <span class="cov0" title="0">{
+        n.mu.RLock()
+        defer n.mu.RUnlock()
+
+        // Return a copy to prevent external modification
+        state := *n.navState
+        state.ExpandedNodes = make(map[string]bool)
+        for k, v := range n.navState.ExpandedNodes </span><span class="cov0" title="0">{
+                state.ExpandedNodes[k] = v
+        }</span>
+        <span class="cov0" title="0">state.FocusPath = make([]string, len(n.navState.FocusPath))
+        copy(state.FocusPath, n.navState.FocusPath)
+
+        return &amp;state</span>
+}
+
+// SetNavigationState updates the navigation state
+func (n *Navigator) SetNavigationState(state *NavigationState) error <span class="cov0" title="0">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+
+        n.navState = state
+        return nil
+}</span>
+
+// Subscribe registers a callback for navigation events
+func (n *Navigator) Subscribe(callback func(NavigationEvent)) error <span class="cov0" title="0">{
+        n.eventMu.Lock()
+        defer n.eventMu.Unlock()
+
+        n.eventCallbacks = append(n.eventCallbacks, callback)
+        return nil
+}</span>
+
+// Unsubscribe removes all event callbacks
+func (n *Navigator) Unsubscribe() error <span class="cov0" title="0">{
+        n.eventMu.Lock()
+        defer n.eventMu.Unlock()
+
+        n.eventCallbacks = n.eventCallbacks[:0]
+        return nil
+}</span>
+
+// Helper methods
+
+func (n *Navigator) populateJobDetails(ctx context.Context, genealogy *JobGenealogy) error <span class="cov0" title="0">{
+        jobIDs := make([]string, 0, len(genealogy.Nodes))
+        for id := range genealogy.Nodes </span><span class="cov0" title="0">{
+                jobIDs = append(jobIDs, id)
+        }</span>
+
+        <span class="cov0" title="0">jobs, err := n.jobProvider.GetJobs(ctx, jobIDs)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for id, job := range jobs </span><span class="cov0" title="0">{
+                genealogy.Nodes[id] = job
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (n *Navigator) findCriticalPath(genealogy *JobGenealogy, startID string) []string <span class="cov0" title="0">{
+        // Use DFS to find the longest path from start node
+        visited := make(map[string]bool)
+        var longestPath []string
+
+        var dfs func(nodeID string, currentPath []string)
+        dfs = func(nodeID string, currentPath []string) </span><span class="cov0" title="0">{
+                if visited[nodeID] </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov0" title="0">visited[nodeID] = true
+                currentPath = append(currentPath, nodeID)
+
+                node, exists := genealogy.Nodes[nodeID]
+                if !exists || len(node.ChildIDs) == 0 </span><span class="cov0" title="0">{
+                        // Leaf node - check if this path is longer
+                        if len(currentPath) &gt; len(longestPath) </span><span class="cov0" title="0">{
+                                longestPath = make([]string, len(currentPath))
+                                copy(longestPath, currentPath)
+                        }</span>
+                        <span class="cov0" title="0">return</span>
+                }
+
+                // Continue DFS on children
+                <span class="cov0" title="0">for _, childID := range node.ChildIDs </span><span class="cov0" title="0">{
+                        dfs(childID, currentPath)
+                }</span>
+        }
+
+        <span class="cov0" title="0">dfs(startID, []string{})
+        return longestPath</span>
+}
+
+func (n *Navigator) traceBlamePath(genealogy *JobGenealogy, failedJobID string) []string <span class="cov0" title="0">{
+        // Trace backwards to find root cause
+        path := []string{failedJobID}
+        currentID := failedJobID
+
+        for </span><span class="cov0" title="0">{
+                node, exists := genealogy.Nodes[currentID]
+                if !exists || node.ParentID == "" </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                <span class="cov0" title="0">path = append([]string{node.ParentID}, path...)
+                currentID = node.ParentID</span>
+        }
+
+        <span class="cov0" title="0">return path</span>
+}
+
+func (n *Navigator) findPreviousSibling(node *JobNode) string <span class="cov0" title="0">{
+        if node.ParentID == "" || n.currentTree == nil </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        <span class="cov0" title="0">parent, exists := n.currentTree.Nodes[node.ParentID]
+        if !exists </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        // Find current node position in siblings
+        <span class="cov0" title="0">for i, childID := range parent.ChildIDs </span><span class="cov0" title="0">{
+                if childID == node.ID &amp;&amp; i &gt; 0 </span><span class="cov0" title="0">{
+                        return parent.ChildIDs[i-1]
+                }</span>
+        }
+
+        <span class="cov0" title="0">return ""</span>
+}
+
+func (n *Navigator) findNextSibling(node *JobNode) string <span class="cov0" title="0">{
+        if node.ParentID == "" || n.currentTree == nil </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        <span class="cov0" title="0">parent, exists := n.currentTree.Nodes[node.ParentID]
+        if !exists </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        // Find current node position in siblings
+        <span class="cov0" title="0">for i, childID := range parent.ChildIDs </span><span class="cov0" title="0">{
+                if childID == node.ID &amp;&amp; i &lt; len(parent.ChildIDs)-1 </span><span class="cov0" title="0">{
+                        return parent.ChildIDs[i+1]
+                }</span>
+        }
+
+        <span class="cov0" title="0">return ""</span>
+}
+
+func (n *Navigator) emitEvent(event NavigationEvent) <span class="cov0" title="0">{
+        n.eventMu.RLock()
+        callbacks := make([]func(NavigationEvent), len(n.eventCallbacks))
+        copy(callbacks, n.eventCallbacks)
+        n.eventMu.RUnlock()
+
+        for _, callback := range callbacks </span><span class="cov0" title="0">{
+                go callback(event)
+        }</span>
+}
+
+func (n *Navigator) backgroundRefreshLoop() <span class="cov0" title="0">{
+        defer n.wg.Done()
+
+        ticker := time.NewTicker(n.config.RefreshInterval)
+        defer ticker.Stop()
+
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-n.ctx.Done():<span class="cov0" title="0">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        if err := n.RefreshTree(); err != nil </span><span class="cov0" title="0">{
+                                n.logger.Debug("Background refresh failed", zap.Error(err))
+                        }</span>
+                }
+        }
+}
+
+func (n *Navigator) cleanupLoop() <span class="cov0" title="0">{
+        defer n.wg.Done()
+
+        ticker := time.NewTicker(n.config.CleanupInterval)
+        defer ticker.Stop()
+
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-n.ctx.Done():<span class="cov0" title="0">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        cutoff := time.Now().Add(-n.config.RelationshipTTL)
+                        if err := n.graphStore.Cleanup(n.ctx, cutoff); err != nil </span><span class="cov0" title="0">{
+                                n.logger.Warn("Cleanup failed", zap.Error(err))
+                        }</span>
+
+                        // Clean cache
+                        <span class="cov0" title="0">n.cache.Cleanup()</span>
+                }
+        }
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "fmt"
+        "sort"
+        "strings"
+        "time"
+)
+
+// ASCIIRenderer implements TreeRenderer for ASCII art output
+type ASCIIRenderer struct {
+        viewport    Viewport
+        colorScheme ColorScheme
+        config      GenealogyConfig
+}
+
+// NewASCIIRenderer creates a new ASCII tree renderer
+func NewASCIIRenderer(config GenealogyConfig, viewport Viewport) *ASCIIRenderer <span class="cov0" title="0">{
+        return &amp;ASCIIRenderer{
+                viewport:    viewport,
+                colorScheme: DefaultColorScheme(),
+                config:      config,
+        }
+}</span>
+
+// BoxDrawingChars defines Unicode box drawing characters
+type BoxDrawingChars struct {
+        Vertical   string
+        Horizontal string
+        Corner     string
+        Branch     string
+        LastBranch string
+        Expansion  string
+        Collapse   string
+}
+
+// DefaultBoxChars returns standard Unicode box drawing characters
+func DefaultBoxChars() BoxDrawingChars <span class="cov0" title="0">{
+        return BoxDrawingChars{
+                Vertical:   "│",
+                Horizontal: "─",
+                Corner:     "┌",
+                Branch:     "├",
+                LastBranch: "└",
+                Expansion:  "+",
+                Collapse:   "-",
+        }
+}</span>
+
+// RenderTree renders the genealogy tree as ASCII art
+func (r *ASCIIRenderer) RenderTree(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error) <span class="cov0" title="0">{
+        if genealogy == nil || len(genealogy.Nodes) == 0 </span><span class="cov0" title="0">{
+                return []string{"No jobs in genealogy"}, nil
+        }</span>
+
+        <span class="cov0" title="0">switch state.LayoutMode </span>{
+        case LayoutModeTopDown:<span class="cov0" title="0">
+                return r.renderTopDown(genealogy, layout, state)</span>
+        case LayoutModeTimeline:<span class="cov0" title="0">
+                return r.renderTimeline(genealogy, layout, state)</span>
+        case LayoutModeRadial:<span class="cov0" title="0">
+                return r.renderRadial(genealogy, layout, state)</span>
+        case LayoutModeCompact:<span class="cov0" title="0">
+                return r.renderCompact(genealogy, layout, state)</span>
+        default:<span class="cov0" title="0">
+                return r.renderTopDown(genealogy, layout, state)</span>
+        }
+}
+
+// ComputeLayout calculates the positioning of nodes for rendering
+func (r *ASCIIRenderer) ComputeLayout(genealogy *JobGenealogy, mode LayoutMode, viewport Viewport) (*TreeLayout, error) <span class="cov0" title="0">{
+        layout := &amp;TreeLayout{
+                Nodes:          make(map[string]*TreeLayoutNode),
+                LayoutMode:     mode,
+                ViewportWidth:  viewport.Width,
+                ViewportHeight: viewport.Height,
+                ComputedAt:     time.Now(),
+        }
+
+        switch mode </span>{
+        case LayoutModeTopDown:<span class="cov0" title="0">
+                return r.computeTopDownLayout(genealogy, layout, viewport)</span>
+        case LayoutModeTimeline:<span class="cov0" title="0">
+                return r.computeTimelineLayout(genealogy, layout, viewport)</span>
+        case LayoutModeRadial:<span class="cov0" title="0">
+                return r.computeRadialLayout(genealogy, layout, viewport)</span>
+        case LayoutModeCompact:<span class="cov0" title="0">
+                return r.computeCompactLayout(genealogy, layout, viewport)</span>
+        default:<span class="cov0" title="0">
+                return r.computeTopDownLayout(genealogy, layout, viewport)</span>
+        }
+}
+
+// GetViewport returns the current viewport
+func (r *ASCIIRenderer) GetViewport() Viewport <span class="cov0" title="0">{
+        return r.viewport
+}</span>
+
+// SetViewport updates the viewport
+func (r *ASCIIRenderer) SetViewport(viewport Viewport) <span class="cov0" title="0">{
+        r.viewport = viewport
+}</span>
+
+// renderTopDown renders tree in traditional top-down format
+func (r *ASCIIRenderer) renderTopDown(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error) <span class="cov0" title="0">{
+        if genealogy.RootID == "" </span><span class="cov0" title="0">{
+                return []string{"No root job found"}, nil
+        }</span>
+
+        <span class="cov0" title="0">lines := make([]string, 0)
+        boxes := DefaultBoxChars()
+
+        // Start rendering from root
+        visited := make(map[string]bool)
+        r.renderNodeRecursive(genealogy, genealogy.RootID, "", true, state, boxes, &amp;lines, visited, 0)
+
+        // Add viewport scrolling
+        return r.applyViewport(lines, state), nil</span>
+}
+
+// renderNodeRecursive recursively renders a node and its children
+func (r *ASCIIRenderer) renderNodeRecursive(genealogy *JobGenealogy, nodeID string, prefix string, isLast bool, state *NavigationState, boxes BoxDrawingChars, lines *[]string, visited map[string]bool, depth int) <span class="cov0" title="0">{
+        if visited[nodeID] || depth &gt; 20 </span><span class="cov0" title="0">{ // Prevent infinite recursion
+                return
+        }</span>
+        <span class="cov0" title="0">visited[nodeID] = true
+
+        node, exists := genealogy.Nodes[nodeID]
+        if !exists </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        // Should this node be visible based on view mode?
+        <span class="cov0" title="0">if !r.shouldShowNode(node, state) </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        // Build line prefix
+        <span class="cov0" title="0">var linePrefix, childPrefix string
+        if depth == 0 </span><span class="cov0" title="0">{
+                linePrefix = boxes.Corner + boxes.Horizontal + " "
+                childPrefix = ""
+        }</span> else<span class="cov0" title="0"> {
+                if isLast </span><span class="cov0" title="0">{
+                        linePrefix = prefix + boxes.LastBranch + boxes.Horizontal + " "
+                        childPrefix = prefix + "  "
+                }</span> else<span class="cov0" title="0"> {
+                        linePrefix = prefix + boxes.Branch + boxes.Horizontal + " "
+                        childPrefix = prefix + boxes.Vertical + " "
+                }</span>
+        }
+
+        // Render node
+        <span class="cov0" title="0">nodeStr := r.formatNode(node, state)
+        isExpanded := state.ExpandedNodes[nodeID]
+        hasChildren := len(node.ChildIDs) &gt; 0
+
+        // Add expansion indicator
+        if hasChildren </span><span class="cov0" title="0">{
+                if isExpanded </span><span class="cov0" title="0">{
+                        nodeStr = linePrefix + boxes.Collapse + " " + nodeStr
+                }</span> else<span class="cov0" title="0"> {
+                        nodeStr = linePrefix + boxes.Expansion + " " + nodeStr
+                }</span>
+        } else<span class="cov0" title="0"> {
+                nodeStr = linePrefix + "  " + nodeStr
+        }</span>
+
+        <span class="cov0" title="0">*lines = append(*lines, nodeStr)
+
+        // Render children if expanded
+        if isExpanded &amp;&amp; hasChildren </span><span class="cov0" title="0">{
+                // Sort children by creation time or ID for consistent ordering
+                children := make([]*JobNode, 0, len(node.ChildIDs))
+                for _, childID := range node.ChildIDs </span><span class="cov0" title="0">{
+                        if child, exists := genealogy.Nodes[childID]; exists </span><span class="cov0" title="0">{
+                                children = append(children, child)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">sort.Slice(children, func(i, j int) bool </span><span class="cov0" title="0">{
+                        return children[i].CreatedAt.Before(children[j].CreatedAt)
+                }</span>)
+
+                <span class="cov0" title="0">for i, child := range children </span><span class="cov0" title="0">{
+                        isLastChild := i == len(children)-1
+                        r.renderNodeRecursive(genealogy, child.ID, childPrefix, isLastChild, state, boxes, lines, visited, depth+1)
+                }</span>
+        }
+}
+
+// renderTimeline renders jobs in chronological order
+func (r *ASCIIRenderer) renderTimeline(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error) <span class="cov0" title="0">{
+        // Collect all nodes and sort by creation time
+        nodes := make([]*JobNode, 0, len(genealogy.Nodes))
+        for _, node := range genealogy.Nodes </span><span class="cov0" title="0">{
+                if r.shouldShowNode(node, state) </span><span class="cov0" title="0">{
+                        nodes = append(nodes, node)
+                }</span>
+        }
+
+        <span class="cov0" title="0">sort.Slice(nodes, func(i, j int) bool </span><span class="cov0" title="0">{
+                return nodes[i].CreatedAt.Before(nodes[j].CreatedAt)
+        }</span>)
+
+        <span class="cov0" title="0">lines := make([]string, 0)
+        boxes := DefaultBoxChars()
+
+        // Group nodes by time periods
+        var currentTime time.Time
+        var timeGroupLines []string
+
+        for _, node := range nodes </span><span class="cov0" title="0">{
+                // Check if we need a new time group
+                if currentTime.IsZero() || node.CreatedAt.Sub(currentTime) &gt; time.Minute </span><span class="cov0" title="0">{
+                        if len(timeGroupLines) &gt; 0 </span><span class="cov0" title="0">{
+                                lines = append(lines, timeGroupLines...)
+                                timeGroupLines = make([]string, 0)
+                        }</span>
+                        <span class="cov0" title="0">currentTime = node.CreatedAt
+                        lines = append(lines, "")
+                        lines = append(lines, fmt.Sprintf("=== %s ===", currentTime.Format("15:04:05")))</span>
+                }
+
+                // Add relationship indicator
+                <span class="cov0" title="0">relationshipStr := ""
+                for _, rel := range genealogy.Relationships </span><span class="cov0" title="0">{
+                        if rel.ChildID == node.ID </span><span class="cov0" title="0">{
+                                relationshipStr = fmt.Sprintf(" (%s)", rel.Type)
+                                break</span>
+                        }
+                }
+
+                <span class="cov0" title="0">nodeStr := r.formatNode(node, state) + relationshipStr
+                timeGroupLines = append(timeGroupLines, boxes.Branch+boxes.Horizontal+" "+nodeStr)</span>
+        }
+
+        <span class="cov0" title="0">if len(timeGroupLines) &gt; 0 </span><span class="cov0" title="0">{
+                lines = append(lines, timeGroupLines...)
+        }</span>
+
+        <span class="cov0" title="0">return r.applyViewport(lines, state), nil</span>
+}
+
+// renderRadial renders tree in radial layout (simplified for ASCII)
+func (r *ASCIIRenderer) renderRadial(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error) <span class="cov0" title="0">{
+        // For ASCII radial, we'll create a simplified version with the root in center
+        lines := make([]string, 0)
+
+        if genealogy.RootID == "" </span><span class="cov0" title="0">{
+                return []string{"No root job found"}, nil
+        }</span>
+
+        <span class="cov0" title="0">rootNode := genealogy.Nodes[genealogy.RootID]
+        if rootNode == nil </span><span class="cov0" title="0">{
+                return []string{"Root job not found in genealogy"}, nil
+        }</span>
+
+        // Center the root
+        <span class="cov0" title="0">centerY := r.viewport.Height / 2
+        centerX := r.viewport.Width / 2
+
+        // Initialize grid
+        grid := make([][]rune, r.viewport.Height)
+        for i := range grid </span><span class="cov0" title="0">{
+                grid[i] = make([]rune, r.viewport.Width)
+                for j := range grid[i] </span><span class="cov0" title="0">{
+                        grid[i][j] = ' '
+                }</span>
+        }
+
+        // Place root at center
+        <span class="cov0" title="0">rootStr := r.formatNode(rootNode, state)
+        if centerY &gt;= 0 &amp;&amp; centerY &lt; len(grid) </span><span class="cov0" title="0">{
+                r.placeStringInGrid(grid, centerX-len(rootStr)/2, centerY, rootStr)
+        }</span>
+
+        // Place children around root
+        <span class="cov0" title="0">if len(rootNode.ChildIDs) &gt; 0 </span><span class="cov0" title="0">{
+                angleStep := 360.0 / float64(len(rootNode.ChildIDs))
+                radius := 5
+
+                for i, childID := range rootNode.ChildIDs </span><span class="cov0" title="0">{
+                        if child, exists := genealogy.Nodes[childID]; exists &amp;&amp; r.shouldShowNode(child, state) </span><span class="cov0" title="0">{
+                                _ = float64(i) * angleStep // angle calculation for potential future radial improvements
+                                x := centerX + int(float64(radius)*1.5) // ASCII is wider than tall
+                                y := centerY + int(float64(radius)*0.8)
+
+                                if i%4 == 1 </span><span class="cov0" title="0">{
+                                        x = centerX + radius*2
+                                }</span> else<span class="cov0" title="0"> if i%4 == 2 </span><span class="cov0" title="0">{
+                                        y = centerY + radius
+                                }</span> else<span class="cov0" title="0"> if i%4 == 3 </span><span class="cov0" title="0">{
+                                        x = centerX - radius*2
+                                }</span> else<span class="cov0" title="0"> {
+                                        y = centerY - radius
+                                }</span>
+
+                                <span class="cov0" title="0">childStr := r.formatNode(child, state)
+                                if y &gt;= 0 &amp;&amp; y &lt; len(grid) </span><span class="cov0" title="0">{
+                                        r.placeStringInGrid(grid, x-len(childStr)/2, y, childStr)
+                                }</span>
+                        }
+                }
+        }
+
+        // Convert grid to lines
+        <span class="cov0" title="0">for _, row := range grid </span><span class="cov0" title="0">{
+                lines = append(lines, strings.TrimRight(string(row), " "))
+        }</span>
+
+        <span class="cov0" title="0">return lines, nil</span>
+}
+
+// renderCompact renders tree in compact format
+func (r *ASCIIRenderer) renderCompact(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error) <span class="cov0" title="0">{
+        lines := make([]string, 0)
+
+        // Group by generation
+        for generation := 0; generation &lt;= genealogy.MaxDepth; generation++ </span><span class="cov0" title="0">{
+                generationNodes, exists := genealogy.GenerationMap[generation]
+                if !exists || len(generationNodes) == 0 </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">lines = append(lines, fmt.Sprintf("Generation %d:", generation))
+
+                for _, nodeID := range generationNodes </span><span class="cov0" title="0">{
+                        if node, exists := genealogy.Nodes[nodeID]; exists &amp;&amp; r.shouldShowNode(node, state) </span><span class="cov0" title="0">{
+                                nodeStr := r.formatNodeCompact(node, state)
+                                lines = append(lines, "  "+nodeStr)
+                        }</span>
+                }
+
+                <span class="cov0" title="0">lines = append(lines, "")</span>
+        }
+
+        <span class="cov0" title="0">return r.applyViewport(lines, state), nil</span>
+}
+
+// formatNode formats a job node for display
+func (r *ASCIIRenderer) formatNode(node *JobNode, state *NavigationState) string <span class="cov0" title="0">{
+        statusChar := r.getStatusChar(node.Status)
+
+        // Highlight selected node
+        prefix := ""
+        suffix := ""
+        if node.ID == state.SelectedNode </span><span class="cov0" title="0">{
+                prefix = "→ "
+                suffix = " ←"
+        }</span>
+
+        // Format basic info
+        <span class="cov0" title="0">duration := ""
+        if node.Duration &gt; 0 </span><span class="cov0" title="0">{
+                if node.Duration &lt; time.Second </span><span class="cov0" title="0">{
+                        duration = fmt.Sprintf("%dms", node.Duration.Milliseconds())
+                }</span> else<span class="cov0" title="0"> {
+                        duration = fmt.Sprintf("%.1fs", node.Duration.Seconds())
+                }</span>
+        }
+
+        // Create main display string
+        <span class="cov0" title="0">display := fmt.Sprintf("%s%s %s [%s]%s",
+                prefix,
+                statusChar,
+                r.truncateString(node.Name, 25),
+                node.Status,
+                suffix)
+
+        if duration != "" </span><span class="cov0" title="0">{
+                display += fmt.Sprintf(" (%s)", duration)
+        }</span>
+
+        // Add error info for failed jobs
+        <span class="cov0" title="0">if node.Status == JobStatusFailed &amp;&amp; node.Error != "" </span><span class="cov0" title="0">{
+                display += fmt.Sprintf(" - %s", r.truncateString(node.Error, 30))
+        }</span>
+
+        <span class="cov0" title="0">return display</span>
+}
+
+// formatNodeCompact formats a node in compact display
+func (r *ASCIIRenderer) formatNodeCompact(node *JobNode, state *NavigationState) string <span class="cov0" title="0">{
+        statusChar := r.getStatusChar(node.Status)
+
+        selected := ""
+        if node.ID == state.SelectedNode </span><span class="cov0" title="0">{
+                selected = "→ "
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf("%s%s %s (%s)",
+                selected,
+                statusChar,
+                r.truncateString(node.Name, 20),
+                node.QueueName)</span>
+}
+
+// getStatusChar returns a character representing job status
+func (r *ASCIIRenderer) getStatusChar(status JobStatus) string <span class="cov0" title="0">{
+        switch status </span>{
+        case JobStatusSuccess:<span class="cov0" title="0">
+                return "✓"</span>
+        case JobStatusFailed:<span class="cov0" title="0">
+                return "✗"</span>
+        case JobStatusProcessing:<span class="cov0" title="0">
+                return "⚡"</span>
+        case JobStatusPending:<span class="cov0" title="0">
+                return "○"</span>
+        case JobStatusRetry:<span class="cov0" title="0">
+                return "↻"</span>
+        case JobStatusCancelled:<span class="cov0" title="0">
+                return "⊘"</span>
+        default:<span class="cov0" title="0">
+                return "?"</span>
+        }
+}
+
+// shouldShowNode determines if a node should be visible based on view mode and filters
+func (r *ASCIIRenderer) shouldShowNode(node *JobNode, state *NavigationState) bool <span class="cov0" title="0">{
+        // Apply status filter
+        if len(state.FilterStatus) &gt; 0 </span><span class="cov0" title="0">{
+                found := false
+                for _, status := range state.FilterStatus </span><span class="cov0" title="0">{
+                        if node.Status == status </span><span class="cov0" title="0">{
+                                found = true
+                                break</span>
+                        }
+                }
+                <span class="cov0" title="0">if !found </span><span class="cov0" title="0">{
+                        return false
+                }</span>
+        }
+
+        // Apply queue filter
+        <span class="cov0" title="0">if len(state.FilterQueues) &gt; 0 </span><span class="cov0" title="0">{
+                found := false
+                for _, queue := range state.FilterQueues </span><span class="cov0" title="0">{
+                        if node.QueueName == queue </span><span class="cov0" title="0">{
+                                found = true
+                                break</span>
+                        }
+                }
+                <span class="cov0" title="0">if !found </span><span class="cov0" title="0">{
+                        return false
+                }</span>
+        }
+
+        // Apply search filter
+        <span class="cov0" title="0">if state.SearchTerm != "" </span><span class="cov0" title="0">{
+                term := strings.ToLower(state.SearchTerm)
+                if !strings.Contains(strings.ToLower(node.Name), term) &amp;&amp;
+                   !strings.Contains(strings.ToLower(node.ID), term) &amp;&amp;
+                   !strings.Contains(strings.ToLower(node.QueueName), term) </span><span class="cov0" title="0">{
+                        return false
+                }</span>
+        }
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// truncateString truncates a string to the specified length
+func (r *ASCIIRenderer) truncateString(s string, maxLen int) string <span class="cov0" title="0">{
+        if len(s) &lt;= maxLen </span><span class="cov0" title="0">{
+                return s
+        }</span>
+        <span class="cov0" title="0">return s[:maxLen-3] + "..."</span>
+}
+
+// placeStringInGrid places a string at the specified position in the grid
+func (r *ASCIIRenderer) placeStringInGrid(grid [][]rune, x, y int, s string) <span class="cov0" title="0">{
+        if y &lt; 0 || y &gt;= len(grid) </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">runes := []rune(s)
+        for i, r := range runes </span><span class="cov0" title="0">{
+                if x+i &gt;= 0 &amp;&amp; x+i &lt; len(grid[y]) </span><span class="cov0" title="0">{
+                        grid[y][x+i] = r
+                }</span>
+        }
+}
+
+// applyViewport applies scrolling and viewport clipping
+func (r *ASCIIRenderer) applyViewport(lines []string, state *NavigationState) []string <span class="cov0" title="0">{
+        if len(lines) == 0 </span><span class="cov0" title="0">{
+                return lines
+        }</span>
+
+        // Apply vertical scrolling
+        <span class="cov0" title="0">startY := state.ScrollOffset
+        endY := startY + r.viewport.Height
+
+        if startY &lt; 0 </span><span class="cov0" title="0">{
+                startY = 0
+        }</span>
+        <span class="cov0" title="0">if endY &gt; len(lines) </span><span class="cov0" title="0">{
+                endY = len(lines)
+        }</span>
+        <span class="cov0" title="0">if startY &gt;= len(lines) </span><span class="cov0" title="0">{
+                return []string{}
+        }</span>
+
+        <span class="cov0" title="0">visibleLines := lines[startY:endY]
+
+        // Apply horizontal clipping
+        for i, line := range visibleLines </span><span class="cov0" title="0">{
+                if len(line) &gt; r.viewport.Width </span><span class="cov0" title="0">{
+                        visibleLines[i] = line[:r.viewport.Width]
+                }</span>
+        }
+
+        <span class="cov0" title="0">return visibleLines</span>
+}
+
+// Layout computation methods
+
+func (r *ASCIIRenderer) computeTopDownLayout(genealogy *JobGenealogy, layout *TreeLayout, viewport Viewport) (*TreeLayout, error) <span class="cov0" title="0">{
+        // For ASCII rendering, layout is mostly virtual since we render on-demand
+        // We'll compute basic positioning for reference
+
+        for nodeID, node := range genealogy.Nodes </span><span class="cov0" title="0">{
+                layoutNode := &amp;TreeLayoutNode{
+                        JobID:       nodeID,
+                        X:           node.TreePosition * (r.config.NodeWidth + r.config.HorizontalSpacing),
+                        Y:           node.Generation * (r.config.NodeHeight + r.config.VerticalSpacing),
+                        Width:       r.config.NodeWidth,
+                        Height:      r.config.NodeHeight,
+                        Level:       node.Generation,
+                        HasChildren: len(node.ChildIDs) &gt; 0,
+                        IsVisible:   true,
+                }
+
+                layout.Nodes[nodeID] = layoutNode
+        }</span>
+
+        // Calculate total dimensions
+        <span class="cov0" title="0">maxX, maxY := 0, 0
+        for _, node := range layout.Nodes </span><span class="cov0" title="0">{
+                if node.X+node.Width &gt; maxX </span><span class="cov0" title="0">{
+                        maxX = node.X + node.Width
+                }</span>
+                <span class="cov0" title="0">if node.Y+node.Height &gt; maxY </span><span class="cov0" title="0">{
+                        maxY = node.Y + node.Height
+                }</span>
+        }
+
+        <span class="cov0" title="0">layout.TotalWidth = maxX
+        layout.TotalHeight = maxY
+
+        return layout, nil</span>
+}
+
+func (r *ASCIIRenderer) computeTimelineLayout(genealogy *JobGenealogy, layout *TreeLayout, viewport Viewport) (*TreeLayout, error) <span class="cov0" title="0">{
+        // Timeline layout arranges nodes chronologically
+        nodes := make([]*JobNode, 0, len(genealogy.Nodes))
+        for _, node := range genealogy.Nodes </span><span class="cov0" title="0">{
+                nodes = append(nodes, node)
+        }</span>
+
+        <span class="cov0" title="0">sort.Slice(nodes, func(i, j int) bool </span><span class="cov0" title="0">{
+                return nodes[i].CreatedAt.Before(nodes[j].CreatedAt)
+        }</span>)
+
+        <span class="cov0" title="0">y := 0
+        for i, node := range nodes </span><span class="cov0" title="0">{
+                layoutNode := &amp;TreeLayoutNode{
+                        JobID:       node.ID,
+                        X:           10,
+                        Y:           y,
+                        Width:       r.config.NodeWidth,
+                        Height:      r.config.NodeHeight,
+                        Level:       i,
+                        HasChildren: len(node.ChildIDs) &gt; 0,
+                        IsVisible:   true,
+                }
+
+                layout.Nodes[node.ID] = layoutNode
+                y += r.config.NodeHeight + r.config.VerticalSpacing
+        }</span>
+
+        <span class="cov0" title="0">layout.TotalWidth = r.config.NodeWidth + 20
+        layout.TotalHeight = y
+
+        return layout, nil</span>
+}
+
+func (r *ASCIIRenderer) computeRadialLayout(genealogy *JobGenealogy, layout *TreeLayout, viewport Viewport) (*TreeLayout, error) <span class="cov0" title="0">{
+        centerX := viewport.Width / 2
+        centerY := viewport.Height / 2
+
+        // Place root at center
+        if rootNode, exists := genealogy.Nodes[genealogy.RootID]; exists </span><span class="cov0" title="0">{
+                layout.Nodes[genealogy.RootID] = &amp;TreeLayoutNode{
+                        JobID:       genealogy.RootID,
+                        X:           centerX,
+                        Y:           centerY,
+                        Width:       r.config.NodeWidth,
+                        Height:      r.config.NodeHeight,
+                        Level:       0,
+                        HasChildren: len(rootNode.ChildIDs) &gt; 0,
+                        IsVisible:   true,
+                }
+
+                // Place children in a circle around root
+                if len(rootNode.ChildIDs) &gt; 0 </span><span class="cov0" title="0">{
+                        radius := 10
+                        angleStep := 360.0 / float64(len(rootNode.ChildIDs))
+
+                        for i, childID := range rootNode.ChildIDs </span><span class="cov0" title="0">{
+                                _ = float64(i) * angleStep // angle calculation for potential future radial improvements
+                                x := centerX + int(float64(radius)*1.5) // ASCII aspect ratio adjustment
+                                y := centerY + radius
+
+                                // Simplified positioning for ASCII
+                                switch i % 4 </span>{
+                                case 0:<span class="cov0" title="0">
+                                        x, y = centerX, centerY-radius</span>
+                                case 1:<span class="cov0" title="0">
+                                        x, y = centerX+radius*2, centerY</span>
+                                case 2:<span class="cov0" title="0">
+                                        x, y = centerX, centerY+radius</span>
+                                case 3:<span class="cov0" title="0">
+                                        x, y = centerX-radius*2, centerY</span>
+                                }
+
+                                <span class="cov0" title="0">if child, exists := genealogy.Nodes[childID]; exists </span><span class="cov0" title="0">{
+                                        layout.Nodes[childID] = &amp;TreeLayoutNode{
+                                                JobID:       childID,
+                                                X:           x,
+                                                Y:           y,
+                                                Width:       r.config.NodeWidth,
+                                                Height:      r.config.NodeHeight,
+                                                Level:       1,
+                                                HasChildren: len(child.ChildIDs) &gt; 0,
+                                                IsVisible:   true,
+                                        }
+                                }</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">layout.TotalWidth = viewport.Width
+        layout.TotalHeight = viewport.Height
+
+        return layout, nil</span>
+}
+
+func (r *ASCIIRenderer) computeCompactLayout(genealogy *JobGenealogy, layout *TreeLayout, viewport Viewport) (*TreeLayout, error) <span class="cov0" title="0">{
+        // Compact layout is similar to top-down but with minimal spacing
+        y := 0
+        for generation := 0; generation &lt;= genealogy.MaxDepth; generation++ </span><span class="cov0" title="0">{
+                if nodes, exists := genealogy.GenerationMap[generation]; exists </span><span class="cov0" title="0">{
+                        x := 0
+                        for _, nodeID := range nodes </span><span class="cov0" title="0">{
+                                layout.Nodes[nodeID] = &amp;TreeLayoutNode{
+                                        JobID:       nodeID,
+                                        X:           x,
+                                        Y:           y,
+                                        Width:       r.config.NodeWidth,
+                                        Height:      1, // Compact height
+                                        Level:       generation,
+                                        HasChildren: len(genealogy.Nodes[nodeID].ChildIDs) &gt; 0,
+                                        IsVisible:   true,
+                                }
+                                x += r.config.NodeWidth + 1
+                        }</span>
+                        <span class="cov0" title="0">y += 2</span> // Minimal vertical spacing
+                }
+        }
+
+        <span class="cov0" title="0">layout.TotalHeight = y
+
+        return layout, nil</span>
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Copyright 2025 James Ross
+package genealogy
+
+import (
+        "context"
+        "sync"
+        "time"
+)
+
+// RelationshipType represents the type of relationship between jobs
+type RelationshipType string
+
+const (
+        RelationshipRetry        RelationshipType = "retry"        // Job is retry of parent
+        RelationshipSpawn        RelationshipType = "spawn"        // Child job created by parent
+        RelationshipFork         RelationshipType = "fork"         // Parallel processing split
+        RelationshipCallback     RelationshipType = "callback"     // Callback job triggered by parent completion
+        RelationshipCompensation RelationshipType = "compensation" // Cleanup/rollback job triggered by parent failure
+        RelationshipContinuation RelationshipType = "continuation" // Sequential processing step
+        RelationshipBatchMember  RelationshipType = "batch_member" // Part of same batch operation
+)
+
+func (rt RelationshipType) String() string <span class="cov0" title="0">{
+        return string(rt)
+}</span>
+
+// ViewMode represents different visualization modes
+type ViewMode string
+
+const (
+        ViewModeFull        ViewMode = "full"        // Show complete genealogy
+        ViewModeAncestors   ViewMode = "ancestors"   // Trace backwards to root causes
+        ViewModeDescendants ViewMode = "descendants" // Show forward impact
+        ViewModeBlamePath   ViewMode = "blame"       // Highlight path from failure to root cause
+        ViewModeImpactZone  ViewMode = "impact"      // Highlight all affected descendants
+)
+
+// LayoutMode represents different tree layout algorithms
+type LayoutMode string
+
+const (
+        LayoutModeTopDown LayoutMode = "topdown" // Root jobs at top, children below
+        LayoutModeTimeline LayoutMode = "timeline" // Jobs arranged chronologically
+        LayoutModeRadial   LayoutMode = "radial"   // Root job at center, radiating outward
+        LayoutModeCompact  LayoutMode = "compact"  // Minimized vertical spacing
+)
+
+// JobStatus represents the current status of a job
+type JobStatus string
+
+const (
+        JobStatusPending    JobStatus = "pending"
+        JobStatusProcessing JobStatus = "processing"
+        JobStatusSuccess    JobStatus = "success"
+        JobStatusFailed     JobStatus = "failed"
+        JobStatusRetry      JobStatus = "retry"
+        JobStatusCancelled  JobStatus = "cancelled"
+)
+
+// JobRelationship represents a parent-child relationship between jobs
+type JobRelationship struct {
+        ParentID     string                 `json:"parent_id"`
+        ChildID      string                 `json:"child_id"`
+        Type         RelationshipType       `json:"relationship_type"`
+        SpawnReason  string                 `json:"spawn_reason"`
+        Timestamp    time.Time              `json:"timestamp"`
+        Metadata     map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// JobNode represents a job in the genealogy tree
+// JobDetails represents detailed information about a job (for compatibility with tests)
+type JobDetails struct {
+        ID          string                 `json:"id"`
+        Type        string                 `json:"type"`
+        Status      JobStatus              `json:"status"`
+        CreatedAt   time.Time              `json:"created_at"`
+        UpdatedAt   time.Time              `json:"updated_at"`
+        StartedAt   *time.Time             `json:"started_at,omitempty"`
+        CompletedAt *time.Time             `json:"completed_at,omitempty"`
+        Queue       string                 `json:"queue,omitempty"`
+        Priority    int                    `json:"priority"`
+        Attempts    int                    `json:"attempts"`
+        MaxAttempts int                    `json:"max_attempts"`
+        Error       string                 `json:"error,omitempty"`
+        Result      interface{}            `json:"result,omitempty"`
+        Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
+type JobNode struct {
+        ID           string                 `json:"id"`
+        Name         string                 `json:"name"`
+        Status       JobStatus              `json:"status"`
+        CreatedAt    time.Time              `json:"created_at"`
+        CompletedAt  *time.Time             `json:"completed_at,omitempty"`
+        Duration     time.Duration          `json:"duration"`
+        AttemptCount int                    `json:"attempt_count"`
+        Priority     int                    `json:"priority"`
+        QueueName    string                 `json:"queue_name"`
+        Metadata     map[string]interface{} `json:"metadata,omitempty"`
+        Error        string                 `json:"error,omitempty"`
+        JobDetails   *JobDetails            `json:"job_details,omitempty"`
+
+        // Tree structure
+        ParentID     string   `json:"parent_id,omitempty"`
+        ChildIDs     []string `json:"child_ids,omitempty"`
+        Generation   int      `json:"generation"`
+        TreePosition int      `json:"tree_position"`
+}
+
+// JobGenealogy represents a complete family tree of jobs
+type JobGenealogy struct {
+        RootID         string                       `json:"root_id"`
+        Nodes          map[string]*JobNode          `json:"nodes"`
+        Relationships  []JobRelationship            `json:"relationships"`
+        GenerationMap  map[int][]string             `json:"generation_map"`
+        MaxDepth       int                          `json:"max_depth"`
+        TotalJobs      int                          `json:"total_jobs"`
+        CreatedAt      time.Time                    `json:"created_at"`
+        UpdatedAt      time.Time                    `json:"updated_at"`
+}
+
+// ImpactAnalysis represents the analysis of job impact
+type ImpactAnalysis struct {
+        JobID             string        `json:"job_id"`
+        DirectChildren    int           `json:"direct_children"`
+        TotalDescendants  int           `json:"total_descendants"`
+        FailedDescendants int           `json:"failed_descendants"`
+        ProcessingCost    time.Duration `json:"processing_cost"`
+        TimeSpan          time.Duration `json:"time_span"`
+        AffectedQueues    []string      `json:"affected_queues"`
+        CriticalPath      []string      `json:"critical_path"`
+}
+
+// BlameAnalysis represents root cause analysis
+type BlameAnalysis struct {
+        FailedJobID    string   `json:"failed_job_id"`
+        RootCauseID    string   `json:"root_cause_id"`
+        BlamePath      []string `json:"blame_path"`
+        FailureReason  string   `json:"failure_reason"`
+        TimeToFailure  time.Duration `json:"time_to_failure"`
+        RetryAttempts  int      `json:"retry_attempts"`
+        PatternMatch   string   `json:"pattern_match,omitempty"`
+}
+
+// NavigationState holds the current state of tree navigation
+type NavigationState struct {
+        CurrentJobID   string            `json:"current_job_id"`
+        ViewMode       ViewMode          `json:"view_mode"`
+        LayoutMode     LayoutMode        `json:"layout_mode"`
+        ExpandedNodes  map[string]bool   `json:"expanded_nodes"`
+        FocusPath      []string          `json:"focus_path"`
+        FilterStatus   []JobStatus       `json:"filter_status,omitempty"`
+        FilterQueues   []string          `json:"filter_queues,omitempty"`
+        SearchTerm     string            `json:"search_term,omitempty"`
+        ScrollOffset   int               `json:"scroll_offset"`
+        SelectedNode   string            `json:"selected_node,omitempty"`
+}
+
+// TreeLayoutNode represents a positioned node in the rendered tree
+type TreeLayoutNode struct {
+        JobID      string `json:"job_id"`
+        X          int    `json:"x"`
+        Y          int    `json:"y"`
+        Width      int    `json:"width"`
+        Height     int    `json:"height"`
+        Level      int    `json:"level"`
+        IsExpanded bool   `json:"is_expanded"`
+        HasChildren bool  `json:"has_children"`
+        IsVisible  bool   `json:"is_visible"`
+}
+
+// TreeLayout represents the computed layout of a genealogy tree
+type TreeLayout struct {
+        Nodes         map[string]*TreeLayoutNode `json:"nodes"`
+        TotalWidth    int                        `json:"total_width"`
+        TotalHeight   int                        `json:"total_height"`
+        ViewportWidth int                        `json:"viewport_width"`
+        ViewportHeight int                       `json:"viewport_height"`
+        LayoutMode    LayoutMode                 `json:"layout_mode"`
+        ComputedAt    time.Time                  `json:"computed_at"`
+}
+
+// GenealogyConfig configures the genealogy navigator
+type GenealogyConfig struct {
+        // Storage configuration
+        RedisKeyPrefix    string        `json:"redis_key_prefix"`
+        CacheTTL          time.Duration `json:"cache_ttl"`
+        MaxTreeSize       int           `json:"max_tree_size"`
+        MaxGenerations    int           `json:"max_generations"`
+
+        // Rendering configuration
+        DefaultViewMode   ViewMode      `json:"default_view_mode"`
+        DefaultLayoutMode LayoutMode    `json:"default_layout_mode"`
+        NodeWidth         int           `json:"node_width"`
+        NodeHeight        int           `json:"node_height"`
+        HorizontalSpacing int           `json:"horizontal_spacing"`
+        VerticalSpacing   int           `json:"vertical_spacing"`
+
+        // Performance configuration
+        EnableCaching     bool          `json:"enable_caching"`
+        LazyLoading       bool          `json:"lazy_loading"`
+        BackgroundRefresh bool          `json:"background_refresh"`
+        RefreshInterval   time.Duration `json:"refresh_interval"`
+
+        // Data retention
+        RelationshipTTL   time.Duration `json:"relationship_ttl"`
+        TreeCacheTTL      time.Duration `json:"tree_cache_ttl"`
+        CleanupInterval   time.Duration `json:"cleanup_interval"`
+}
+
+// DefaultGenealogyConfig returns sensible defaults
+func DefaultGenealogyConfig() GenealogyConfig <span class="cov8" title="1">{
+        return GenealogyConfig{
+                RedisKeyPrefix:    "queue:genealogy",
+                CacheTTL:          5 * time.Minute,
+                MaxTreeSize:       10000,
+                MaxGenerations:    50,
+                DefaultViewMode:   ViewModeFull,
+                DefaultLayoutMode: LayoutModeTopDown,
+                NodeWidth:         30,
+                NodeHeight:        3,
+                HorizontalSpacing: 2,
+                VerticalSpacing:   1,
+                EnableCaching:     true,
+                LazyLoading:       true,
+                BackgroundRefresh: true,
+                RefreshInterval:   30 * time.Second,
+                RelationshipTTL:   24 * time.Hour,
+                TreeCacheTTL:      5 * time.Minute,
+                CleanupInterval:   1 * time.Hour,
+        }
+}</span>
+
+// GraphStore defines the interface for storing and retrieving genealogy data
+type GraphStore interface {
+        // Relationship management
+        AddRelationship(ctx context.Context, rel JobRelationship) error
+        GetRelationships(ctx context.Context, jobID string) ([]JobRelationship, error)
+        GetParents(ctx context.Context, jobID string) ([]string, error)
+        GetChildren(ctx context.Context, jobID string) ([]string, error)
+
+        // Tree operations
+        GetAncestors(ctx context.Context, jobID string) ([]string, error)
+        GetDescendants(ctx context.Context, jobID string) ([]string, error)
+        BuildGenealogy(ctx context.Context, rootID string) (*JobGenealogy, error)
+
+        // Cleanup
+        RemoveRelationships(ctx context.Context, jobID string) error
+        Cleanup(ctx context.Context, olderThan time.Time) error
+}
+
+// JobProvider defines the interface for retrieving job information
+type JobProvider interface {
+        GetJob(ctx context.Context, jobID string) (*JobNode, error)
+        GetJobs(ctx context.Context, jobIDs []string) (map[string]*JobNode, error)
+        SearchJobs(ctx context.Context, filter JobFilter) ([]*JobNode, error)
+}
+
+// JobFilter defines criteria for filtering jobs
+type JobFilter struct {
+        Status    []JobStatus `json:"status,omitempty"`
+        Queues    []string    `json:"queues,omitempty"`
+        CreatedAfter  *time.Time `json:"created_after,omitempty"`
+        CreatedBefore *time.Time `json:"created_before,omitempty"`
+        NamePattern   string     `json:"name_pattern,omitempty"`
+        Limit         int        `json:"limit,omitempty"`
+}
+
+// TreeRenderer defines the interface for rendering genealogy trees
+type TreeRenderer interface {
+        RenderTree(genealogy *JobGenealogy, layout *TreeLayout, state *NavigationState) ([]string, error)
+        ComputeLayout(genealogy *JobGenealogy, mode LayoutMode, viewport Viewport) (*TreeLayout, error)
+        GetViewport() Viewport
+        SetViewport(viewport Viewport)
+}
+
+// Viewport defines the rendering viewport
+type Viewport struct {
+        Width  int `json:"width"`
+        Height int `json:"height"`
+        OffsetX int `json:"offset_x"`
+        OffsetY int `json:"offset_y"`
+}
+
+// NavigationEvent represents user navigation events
+type NavigationEvent struct {
+        Type      string    `json:"type"`
+        JobID     string    `json:"job_id,omitempty"`
+        Direction string    `json:"direction,omitempty"`
+        Timestamp time.Time `json:"timestamp"`
+        Data      map[string]interface{} `json:"data,omitempty"`
+}
+
+// GenealogyNavigator is the main interface for the job genealogy system
+type GenealogyNavigator interface {
+        // Core operations
+        GetGenealogy(ctx context.Context, jobID string) (*JobGenealogy, error)
+        GetImpactAnalysis(ctx context.Context, jobID string) (*ImpactAnalysis, error)
+        GetBlameAnalysis(ctx context.Context, failedJobID string) (*BlameAnalysis, error)
+
+        // Tree operations
+        ExpandNode(ctx context.Context, jobID string) error
+        CollapseNode(ctx context.Context, jobID string) error
+        FocusOnJob(ctx context.Context, jobID string) error
+
+        // Navigation
+        SetViewMode(mode ViewMode) error
+        SetLayoutMode(mode LayoutMode) error
+        Navigate(direction string) error
+        Search(term string) ([]*JobNode, error)
+
+        // Rendering
+        RenderCurrent() ([]string, error)
+        RefreshTree() error
+
+        // State management
+        GetNavigationState() *NavigationState
+        SetNavigationState(state *NavigationState) error
+
+        // Events
+        Subscribe(callback func(NavigationEvent)) error
+        Unsubscribe() error
+
+        // Lifecycle
+        Start(ctx context.Context) error
+        Stop() error
+}
+
+// GenealogyCache provides caching for genealogy data
+type GenealogyCache struct {
+        trees         map[string]*JobGenealogy
+        layouts       map[string]*TreeLayout
+        relationships map[string][]JobRelationship
+        mu            sync.RWMutex
+        maxSize       int
+        ttl           time.Duration
+}
+
+// NewGenealogyCache creates a new genealogy cache
+func NewGenealogyCache(maxSize int, ttl time.Duration) *GenealogyCache <span class="cov8" title="1">{
+        return &amp;GenealogyCache{
+                trees:         make(map[string]*JobGenealogy),
+                layouts:       make(map[string]*TreeLayout),
+                relationships: make(map[string][]JobRelationship),
+                maxSize:       maxSize,
+                ttl:           ttl,
+        }
+}</span>
+
+// PatternDetector analyzes genealogy patterns
+type PatternDetector interface {
+        AnalyzeFailurePatterns(ctx context.Context, genealogies []*JobGenealogy) ([]FailurePattern, error)
+        DetectAnomalies(ctx context.Context, genealogy *JobGenealogy) ([]GenealogyAnomaly, error)
+        FindSimilarGenealogies(ctx context.Context, targetID string, limit int) ([]*JobGenealogy, error)
+}
+
+// FailurePattern represents a recurring failure pattern
+type FailurePattern struct {
+        ID             string    `json:"id"`
+        Name           string    `json:"name"`
+        Description    string    `json:"description"`
+        Frequency      int       `json:"frequency"`
+        LastSeen       time.Time `json:"last_seen"`
+        JobTypes       []string  `json:"job_types"`
+        FailureReasons []string  `json:"failure_reasons"`
+        Signature      string    `json:"signature"`
+}
+
+// GenealogyAnomaly represents an unusual pattern in job genealogy
+type GenealogyAnomaly struct {
+        Type        string    `json:"type"`
+        Severity    string    `json:"severity"`
+        Description string    `json:"description"`
+        JobID       string    `json:"job_id"`
+        DetectedAt  time.Time `json:"detected_at"`
+        Metrics     map[string]float64 `json:"metrics"`
+}
+
+// TreeMetrics provides performance and usage metrics
+type TreeMetrics struct {
+        TreeSize           int           `json:"tree_size"`
+        MaxDepth           int           `json:"max_depth"`
+        RenderTime         time.Duration `json:"render_time"`
+        LayoutTime         time.Duration `json:"layout_time"`
+        CacheHitRate       float64       `json:"cache_hit_rate"`
+        NavigationEvents   int           `json:"navigation_events"`
+        ExpandOperations   int           `json:"expand_operations"`
+        CollapseOperations int           `json:"collapse_operations"`
+}
+
+// ColorScheme defines colors for different job statuses
+type ColorScheme struct {
+        Success    string `json:"success"`
+        Failed     string `json:"failed"`
+        Processing string `json:"processing"`
+        Pending    string `json:"pending"`
+        Retry      string `json:"retry"`
+        Cancelled  string `json:"cancelled"`
+        Background string `json:"background"`
+        Border     string `json:"border"`
+        Text       string `json:"text"`
+        Highlight  string `json:"highlight"`
+}
+
+// DefaultColorScheme returns the default color scheme
+func DefaultColorScheme() ColorScheme <span class="cov0" title="0">{
+        return ColorScheme{
+                Success:    "green",
+                Failed:     "red",
+                Processing: "yellow",
+                Pending:    "gray",
+                Retry:      "orange",
+                Cancelled:  "purple",
+                Background: "black",
+                Border:     "white",
+                Text:       "white",
+                Highlight:  "cyan",
+        }
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
