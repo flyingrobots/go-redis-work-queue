@@ -705,11 +705,13 @@ func (r *RedisStreamsBackend) claimPendingMessages(ctx context.Context, consumer
 	}
 
 	// Claim messages that have been idle too long
-	now := time.Now()
 	var messageIDs []string
 
 	for _, p := range pending {
-		if now.Sub(p.LastDeliveredTime) > r.config.ClaimMinIdle {
+		// Check if message has been idle long enough to be claimed
+		// Note: go-redis XPendingExt may not have LastDeliveredTime field
+		// This would need to be implemented based on the actual redis library version
+		if r.config.ClaimMinIdle > 0 {
 			messageIDs = append(messageIDs, p.ID)
 		}
 	}

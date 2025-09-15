@@ -98,7 +98,7 @@ func TestRedisStreamsConfig(t *testing.T) {
 
 func TestRedisListsCapabilities(t *testing.T) {
 	// Test single Redis instance capabilities
-	config := RedisListsConfig{
+	_ = RedisListsConfig{
 		URL:         "redis://localhost:6379/0",
 		ClusterMode: false,
 	}
