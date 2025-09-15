@@ -29,6 +29,17 @@ func TestConfigValidate(t *testing.T) {
 					Type:   "redis",
 					Prefix: "test:",
 				},
+				Execution: ExecutionConfig{
+					MaxConcurrentNodes: 5,
+				},
+				UI: UIConfig{
+					GridSize: 20,
+					MaxZoom:  2.0,
+					MinZoom:  0.5,
+				},
+				API: APIConfig{
+					Port: 8080,
+				},
 			},
 			wantErr: false,
 		},

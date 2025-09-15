@@ -1,0 +1,571 @@
+package multicluster
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+)
+
+func TestIntegration_MultiClusterSetup(t *testing.T) {
+	// Start multiple mini Redis servers
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	redis3 := miniredis.RunT(t)
+	defer redis3.Close()
+
+	// Configure clusters
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{
+				Name:        "prod-east",
+				Label:       "Production East",
+				Color:       "#ff0000",
+				Environment: "production",
+				Region:      "us-east-1",
+				Endpoint:    redis1.Addr(),
+				DB:          0,
+				Enabled:     true,
+				Tags:        []string{"production", "primary"},
+			},
+			{
+				Name:        "prod-west",
+				Label:       "Production West",
+				Color:       "#ff6600",
+				Environment: "production",
+				Region:      "us-west-2",
+				Endpoint:    redis2.Addr(),
+				DB:          0,
+				Enabled:     true,
+				Tags:        []string{"production", "secondary"},
+			},
+			{
+				Name:        "staging",
+				Label:       "Staging",
+				Color:       "#00ff00",
+				Environment: "staging",
+				Region:      "us-east-1",
+				Endpoint:    redis3.Addr(),
+				DB:          0,
+				Enabled:     true,
+				Tags:        []string{"staging"},
+			},
+		},
+		DefaultCluster: "prod-east",
+		Polling: PollingConfig{
+			Enabled:  false, // Disable for tests
+			Interval: Duration(30 * time.Second),
+			Jitter:   Duration(5 * time.Second),
+			Timeout:  Duration(10 * time.Second),
+		},
+		Cache: CacheConfig{
+			Enabled:         true,
+			TTL:             Duration(1 * time.Minute),
+			MaxEntries:      100,
+			CleanupInterval: Duration(10 * time.Second),
+		},
+		Actions: ActionsConfig{
+			RequireConfirmation: false, // Disable for tests
+			MaxConcurrent:       3,
+			DefaultTimeout:      Duration(30 * time.Second),
+			AllowedActions: []ActionType{
+				ActionTypePurgeDLQ,
+				ActionTypeBenchmark,
+				ActionTypePauseQueue,
+				ActionTypeResumeQueue,
+			},
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Test that all clusters are connected
+	clusters, err := manager.ListClusters(ctx)
+	require.NoError(t, err)
+	assert.Len(t, clusters, 3)
+
+	// Verify each cluster is accessible
+	for _, cluster := range clusters {
+		if cluster.Enabled {
+			conn, err := manager.GetCluster(ctx, cluster.Name)
+			require.NoError(t, err, "Failed to get cluster %s", cluster.Name)
+			assert.NotNil(t, conn)
+			assert.True(t, conn.Status.Connected, "Cluster %s should be connected", cluster.Name)
+		}
+	}
+}
+
+func TestIntegration_StatsCollection(t *testing.T) {
+	// Setup clusters with test data
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	// Add test data to redis1
+	redis1.Lpush("jobqueue:queue:high", "job1", "job2", "job3")
+	redis1.Lpush("jobqueue:queue:normal", "job4", "job5")
+	redis1.Lpush("jobqueue:dead_letter", "deadjob1")
+	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
+	redis1.Set("worker:heartbeat:2", "alive", time.Hour)
+
+	// Add different data to redis2
+	redis2.Lpush("jobqueue:queue:high", "job6")
+	redis2.Lpush("jobqueue:queue:normal", "job7", "job8", "job9", "job10")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob2", "deadjob3")
+	redis2.Set("worker:heartbeat:3", "alive", time.Hour)
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{
+				Name:     "cluster1",
+				Label:    "Cluster 1",
+				Endpoint: redis1.Addr(),
+				Enabled:  true,
+			},
+			{
+				Name:     "cluster2",
+				Label:    "Cluster 2",
+				Endpoint: redis2.Addr(),
+				Enabled:  true,
+			},
+		},
+		DefaultCluster: "cluster1",
+		Cache: CacheConfig{
+			Enabled: true,
+			TTL:     Duration(30 * time.Second),
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Test individual cluster stats
+	stats1, err := manager.GetStats(ctx, "cluster1")
+	require.NoError(t, err)
+	assert.Equal(t, "cluster1", stats1.ClusterName)
+	assert.Equal(t, 2, stats1.WorkerCount) // 2 heartbeats
+
+	stats2, err := manager.GetStats(ctx, "cluster2")
+	require.NoError(t, err)
+	assert.Equal(t, "cluster2", stats2.ClusterName)
+	assert.Equal(t, 1, stats2.WorkerCount) // 1 heartbeat
+
+	// Test getting all stats
+	allStats, err := manager.GetAllStats(ctx)
+	require.NoError(t, err)
+	assert.Len(t, allStats, 2)
+	assert.Contains(t, allStats, "cluster1")
+	assert.Contains(t, allStats, "cluster2")
+
+	// Verify cache is working
+	stats1Cached, err := manager.GetStats(ctx, "cluster1")
+	require.NoError(t, err)
+	assert.Equal(t, stats1.Timestamp, stats1Cached.Timestamp) // Should be same from cache
+}
+
+func TestIntegration_CompareMode(t *testing.T) {
+	// Setup clusters with different data
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	// Cluster 1: High load
+	redis1.Lpush("jobqueue:queue:high", "job1", "job2", "job3", "job4", "job5")
+	redis1.Lpush("jobqueue:queue:normal", "job6", "job7")
+	redis1.Lpush("jobqueue:dead_letter", "deadjob1")
+	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
+	redis1.Set("worker:heartbeat:2", "alive", time.Hour)
+
+	// Cluster 2: Lower load
+	redis2.Lpush("jobqueue:queue:high", "job8")
+	redis2.Lpush("jobqueue:queue:normal", "job9", "job10")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob2", "deadjob3", "deadjob4")
+	redis2.Set("worker:heartbeat:3", "alive", time.Hour)
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{
+				Name:     "high-load",
+				Label:    "High Load Cluster",
+				Endpoint: redis1.Addr(),
+				Enabled:  true,
+			},
+			{
+				Name:     "low-load",
+				Label:    "Low Load Cluster",
+				Endpoint: redis2.Addr(),
+				Enabled:  true,
+			},
+		},
+		CompareMode: CompareModeConfig{
+			Enabled:        true,
+			DeltaThreshold: 20.0, // 20% threshold for anomaly detection
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Enable compare mode
+	err = manager.SetCompareMode(ctx, true, []string{"high-load", "low-load"})
+	require.NoError(t, err)
+
+	// Compare clusters
+	result, err := manager.CompareClusters(ctx, []string{"high-load", "low-load"})
+	require.NoError(t, err)
+	assert.Len(t, result.Clusters, 2)
+	assert.Contains(t, result.Clusters, "high-load")
+	assert.Contains(t, result.Clusters, "low-load")
+
+	// Check metrics comparison
+	assert.Contains(t, result.Metrics, "worker_count")
+	workerMetric := result.Metrics["worker_count"]
+	assert.Equal(t, 2.0, workerMetric.Values["high-load"])
+	assert.Equal(t, 1.0, workerMetric.Values["low-load"])
+	assert.Equal(t, 1.0, workerMetric.Delta) // 2 - 1 = 1
+
+	// Check for anomalies (high-load cluster should have more workers)
+	assert.NotEmpty(t, result.Anomalies)
+
+	// Verify tab configuration
+	tabConfig, err := manager.GetTabConfig(ctx)
+	require.NoError(t, err)
+	assert.True(t, tabConfig.CompareMode)
+	assert.Len(t, tabConfig.CompareWith, 2)
+}
+
+func TestIntegration_MultiClusterActions(t *testing.T) {
+	// Setup multiple clusters
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	// Add dead letter items to both clusters
+	redis1.Lpush("jobqueue:dead_letter", "dead1", "dead2")
+	redis2.Lpush("jobqueue:dead_letter", "dead3", "dead4", "dead5")
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{Name: "cluster1", Endpoint: redis1.Addr(), Enabled: true},
+			{Name: "cluster2", Endpoint: redis2.Addr(), Enabled: true},
+		},
+		Actions: ActionsConfig{
+			RequireConfirmation: false,
+			MaxConcurrent:       2,
+			AllowedActions:      []ActionType{ActionTypePurgeDLQ, ActionTypeBenchmark},
+			ActionTimeouts: map[ActionType]Duration{
+				ActionTypePurgeDLQ:  Duration(30 * time.Second),
+				ActionTypeBenchmark: Duration(60 * time.Second),
+			},
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Test multi-cluster DLQ purge action
+	action := &MultiAction{
+		ID:      "test-purge-dlq",
+		Type:    ActionTypePurgeDLQ,
+		Targets: []string{"cluster1", "cluster2"},
+		Parameters: map[string]interface{}{
+			"confirm": true,
+		},
+		Status:    ActionStatusPending,
+		CreatedAt: time.Now(),
+	}
+
+	err = manager.ExecuteAction(ctx, action)
+	require.NoError(t, err)
+
+	// Verify action completed successfully
+	assert.Equal(t, ActionStatusCompleted, action.Status)
+	assert.Len(t, action.Results, 2)
+
+	// Check results for each cluster
+	result1, ok := action.Results["cluster1"]
+	assert.True(t, ok)
+	assert.True(t, result1.Success)
+
+	result2, ok := action.Results["cluster2"]
+	assert.True(t, ok)
+	assert.True(t, result2.Success)
+
+	// Verify DLQ was actually purged
+	assert.Equal(t, 0, redis1.LLen("jobqueue:dead_letter"))
+	assert.Equal(t, 0, redis2.LLen("jobqueue:dead_letter"))
+
+	// Test benchmark action
+	benchmarkAction := &MultiAction{
+		ID:      "test-benchmark",
+		Type:    ActionTypeBenchmark,
+		Targets: []string{"cluster1", "cluster2"},
+		Parameters: map[string]interface{}{
+			"iterations": float64(5),
+		},
+		Status:    ActionStatusPending,
+		CreatedAt: time.Now(),
+	}
+
+	err = manager.ExecuteAction(ctx, benchmarkAction)
+	require.NoError(t, err)
+	assert.Equal(t, ActionStatusCompleted, benchmarkAction.Status)
+}
+
+func TestIntegration_HealthMonitoring(t *testing.T) {
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	// Setup cluster1 as healthy
+	redis1.Lpush("jobqueue:queue:high", "job1")
+	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
+
+	// Setup cluster2 as unhealthy (high DLQ count, no workers)
+	redis2.Lpush("jobqueue:dead_letter", "dead1", "dead2", "dead3", "dead4", "dead5")
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{Name: "healthy", Endpoint: redis1.Addr(), Enabled: true},
+			{Name: "unhealthy", Endpoint: redis2.Addr(), Enabled: true},
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Test health status for healthy cluster
+	health1, err := manager.GetHealth(ctx, "healthy")
+	require.NoError(t, err)
+	assert.True(t, health1.Healthy)
+	assert.Empty(t, health1.Issues)
+	assert.Contains(t, health1.Metrics, "worker_count")
+	assert.Equal(t, 1.0, health1.Metrics["worker_count"])
+
+	// Test health status for unhealthy cluster
+	health2, err := manager.GetHealth(ctx, "unhealthy")
+	require.NoError(t, err)
+	assert.False(t, health2.Healthy)
+	assert.NotEmpty(t, health2.Issues)
+	assert.Contains(t, health2.Issues, "No active workers")
+	assert.Contains(t, health2.Metrics, "dead_letter_count")
+	assert.Equal(t, 5.0, health2.Metrics["dead_letter_count"])
+}
+
+func TestIntegration_EventSystem(t *testing.T) {
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{Name: "test", Endpoint: redis1.Addr(), Enabled: true},
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Subscribe to events
+	eventCh, err := manager.SubscribeEvents(ctx)
+	require.NoError(t, err)
+
+	// Add a new cluster to trigger events
+	newCluster := ClusterConfig{
+		Name:     "new-cluster",
+		Endpoint: redis1.Addr(),
+		Enabled:  true,
+	}
+
+	err = manager.AddCluster(ctx, newCluster)
+	require.NoError(t, err)
+
+	// Wait for connection event
+	select {
+	case event := <-eventCh:
+		assert.Equal(t, EventTypeClusterConnected, event.Type)
+		assert.Equal(t, "new-cluster", event.Cluster)
+		assert.Contains(t, event.Message, "Connected")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Did not receive cluster connected event")
+	}
+
+	// Test action event
+	action := &MultiAction{
+		ID:      "test-action",
+		Type:    ActionTypeBenchmark,
+		Targets: []string{"test"},
+		Status:  ActionStatusPending,
+	}
+
+	err = manager.ExecuteAction(ctx, action)
+	require.NoError(t, err)
+
+	// Wait for action event
+	select {
+	case event := <-eventCh:
+		assert.Equal(t, EventTypeActionExecuted, event.Type)
+		assert.Contains(t, event.Message, "Action")
+		assert.Contains(t, event.Data, "action")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Did not receive action executed event")
+	}
+
+	// Unsubscribe
+	err = manager.UnsubscribeEvents(ctx, eventCh)
+	assert.NoError(t, err)
+}
+
+func TestIntegration_ClusterFailover(t *testing.T) {
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{Name: "primary", Endpoint: redis1.Addr(), Enabled: true, Tags: []string{"primary"}},
+			{Name: "secondary", Endpoint: redis2.Addr(), Enabled: true, Tags: []string{"secondary"}},
+		},
+		DefaultCluster: "primary",
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Subscribe to events
+	eventCh, err := manager.SubscribeEvents(ctx)
+	require.NoError(t, err)
+
+	// Verify initial state
+	primary, err := manager.GetCluster(ctx, "primary")
+	require.NoError(t, err)
+	assert.True(t, primary.Status.Connected)
+
+	// Simulate primary failure by closing Redis
+	redis1.Close()
+
+	// Wait a moment for health check to detect failure
+	time.Sleep(100 * time.Millisecond)
+
+	// Check if we get disconnection event
+	select {
+	case event := <-eventCh:
+		if event.Type == EventTypeClusterDisconnected && event.Cluster == "primary" {
+			assert.Contains(t, event.Message, "Lost connection")
+		}
+	case <-time.After(2 * time.Second):
+		t.Log("No disconnection event received (expected in some cases)")
+	}
+
+	// Switch to secondary cluster
+	err = manager.SwitchCluster(ctx, "secondary")
+	require.NoError(t, err)
+
+	// Verify secondary is still working
+	secondary, err := manager.GetCluster(ctx, "secondary")
+	require.NoError(t, err)
+	assert.True(t, secondary.Status.Connected)
+
+	stats, err := manager.GetStats(ctx, "secondary")
+	require.NoError(t, err)
+	assert.Equal(t, "secondary", stats.ClusterName)
+}
+
+func TestIntegration_ConcurrentOperations(t *testing.T) {
+	redis1 := miniredis.RunT(t)
+	defer redis1.Close()
+	redis2 := miniredis.RunT(t)
+	defer redis2.Close()
+
+	cfg := &Config{
+		Clusters: []ClusterConfig{
+			{Name: "cluster1", Endpoint: redis1.Addr(), Enabled: true},
+			{Name: "cluster2", Endpoint: redis2.Addr(), Enabled: true},
+		},
+		Actions: ActionsConfig{
+			RequireConfirmation: false,
+			MaxConcurrent:       10,
+			AllowedActions:      []ActionType{ActionTypeBenchmark},
+		},
+	}
+
+	manager, err := NewManager(cfg, zap.NewNop())
+	require.NoError(t, err)
+	defer manager.Close()
+
+	ctx := context.Background()
+
+	// Run multiple concurrent operations
+	const numOperations = 10
+	results := make(chan error, numOperations)
+
+	for i := 0; i < numOperations; i++ {
+		go func(i int) {
+			action := &MultiAction{
+				ID:      fmt.Sprintf("concurrent-action-%d", i),
+				Type:    ActionTypeBenchmark,
+				Targets: []string{"cluster1", "cluster2"},
+				Parameters: map[string]interface{}{
+					"iterations": float64(3),
+				},
+				Status: ActionStatusPending,
+			}
+
+			err := manager.ExecuteAction(ctx, action)
+			results <- err
+		}(i)
+	}
+
+	// Wait for all operations to complete
+	for i := 0; i < numOperations; i++ {
+		select {
+		case err := <-results:
+			assert.NoError(t, err, "Concurrent operation %d failed", i)
+		case <-time.After(30 * time.Second):
+			t.Fatal("Timeout waiting for concurrent operations")
+		}
+	}
+
+	// Verify clusters are still responsive
+	stats1, err := manager.GetStats(ctx, "cluster1")
+	require.NoError(t, err)
+	assert.Equal(t, "cluster1", stats1.ClusterName)
+
+	stats2, err := manager.GetStats(ctx, "cluster2")
+	require.NoError(t, err)
+	assert.Equal(t, "cluster2", stats2.ClusterName)
+}
