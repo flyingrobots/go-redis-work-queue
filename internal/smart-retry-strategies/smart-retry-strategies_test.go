@@ -2,7 +2,7 @@
 package smartretry
 
 import (
-	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -47,7 +47,7 @@ func TestNewManager(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestGetRecommendation(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestGetRecommendation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec, err := manager.GetRecommendation(tt.features)
+			rec, err := mgr.GetRecommendation(tt.features)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetRecommendation() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -202,7 +202,7 @@ func TestRecordAttempt(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestGetStats(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestPreviewRetrySchedule(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -409,12 +409,15 @@ func TestPolicyMatching(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
 
-	m := manager.(*manager)
+	m, ok := mgr.(*manager)
+	if !ok {
+		t.Fatal("Failed to cast manager to internal type")
+	}
 
 	tests := []struct {
 		name       string
@@ -503,12 +506,15 @@ func TestDelayCalculation(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
 
-	m := manager.(*manager)
+	m, ok := mgr.(*manager)
+	if !ok {
+		t.Fatal("Failed to cast manager to internal type")
+	}
 
 	policy := RetryPolicy{
 		BaseDelayMs:       1000,
@@ -597,12 +603,15 @@ func TestValidationErrors(t *testing.T) {
 		},
 	}
 
-	manager, err := NewManager(config, zap.NewNop())
+	mgr, err := NewManager(config, zap.NewNop())
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
 
-	m := manager.(*manager)
+	m, ok := mgr.(*manager)
+	if !ok {
+		t.Fatal("Failed to cast manager to internal type")
+	}
 
 	tests := []struct {
 		errorClass string

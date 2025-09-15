@@ -2,6 +2,9 @@
 package smartretry
 
 import (
+	"math"
+	"math/rand"
+	"regexp"
 	"testing"
 	"time"
 )

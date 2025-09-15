@@ -1,0 +1,1188 @@
+openapi: 3.0.3
+info:
+  title: Canary Deployments API
+  description: |
+    API for managing canary deployments in the job queue system. Enables safe rollouts
+    of new worker versions with traffic splitting, SLO monitoring, and automated promotion.
+  version: 1.0.0
+  contact:
+    name: Engineering Team
+    email: engineering@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+paths:
+  /deployments:
+    get:
+      summary: List canary deployments
+      description: Retrieve a paginated list of canary deployments with optional filtering
+      operationId: listDeployments
+      tags:
+        - Deployments
+      parameters:
+        - name: status
+          in: query
+          description: Filter by deployment status
+          schema:
+            $ref: '#/components/schemas/DeploymentStatus'
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          description: Filter by tenant ID
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CanaryDeployment'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new canary deployment
+      description: Start a new canary deployment for a specific queue
+      operationId: createDeployment
+      tags:
+        - Deployments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeploymentRequest'
+      responses:
+        '201':
+          description: Deployment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - deployment already exists for this queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}:
+    parameters:
+      - name: deploymentId
+        in: path
+        required: true
+        description: Unique identifier for the deployment
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get deployment details
+      description: Retrieve detailed information about a specific canary deployment
+      operationId: getDeployment
+      tags:
+        - Deployments
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      summary: Update deployment configuration
+      description: Update traffic percentage or other deployment settings
+      operationId: updateDeployment
+      tags:
+        - Deployments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeploymentRequest'
+      responses:
+        '200':
+          description: Deployment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete canary deployment
+      description: Stop and remove a canary deployment (with optional rollback)
+      operationId: deleteDeployment
+      tags:
+        - Deployments
+      parameters:
+        - name: force
+          in: query
+          description: Force deletion without rollback
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Deployment deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete active deployment without rollback
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/promote:
+    post:
+      summary: Promote canary to production
+      description: Promote the canary version to handle 100% of traffic
+      operationId: promoteDeployment
+      tags:
+        - Deployment Actions
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation:
+                  type: boolean
+                  description: Confirmation that promotion is intended
+                  default: true
+                reason:
+                  type: string
+                  description: Reason for promotion
+                  maxLength: 500
+      responses:
+        '200':
+          description: Promotion initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Deployment not in promotable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/rollback:
+    post:
+      summary: Rollback canary deployment
+      description: Emergency rollback to stable version
+      operationId: rollbackDeployment
+      tags:
+        - Deployment Actions
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for rollback
+                  maxLength: 500
+                emergency:
+                  type: boolean
+                  description: Emergency rollback flag
+                  default: false
+                drain_timeout:
+                  type: string
+                  format: duration
+                  description: Timeout for draining canary jobs
+                  default: "5m"
+      responses:
+        '200':
+          description: Rollback initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/pause:
+    post:
+      summary: Pause canary deployment
+      description: Pause traffic ramping and automatic promotion
+      operationId: pauseDeployment
+      tags:
+        - Deployment Actions
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deployment paused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/resume:
+    post:
+      summary: Resume canary deployment
+      description: Resume traffic ramping and automatic promotion
+      operationId: resumeDeployment
+      tags:
+        - Deployment Actions
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deployment resumed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryDeployment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/metrics:
+    get:
+      summary: Get deployment metrics
+      description: Retrieve current and historical metrics for the deployment
+      operationId: getDeploymentMetrics
+      tags:
+        - Metrics
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: start_time
+          in: query
+          description: Start time for historical metrics
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for historical metrics
+          schema:
+            type: string
+            format: date-time
+        - name: interval
+          in: query
+          description: Metrics aggregation interval
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h]
+            default: 5m
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current:
+                    type: object
+                    properties:
+                      stable:
+                        $ref: '#/components/schemas/MetricsSnapshot'
+                      canary:
+                        $ref: '#/components/schemas/MetricsSnapshot'
+                  historical:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        stable:
+                          $ref: '#/components/schemas/MetricsSnapshot'
+                        canary:
+                          $ref: '#/components/schemas/MetricsSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deployments/{deploymentId}/events:
+    get:
+      summary: Get deployment events
+      description: Retrieve audit trail and events for the deployment
+      operationId: getDeploymentEvents
+      tags:
+        - Events
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: event_type
+          in: query
+          description: Filter by event type
+          schema:
+            $ref: '#/components/schemas/EventType'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeploymentEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rules:
+    get:
+      summary: List promotion rules
+      description: Get available promotion rule templates
+      operationId: listPromotionRules
+      tags:
+        - Rules
+      responses:
+        '200':
+          description: Rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromotionRule'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new promotion rule
+      description: Create a custom promotion rule template
+      operationId: createPromotionRule
+      tags:
+        - Rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePromotionRuleRequest'
+      responses:
+        '201':
+          description: Rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromotionRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workers:
+    get:
+      summary: List registered workers
+      description: Get information about currently registered workers
+      operationId: listWorkers
+      tags:
+        - Workers
+      parameters:
+        - name: version
+          in: query
+          description: Filter by worker version
+          schema:
+            type: string
+        - name: lane
+          in: query
+          description: Filter by worker lane (stable/canary)
+          schema:
+            type: string
+            enum: [stable, canary]
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workers retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkerInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    CanaryDeployment:
+      type: object
+      required:
+        - id
+        - queue_name
+        - stable_version
+        - canary_version
+        - current_percent
+        - status
+        - start_time
+        - config
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique deployment identifier
+        queue_name:
+          type: string
+          description: Target queue name
+          example: "payment-processor"
+        tenant_id:
+          type: string
+          description: Tenant identifier for multi-tenant deployments
+        stable_version:
+          type: string
+          description: Current stable version
+          example: "v1.2.3"
+        canary_version:
+          type: string
+          description: New canary version being tested
+          example: "v1.3.0"
+        current_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current percentage of traffic going to canary
+        target_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Target percentage for this stage
+        strategy:
+          $ref: '#/components/schemas/RoutingStrategy'
+        status:
+          $ref: '#/components/schemas/DeploymentStatus'
+        start_time:
+          type: string
+          format: date-time
+          description: Deployment start timestamp
+        last_update:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        completed_at:
+          type: string
+          format: date-time
+          description: Deployment completion timestamp
+        config:
+          $ref: '#/components/schemas/CanaryConfig'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromotionRule'
+        stable_metrics:
+          $ref: '#/components/schemas/MetricsSnapshot'
+        canary_metrics:
+          $ref: '#/components/schemas/MetricsSnapshot'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeploymentEvent'
+        created_by:
+          type: string
+          description: User who created the deployment
+        last_modified_by:
+          type: string
+          description: User who last modified the deployment
+
+    DeploymentStatus:
+      type: string
+      enum:
+        - planning
+        - active
+        - ramping
+        - manual_review
+        - promoting
+        - rolling_back
+        - completed
+        - failed
+        - paused
+      description: Current status of the canary deployment
+
+    RoutingStrategy:
+      type: string
+      enum:
+        - queue_split
+        - stream_group
+        - consistent_hash
+      description: Traffic routing strategy being used
+
+    CanaryConfig:
+      type: object
+      required:
+        - initial_percent
+        - max_percent
+        - step_size
+        - step_duration
+      properties:
+        initial_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Initial traffic percentage for canary
+          example: 5
+        max_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Maximum traffic percentage allowed
+          example: 100
+        step_size:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Percentage increase per promotion step
+          example: 10
+        step_duration:
+          type: string
+          format: duration
+          description: Duration between automatic promotions
+          example: "10m"
+        sticky_routing:
+          type: boolean
+          description: Use job ID hash for consistent routing
+          default: false
+        routing_strategy:
+          $ref: '#/components/schemas/RoutingStrategy'
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum deployment duration
+          example: "2h"
+        min_duration:
+          type: string
+          format: duration
+          description: Minimum deployment duration
+          example: "10m"
+        require_approval:
+          type: boolean
+          description: Require manual approval for final promotion
+          default: false
+        auto_promote:
+          type: boolean
+          description: Enable automatic promotion based on rules
+          default: true
+        error_rate_threshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: Maximum allowed error rate increase (percentage points)
+          example: 2.0
+        latency_threshold:
+          type: number
+          format: float
+          minimum: 0
+          description: Maximum allowed latency increase (percentage)
+          example: 15.0
+        throughput_threshold:
+          type: number
+          format: float
+          minimum: 0
+          description: Maximum allowed throughput decrease (percentage)
+          example: 10.0
+        drain_timeout:
+          type: string
+          format: duration
+          description: Timeout for draining canary jobs during rollback
+          example: "5m"
+        monitoring_interval:
+          type: string
+          format: duration
+          description: Interval for metrics collection
+          example: "30s"
+        alert_channels:
+          type: array
+          items:
+            type: string
+          description: Alert channels for notifications
+        enable_metrics:
+          type: boolean
+          description: Enable metrics collection
+          default: true
+        enable_alerting:
+          type: boolean
+          description: Enable alerting
+          default: true
+        enable_auto_rollback:
+          type: boolean
+          description: Enable automatic rollback on SLO violations
+          default: true
+
+    MetricsSnapshot:
+      type: object
+      required:
+        - timestamp
+        - time_window
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Metrics collection timestamp
+        time_window:
+          type: string
+          format: duration
+          description: Time window for metrics aggregation
+        jobs_processed:
+          type: integer
+          format: int64
+          description: Total jobs processed
+        jobs_succeeded:
+          type: integer
+          format: int64
+          description: Successfully processed jobs
+        jobs_failed:
+          type: integer
+          format: int64
+          description: Failed jobs
+        error_rate:
+          type: number
+          format: float
+          description: Error rate percentage
+        avg_latency:
+          type: string
+          format: duration
+          description: Average processing latency
+        p50_latency:
+          type: string
+          format: duration
+          description: 50th percentile latency
+        p95_latency:
+          type: string
+          format: duration
+          description: 95th percentile latency
+        p99_latency:
+          type: string
+          format: duration
+          description: 99th percentile latency
+        jobs_per_second:
+          type: number
+          format: float
+          description: Processing rate
+        active_workers:
+          type: integer
+          description: Number of active workers
+        queue_depth:
+          type: integer
+          description: Current queue depth
+        memory_usage:
+          type: integer
+          format: int64
+          description: Memory usage in bytes
+        cpu_usage:
+          type: number
+          format: float
+          description: CPU usage percentage
+        custom_metrics:
+          type: object
+          additionalProperties: true
+          description: Custom business metrics
+
+    PromotionRule:
+      type: object
+      required:
+        - name
+        - type
+        - enabled
+        - conditions
+        - actions
+      properties:
+        name:
+          type: string
+          description: Rule name
+          example: "Low Error Rate"
+        type:
+          $ref: '#/components/schemas/RuleType'
+        enabled:
+          type: boolean
+          description: Whether the rule is active
+        priority:
+          type: integer
+          description: Rule evaluation priority
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleCondition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleAction'
+        evaluation_interval:
+          type: string
+          format: duration
+          description: How often to evaluate the rule
+        cooldown_period:
+          type: string
+          format: duration
+          description: Minimum time between rule actions
+        description:
+          type: string
+          description: Human-readable rule description
+        created_by:
+          type: string
+          description: User who created the rule
+        created_at:
+          type: string
+          format: date-time
+          description: Rule creation timestamp
+
+    RuleType:
+      type: string
+      enum:
+        - error_rate
+        - latency
+        - throughput
+        - duration
+        - custom
+      description: Type of promotion rule
+
+    RuleCondition:
+      type: object
+      required:
+        - metric
+        - operator
+        - value
+      properties:
+        metric:
+          type: string
+          description: Metric to evaluate
+          example: "error_rate"
+        operator:
+          type: string
+          enum: [lt, lte, gt, gte, eq, ne]
+          description: Comparison operator
+        value:
+          description: Threshold value
+          oneOf:
+            - type: number
+            - type: string
+            - type: boolean
+        duration:
+          type: string
+          format: duration
+          description: Duration condition must be met
+
+    RuleAction:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ActionType'
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Action-specific parameters
+
+    ActionType:
+      type: string
+      enum:
+        - promote
+        - rollback
+        - pause
+        - alert
+        - custom
+      description: Type of action to take
+
+    DeploymentEvent:
+      type: object
+      required:
+        - id
+        - timestamp
+        - type
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Event identifier
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        type:
+          $ref: '#/components/schemas/EventType'
+        message:
+          type: string
+          description: Event description
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional event details
+        user:
+          type: string
+          description: User associated with the event
+        automated:
+          type: boolean
+          description: Whether the event was automated
+
+    EventType:
+      type: string
+      enum:
+        - deployment_created
+        - traffic_updated
+        - promotion_triggered
+        - rollback_triggered
+        - rule_evaluated
+        - metrics_collected
+        - worker_registered
+        - alert_triggered
+        - deployment_completed
+        - deployment_failed
+      description: Type of deployment event
+
+    WorkerInfo:
+      type: object
+      required:
+        - id
+        - version
+        - lane
+        - queues
+        - status
+        - last_seen
+      properties:
+        id:
+          type: string
+          description: Worker identifier
+        version:
+          type: string
+          description: Worker version
+        lane:
+          type: string
+          enum: [stable, canary]
+          description: Worker lane assignment
+        queues:
+          type: array
+          items:
+            type: string
+          description: Queues this worker processes
+        status:
+          type: string
+          enum: [healthy, unhealthy, unknown]
+          description: Worker health status
+        last_seen:
+          type: string
+          format: date-time
+          description: Last heartbeat timestamp
+        metrics:
+          type: object
+          additionalProperties: true
+          description: Worker-specific metrics
+
+    CreateDeploymentRequest:
+      type: object
+      required:
+        - queue_name
+        - canary_version
+      properties:
+        queue_name:
+          type: string
+          description: Target queue for deployment
+        tenant_id:
+          type: string
+          description: Tenant identifier
+        canary_version:
+          type: string
+          description: Version to deploy as canary
+        config:
+          $ref: '#/components/schemas/CanaryConfig'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromotionRule'
+
+    UpdateDeploymentRequest:
+      type: object
+      properties:
+        current_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Update traffic percentage
+        target_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Update target percentage
+        config:
+          $ref: '#/components/schemas/CanaryConfig'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromotionRule'
+
+    CreatePromotionRuleRequest:
+      type: object
+      required:
+        - name
+        - type
+        - conditions
+        - actions
+      properties:
+        name:
+          type: string
+          description: Rule name
+        type:
+          $ref: '#/components/schemas/RuleType'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleCondition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleAction'
+        description:
+          type: string
+          description: Rule description
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        has_more:
+          type: boolean
+          description: Whether more pages are available
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        request_id:
+          type: string
+          description: Request identifier for debugging
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+tags:
+  - name: Deployments
+    description: Canary deployment management
+  - name: Deployment Actions
+    description: Deployment control operations
+  - name: Metrics
+    description: Performance and health metrics
+  - name: Events
+    description: Audit trail and events
+  - name: Rules
+    description: Promotion rule management
+  - name: Workers
+    description: Worker registration and status

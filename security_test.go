@@ -494,8 +494,8 @@ func TestSignatureService_TimingAttacks(t *testing.T) {
 		"sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"sha256=", // Empty signature
 		"invalid_format",
-		strings.Replace(correctSignature, "a", "b", -1), // Change all 'a' to 'b'
-		strings.Replace(correctSignature, "abc", "xyz", 1), // Multiple character change
+		"sha256=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", // Obviously wrong
+		strings.Replace(correctSignature, "0", "1", -1), // Change all '0' to '1'
 	}
 
 	for i, incorrectSig := range incorrectSignatures {

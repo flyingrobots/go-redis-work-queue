@@ -301,7 +301,7 @@ func (m *manager) splitTrainingData(features [][]float64, labels []float64, vali
 }
 
 // trainLogisticRegression trains a logistic regression model (simplified implementation)
-func (m *manager) trainLogisticRegression(trainX, valX [][]float64, trainY, valY []float64,
+func (m *manager) trainLogisticRegression(trainX [][]float64, trainY []float64, valX [][]float64, valY []float64,
 	hyperparams map[string]interface{}) ([]byte, float64, float64, error) {
 
 	// This is a simplified implementation - in practice you'd use a proper ML library
@@ -336,7 +336,7 @@ func (m *manager) trainLogisticRegression(trainX, valX [][]float64, trainY, valY
 }
 
 // trainGradientBoost trains a gradient boosting model (simplified implementation)
-func (m *manager) trainGradientBoost(trainX, valX [][]float64, trainY, valY []float64,
+func (m *manager) trainGradientBoost(trainX [][]float64, trainY []float64, valX [][]float64, valY []float64,
 	hyperparams map[string]interface{}) ([]byte, float64, float64, error) {
 
 	m.logger.Info("Training gradient boosting model",

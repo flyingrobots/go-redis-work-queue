@@ -260,12 +260,12 @@ func GetErrorSeverity(err error) string {
 }
 
 // Mock time function for testing
-var timeNow = func() time {
-	return time{}
+var timeNow = func() mockTime {
+	return mockTime{}
 }
 
-type time struct{}
+type mockTime struct{}
 
-func (t time) Unix() int64 {
+func (t mockTime) Unix() int64 {
 	return 1642680000 // Mock timestamp
 }

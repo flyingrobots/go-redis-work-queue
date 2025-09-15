@@ -3,9 +3,7 @@ package smartretry
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"

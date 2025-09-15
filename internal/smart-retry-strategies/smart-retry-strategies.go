@@ -123,8 +123,9 @@ func (m *manager) GetRecommendation(features RetryFeatures) (*RetryRecommendatio
 	if m.strategy.MLEnabled && m.mlModel != nil && m.mlModel.Enabled {
 		if rec, err := m.getMLRecommendation(features); err == nil {
 			return rec, nil
+		} else {
+			m.logger.Warn("ML recommendation failed, falling back to Bayesian", zap.Error(err))
 		}
-		m.logger.Warn("ML recommendation failed, falling back to Bayesian", zap.Error(err))
 	}
 
 	// Try Bayesian model
