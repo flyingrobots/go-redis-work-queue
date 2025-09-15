@@ -1,6 +1,7 @@
 package multicluster
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"

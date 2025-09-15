@@ -143,8 +143,10 @@ func TestIntegration_StatsCollection(t *testing.T) {
 		},
 		DefaultCluster: "cluster1",
 		Cache: CacheConfig{
-			Enabled: true,
-			TTL:     30 * time.Second,
+			Enabled:         true,
+			TTL:             30 * time.Second,
+			MaxEntries:      100,
+			CleanupInterval: 60 * time.Second,
 		},
 	}
 
@@ -225,6 +227,12 @@ func TestIntegration_CompareMode(t *testing.T) {
 			Enabled:        true,
 			DeltaThreshold: 20.0, // 20% threshold for anomaly detection
 		},
+		Cache: CacheConfig{
+			Enabled:         false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
+		},
 	}
 
 	manager, err := NewManager(cfg, zap.NewNop())
@@ -288,6 +296,12 @@ func TestIntegration_MultiClusterActions(t *testing.T) {
 				ActionTypePurgeDLQ:  Duration(30 * time.Second),
 				ActionTypeBenchmark: Duration(60 * time.Second),
 			},
+		},
+		Cache: CacheConfig{
+			Enabled: false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
 		},
 	}
 
@@ -370,6 +384,12 @@ func TestIntegration_HealthMonitoring(t *testing.T) {
 			{Name: "healthy", Endpoint: redis1.Addr(), Enabled: true},
 			{Name: "unhealthy", Endpoint: redis2.Addr(), Enabled: true},
 		},
+		Cache: CacheConfig{
+			Enabled: false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
+		},
 	}
 
 	manager, err := NewManager(cfg, zap.NewNop())
@@ -403,6 +423,12 @@ func TestIntegration_EventSystem(t *testing.T) {
 	cfg := &Config{
 		Clusters: []ClusterConfig{
 			{Name: "test", Endpoint: redis1.Addr(), Enabled: true},
+		},
+		Cache: CacheConfig{
+			Enabled: false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
 		},
 	}
 
@@ -474,6 +500,12 @@ func TestIntegration_ClusterFailover(t *testing.T) {
 			{Name: "secondary", Endpoint: redis2.Addr(), Enabled: true},
 		},
 		DefaultCluster: "primary",
+		Cache: CacheConfig{
+			Enabled: false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
+		},
 	}
 
 	manager, err := NewManager(cfg, zap.NewNop())
@@ -536,6 +568,12 @@ func TestIntegration_ConcurrentOperations(t *testing.T) {
 			RequireConfirmation: false,
 			MaxConcurrent:       10,
 			AllowedActions:      []ActionType{ActionTypeBenchmark},
+		},
+		Cache: CacheConfig{
+			Enabled: false, // Disable cache for test
+		},
+		Polling: PollingConfig{
+			Enabled: false, // Disable polling for test
 		},
 	}
 
