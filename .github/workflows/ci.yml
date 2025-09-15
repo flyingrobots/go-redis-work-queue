@@ -48,11 +48,12 @@ jobs:
         run: go test ./... -race -count=1
       - name: E2E determinism (5x)
         env:
-          E2E_REDIS_ADDR: localhost:6379
+          E2E_REDIS_ADDR: 127.0.0.1:6379
         run: |
+          set -euo pipefail
           for i in {1..5}; do
-            echo "Run #$i";
-            go test ./test/e2e -run TestE2E_WorkerCompletesJobWithRealRedis -race -count=1 || exit 1;
+            echo "Run #$i"
+            go test ./test/e2e -run TestE2E_WorkerCompletesJobWithRealRedis -race -count=1
           done
       - name: Govulncheck
         run: |
