@@ -144,6 +144,10 @@ Pre-commit hook
 - Enable hooks once per clone: `make hooks` (sets `core.hooksPath=.githooks`).
 - Reminder: Whenever you touch `AGENTS.md`, also ensure the features ledger is current (the hook will do this, but run the script manually if needed).
 
+CI auto-update
+- On merges to `main`, a GitHub Actions workflow (`.github/workflows/update-progress.yml`) runs the progress updater and commits any changes to the ledger/README automatically.
+- This provides a consistent source of truth even if local hooks are bypassed.
+
 Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done. This is your backlog.
 
 ### Prioritized Backlog
