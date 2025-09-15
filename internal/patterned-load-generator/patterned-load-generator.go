@@ -868,3 +868,24 @@ func (rl *RateLimiter) SetRate(rate float64) {
 	rl.rate = rate
 	rl.capacity = rate // 1 second capacity
 }
+
+// PreviewPattern generates preview points for a pattern
+func (lg *LoadGenerator) PreviewPattern(pattern LoadPattern, duration time.Duration, resolution time.Duration) ([]DataPoint, error) {
+	if duration == 0 {
+		duration = pattern.Duration
+	}
+	if resolution == 0 {
+		resolution = 1 * time.Second
+	}
+
+	var points []DataPoint
+	for elapsed := time.Duration(0); elapsed <= duration; elapsed += resolution {
+		rate := lg.calculateRate(pattern, elapsed)
+		points = append(points, DataPoint{
+			Time: elapsed,
+			Rate: rate,
+		})
+	}
+
+	return points, nil
+}
