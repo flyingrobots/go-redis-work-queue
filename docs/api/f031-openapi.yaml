@@ -1,0 +1,1562 @@
+openapi: 3.0.3
+info:
+  title: Policy Simulator API
+  description: |
+    API for simulating and managing queue policy changes with predictive modeling.
+
+    The Policy Simulator provides "what-if" analysis capabilities that allow operators
+    to preview the impact of policy changes before applying them to production systems.
+
+    **Key Features:**
+    - Interactive policy simulation with queueing theory models
+    - Multiple traffic pattern support (constant, burst, seasonal, replay)
+    - Safe policy deployment with rollback capabilities
+    - Comprehensive audit trails and change management
+    - Real-time predictions with confidence intervals
+
+    **Authentication:**
+    All endpoints require Bearer token authentication with appropriate permissions.
+  version: 1.0.0
+  contact:
+    name: Queue Engineering Team
+    email: queue-team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue.example.com/v1
+    description: Production server
+  - url: https://staging-api.queue.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /simulation:
+    post:
+      summary: Create new simulation
+      description: |
+        Creates a new policy simulation with specified parameters and traffic patterns.
+        The simulation runs asynchronously and returns predictions based on queueing theory models.
+      operationId: createSimulation
+      tags:
+        - Simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+            examples:
+              constant_load:
+                summary: Constant load simulation
+                value:
+                  name: "Test constant load with new retry policy"
+                  policies:
+                    retry_policy:
+                      max_attempts: 5
+                      initial_delay: "200ms"
+                      max_delay: "60s"
+                      multiplier: 2.0
+                    rate_limit:
+                      requests_per_second: 150
+                      burst_capacity: 300
+                  traffic_pattern:
+                    type: "constant"
+                    parameters:
+                      rate: 75.0
+                      duration: "2h"
+                  duration: "2h"
+                  confidence_level: 0.95
+              burst_pattern:
+                summary: Burst pattern simulation
+                value:
+                  name: "Black Friday load simulation"
+                  policies:
+                    concurrency:
+                      max_workers: 20
+                      scaling_policy: "adaptive"
+                    rate_limit:
+                      requests_per_second: 500
+                      burst_capacity: 1000
+                  traffic_pattern:
+                    type: "burst"
+                    parameters:
+                      base_rate: 100.0
+                      burst_rate: 800.0
+                      burst_duration: "5m"
+                      burst_interval: "30m"
+                  duration: "4h"
+      responses:
+        '201':
+          description: Simulation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResponse'
+              example:
+                id: "sim_1a2b3c4d5e6f"
+                status: "running"
+                created_at: "2023-10-01T10:00:00Z"
+                estimated_completion: "2023-10-01T10:05:00Z"
+                name: "Test constant load with new retry policy"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+    get:
+      summary: List simulations
+      description: Retrieves a paginated list of simulations with optional filtering
+      operationId: listSimulations
+      tags:
+        - Simulation
+      parameters:
+        - name: status
+          in: query
+          description: Filter by simulation status
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: user_id
+          in: query
+          description: Filter by user who created the simulation
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of results to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sort
+          in: query
+          description: Sort field and direction
+          schema:
+            type: string
+            enum: [created_at_desc, created_at_asc, name_asc, name_desc]
+            default: created_at_desc
+      responses:
+        '200':
+          description: List of simulations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /simulation/{simulation_id}:
+    get:
+      summary: Get simulation details
+      description: Retrieves detailed information about a specific simulation including results
+      operationId: getSimulation
+      tags:
+        - Simulation
+      parameters:
+        - name: simulation_id
+          in: path
+          required: true
+          description: Unique simulation identifier
+          schema:
+            type: string
+            pattern: '^sim_[a-zA-Z0-9]{12}$'
+      responses:
+        '200':
+          description: Simulation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationDetails'
+              example:
+                id: "sim_1a2b3c4d5e6f"
+                status: "completed"
+                name: "Test constant load with new retry policy"
+                created_at: "2023-10-01T10:00:00Z"
+                completed_at: "2023-10-01T10:04:32Z"
+                duration: "2h"
+                confidence_level: 0.95
+                request:
+                  policies:
+                    retry_policy:
+                      max_attempts: 5
+                      initial_delay: "200ms"
+                  traffic_pattern:
+                    type: "constant"
+                    parameters:
+                      rate: 75.0
+                results:
+                  predictions:
+                    - metric: "throughput"
+                      value: 74.2
+                      confidence_interval:
+                        lower: 72.1
+                        upper: 76.3
+                        confidence: 0.95
+                  metrics:
+                    avg_queue_length: 2.3
+                    avg_wait_time: "31ms"
+                    utilization: 0.74
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    delete:
+      summary: Cancel simulation
+      description: Cancels a running simulation or deletes a completed simulation
+      operationId: cancelSimulation
+      tags:
+        - Simulation
+      parameters:
+        - name: simulation_id
+          in: path
+          required: true
+          description: Unique simulation identifier
+          schema:
+            type: string
+            pattern: '^sim_[a-zA-Z0-9]{12}$'
+      responses:
+        '204':
+          description: Simulation cancelled/deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Cannot cancel simulation in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /simulation/{simulation_id}/apply:
+    post:
+      summary: Apply simulated policies
+      description: |
+        Applies the policies from a completed simulation to the production system.
+        This operation requires elevated permissions and creates an audit trail.
+      operationId: applySimulation
+      tags:
+        - Policy Management
+      parameters:
+        - name: simulation_id
+          in: path
+          required: true
+          description: Unique simulation identifier
+          schema:
+            type: string
+            pattern: '^sim_[a-zA-Z0-9]{12}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation:
+                  type: string
+                  description: Confirmation token to prevent accidental application
+                  example: "apply_sim_1a2b3c4d5e6f"
+                rollback_timeout:
+                  type: string
+                  description: Automatic rollback timeout (ISO 8601 duration)
+                  default: "PT1H"
+                  example: "PT30M"
+                reason:
+                  type: string
+                  description: Reason for applying the policy change
+                  maxLength: 500
+                  example: "Improve retry behavior during high load periods"
+              required:
+                - confirmation
+      responses:
+        '200':
+          description: Policies applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyApplicationResult'
+              example:
+                application_id: "app_2b3c4d5e6f7g"
+                applied_at: "2023-10-01T11:00:00Z"
+                rollback_deadline: "2023-10-01T12:00:00Z"
+                applied_policies:
+                  retry_policy:
+                    max_attempts: 5
+                    initial_delay: "200ms"
+                audit_entry_id: "audit_3c4d5e6f7g8h"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Simulation not in applicable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /simulation/{simulation_id}/export:
+    get:
+      summary: Export simulation results
+      description: Exports simulation results in various formats for analysis and reporting
+      operationId: exportSimulation
+      tags:
+        - Simulation
+      parameters:
+        - name: simulation_id
+          in: path
+          required: true
+          description: Unique simulation identifier
+          schema:
+            type: string
+            pattern: '^sim_[a-zA-Z0-9]{12}$'
+        - name: format
+          in: query
+          description: Export format
+          schema:
+            type: string
+            enum: [json, csv, pdf]
+            default: json
+        - name: include_raw_data
+          in: query
+          description: Include raw simulation data points
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Exported simulation data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationExport'
+            text/csv:
+              schema:
+                type: string
+                format: csv
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /policies:
+    get:
+      summary: Get current policies
+      description: Retrieves the current active policy configuration
+      operationId: getCurrentPolicies
+      tags:
+        - Policy Management
+      responses:
+        '200':
+          description: Current policy configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyConfiguration'
+              example:
+                retry_policy:
+                  max_attempts: 3
+                  initial_delay: "100ms"
+                  max_delay: "30s"
+                  multiplier: 2.0
+                rate_limit:
+                  requests_per_second: 100
+                  burst_capacity: 200
+                  algorithm: "token_bucket"
+                concurrency:
+                  max_workers: 10
+                  scaling_policy: "manual"
+                last_modified: "2023-10-01T09:30:00Z"
+                version: 15
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    put:
+      summary: Update policies directly
+      description: |
+        Updates policy configuration directly without simulation.
+        This operation requires elevated permissions and should only be used for emergency changes.
+      operationId: updatePolicies
+      tags:
+        - Policy Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/PolicyConfiguration'
+                - type: object
+                  properties:
+                    bypass_simulation:
+                      type: boolean
+                      description: Bypass simulation requirement (emergency use only)
+                      default: false
+                    reason:
+                      type: string
+                      description: Reason for direct policy update
+                      maxLength: 500
+                  required:
+                    - reason
+      responses:
+        '200':
+          description: Policies updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyUpdateResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Policy update conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /policies/history:
+    get:
+      summary: Get policy change history
+      description: Retrieves the history of policy changes with audit information
+      operationId: getPolicyHistory
+      tags:
+        - Policy Management
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of history entries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of entries to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: from_date
+          in: query
+          description: Start date for history filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          description: End date for history filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Policy change history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyHistoryList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /policies/rollback:
+    post:
+      summary: Rollback to previous policies
+      description: Rolls back policies to a previous version or cancels a timed rollback
+      operationId: rollbackPolicies
+      tags:
+        - Policy Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rollback_id:
+                  type: string
+                  description: ID of the application to rollback, or specific version
+                  example: "app_2b3c4d5e6f7g"
+                target_version:
+                  type: integer
+                  description: Specific policy version to rollback to
+                  example: 14
+                reason:
+                  type: string
+                  description: Reason for rollback
+                  maxLength: 500
+                  example: "Performance degradation observed"
+              oneOf:
+                - required: [rollback_id, reason]
+                - required: [target_version, reason]
+      responses:
+        '200':
+          description: Rollback completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Rollback target not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /traffic-patterns:
+    get:
+      summary: List available traffic patterns
+      description: Retrieves available traffic pattern templates and historical patterns
+      operationId: getTrafficPatterns
+      tags:
+        - Traffic Patterns
+      parameters:
+        - name: type
+          in: query
+          description: Filter by pattern type
+          schema:
+            type: string
+            enum: [constant, burst, seasonal, replay, template]
+        - name: include_historical
+          in: query
+          description: Include patterns derived from historical data
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Available traffic patterns
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrafficPatternList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Create custom traffic pattern
+      description: Creates a custom traffic pattern from uploaded data or configuration
+      operationId: createTrafficPattern
+      tags:
+        - Traffic Patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrafficPatternRequest'
+      responses:
+        '201':
+          description: Traffic pattern created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrafficPattern'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /models:
+    get:
+      summary: List available queueing models
+      description: Retrieves information about available queueing theory models and their parameters
+      operationId: getModels
+      tags:
+        - Models
+      responses:
+        '200':
+          description: Available queueing models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelList'
+              example:
+                models:
+                  - name: "M/M/1"
+                    description: "Single server with Poisson arrivals and exponential service"
+                    parameters:
+                      - name: "lambda"
+                        description: "Arrival rate (requests per second)"
+                        type: "number"
+                        required: true
+                      - name: "mu"
+                        description: "Service rate (requests per second)"
+                        type: "number"
+                        required: true
+                    stability_condition: "lambda < mu"
+                    use_cases: ["Single worker queue", "Simple load testing"]
+                  - name: "M/M/c"
+                    description: "Multiple servers with Poisson arrivals and exponential service"
+                    parameters:
+                      - name: "lambda"
+                        description: "Arrival rate"
+                        type: "number"
+                        required: true
+                      - name: "mu"
+                        description: "Service rate per server"
+                        type: "number"
+                        required: true
+                      - name: "c"
+                        description: "Number of servers"
+                        type: "integer"
+                        required: true
+                    stability_condition: "lambda < c * mu"
+                    use_cases: ["Multi-worker scenarios", "Scaling analysis"]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /metrics/validation:
+    post:
+      summary: Validate simulation accuracy
+      description: |
+        Validates simulation accuracy by comparing predictions with actual historical metrics.
+        Used to calibrate and improve model accuracy.
+      operationId: validateSimulation
+      tags:
+        - Validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationRequest'
+      responses:
+        '200':
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SimulationRequest:
+      type: object
+      required:
+        - policies
+        - traffic_pattern
+        - duration
+      properties:
+        name:
+          type: string
+          description: Human-readable simulation name
+          maxLength: 100
+          example: "Black Friday load test"
+        policies:
+          $ref: '#/components/schemas/PolicyConfiguration'
+        traffic_pattern:
+          $ref: '#/components/schemas/TrafficPattern'
+        duration:
+          type: string
+          description: Simulation duration (ISO 8601 duration)
+          pattern: '^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$'
+          example: "PT2H30M"
+        confidence_level:
+          type: number
+          description: Confidence level for predictions (0.0-1.0)
+          minimum: 0.8
+          maximum: 0.99
+          default: 0.95
+        model_type:
+          type: string
+          description: Queueing model to use for simulation
+          enum: [M/M/1, M/M/c, M/G/1, auto]
+          default: auto
+        options:
+          type: object
+          description: Additional simulation options
+          properties:
+            max_events:
+              type: integer
+              description: Maximum number of events to simulate
+              minimum: 1000
+              maximum: 10000000
+              default: 1000000
+            time_step:
+              type: string
+              description: Simulation time step granularity
+              default: "1s"
+            warm_up_period:
+              type: string
+              description: Warm-up period to exclude from results
+              default: "PT5M"
+
+    SimulationResponse:
+      type: object
+      required:
+        - id
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Unique simulation identifier
+          pattern: '^sim_[a-zA-Z0-9]{12}$'
+          example: "sim_1a2b3c4d5e6f"
+        status:
+          $ref: '#/components/schemas/SimulationStatus'
+        created_at:
+          type: string
+          format: date-time
+          description: Simulation creation timestamp
+        estimated_completion:
+          type: string
+          format: date-time
+          description: Estimated completion time
+        name:
+          type: string
+          description: Human-readable simulation name
+
+    SimulationList:
+      type: object
+      required:
+        - simulations
+        - total_count
+      properties:
+        simulations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimulationSummary'
+        total_count:
+          type: integer
+          description: Total number of simulations (before pagination)
+        has_more:
+          type: boolean
+          description: Whether there are more results available
+
+    SimulationSummary:
+      type: object
+      required:
+        - id
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          pattern: '^sim_[a-zA-Z0-9]{12}$'
+        status:
+          $ref: '#/components/schemas/SimulationStatus'
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          description: User ID who created the simulation
+        duration:
+          type: string
+          description: Simulation duration
+        success_rate:
+          type: number
+          description: Simulation success rate (0.0-1.0)
+
+    SimulationDetails:
+      allOf:
+        - $ref: '#/components/schemas/SimulationSummary'
+        - type: object
+          properties:
+            request:
+              $ref: '#/components/schemas/SimulationRequest'
+            results:
+              $ref: '#/components/schemas/SimulationResults'
+            progress:
+              type: number
+              description: Completion progress (0.0-1.0)
+            error_message:
+              type: string
+              description: Error message if simulation failed
+
+    SimulationResults:
+      type: object
+      properties:
+        predictions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prediction'
+        metrics:
+          $ref: '#/components/schemas/SimulationMetrics'
+        confidence:
+          type: number
+          description: Overall confidence in results
+        assumptions:
+          type: array
+          items:
+            type: string
+          description: Model assumptions and limitations
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Warnings about simulation conditions
+
+    Prediction:
+      type: object
+      required:
+        - metric
+        - value
+        - confidence_interval
+      properties:
+        metric:
+          type: string
+          description: Metric name
+          enum: [throughput, avg_latency, p95_latency, p99_latency, queue_length, utilization, error_rate]
+        value:
+          type: number
+          description: Predicted value
+        unit:
+          type: string
+          description: Unit of measurement
+          example: "requests/second"
+        confidence_interval:
+          $ref: '#/components/schemas/ConfidenceInterval'
+        trend:
+          type: string
+          description: Trend compared to current state
+          enum: [improving, degrading, stable]
+
+    ConfidenceInterval:
+      type: object
+      required:
+        - lower
+        - upper
+        - confidence
+      properties:
+        lower:
+          type: number
+          description: Lower bound of confidence interval
+        upper:
+          type: number
+          description: Upper bound of confidence interval
+        confidence:
+          type: number
+          description: Confidence level (0.0-1.0)
+        method:
+          type: string
+          description: Method used to calculate interval
+          enum: [bootstrap, analytical, monte_carlo]
+
+    SimulationMetrics:
+      type: object
+      properties:
+        avg_queue_length:
+          type: number
+          description: Average number of jobs in queue
+        max_queue_length:
+          type: number
+          description: Maximum observed queue length
+        avg_wait_time:
+          type: string
+          description: Average time jobs spend waiting
+        avg_service_time:
+          type: string
+          description: Average time to process jobs
+        utilization:
+          type: number
+          description: System utilization (0.0-1.0)
+        throughput:
+          type: number
+          description: Jobs processed per second
+        error_rate:
+          type: number
+          description: Job failure rate (0.0-1.0)
+        resource_usage:
+          $ref: '#/components/schemas/ResourceUsage'
+
+    ResourceUsage:
+      type: object
+      properties:
+        cpu_utilization:
+          type: number
+          description: CPU usage percentage (0.0-1.0)
+        memory_usage:
+          type: number
+          description: Memory usage in bytes
+        network_io:
+          type: number
+          description: Network I/O bytes per second
+        disk_io:
+          type: number
+          description: Disk I/O operations per second
+
+    SimulationStatus:
+      type: string
+      enum: [pending, running, completed, failed, cancelled]
+      description: Current simulation status
+
+    PolicyConfiguration:
+      type: object
+      properties:
+        retry_policy:
+          $ref: '#/components/schemas/RetryPolicy'
+        rate_limit:
+          $ref: '#/components/schemas/RateLimit'
+        concurrency:
+          $ref: '#/components/schemas/ConcurrencyPolicy'
+        backoff:
+          $ref: '#/components/schemas/BackoffPolicy'
+        timeout:
+          $ref: '#/components/schemas/TimeoutPolicy'
+        circuit_breaker:
+          $ref: '#/components/schemas/CircuitBreakerPolicy'
+        last_modified:
+          type: string
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          description: Policy configuration version
+          readOnly: true
+
+    RetryPolicy:
+      type: object
+      required:
+        - max_attempts
+      properties:
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Maximum number of retry attempts
+        initial_delay:
+          type: string
+          description: Initial delay before first retry (ISO 8601 duration)
+          default: "PT0.1S"
+        max_delay:
+          type: string
+          description: Maximum delay between retries
+          default: "PT30S"
+        multiplier:
+          type: number
+          minimum: 1.0
+          maximum: 10.0
+          description: Backoff multiplier
+          default: 2.0
+        jitter:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Jitter factor to randomize delays
+          default: 0.1
+        retry_codes:
+          type: array
+          items:
+            type: integer
+          description: HTTP status codes that trigger retries
+          default: [500, 502, 503, 504]
+
+    RateLimit:
+      type: object
+      required:
+        - requests_per_second
+      properties:
+        requests_per_second:
+          type: number
+          minimum: 0.1
+          maximum: 100000
+          description: Maximum requests per second
+        burst_capacity:
+          type: integer
+          minimum: 1
+          description: Maximum burst capacity
+        algorithm:
+          type: string
+          enum: [token_bucket, sliding_window, fixed_window]
+          default: token_bucket
+        enforcement:
+          type: string
+          enum: [strict, advisory]
+          default: strict
+        overflow_action:
+          type: string
+          enum: [reject, queue, throttle]
+          default: queue
+
+    ConcurrencyPolicy:
+      type: object
+      required:
+        - max_workers
+      properties:
+        max_workers:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Maximum number of concurrent workers
+        scaling_policy:
+          type: string
+          enum: [manual, adaptive, predictive]
+          default: manual
+        scale_up_threshold:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+          description: Utilization threshold for scaling up
+          default: 0.8
+        scale_down_threshold:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+          description: Utilization threshold for scaling down
+          default: 0.3
+        scale_cooldown:
+          type: string
+          description: Cooldown period between scaling operations
+          default: "PT1M"
+
+    BackoffPolicy:
+      type: object
+      required:
+        - strategy
+      properties:
+        strategy:
+          type: string
+          enum: [exponential, linear, constant, fibonacci]
+          description: Backoff strategy
+        base_delay:
+          type: string
+          description: Base delay for backoff calculation
+          default: "PT1S"
+        max_delay:
+          type: string
+          description: Maximum backoff delay
+          default: "PT5M"
+        multiplier:
+          type: number
+          minimum: 1.0
+          maximum: 10.0
+          description: Multiplier for exponential backoff
+          default: 2.0
+        jitter_type:
+          type: string
+          enum: [none, uniform, gaussian]
+          default: uniform
+        jitter_factor:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.1
+
+    TimeoutPolicy:
+      type: object
+      properties:
+        connection_timeout:
+          type: string
+          description: Connection establishment timeout
+          default: "PT10S"
+        request_timeout:
+          type: string
+          description: Individual request timeout
+          default: "PT30S"
+        idle_timeout:
+          type: string
+          description: Connection idle timeout
+          default: "PT5M"
+
+    CircuitBreakerPolicy:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        failure_threshold:
+          type: integer
+          minimum: 1
+          description: Number of failures before opening circuit
+          default: 5
+        success_threshold:
+          type: integer
+          minimum: 1
+          description: Number of successes before closing circuit
+          default: 3
+        timeout:
+          type: string
+          description: Time to wait before attempting to close circuit
+          default: "PT1M"
+
+    TrafficPattern:
+      type: object
+      required:
+        - type
+        - parameters
+      properties:
+        type:
+          type: string
+          enum: [constant, burst, seasonal, replay, custom]
+          description: Type of traffic pattern
+        parameters:
+          type: object
+          description: Pattern-specific parameters
+          additionalProperties: true
+        name:
+          type: string
+          description: Human-readable pattern name
+        description:
+          type: string
+          description: Pattern description
+
+    TrafficPatternList:
+      type: object
+      properties:
+        patterns:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/TrafficPattern'
+              - type: object
+                properties:
+                  id:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  is_template:
+                    type: boolean
+
+    TrafficPatternRequest:
+      type: object
+      required:
+        - name
+        - type
+        - parameters
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        type:
+          type: string
+          enum: [constant, burst, seasonal, replay, custom]
+        parameters:
+          type: object
+          additionalProperties: true
+        data_source:
+          type: object
+          description: Source of historical data for replay patterns
+          properties:
+            type:
+              type: string
+              enum: [prometheus, csv, json]
+            query:
+              type: string
+              description: Prometheus query or file path
+            time_range:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                end:
+                  type: string
+                  format: date-time
+
+    PolicyApplicationResult:
+      type: object
+      required:
+        - application_id
+        - applied_at
+      properties:
+        application_id:
+          type: string
+          description: Unique identifier for this policy application
+          pattern: '^app_[a-zA-Z0-9]{12}$'
+        applied_at:
+          type: string
+          format: date-time
+          description: Timestamp when policies were applied
+        rollback_deadline:
+          type: string
+          format: date-time
+          description: Automatic rollback deadline
+        applied_policies:
+          $ref: '#/components/schemas/PolicyConfiguration'
+        audit_entry_id:
+          type: string
+          description: Reference to audit log entry
+
+    PolicyUpdateResult:
+      type: object
+      properties:
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          description: New policy version number
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              old_value:
+                type: string
+              new_value:
+                type: string
+
+    PolicyHistoryList:
+      type: object
+      properties:
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyHistoryEntry'
+        total_count:
+          type: integer
+
+    PolicyHistoryEntry:
+      type: object
+      properties:
+        version:
+          type: integer
+        applied_at:
+          type: string
+          format: date-time
+        applied_by:
+          type: string
+          description: User who applied the change
+        simulation_id:
+          type: string
+          description: Associated simulation ID
+        reason:
+          type: string
+          description: Reason for the change
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              old_value:
+                type: string
+              new_value:
+                type: string
+        rollback_info:
+          type: object
+          properties:
+            can_rollback:
+              type: boolean
+            rollback_deadline:
+              type: string
+              format: date-time
+
+    RollbackResult:
+      type: object
+      properties:
+        rolled_back_at:
+          type: string
+          format: date-time
+        target_version:
+          type: integer
+        rollback_reason:
+          type: string
+        restored_policies:
+          $ref: '#/components/schemas/PolicyConfiguration'
+
+    ModelList:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelInfo'
+
+    ModelInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Model name (e.g., "M/M/1")
+        description:
+          type: string
+          description: Human-readable model description
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelParameter'
+        stability_condition:
+          type: string
+          description: Mathematical stability condition
+        use_cases:
+          type: array
+          items:
+            type: string
+          description: Recommended use cases
+        complexity:
+          type: string
+          enum: [low, medium, high]
+          description: Computational complexity
+
+    ModelParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [number, integer, boolean, string]
+        required:
+          type: boolean
+        default:
+          description: Default value (type varies)
+        constraints:
+          type: object
+          properties:
+            minimum:
+              type: number
+            maximum:
+              type: number
+            enum:
+              type: array
+
+    ValidationRequest:
+      type: object
+      required:
+        - simulation_id
+        - actual_metrics
+      properties:
+        simulation_id:
+          type: string
+          description: Simulation to validate against
+        actual_metrics:
+          $ref: '#/components/schemas/ActualMetrics'
+        time_range:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+
+    ActualMetrics:
+      type: object
+      properties:
+        throughput:
+          type: number
+        avg_latency:
+          type: number
+        p95_latency:
+          type: number
+        p99_latency:
+          type: number
+        error_rate:
+          type: number
+        queue_length_samples:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              value:
+                type: number
+
+    ValidationResult:
+      type: object
+      properties:
+        accuracy_score:
+          type: number
+          description: Overall accuracy score (0.0-1.0)
+        metric_accuracy:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              predicted:
+                type: number
+              actual:
+                type: number
+              error_percentage:
+                type: number
+              accuracy_score:
+                type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Recommendations for improving accuracy
+
+    SimulationExport:
+      type: object
+      properties:
+        simulation_id:
+          type: string
+        exported_at:
+          type: string
+          format: date-time
+        format:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/SimulationDetails'
+        data:
+          type: object
+          description: Raw simulation data (format-dependent)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+        request_id:
+          type: string
+          description: Request identifier for debugging
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "invalid_parameter"
+            message: "The 'duration' parameter must be a valid ISO 8601 duration"
+            details:
+              parameter: "duration"
+              provided_value: "invalid"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            message: "Valid authentication token required"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            message: "Insufficient permissions for this operation"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "not_found"
+            message: "Simulation not found"
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "rate_limit_exceeded"
+            message: "Too many simulation requests. Try again later."
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+
+tags:
+  - name: Simulation
+    description: Simulation management operations
+  - name: Policy Management
+    description: Policy configuration and deployment
+  - name: Traffic Patterns
+    description: Traffic pattern management
+  - name: Models
+    description: Queueing model information
+  - name: Validation
+    description: Simulation accuracy validation
+
+externalDocs:
+  description: Policy Simulator Design Document
+  url: https://docs.example.com/policy-simulator
