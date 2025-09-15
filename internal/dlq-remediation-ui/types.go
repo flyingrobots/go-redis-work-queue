@@ -1,4 +1,4 @@
-package dlq_remediation_ui
+package dlqremediationui
 
 import (
 	"encoding/json"

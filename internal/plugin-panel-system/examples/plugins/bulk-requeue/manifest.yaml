@@ -1,0 +1,32 @@
+name: bulk-requeue
+version: 1.0.0
+author: Redis Work Queue Team
+description: Bulk requeue helper for failed jobs with filtering and confirmation
+runtime: starlark
+entry_point: main.star
+capabilities:
+  - read_jobs
+  - read_queues
+  - read_selection
+  - requeue
+  - render_panel
+  - key_events
+  - mouse_events
+  - dialogs
+resources:
+  max_memory_mb: 64
+  max_cpu_percent: 20
+  max_execution_ms: 5000
+  max_goroutines: 8
+  timeout: 60s
+  idle_timeout: 10m
+  heartbeat_period: 30s
+dependencies: {}
+assets: []
+schema: "1.0"
+metadata:
+  category: operations
+  keywords: [requeue, bulk, operations, failed, jobs]
+  homepage: https://example.com/plugins/bulk-requeue
+  issues: https://github.com/example/plugins/issues
+  warning: "This plugin can modify job queues. Use with caution."

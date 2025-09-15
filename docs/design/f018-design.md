@@ -200,6 +200,117 @@ stateDiagram-v2
     note right of V4Schema: Breaking Change
 ```
 
+## TUI Design
+
+### Desktop View (Large Resolution)
+
+The desktop interface provides a comprehensive three-panel layout optimized for data analysis and system monitoring. This view is designed for large terminal windows (≥120 columns) commonly used by SREs and data analysts.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Long-Term Archives Dashboard                                                                                        [CTRL+Q] Exit │
+├─────────────────────────────────────────┬───────────────────────────────────────────────────────────┬─────────────────────────────┤
+│ Archive Status & Configuration         │ Query Interface                                           │ Schema & Templates          │
+│                                         │                                                           │                             │
+│ Export Status:                          │ ┌─────────────────────────────────────────────────────────┐ │ Current Schema: v2.1.0      │
+│ ClickHouse: ✅ Healthy (12s lag)        │ │ SELECT queue, outcome, count(*) as jobs,               │ │ Last Migration: 2024-01-15  │
+│ S3 Parquet: ✅ Healthy (45s lag)        │ │   avg(end_time - start_time) as avg_duration,          │ │                             │
+│ Postgres:   ⚠️  Degraded (2m lag)       │ │   quantile(0.95)(end_time - start_time) as p95_dur     │ │ Quick Templates:            │
+│                                         │ │ FROM jobs_archive                                       │ │ [1] Queue Health Analysis   │
+│ Records Exported Today:                 │ │ WHERE enqueue_time >= now() - interval '7 days'        │ │ [2] Error Investigation     │
+│ • Total: 2.4M (98.6% success)          │ │ GROUP BY queue, outcome                                 │ │ [3] Capacity Planning       │
+│ • ClickHouse: 2.4M                     │ │ ORDER BY jobs DESC                                      │ │ [4] Performance Trends      │
+│ • S3: 2.4M                             │ │                                                         │ │ [5] Retention Status        │
+│ • Postgres: 2.3M                       │ │ [F5] Execute  [F6] Explain  [F7] Save  [F8] Format     │ │                             │
+│                                         │ └─────────────────────────────────────────────────────────┘ │ Field Reference:            │
+│ Storage Usage:                          │                                                           │ • job_id: String            │
+│ • Redis TTL: 7d (hot)                  │ Results (1.2M rows, 847ms):                             │ • queue: LowCardinality     │
+│ • ClickHouse: 90d (warm, 12.4GB)       │ ┌─────────────┬─────────┬──────┬──────────┬──────────────┐ │ • priority: UInt8           │
+│ • S3: 7y (cold, 890GB compressed)      │ │ queue       │ outcome │ jobs │ avg_dur  │ p95_dur      │ │ • enqueue_time: DateTime64  │
+│                                         │ ├─────────────┼─────────┼──────┼──────────┼──────────────┤ │ • outcome: Enum8            │
+│ GDPR Compliance:                        │ │ payments    │ success │ 892K │ 245ms    │ 1.2s         │ │ • worker_id: LowCardinality │
+│ • Deletion Requests: 3 pending         │ │ payments    │ failed  │ 8.1K │ 156ms    │ 890ms        │ │ • trace_id: String          │
+│ • Data Retention: Active               │ │ notifications│ success │ 654K │ 89ms     │ 340ms        │ │                             │
+│ • Audit Trail: Enabled                 │ │ background  │ success │ 234K │ 2.1s     │ 8.9s         │ │ Export to:                  │
+│                                         │ │ ...         │ ...     │ ...  │ ...      │ ...          │ │ [CSV] [JSON] [Parquet]      │
+│ [C] Configure  [R] Retention  [G] GDPR  │ └─────────────┴─────────┴──────┴──────────┴──────────────┘ │                             │
+└─────────────────────────────────────────┴───────────────────────────────────────────────────────────┴─────────────────────────────┘
+│ Status: Query executed successfully │ F1: Help │ F2: Config │ F3: Query │ F4: Schema │ F10: Menu │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- **Left Panel**: Real-time archive status, export metrics, and storage usage
+- **Center Panel**: Full SQL query interface with syntax highlighting and result visualization
+- **Right Panel**: Schema information and query templates for rapid analysis
+- **Status Bar**: Query execution status and keyboard shortcuts
+
+### Mobile View (Small Resolution)
+
+The mobile interface uses a tab-based layout optimized for touch navigation on narrow terminals (≤80 columns).
+
+```
+┌────────────────────────────────────────────────────────────────────────────────┐
+│ Long-Term Archives                                                [📊] [⚙️] [❓] │
+├────────────────────────────────────────────────────────────────────────────────┤
+│ [ Status ] [ Query ] [ Config ] [ Schema ] [ GDPR ]                            │
+├────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│ 📊 Export Status                                                               │
+│                                                                                │
+│ ┌──────────────────────────┐ ┌──────────────────────────┐                     │
+│ │ ClickHouse              │ │ S3 Parquet              │                     │
+│ │ ✅ Healthy              │ │ ✅ Healthy              │                     │
+│ │ Lag: 12s                │ │ Lag: 45s                │                     │
+│ │ Records: 2.4M           │ │ Records: 2.4M           │                     │
+│ └──────────────────────────┘ └──────────────────────────┘                     │
+│                                                                                │
+│ ┌──────────────────────────┐ ┌──────────────────────────┐                     │
+│ │ Storage Usage           │ │ Today's Activity        │                     │
+│ │ Redis: 7d (hot)         │ │ Exported: 2.4M jobs    │                     │
+│ │ ClickHouse: 90d (12GB)  │ │ Success: 98.6%          │                     │
+│ │ S3: 7y (890GB)          │ │ Errors: 34K             │                     │
+│ └──────────────────────────┘ └──────────────────────────┘                     │
+│                                                                                │
+│ 🔧 Quick Actions                                                               │
+│ [Configure Retention] [Run Health Check] [Export Data]                        │
+│                                                                                │
+│ 📈 Recent Metrics                                                              │
+│ Export Rate: ████████████████████░░ 89%                                       │
+│ Storage Used: ██████████████░░░░░░░ 67%                                       │
+│ Query Load: ████████░░░░░░░░░░░░░░░ 34%                                       │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+│ Swipe ← → for tabs │ Tap for details │                                        │
+└────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- **Tab Navigation**: Swipe between Status, Query, Config, Schema, and GDPR tabs
+- **Card Layout**: Compact information cards with visual indicators
+- **Touch Optimized**: Large touch targets and gesture navigation
+- **Responsive Metrics**: Visual progress bars and status indicators
+
+### Interactive Features
+
+#### Query Builder Interface
+- **Syntax Highlighting**: Real-time SQL syntax highlighting for ClickHouse dialect
+- **Auto-completion**: Smart completion for table names, columns, and functions
+- **Query History**: Access to previous queries with favorites and sharing
+- **Result Export**: Direct export to CSV, JSON, or Parquet formats
+- **Performance Profiling**: Query execution plans and performance metrics
+
+#### Archive Management
+- **Real-time Monitoring**: Live metrics for export lag, error rates, and throughput
+- **Configuration Management**: Visual editors for retention policies and sampling rates
+- **Schema Evolution**: Interactive schema migration and version management
+- **GDPR Tools**: Data subject search, deletion workflows, and audit trails
+
+#### Keyboard Shortcuts
+- **Navigation**: Tab/Shift+Tab for panel navigation, Ctrl+1-5 for tab switching
+- **Query Operations**: F5 (Execute), F6 (Explain), F7 (Save), F8 (Format)
+- **Quick Actions**: Ctrl+R (Refresh), Ctrl+E (Export), Ctrl+H (Help)
+
 ## Data Models and Schema Design
 
 ### Core Archive Record

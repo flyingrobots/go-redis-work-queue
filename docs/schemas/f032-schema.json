@@ -1,0 +1,1054 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/advanced-rate-limiting/v1.0.0",
+  "title": "Advanced Rate Limiting Data Models",
+  "description": "JSON Schema definitions for the Advanced Rate Limiting system with token bucket algorithm, priority fairness, and multi-tenant support",
+
+  "definitions": {
+    "Priority": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"],
+      "description": "Priority levels for rate limiting and fair queuing"
+    },
+
+    "Scope": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-_:]*[a-zA-Z0-9]$",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Hierarchical scope identifier for rate limiting (e.g., 'tenant-123:email-queue:high')",
+      "examples": [
+        "global",
+        "tenant-123",
+        "tenant-123:email-queue",
+        "tenant-123:email-queue:high"
+      ]
+    },
+
+    "TokenCount": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000,
+      "description": "Number of tokens in bucket or to consume"
+    },
+
+    "RatePerSecond": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 1000000,
+      "description": "Token refill rate per second"
+    },
+
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+
+    "PriorityWeights": {
+      "type": "object",
+      "description": "Weight configuration for priority-based fair queuing",
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Weight for critical priority requests"
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Weight for high priority requests"
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Weight for medium priority requests"
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Weight for low priority requests"
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "critical": 4,
+          "high": 3,
+          "medium": 2,
+          "low": 1
+        }
+      ]
+    },
+
+    "RequestMetadata": {
+      "type": "object",
+      "description": "Optional metadata for request tracking and debugging",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "description": "Unique identifier for the request",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "maxLength": 128
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "Client user agent string",
+          "maxLength": 256
+        },
+        "source_ip": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Source IP address of the request"
+        },
+        "client_id": {
+          "type": "string",
+          "description": "Client identifier",
+          "maxLength": 128
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation ID for request tracing",
+          "maxLength": 128
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "ErrorDetails": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable error code",
+          "enum": [
+            "RATE_LIMIT_EXCEEDED",
+            "INVALID_SCOPE",
+            "INVALID_TOKEN_COUNT",
+            "CONFIGURATION_ERROR",
+            "REDIS_ERROR",
+            "LUA_SCRIPT_ERROR",
+            "VALIDATION_ERROR",
+            "UNAUTHORIZED",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "maxLength": 512
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error context and debugging information",
+          "additionalProperties": true
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Trace ID for debugging and correlation",
+          "pattern": "^[a-zA-Z0-9-_]+$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "schemas": {
+    "RateLimitCheckRequest": {
+      "type": "object",
+      "required": ["scope", "tokens"],
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "tokens": {
+          "$ref": "#/definitions/TokenCount",
+          "minimum": 0.1,
+          "maximum": 10000,
+          "description": "Number of tokens to consume from the bucket"
+        },
+        "metadata": {
+          "$ref": "#/definitions/RequestMetadata"
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "scope": "tenant-123:email-queue:high",
+          "tokens": 1
+        },
+        {
+          "scope": "tenant-456:sms-queue:medium",
+          "tokens": 5,
+          "metadata": {
+            "request_id": "req-789",
+            "user_agent": "producer-v2.1",
+            "source_ip": "192.168.1.100"
+          }
+        }
+      ]
+    },
+
+    "RateLimitBatchRequest": {
+      "type": "object",
+      "required": ["checks"],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "description": "Array of rate limit checks to perform atomically",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "required": ["scope", "tokens"],
+            "properties": {
+              "scope": {
+                "$ref": "#/definitions/Scope"
+              },
+              "tokens": {
+                "$ref": "#/definitions/TokenCount",
+                "minimum": 0.1,
+                "maximum": 10000
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "checks": [
+            {
+              "scope": "tenant-123:email-queue:high",
+              "tokens": 1
+            },
+            {
+              "scope": "tenant-123:email-queue:medium",
+              "tokens": 2
+            },
+            {
+              "scope": "tenant-123:email-queue:low",
+              "tokens": 5
+            }
+          ]
+        }
+      ]
+    },
+
+    "RateLimitDecision": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "tokens_consumed",
+        "tokens_remaining",
+        "wait_time_ms",
+        "bucket_capacity",
+        "refill_rate",
+        "scope",
+        "timestamp"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "description": "Whether the request is allowed to proceed"
+        },
+        "tokens_consumed": {
+          "$ref": "#/definitions/TokenCount",
+          "description": "Number of tokens actually consumed"
+        },
+        "tokens_remaining": {
+          "$ref": "#/definitions/TokenCount",
+          "description": "Number of tokens remaining in the bucket after this operation"
+        },
+        "wait_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600000,
+          "description": "Milliseconds to wait before retrying (if request denied)"
+        },
+        "bucket_capacity": {
+          "$ref": "#/definitions/TokenCount",
+          "description": "Maximum capacity of the token bucket"
+        },
+        "refill_rate": {
+          "$ref": "#/definitions/RatePerSecond",
+          "description": "Rate at which tokens are added to the bucket per second"
+        },
+        "scope": {
+          "$ref": "#/definitions/Scope",
+          "description": "The scope that was evaluated"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Timestamp when the decision was made"
+        },
+        "next_refill_at": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Timestamp of the next token refill"
+        },
+        "error": {
+          "$ref": "#/definitions/ErrorDetails",
+          "description": "Error details if request was denied due to an error"
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "allowed": true,
+          "tokens_consumed": 1,
+          "tokens_remaining": 49.5,
+          "wait_time_ms": 0,
+          "bucket_capacity": 50,
+          "refill_rate": 100,
+          "scope": "tenant-123:email-queue:high",
+          "timestamp": "2025-09-14T19:45:30.125Z"
+        },
+        {
+          "allowed": false,
+          "tokens_consumed": 0,
+          "tokens_remaining": 0,
+          "wait_time_ms": 15000,
+          "bucket_capacity": 50,
+          "refill_rate": 100,
+          "scope": "tenant-123:email-queue:high",
+          "timestamp": "2025-09-14T19:45:30.125Z",
+          "error": {
+            "code": "RATE_LIMIT_EXCEEDED",
+            "message": "Rate limit exceeded for scope tenant-123:email-queue:high"
+          }
+        }
+      ]
+    },
+
+    "RateLimitBatchResponse": {
+      "type": "object",
+      "required": ["results", "timestamp"],
+      "properties": {
+        "results": {
+          "type": "array",
+          "description": "Results for each check in the batch request",
+          "items": {
+            "$ref": "#/schemas/RateLimitDecision"
+          }
+        },
+        "timestamp": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Timestamp when the batch operation was completed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BucketConfig": {
+      "type": "object",
+      "required": [
+        "scope",
+        "rate_per_second",
+        "burst_capacity",
+        "enabled"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "rate_per_second": {
+          "$ref": "#/definitions/RatePerSecond",
+          "description": "Token refill rate per second"
+        },
+        "burst_capacity": {
+          "$ref": "#/definitions/TokenCount",
+          "minimum": 1,
+          "description": "Maximum number of tokens the bucket can hold"
+        },
+        "priority_weights": {
+          "$ref": "#/definitions/PriorityWeights"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether rate limiting is enabled for this scope"
+        },
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400,
+          "default": 3600,
+          "description": "TTL for inactive buckets in seconds"
+        },
+        "created_at": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Configuration creation timestamp",
+          "readOnly": true
+        },
+        "updated_at": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Configuration last update timestamp",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "scope": "tenant-123:email-queue",
+          "rate_per_second": 100,
+          "burst_capacity": 50,
+          "priority_weights": {
+            "high": 3,
+            "medium": 2,
+            "low": 1
+          },
+          "enabled": true,
+          "ttl_seconds": 3600,
+          "created_at": "2025-09-14T10:00:00.000Z",
+          "updated_at": "2025-09-14T15:30:00.000Z"
+        }
+      ]
+    },
+
+    "BucketConfigUpdate": {
+      "type": "object",
+      "description": "Configuration update request (partial updates allowed)",
+      "properties": {
+        "rate_per_second": {
+          "$ref": "#/definitions/RatePerSecond"
+        },
+        "burst_capacity": {
+          "$ref": "#/definitions/TokenCount",
+          "minimum": 1
+        },
+        "priority_weights": {
+          "$ref": "#/definitions/PriorityWeights"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+
+    "BucketStatus": {
+      "type": "object",
+      "required": [
+        "scope",
+        "current_tokens",
+        "bucket_capacity",
+        "refill_rate",
+        "last_refill_time",
+        "utilization"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "current_tokens": {
+          "$ref": "#/definitions/TokenCount",
+          "description": "Current number of tokens in the bucket"
+        },
+        "bucket_capacity": {
+          "$ref": "#/definitions/TokenCount",
+          "description": "Maximum bucket capacity"
+        },
+        "refill_rate": {
+          "$ref": "#/definitions/RatePerSecond",
+          "description": "Token refill rate per second"
+        },
+        "last_refill_time": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Last time tokens were refilled"
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Bucket utilization percentage (0-1)"
+        },
+        "total_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total requests processed since bucket creation"
+        },
+        "allowed_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total allowed requests"
+        },
+        "denied_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total denied requests"
+        },
+        "created_at": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Bucket creation timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Bucket last update timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "scope": "tenant-123:email-queue:high",
+          "current_tokens": 45.7,
+          "bucket_capacity": 50,
+          "refill_rate": 100,
+          "last_refill_time": "2025-09-14T19:45:30.123Z",
+          "utilization": 0.914,
+          "total_requests": 15647,
+          "allowed_requests": 14892,
+          "denied_requests": 755,
+          "created_at": "2025-09-14T10:00:00.000Z",
+          "updated_at": "2025-09-14T19:45:30.123Z"
+        }
+      ]
+    },
+
+    "RateLimitMetrics": {
+      "type": "object",
+      "required": [
+        "scope",
+        "time_range",
+        "metrics"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "time_range": {
+          "type": "object",
+          "required": ["start_time", "end_time"],
+          "properties": {
+            "start_time": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "end_time": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "metrics": {
+          "type": "object",
+          "required": [
+            "requests_per_second",
+            "allowed_per_second",
+            "denied_per_second",
+            "average_tokens",
+            "bucket_utilization"
+          ],
+          "properties": {
+            "requests_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average requests per second during time range"
+            },
+            "allowed_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average allowed requests per second"
+            },
+            "denied_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average denied requests per second"
+            },
+            "average_tokens": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average token count in bucket"
+            },
+            "bucket_utilization": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Average bucket utilization (0-1)"
+            },
+            "wait_time_p50": {
+              "type": "number",
+              "minimum": 0,
+              "description": "50th percentile wait time in milliseconds"
+            },
+            "wait_time_p95": {
+              "type": "number",
+              "minimum": 0,
+              "description": "95th percentile wait time in milliseconds"
+            },
+            "wait_time_p99": {
+              "type": "number",
+              "minimum": 0,
+              "description": "99th percentile wait time in milliseconds"
+            }
+          },
+          "additionalProperties": false
+        },
+        "priority_breakdown": {
+          "type": "object",
+          "description": "Metrics broken down by priority level",
+          "patternProperties": {
+            "^(critical|high|medium|low)$": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Total requests for this priority"
+                },
+                "allowed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Allowed requests for this priority"
+                },
+                "denied": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Denied requests for this priority"
+                },
+                "average_wait_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Average wait time for this priority in milliseconds"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "scope": "tenant-123:email-queue",
+          "time_range": {
+            "start_time": "2025-09-14T19:40:00.000Z",
+            "end_time": "2025-09-14T19:45:00.000Z"
+          },
+          "metrics": {
+            "requests_per_second": 85.3,
+            "allowed_per_second": 82.1,
+            "denied_per_second": 3.2,
+            "average_tokens": 23.5,
+            "bucket_utilization": 0.47,
+            "wait_time_p50": 0,
+            "wait_time_p95": 15,
+            "wait_time_p99": 45
+          },
+          "priority_breakdown": {
+            "high": {
+              "requests": 45,
+              "allowed": 45,
+              "denied": 0,
+              "average_wait_ms": 0
+            },
+            "medium": {
+              "requests": 25,
+              "allowed": 24,
+              "denied": 1,
+              "average_wait_ms": 2
+            },
+            "low": {
+              "requests": 15,
+              "allowed": 13,
+              "denied": 2,
+              "average_wait_ms": 8
+            }
+          }
+        }
+      ]
+    },
+
+    "GlobalConfig": {
+      "type": "object",
+      "required": [
+        "global_limits",
+        "default_configs",
+        "priority_weights"
+      ],
+      "properties": {
+        "global_limits": {
+          "type": "object",
+          "description": "System-wide rate limiting configuration",
+          "required": ["enabled", "rate_per_second", "burst_capacity"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether global rate limiting is enabled"
+            },
+            "rate_per_second": {
+              "$ref": "#/definitions/RatePerSecond",
+              "description": "Global rate limit per second"
+            },
+            "burst_capacity": {
+              "$ref": "#/definitions/TokenCount",
+              "description": "Global burst capacity"
+            }
+          },
+          "additionalProperties": false
+        },
+        "default_configs": {
+          "type": "object",
+          "description": "Default configurations for different tenant tiers",
+          "properties": {
+            "enterprise": {
+              "$ref": "#/schemas/BucketConfigUpdate"
+            },
+            "pro": {
+              "$ref": "#/schemas/BucketConfigUpdate"
+            },
+            "basic": {
+              "$ref": "#/schemas/BucketConfigUpdate"
+            }
+          },
+          "additionalProperties": false
+        },
+        "priority_weights": {
+          "$ref": "#/definitions/PriorityWeights",
+          "description": "Default priority weights for fair queuing"
+        },
+        "cache_settings": {
+          "type": "object",
+          "description": "Caching configuration for rate limiting decisions",
+          "properties": {
+            "decision_ttl_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600,
+              "description": "TTL for cached rate limiting decisions"
+            },
+            "config_ttl_seconds": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 7200,
+              "description": "TTL for cached configurations"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "global_limits": {
+            "enabled": true,
+            "rate_per_second": 10000,
+            "burst_capacity": 2000
+          },
+          "default_configs": {
+            "enterprise": {
+              "rate_per_second": 1000,
+              "burst_capacity": 200,
+              "priority_weights": {
+                "critical": 4,
+                "high": 3,
+                "medium": 2,
+                "low": 1
+              }
+            },
+            "pro": {
+              "rate_per_second": 500,
+              "burst_capacity": 100,
+              "priority_weights": {
+                "high": 2,
+                "medium": 1,
+                "low": 1
+              }
+            },
+            "basic": {
+              "rate_per_second": 100,
+              "burst_capacity": 25,
+              "priority_weights": {
+                "high": 1,
+                "medium": 1,
+                "low": 1
+              }
+            }
+          },
+          "priority_weights": {
+            "critical": 4,
+            "high": 3,
+            "medium": 2,
+            "low": 1
+          },
+          "cache_settings": {
+            "decision_ttl_seconds": 30,
+            "config_ttl_seconds": 300
+          }
+        }
+      ]
+    },
+
+    "DebugInfo": {
+      "type": "object",
+      "required": [
+        "scope",
+        "redis_keys",
+        "bucket_state",
+        "config_hierarchy"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "redis_keys": {
+          "type": "object",
+          "description": "Information about Redis keys used for this scope",
+          "properties": {
+            "bucket_key": {
+              "type": "string",
+              "description": "Redis key for bucket state"
+            },
+            "config_key": {
+              "type": "string",
+              "description": "Redis key for configuration"
+            },
+            "exists": {
+              "type": "boolean",
+              "description": "Whether the keys exist in Redis"
+            },
+            "ttl": {
+              "type": "integer",
+              "description": "TTL remaining on keys in seconds"
+            }
+          },
+          "additionalProperties": false
+        },
+        "bucket_state": {
+          "type": "object",
+          "description": "Raw bucket state from Redis",
+          "additionalProperties": true
+        },
+        "config_hierarchy": {
+          "type": "array",
+          "description": "Configuration hierarchy showing how the scope resolves its config",
+          "items": {
+            "type": "object",
+            "required": ["scope", "source", "config"],
+            "properties": {
+              "scope": {
+                "$ref": "#/definitions/Scope"
+              },
+              "source": {
+                "type": "string",
+                "enum": ["explicit", "inherited", "default"],
+                "description": "How this configuration was determined"
+              },
+              "config": {
+                "$ref": "#/schemas/BucketConfig"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "lua_script_info": {
+          "type": "object",
+          "description": "Information about Lua scripts used for rate limiting",
+          "properties": {
+            "script_hash": {
+              "type": "string",
+              "description": "SHA1 hash of the loaded Lua script"
+            },
+            "loaded": {
+              "type": "boolean",
+              "description": "Whether the script is loaded in Redis"
+            },
+            "last_used": {
+              "$ref": "#/definitions/Timestamp",
+              "description": "Last time the script was executed"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "HealthStatus": {
+      "type": "object",
+      "required": [
+        "status",
+        "timestamp",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall health status of the rate limiting system"
+        },
+        "timestamp": {
+          "$ref": "#/definitions/Timestamp",
+          "description": "Timestamp when health check was performed"
+        },
+        "checks": {
+          "type": "object",
+          "description": "Individual health check results",
+          "properties": {
+            "redis_connectivity": {
+              "$ref": "#/schemas/HealthCheck"
+            },
+            "lua_scripts": {
+              "$ref": "#/schemas/HealthCheck"
+            },
+            "basic_functionality": {
+              "$ref": "#/schemas/HealthCheck"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "HealthCheck": {
+      "type": "object",
+      "required": [
+        "status",
+        "duration_ms"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail"],
+          "description": "Health check result"
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time taken to perform the check in milliseconds"
+        },
+        "message": {
+          "type": "string",
+          "description": "Additional information about the check result"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if the check failed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ConfigPreview": {
+      "type": "object",
+      "required": [
+        "current",
+        "proposed",
+        "impact_analysis"
+      ],
+      "properties": {
+        "current": {
+          "$ref": "#/schemas/BucketConfig",
+          "description": "Current configuration"
+        },
+        "proposed": {
+          "$ref": "#/schemas/BucketConfig",
+          "description": "Proposed configuration after update"
+        },
+        "impact_analysis": {
+          "type": "object",
+          "description": "Analysis of the impact of the proposed changes",
+          "properties": {
+            "rate_change_percent": {
+              "type": "number",
+              "description": "Percentage change in rate limit (-100 to +infinity)"
+            },
+            "capacity_change_percent": {
+              "type": "number",
+              "description": "Percentage change in burst capacity (-100 to +infinity)"
+            },
+            "estimated_impact": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "description": "Estimated impact level of the changes"
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Warnings about the proposed changes"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ConfigList": {
+      "type": "object",
+      "required": [
+        "configs",
+        "pagination"
+      ],
+      "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/BucketConfig"
+          }
+        },
+        "pagination": {
+          "$ref": "#/schemas/Pagination"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Pagination": {
+      "type": "object",
+      "required": [
+        "page",
+        "page_size",
+        "total_items",
+        "total_pages"
+      ],
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Current page number (1-based)"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Number of items per page"
+        },
+        "total_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of items across all pages"
+        },
+        "total_pages": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of pages"
+        },
+        "has_next": {
+          "type": "boolean",
+          "description": "Whether there is a next page"
+        },
+        "has_previous": {
+          "type": "boolean",
+          "description": "Whether there is a previous page"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

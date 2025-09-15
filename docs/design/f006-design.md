@@ -399,6 +399,290 @@ type ArchiveStore interface {
 - Recording tampering detection
 - Malicious payload handling
 
+## Security Threat Model
+
+### Threat Landscape Analysis
+
+The Time Travel Debugger captures and stores comprehensive execution data, creating significant security considerations around data protection, access control, and system integrity. This threat model analyzes potential security risks using the STRIDE methodology and provides specific mitigations for each identified threat.
+
+#### Attack Surface Components
+
+1. **Event Capture Engine**: Real-time recording of job execution data
+2. **Storage Layer**: Persistent storage of sensitive execution history
+3. **Replay Engine**: State reconstruction and timeline navigation
+4. **Export System**: Sharing and download capabilities for recordings
+5. **Access Control**: Authentication and authorization mechanisms
+6. **TUI Interface**: User interaction with sensitive debugging data
+
+### Threat Analysis Matrix
+
+#### T1: Sensitive Data Exposure
+
+**Description**: Recorded job payloads contain sensitive information (PII, credentials, financial data) that could be exposed through recordings.
+
+**STRIDE Categories**: Information Disclosure
+
+**Attack Scenarios**:
+- Developer exports recording containing customer PII for debugging
+- Malicious insider accesses recordings with payment information
+- Misconfigured access controls expose sensitive job data
+
+**Mitigations**:
+- **Automatic Data Redaction**: AI-powered detection and masking of sensitive patterns
+- **Field-Level Controls**: Configure specific fields to exclude from recording
+- **Payload Sampling**: Store only sanitized excerpts for sensitive queues
+- **Classification Tags**: Mark recordings by sensitivity level with appropriate controls
+
+**Risk Level**: High
+**Likelihood**: High
+**Impact**: Critical
+
+#### T2: Unauthorized Access to Debug Sessions
+
+**Description**: Attackers gain access to time travel debug sessions containing proprietary business logic and sensitive operational data.
+
+**STRIDE Categories**: Elevation of Privilege, Information Disclosure
+
+**Attack Scenarios**:
+- Credential compromise allows access to debug recordings
+- Session hijacking during active replay sessions
+- Privilege escalation to access restricted recordings
+
+**Mitigations**:
+- **Multi-Factor Authentication**: Require MFA for accessing sensitive recordings
+- **Session Management**: Automatic session timeout and secure session tokens
+- **Role-Based Access**: Granular permissions based on user roles and data sensitivity
+- **Audit Logging**: Comprehensive tracking of all access and export activities
+
+**Risk Level**: High
+**Likelihood**: Medium
+**Impact**: High
+
+#### T3: Recording Tampering and Integrity Loss
+
+**Description**: Malicious actors modify or corrupt recorded execution data to hide evidence or manipulate analysis results.
+
+**STRIDE Categories**: Tampering, Repudiation
+
+**Attack Scenarios**:
+- Insider modifies recordings to hide malicious activity
+- Storage system compromise leads to data corruption
+- Replay engine manipulation shows false execution history
+
+**Mitigations**:
+- **Cryptographic Signatures**: SHA-256 checksums for all events and snapshots
+- **Immutable Storage**: Write-once storage with integrity verification
+- **Chain of Custody**: Tamper-evident logging of all data modifications
+- **Backup Validation**: Regular integrity checks against backup copies
+
+**Risk Level**: Medium
+**Likelihood**: Low
+**Impact**: High
+
+#### T4: Data Exfiltration Through Export Features
+
+**Description**: Attackers use legitimate export functionality to exfiltrate large volumes of sensitive debugging data.
+
+**STRIDE Categories**: Information Disclosure
+
+**Attack Scenarios**:
+- Bulk export of recordings containing sensitive business data
+- Automated scripts harvest debugging information
+- Insider threat using export features for competitive intelligence
+
+**Mitigations**:
+- **Export Quotas**: Rate limiting and volume restrictions per user
+- **Approval Workflows**: Required approvals for sensitive data exports
+- **Watermarking**: Embed user identification in exported data
+- **Export Monitoring**: Alerting on suspicious export patterns
+
+**Risk Level**: Medium
+**Likelihood**: Medium
+**Impact**: Medium
+
+#### T5: Replay Session Resource Exhaustion
+
+**Description**: Attackers consume excessive system resources through replay sessions to cause denial of service.
+
+**STRIDE Categories**: Denial of Service
+
+**Attack Scenarios**:
+- Multiple concurrent replay sessions exhaust memory
+- Complex state reconstruction operations consume CPU
+- Large recording exports overwhelm storage bandwidth
+
+**Mitigations**:
+- **Resource Quotas**: Per-user limits on concurrent sessions and memory usage
+- **Circuit Breakers**: Automatic session termination when limits exceeded
+- **Priority Queuing**: Critical users get priority during resource contention
+- **Monitoring**: Real-time resource usage tracking with automated alerts
+
+**Risk Level**: Medium
+**Likelihood**: High
+**Impact**: Low
+
+#### T6: Storage Infrastructure Compromise
+
+**Description**: Attackers compromise the underlying storage infrastructure to access or manipulate recorded execution data.
+
+**STRIDE Categories**: Tampering, Information Disclosure, Elevation of Privilege
+
+**Attack Scenarios**:
+- Redis compromise exposes hot storage data
+- Cloud storage misconfiguration allows unauthorized access
+- Storage encryption keys compromised
+
+**Mitigations**:
+- **Encryption at Rest**: AES-256 encryption for all stored recordings
+- **Key Management**: Secure key rotation and hardware security modules
+- **Network Segmentation**: Isolated storage networks with minimal access
+- **Storage Auditing**: Comprehensive logging of all storage operations
+
+**Risk Level**: High
+**Likelihood**: Low
+**Impact**: Critical
+
+#### T7: Injection Attacks Through Event Data
+
+**Description**: Malicious job payloads contain injection attacks that compromise the time travel debugging system.
+
+**STRIDE Categories**: Tampering, Elevation of Privilege
+
+**Attack Scenarios**:
+- SQL injection in job metadata compromises storage queries
+- XSS in payload data affects TUI rendering
+- Code injection through serialized objects in recordings
+
+**Mitigations**:
+- **Input Sanitization**: Strict validation and encoding of all captured data
+- **Parameterized Queries**: Prevent SQL injection in storage operations
+- **Safe Serialization**: Use safe serialization formats for complex objects
+- **Sandboxed Rendering**: Isolate TUI rendering from untrusted data
+
+**Risk Level**: Medium
+**Likelihood**: Medium
+**Impact**: Medium
+
+### Security Controls Framework
+
+#### Preventive Controls
+
+**Authentication and Authorization**:
+- SAML/OIDC integration with enterprise identity providers
+- Role-based access control with principle of least privilege
+- Multi-factor authentication for sensitive recording access
+- API key management for programmatic access
+
+**Data Protection**:
+- Automatic PII detection and redaction using ML models
+- Field-level encryption for highly sensitive data
+- Data loss prevention (DLP) integration
+- Geographic data residency controls
+
+**Input Validation**:
+- Comprehensive validation of all captured event data
+- Sanitization of user inputs in TUI and API
+- Safe deserialization practices for complex objects
+- Content security policies for web-based interfaces
+
+#### Detective Controls
+
+**Security Monitoring**:
+- Real-time monitoring of access patterns and anomalies
+- Automated alerting on suspicious export activities
+- User behavior analytics for insider threat detection
+- Integration with SIEM systems for correlation
+
+**Audit and Compliance**:
+- Immutable audit logs for all system activities
+- Compliance reporting for regulatory requirements (GDPR, HIPAA)
+- Regular access reviews and permission audits
+- Data retention compliance tracking
+
+**Integrity Monitoring**:
+- Continuous integrity verification of stored recordings
+- File integrity monitoring for system components
+- Cryptographic verification of data chains
+- Automated corruption detection and recovery
+
+#### Responsive Controls
+
+**Incident Response**:
+- Automated data breach detection and notification
+- Emergency access revocation capabilities
+- Forensic data collection for security incidents
+- Coordinated response procedures with security team
+
+**Data Recovery**:
+- Secure backup and restore procedures
+- Point-in-time recovery for corrupted recordings
+- Disaster recovery with geographic redundancy
+- Business continuity planning for extended outages
+
+### Privacy and Compliance
+
+#### Data Protection Regulations
+
+**GDPR Compliance**:
+- Right to access: Users can request their recorded data
+- Right to erasure: Ability to delete recordings containing personal data
+- Data minimization: Capture only necessary debugging information
+- Purpose limitation: Use recordings only for debugging and analysis
+
+**Industry Standards**:
+- SOC 2 Type II compliance for data handling procedures
+- ISO 27001 alignment for information security management
+- PCI DSS compliance for systems handling payment data
+- HIPAA compliance for healthcare-related debugging data
+
+#### Data Classification and Handling
+
+**Sensitivity Levels**:
+- **Public**: Non-sensitive debugging data, anonymized metrics
+- **Internal**: Business logic and operational data
+- **Confidential**: Customer data and proprietary algorithms
+- **Restricted**: Payment information, authentication credentials
+
+**Handling Requirements**:
+- Automatic classification based on payload content analysis
+- Differential retention policies based on sensitivity level
+- Enhanced access controls for higher sensitivity classifications
+- Specialized handling for regulated data types
+
+### Implementation Roadmap
+
+#### Phase 1: Foundation Security (Weeks 1-2)
+- Implement basic data redaction and sanitization
+- Deploy encryption at rest with secure key management
+- Create role-based access control framework
+- Establish audit logging infrastructure
+
+#### Phase 2: Advanced Protections (Weeks 3-4)
+- Deploy ML-based PII detection and classification
+- Implement export controls and approval workflows
+- Add integrity monitoring and tamper detection
+- Create security monitoring and alerting systems
+
+#### Phase 3: Compliance and Integration (Weeks 5-6)
+- Complete GDPR and regulatory compliance features
+- Integrate with enterprise security infrastructure
+- Implement advanced threat detection capabilities
+- Conduct security assessment and penetration testing
+
+### Security Metrics and Monitoring
+
+**Security Posture Indicators**:
+- Data exposure incidents per month (target: 0)
+- Unauthorized access attempts detected and blocked
+- Time to detect security violations (target: <1 minute)
+- Compliance audit findings (target: 0 critical findings)
+
+**Operational Security Metrics**:
+- Percentage of recordings with sensitive data properly redacted
+- Average time for security incident response
+- User access review completion rate
+- Security training completion for users with debug access
+
 ## Deployment Plan
 
 ### Phase 1: Core Recording Infrastructure (Weeks 1-2)
