@@ -345,12 +345,7 @@ type PluginRegistry interface {
 	ValidateManifest(manifest *PluginManifest) error
 }
 
-// HotReloader watches for plugin file changes and reloads them
-type HotReloader interface {
-	Watch(pluginDir string) error
-	Stop() error
-	OnChange(callback func(path string, event string)) error
-}
+// HotReloader interface is defined in sandbox.go
 
 // PluginError represents errors that occur during plugin operations
 type PluginError struct {

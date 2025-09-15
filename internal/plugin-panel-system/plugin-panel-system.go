@@ -25,7 +25,7 @@ type Manager struct {
 	panelRenderer     PanelRenderer
 	sandbox           Sandbox
 	registry          PluginRegistry
-	hotReloader       HotReloader
+	hotReloader       *DefaultHotReloader
 	logger            *zap.Logger
 	mu                sync.RWMutex
 	ctx               context.Context
@@ -61,7 +61,7 @@ func NewManager(config PluginConfig, logger *zap.Logger) *Manager {
 	}
 
 	if config.HotReload {
-		manager.hotReloader = NewHotReloader(logger)
+		manager.hotReloader = NewDefaultHotReloader(logger)
 	}
 
 	return manager
