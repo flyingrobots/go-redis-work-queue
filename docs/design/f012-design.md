@@ -495,110 +495,333 @@ sequenceDiagram
 - Memory usage growth patterns with increasing resource counts
 - Reconciliation loop efficiency and resource utilization
 
-## Security Threat Model
+## Security Model
 
-### Threat Analysis Matrix
+### Security Principles
 
-#### T1: Privilege Escalation Through CRDs
+The Kubernetes Operator follows defense-in-depth security principles with multiple layers of protection:
 
-**Description**: Attackers exploit CRD permissions to gain unauthorized access to cluster resources or sensitive queue data.
+- **Principle of Least Privilege**: RBAC permissions are granted minimally and scoped to necessary operations
+- **Zero Trust Architecture**: All communication is authenticated and authorized
+- **Secure by Default**: Security controls are enabled by default with opt-out where appropriate
+- **Audit and Observability**: All security-relevant events are logged and monitored
 
-**STRIDE Categories**: Elevation of Privilege, Information Disclosure
+### STRIDE Threat Analysis
 
-**Attack Scenarios**:
-- Malicious CRD definitions grant excessive permissions
-- Webhook bypasses enable creation of privileged resources
-- Controller service account compromise leads to cluster-wide access
+| **Threat** | **Impact** | **Likelihood** | **Mitigation** | **Risk Level** |
+|------------|------------|----------------|----------------|----------------|
+| **Spoofing** | | | | |
+| Malicious actor impersonates operator | High | Medium | ServiceAccount tokens, mTLS, RBAC validation | Medium |
+| Fake worker pods consuming resources | Medium | Low | Pod Security Standards, resource quotas | Low |
+| **Tampering** | | | | |
+| CRD modification by unauthorized user | High | Medium | RBAC, admission webhooks, immutable fields | Medium |
+| Worker pod configuration corruption | High | Low | ConfigMap checksums, admission controllers | Low |
+| Redis data tampering | Critical | Low | TLS encryption, Redis AUTH, network policies | Medium |
+| **Repudiation** | | | | |
+| Operator actions without audit trail | Medium | Low | Kubernetes events, structured logging, metrics | Low |
+| Configuration changes lack attribution | Medium | Medium | GitOps workflows, RBAC audit logs | Low |
+| **Information Disclosure** | | | | |
+| Redis credentials exposed in logs | High | Medium | Secret references, log sanitization | Medium |
+| Sensitive env vars in pod specs | High | Medium | Secret/ConfigMap refs, field encryption | Medium |
+| Internal network topology exposure | Medium | Low | Network policies, service mesh | Low |
+| **Denial of Service** | | | | |
+| Resource exhaustion via CRD spam | High | Medium | Resource quotas, rate limiting, validation | Medium |
+| Operator overwhelmed by reconciliation | Medium | Medium | Work queues, exponential backoff, circuit breakers | Low |
+| Worker pods consume all cluster resources | Critical | Low | ResourceQuotas, LimitRanges, PodDisruptionBudgets | Low |
+| **Elevation of Privilege** | | | | |
+| Container escape to node | Critical | Low | Pod Security Standards, AppArmor/SELinux | Low |
+| Operator gains cluster-admin rights | Critical | Very Low | Scoped RBAC, principle of least privilege | Low |
+| Worker accesses other namespaces | High | Low | Network policies, RBAC, namespace isolation | Low |
 
-**Mitigations**:
-- **Principle of Least Privilege**: Minimal RBAC permissions for controllers and webhooks
-- **Resource Quotas**: Namespace-level limits on resource creation and scaling
-- **Admission Controls**: Comprehensive validation webhooks prevent privilege escalation
-- **Regular Audits**: Automated scanning of RBAC permissions and resource configurations
+### RBAC Model
 
-**Risk Level**: High
-**Likelihood**: Medium
-**Impact**: Critical
+#### Operator Service Account Permissions
 
-#### T2: Resource Exhaustion Through Autoscaling
+```yaml
+# Cluster-scoped permissions (optional)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: queue-operator-cluster
+rules:
+  - apiGroups: ["workqueue.io"]
+    resources: ["queues", "workerpools", "policies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
 
-**Description**: Malicious or misconfigured autoscaling policies cause resource exhaustion and cluster instability.
+# Namespace-scoped permissions (default)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: queue-operator
+  namespace: workqueue-system
+rules:
+  - apiGroups: ["workqueue.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["redis-credentials", "tls-certs"]
+```
 
-**STRIDE Categories**: Denial of Service
+#### Worker Service Account Permissions
 
-**Attack Scenarios**:
-- Autoscaling policies configured with no upper limits
-- Malicious metrics injection triggers excessive scaling
-- Cascading failures cause simultaneous scaling across multiple WorkerPools
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: queue-worker
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["redis-credentials"]
+  - apiGroups: ["workqueue.io"]
+    resources: ["queues"]
+    verbs: ["get", "list", "watch"]
+```
 
-**Mitigations**:
-- **Hard Scaling Limits**: Operator-enforced maximum replica counts per namespace
-- **Rate Limiting**: Cooling periods between scaling operations
-- **Resource Quotas**: Kubernetes ResourceQuota enforcement
-- **Circuit Breakers**: Automatic scaling suspension on repeated failures
+### Pod Security Standards
 
-**Risk Level**: Medium
-**Likelihood**: High
-**Impact**: Medium
+All worker pods must comply with **Restricted** Pod Security Standards:
 
-#### T3: Configuration Injection Through GitOps
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workqueue-workers
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+```
 
-**Description**: Attackers inject malicious configurations through compromised Git repositories or CI/CD pipelines.
+### Network Security
 
-**STRIDE Categories**: Tampering, Elevation of Privilege
+#### Network Policies
 
-**Attack Scenarios**:
-- Compromised Git repository introduces malicious CRD configurations
-- CI/CD pipeline injection modifies resource definitions during deployment
-- Branch protection bypass allows direct malicious commits
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: queue-operator-netpol
+spec:
+  podSelector:
+    matchLabels:
+      app: queue-operator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080  # Metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: TCP
+          port: 9443  # Webhooks
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 6443  # Kubernetes API
+    - to: []  # Redis (external)
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 6380  # Redis TLS
+```
 
-**Mitigations**:
-- **Signature Verification**: Cryptographic signing of Git commits and container images
-- **Policy as Code**: OPA Gatekeeper policies validate resource configurations
-- **Multi-Stage Validation**: Separate validation in CI/CD and admission webhooks
-- **Immutable Infrastructure**: GitOps-only configuration changes with audit trails
+#### TLS Configuration
 
-**Risk Level**: Medium
-**Likelihood**: Low
-**Impact**: High
+- **Webhook TLS**: Generated certificates with short TTL (24h), auto-rotation
+- **Redis TLS**: Optional TLS encryption with certificate validation
+- **Metrics TLS**: Optional TLS for Prometheus metrics endpoint
 
-### Security Controls Framework
+### Admission Control
 
-#### Preventive Controls
+#### Validating Webhooks
 
-**Access Control**:
-- Role-based access control with minimal required permissions
-- Namespace isolation with NetworkPolicies and PodSecurityPolicies
-- Service account token rotation and limited scope
-- Multi-factor authentication for GitOps repository access
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: queue-validator
+webhooks:
+  - name: validate.queue.workqueue.io
+    clientConfig:
+      service:
+        name: queue-operator-webhook
+        path: /validate/queue
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["workqueue.io"]
+        apiVersions: ["v1"]
+        resources: ["queues"]
+    failurePolicy: Fail
+    sideEffects: None
+```
 
-**Resource Protection**:
-- ResourceQuota enforcement for compute and storage limits
-- PodSecurityStandards compliance (restricted profile)
-- Network segmentation between operator and managed workloads
-- Container image scanning and signature verification
+**Validation Rules:**
+- Queue names must be unique within namespace
+- Rate limits cannot exceed cluster policies
+- Resource requests must be within namespace quotas
+- Redis connection strings must not contain credentials (use secretRef)
+- Priority values must be within allowed range
 
-#### Detective Controls
+#### Mutating Webhooks
 
-**Monitoring and Alerting**:
-- Real-time monitoring of controller health and performance
-- Anomaly detection for unusual scaling patterns
-- Security event correlation and SIEM integration
-- Resource usage monitoring with threshold-based alerting
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionWebhook
+metadata:
+  name: queue-defaulter
+webhooks:
+  - name: default.workerpool.workqueue.io
+    clientConfig:
+      service:
+        name: queue-operator-webhook
+        path: /mutate/workerpool
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: ["workqueue.io"]
+        resources: ["workerpools"]
+```
 
-**Audit and Compliance**:
-- Comprehensive audit logging of all operator actions
-- GitOps audit trail for configuration changes
-- Regular security scanning of operator container images
-- Compliance reporting for regulatory requirements
+**Default Mutations:**
+- Add required security context if missing
+- Set resource limits based on cluster policies
+- Inject monitoring sidecar if enabled
+- Add required labels and annotations
 
-#### Responsive Controls
+### Secret Management
 
-**Incident Response**:
-- Automated circuit breakers for runaway autoscaling
-- Emergency operator shutdown procedures
-- Rapid rollback capabilities for configuration changes
-- Incident escalation and notification workflows
+#### Redis Credentials
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-credentials
+  namespace: workqueue-system
+type: Opaque
+data:
+  redis-url: <base64-encoded-connection-string>
+  redis-password: <base64-encoded-password>
+  redis-username: <base64-encoded-username>
+```
+
+#### TLS Certificates
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-tls-certs
+type: kubernetes.io/tls
+data:
+  tls.crt: <base64-encoded-cert>
+  tls.key: <base64-encoded-key>
+  ca.crt: <base64-encoded-ca>
+```
+
+### Runtime Security
+
+#### Security Monitoring
+
+- **Falco Rules**: Monitor for suspicious container activity
+- **OPA Gatekeeper**: Enforce cluster-wide security policies
+- **Pod Security Admission**: Prevent privileged pod creation
+
+#### Audit Logging
+
+```yaml
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  - level: Metadata
+    namespaces: ["workqueue-system"]
+    resources:
+      - group: "workqueue.io"
+        resources: ["*"]
+  - level: Request
+    verbs: ["create", "update", "patch", "delete"]
+    resources:
+      - group: "workqueue.io"
+        resources: ["queues", "workerpools", "policies"]
+```
+
+### Compliance and Governance
+
+#### Security Policies
+
+- **Resource Quotas**: Prevent resource exhaustion attacks
+- **Limit Ranges**: Enforce minimum/maximum resource allocations
+- **Pod Disruption Budgets**: Maintain availability during updates
+- **Network Policies**: Micro-segmentation and traffic control
+
+#### Vulnerability Management
+
+- **Container Scanning**: Automated CVE scanning in CI/CD
+- **Admission Controllers**: Block vulnerable images
+- **Runtime Monitoring**: Detect exploitation attempts
+- **Update Policies**: Automated security patch deployment
+
+### Incident Response
+
+#### Security Event Detection
+
+1. **Anomaly Detection**: Unusual API access patterns
+2. **Resource Monitoring**: Unexpected resource consumption
+3. **Network Monitoring**: Suspicious network connections
+4. **Audit Analysis**: Privilege escalation attempts
+
+#### Response Procedures
+
+1. **Immediate**: Isolate affected resources using network policies
+2. **Investigation**: Analyze audit logs and metrics
+3. **Remediation**: Apply security patches, rotate credentials
+4. **Recovery**: Restore from known-good configurations
 
 ## Deployment Plan
 

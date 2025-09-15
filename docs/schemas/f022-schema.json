@@ -1,0 +1,863 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Queue Snapshot Testing Schemas",
+  "description": "JSON Schema definitions for Queue Snapshot Testing data models",
+  "definitions": {
+    "QueueSnapshot": {
+      "type": "object",
+      "title": "Queue Snapshot",
+      "description": "Complete snapshot of queue system state at a point in time",
+      "required": ["metadata", "queues", "jobs", "checksum", "version"],
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/SnapshotMetadata"
+        },
+        "queues": {
+          "type": "object",
+          "description": "Map of queue name to queue state",
+          "additionalProperties": {
+            "$ref": "#/definitions/QueueState"
+          }
+        },
+        "jobs": {
+          "type": "array",
+          "description": "Normalized job data for deterministic comparison",
+          "items": {
+            "$ref": "#/definitions/NormalizedJob"
+          }
+        },
+        "workers": {
+          "type": "array",
+          "description": "Worker state at capture time",
+          "items": {
+            "$ref": "#/definitions/WorkerState"
+          }
+        },
+        "config": {
+          "$ref": "#/definitions/SystemConfig"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 checksum for integrity verification"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Snapshot format version",
+          "examples": ["1.0", "1.1"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SnapshotMetadata": {
+      "type": "object",
+      "title": "Snapshot Metadata",
+      "description": "Metadata about snapshot creation and context",
+      "required": ["id", "name", "captured_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the snapshot"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Human-readable name for the snapshot"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional description of the snapshot"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for organizing snapshots",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "maxLength": 50
+          },
+          "maxItems": 20,
+          "uniqueItems": true
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the snapshot was captured"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mμn]?s$",
+          "description": "Time taken to capture snapshot (Go duration format)",
+          "examples": ["1.234s", "500ms", "2.5s"]
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "testing", "staging", "production"],
+          "description": "Environment where snapshot was captured"
+        },
+        "git_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,40}$",
+          "description": "Git commit SHA when snapshot was captured"
+        },
+        "git_branch": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Git branch when snapshot was captured"
+        },
+        "stats": {
+          "$ref": "#/definitions/CaptureStats"
+        },
+        "custom": {
+          "type": "object",
+          "description": "Custom metadata fields",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CaptureStats": {
+      "type": "object",
+      "title": "Capture Statistics",
+      "description": "Statistics about the snapshot capture process",
+      "properties": {
+        "total_queues": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of queues captured"
+        },
+        "total_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of jobs captured"
+        },
+        "jobs_by_state": {
+          "type": "object",
+          "description": "Job count by state",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "queues_by_size": {
+          "type": "object",
+          "description": "Distribution of queue sizes",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "capture_duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time taken to capture in milliseconds"
+        },
+        "compression_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Compression ratio achieved (0-1)"
+        },
+        "original_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Original uncompressed size"
+        },
+        "compressed_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Compressed size"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "QueueState": {
+      "type": "object",
+      "title": "Queue State",
+      "description": "State of a single queue at capture time",
+      "required": ["name", "length"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Queue name"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs in queue"
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum queue length (if configured)"
+        },
+        "jobs_by_state": {
+          "type": "object",
+          "description": "Distribution of jobs by state",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "jobs_by_priority": {
+          "type": "object",
+          "description": "Distribution of jobs by priority",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "config": {
+          "$ref": "#/definitions/QueueConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "QueueConfig": {
+      "type": "object",
+      "title": "Queue Configuration",
+      "description": "Configuration settings for a queue",
+      "properties": {
+        "max_retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum number of retries"
+        },
+        "retry_delay": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mμn]?s$",
+          "description": "Delay between retries (Go duration format)"
+        },
+        "dead_letter_queue": {
+          "type": "string",
+          "description": "Dead letter queue name"
+        },
+        "priority_enabled": {
+          "type": "boolean",
+          "description": "Whether priority scheduling is enabled"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mμn]?s$",
+          "description": "Job execution timeout"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "NormalizedJob": {
+      "type": "object",
+      "title": "Normalized Job",
+      "description": "Job data normalized for deterministic comparison",
+      "required": ["queue", "payload_hash", "state", "priority", "retry_count"],
+      "properties": {
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Queue name where job is located"
+        },
+        "payload_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16,64}$",
+          "description": "Deterministic hash of job payload"
+        },
+        "payload_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of job payload in bytes"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "retrying", "dead"],
+          "description": "Current job state"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Job priority (0-100, higher is more important)"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times job has been retried"
+        },
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of execution attempts"
+        },
+        "relative_time_ms": {
+          "type": "integer",
+          "description": "Normalized timestamp relative to snapshot base time"
+        },
+        "last_error": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Last error message (if any)"
+        },
+        "failure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failures"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Custom job metadata (filtered for determinism)",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerState": {
+      "type": "object",
+      "title": "Worker State",
+      "description": "State of a worker at capture time",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Worker identifier"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "busy", "offline", "error"],
+          "description": "Worker status"
+        },
+        "current_job": {
+          "type": "string",
+          "description": "ID of currently processing job"
+        },
+        "queues": {
+          "type": "array",
+          "description": "Queues this worker processes",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "last_heartbeat": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last heartbeat time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When worker started"
+        },
+        "processed_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs processed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SystemConfig": {
+      "type": "object",
+      "title": "System Configuration",
+      "description": "System-wide configuration at capture time",
+      "properties": {
+        "redis_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Redis server version"
+        },
+        "max_memory": {
+          "type": "string",
+          "description": "Redis max memory setting"
+        },
+        "memory_policy": {
+          "type": "string",
+          "enum": ["noeviction", "allkeys-lru", "volatile-lru", "allkeys-random", "volatile-random", "volatile-ttl"],
+          "description": "Redis memory eviction policy"
+        },
+        "default_timeout": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mμn]?s$",
+          "description": "Default job timeout"
+        },
+        "max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Redis connections"
+        },
+        "custom_config": {
+          "type": "object",
+          "description": "Custom configuration values",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SnapshotDiff": {
+      "type": "object",
+      "title": "Snapshot Diff",
+      "description": "Difference between two snapshots",
+      "required": ["summary", "compared_at"],
+      "properties": {
+        "summary": {
+          "$ref": "#/definitions/DiffSummary"
+        },
+        "queue_diffs": {
+          "type": "object",
+          "description": "Differences in queue states",
+          "additionalProperties": {
+            "$ref": "#/definitions/QueueDiff"
+          }
+        },
+        "job_diffs": {
+          "type": "array",
+          "description": "Differences in job states",
+          "items": {
+            "$ref": "#/definitions/JobDiff"
+          }
+        },
+        "worker_diffs": {
+          "type": "array",
+          "description": "Differences in worker states",
+          "items": {
+            "$ref": "#/definitions/WorkerDiff"
+          }
+        },
+        "config_diffs": {
+          "type": "array",
+          "description": "Differences in configuration",
+          "items": {
+            "$ref": "#/definitions/ConfigDiff"
+          }
+        },
+        "ignored": {
+          "type": "array",
+          "description": "Changes that were ignored by diff rules",
+          "items": {
+            "$ref": "#/definitions/IgnoredChange"
+          }
+        },
+        "compared_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the comparison was performed"
+        },
+        "rules_applied": {
+          "$ref": "#/definitions/DiffConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DiffSummary": {
+      "type": "object",
+      "title": "Diff Summary",
+      "description": "High-level summary of snapshot differences",
+      "required": ["has_changes", "significant", "total_changes"],
+      "properties": {
+        "has_changes": {
+          "type": "boolean",
+          "description": "Whether any changes were detected"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether changes are considered significant"
+        },
+        "total_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of changes detected"
+        },
+        "ignored_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of changes ignored by rules"
+        },
+        "queue_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of queue-level changes"
+        },
+        "job_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of job-level changes"
+        },
+        "config_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of configuration changes"
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in diff accuracy (0-1)"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Risk level of detected changes"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "QueueDiff": {
+      "type": "object",
+      "title": "Queue Diff",
+      "description": "Difference in queue state",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["added", "removed", "length_change", "config_change", "jobs_moved"],
+          "description": "Type of queue change"
+        },
+        "before": {
+          "type": "integer",
+          "description": "Previous value (for numeric changes)"
+        },
+        "after": {
+          "type": "integer",
+          "description": "New value (for numeric changes)"
+        },
+        "percentage": {
+          "type": "number",
+          "description": "Percentage change"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether this change is considered significant"
+        },
+        "impact": {
+          "type": "string",
+          "enum": ["minimal", "moderate", "major", "critical"],
+          "description": "Impact level of the change"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobDiff": {
+      "type": "object",
+      "title": "Job Diff",
+      "description": "Difference in job state",
+      "required": ["type", "payload_hash"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["added", "removed", "moved", "modified", "retry_increase", "state_change"],
+          "description": "Type of job change"
+        },
+        "payload_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16,64}$",
+          "description": "Hash of affected job payload"
+        },
+        "before": {
+          "$ref": "#/definitions/JobState"
+        },
+        "after": {
+          "$ref": "#/definitions/JobState"
+        },
+        "before_queue": {
+          "type": "string",
+          "description": "Previous queue (for moved jobs)"
+        },
+        "after_queue": {
+          "type": "string",
+          "description": "New queue (for moved jobs)"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether this change is considered significant"
+        },
+        "impact": {
+          "type": "string",
+          "enum": ["minimal", "moderate", "major", "critical"],
+          "description": "Impact level of the change"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in change detection (0-1)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobState": {
+      "type": "object",
+      "title": "Job State",
+      "description": "State of a job for comparison",
+      "properties": {
+        "queue": {
+          "type": "string",
+          "description": "Queue name"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "retrying", "dead"],
+          "description": "Job state"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Job priority"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Retry count"
+        },
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Attempt count"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerDiff": {
+      "type": "object",
+      "title": "Worker Diff",
+      "description": "Difference in worker state",
+      "required": ["worker_id", "type"],
+      "properties": {
+        "worker_id": {
+          "type": "string",
+          "description": "Worker identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["added", "removed", "status_change", "queue_change"],
+          "description": "Type of worker change"
+        },
+        "before_status": {
+          "type": "string",
+          "enum": ["idle", "busy", "offline", "error"],
+          "description": "Previous worker status"
+        },
+        "after_status": {
+          "type": "string",
+          "enum": ["idle", "busy", "offline", "error"],
+          "description": "New worker status"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether this change is considered significant"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ConfigDiff": {
+      "type": "object",
+      "title": "Config Diff",
+      "description": "Difference in configuration",
+      "required": ["field"],
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Configuration field that changed"
+        },
+        "before": {
+          "description": "Previous value"
+        },
+        "after": {
+          "description": "New value"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether this change is considered significant"
+        },
+        "impact": {
+          "type": "string",
+          "enum": ["minimal", "moderate", "major", "critical"],
+          "description": "Impact level of the change"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IgnoredChange": {
+      "type": "object",
+      "title": "Ignored Change",
+      "description": "Change that was ignored by diff rules",
+      "required": ["type", "reason"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of ignored change"
+        },
+        "field": {
+          "type": "string",
+          "description": "Field that changed"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue affected (if applicable)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this change was ignored"
+        },
+        "rule_applied": {
+          "type": "string",
+          "description": "Name of rule that caused ignore"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DiffConfig": {
+      "type": "object",
+      "title": "Diff Configuration",
+      "description": "Configuration for diff behavior",
+      "properties": {
+        "tolerance_rules": {
+          "type": "object",
+          "description": "Tolerance rules for numeric differences",
+          "additionalProperties": {
+            "$ref": "#/definitions/ToleranceRule"
+          }
+        },
+        "ignore_patterns": {
+          "type": "array",
+          "description": "Patterns to ignore in comparison",
+          "items": {
+            "type": "string"
+          }
+        },
+        "semantic_rules": {
+          "type": "array",
+          "description": "Semantic understanding rules",
+          "items": {
+            "$ref": "#/definitions/SemanticRule"
+          }
+        },
+        "report_config": {
+          "$ref": "#/definitions/ReportConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ToleranceRule": {
+      "type": "object",
+      "title": "Tolerance Rule",
+      "description": "Rule for handling numeric differences",
+      "required": ["type", "threshold"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["percentage", "absolute", "ignore"],
+          "description": "Type of tolerance rule"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Threshold value for tolerance"
+        },
+        "field": {
+          "type": "string",
+          "description": "Field this rule applies to"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Condition for when rule applies"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SemanticRule": {
+      "type": "object",
+      "title": "Semantic Rule",
+      "description": "Rule for semantic understanding of changes",
+      "required": ["name", "pattern", "action"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the semantic rule"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Pattern to match (regex or JSONPath)"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["ignore", "highlight", "group", "transform"],
+          "description": "Action to take when pattern matches"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rule priority (higher wins)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional rule metadata",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ReportConfig": {
+      "type": "object",
+      "title": "Report Configuration",
+      "description": "Configuration for diff report generation",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["text", "html", "markdown", "json"],
+          "default": "text",
+          "description": "Report output format"
+        },
+        "include_ignored": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to include ignored changes in report"
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Maximum number of items to include in report"
+        },
+        "group_by": {
+          "type": "string",
+          "enum": ["type", "queue", "significance", "impact"],
+          "description": "How to group changes in report"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": ["significance", "impact", "type", "queue"],
+          "default": "significance",
+          "description": "How to sort changes in report"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

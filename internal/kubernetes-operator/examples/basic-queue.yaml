@@ -1,0 +1,83 @@
+apiVersion: queue.example.com/v1
+kind: Queue
+metadata:
+  name: basic-queue
+  namespace: default
+  labels:
+    app.kubernetes.io/name: queue
+    app.kubernetes.io/instance: basic-queue
+    app.kubernetes.io/component: queue
+spec:
+  name: basic-queue
+  priority: medium
+  rateLimit:
+    requestsPerSecond: 100
+    burstCapacity: 200
+    enabled: true
+  deadLetterQueue:
+    enabled: true
+    maxRetries: 3
+    retryBackoff:
+      initialDelay: 1s
+      maxDelay: 30s
+      multiplier: 2.0
+  retention:
+    completedJobs: 24h
+    failedJobs: 72h
+    maxJobs: 10000
+---
+apiVersion: queue.example.com/v1
+kind: WorkerPool
+metadata:
+  name: basic-worker-pool
+  namespace: default
+  labels:
+    app.kubernetes.io/name: worker-pool
+    app.kubernetes.io/instance: basic-worker-pool
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  queueSelector:
+    queue: basic-queue
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker
+        app.kubernetes.io/instance: basic-worker-pool
+    spec:
+      image: "ghcr.io/example/queue-worker:v1.0.0"
+      imagePullPolicy: IfNotPresent
+      concurrency: 10
+      maxInFlight: 100
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      serviceAccountName: queue-worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-connection
+              key: url
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  drainPolicy:
+    gracePeriod: 30s
+    timeoutPeriod: 60s
+    waitForCompletion: true

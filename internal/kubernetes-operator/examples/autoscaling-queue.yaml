@@ -1,0 +1,184 @@
+apiVersion: queue.example.com/v1
+kind: Queue
+metadata:
+  name: high-volume-queue
+  namespace: production
+  labels:
+    app.kubernetes.io/name: queue
+    app.kubernetes.io/instance: high-volume-queue
+    app.kubernetes.io/component: queue
+    environment: production
+spec:
+  name: high-volume-queue
+  priority: high
+  rateLimit:
+    requestsPerSecond: 1000
+    burstCapacity: 2000
+    enabled: true
+  deadLetterQueue:
+    enabled: true
+    maxRetries: 5
+    retryBackoff:
+      initialDelay: 2s
+      maxDelay: 60s
+      multiplier: 2.5
+  retention:
+    completedJobs: 48h
+    failedJobs: 168h  # 7 days
+    maxJobs: 100000
+  redis:
+    addresses:
+      - redis-cluster-0.redis.svc.cluster.local:6379
+      - redis-cluster-1.redis.svc.cluster.local:6379
+      - redis-cluster-2.redis.svc.cluster.local:6379
+    database: 1
+    passwordSecret:
+      name: redis-cluster-auth
+      key: password
+    tls:
+      enabled: true
+      insecureSkipVerify: false
+---
+apiVersion: queue.example.com/v1
+kind: WorkerPool
+metadata:
+  name: autoscaling-workers
+  namespace: production
+  labels:
+    app.kubernetes.io/name: worker-pool
+    app.kubernetes.io/instance: autoscaling-workers
+    app.kubernetes.io/component: worker
+    environment: production
+spec:
+  queueSelector:
+    queue: high-volume-queue
+    priorities:
+      - high
+      - medium
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker
+        app.kubernetes.io/instance: autoscaling-workers
+        environment: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      image: "ghcr.io/example/queue-worker:v2.1.0"
+      imagePullPolicy: IfNotPresent
+      concurrency: 20
+      maxInFlight: 200
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      serviceAccountName: queue-worker-production
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+        capabilities:
+          drop:
+            - ALL
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+      env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: LOG_FORMAT
+          value: "json"
+        - name: WORKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-cluster-connection
+              key: url
+        - name: TRACING_ENDPOINT
+          value: "http://jaeger-collector.observability.svc.cluster.local:14268/api/traces"
+      envFrom:
+        - configMapRef:
+            name: worker-config
+            optional: true
+      nodeSelector:
+        node.kubernetes.io/instance-type: "standard-4"
+        workload-type: "cpu-intensive"
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "queue-processing"
+          effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/instance
+                      operator: In
+                      values:
+                        - autoscaling-workers
+                topologyKey: kubernetes.io/hostname
+  autoScaling:
+    minReplicas: 2
+    maxReplicas: 50
+    targetBacklogPerWorker: 25
+    latencySLO:
+      targetPercentile: 0.95
+      targetLatencyMs: 500
+    scaleUpCooldown: 2m
+    scaleDownCooldown: 5m
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 20%
+      maxSurge: 30%
+  drainPolicy:
+    gracePeriod: 60s
+    timeoutPeriod: 120s
+    waitForCompletion: true
+---
+apiVersion: queue.example.com/v1
+kind: Policy
+metadata:
+  name: production-policy
+  namespace: production
+  labels:
+    environment: production
+spec:
+  circuitBreaker:
+    failureThreshold: 10
+    recoveryThreshold: 5
+    timeout: 120s
+  retryDefaults:
+    initialDelay: 1s
+    maxDelay: 30s
+    multiplier: 2.0
+  rateLimitDefaults:
+    requestsPerSecond: 500
+    burstCapacity: 1000
+    enabled: true
+  securityPolicy:
+    requiredServiceAccount: queue-worker-production
+    podSecurityStandards:
+      enforce: restricted
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+    networkPolicies:
+      - worker-network-policy
+      - redis-access-policy
