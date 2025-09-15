@@ -44,11 +44,11 @@ func DefaultKeyMap() PlaygroundKeyMap {
 	return PlaygroundKeyMap{
 		Up: key.NewBinding(
 			key.WithKeys("up", "k"),
-			key.WithHelp("‘/k", "move up"),
+			key.WithHelp("up/k", "move up"),
 		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
-			key.WithHelp("“/j", "move down"),
+			key.WithHelp("down/j", "move down"),
 		),
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
@@ -262,7 +262,7 @@ func (m *PlaygroundModel) View() string {
 		Padding(1, 2).
 		Margin(1, 0)
 
-	header := headerStyle.Render("<¨ Theme Playground")
+	header := headerStyle.Render("Theme Playground")
 	sections = append(sections, header)
 
 	// Current theme info
@@ -279,7 +279,7 @@ func (m *PlaygroundModel) View() string {
 		previewStyle := m.themeManager.GetStyleFor("status", "running").
 			Bold(true).
 			Padding(0, 2)
-		preview := previewStyle.Render("=A  Preview Mode - Press 'a' to apply or select another theme")
+		preview := previewStyle.Render("Preview Mode - Press 'a' to apply or select another theme")
 		sections = append(sections, preview)
 	}
 
@@ -323,8 +323,8 @@ func (m *PlaygroundModel) View() string {
 
 // renderThemePreview creates a visual preview of a theme
 func (m *PlaygroundModel) renderThemePreview(themeName string) string {
-	theme, exists := m.themeManager.GetTheme(themeName)
-	if !exists {
+	theme, err := m.themeManager.GetTheme(themeName)
+	if err != nil {
 		return ""
 	}
 
@@ -414,9 +414,9 @@ func ThemeSelector(themeManager *ThemeManager, compact bool) string {
 	var options []string
 
 	for _, theme := range themes {
-		indicator := "Ë"
+		indicator := "o"
 		if theme.Name == activeTheme {
-			indicator = "Ï"
+			indicator = "*"
 		}
 
 		style := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Palette.TextPrimary.Hex))

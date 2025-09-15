@@ -9,7 +9,7 @@ import (
 )
 
 func TestThemeManager_NewThemeManager(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	if tm == nil {
 		t.Fatal("NewThemeManager returned nil")
@@ -29,7 +29,7 @@ func TestThemeManager_NewThemeManager(t *testing.T) {
 }
 
 func TestThemeManager_GetActiveTheme(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	activeTheme := tm.GetActiveTheme()
 	if activeTheme == nil {
@@ -42,7 +42,7 @@ func TestThemeManager_GetActiveTheme(t *testing.T) {
 }
 
 func TestThemeManager_SetActiveTheme(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	// Test setting valid theme
 	err := tm.SetActiveTheme(ThemeTokyoNight)
@@ -67,7 +67,7 @@ func TestThemeManager_SetActiveTheme(t *testing.T) {
 }
 
 func TestThemeManager_RegisterTheme(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	// Create test theme
 	testTheme := &Theme{
@@ -108,7 +108,7 @@ func TestThemeManager_RegisterTheme(t *testing.T) {
 }
 
 func TestThemeManager_GetTheme(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	// Test getting existing theme
 	theme, exists := tm.GetTheme(ThemeDefault)
@@ -128,7 +128,7 @@ func TestThemeManager_GetTheme(t *testing.T) {
 }
 
 func TestThemeManager_ListThemes(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	themes := tm.ListThemes()
 	if len(themes) == 0 {
@@ -150,7 +150,7 @@ func TestThemeManager_ListThemes(t *testing.T) {
 }
 
 func TestThemeManager_GetStyleFor(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	style := tm.GetStyleFor("text", "primary")
 	if style == (lipgloss.Style{}) {
@@ -165,7 +165,7 @@ func TestThemeManager_GetStyleFor(t *testing.T) {
 }
 
 func TestThemeManager_OnThemeChanged(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	callbackCalled := false
 	var callbackTheme string
@@ -368,7 +368,7 @@ func TestBuiltInThemes(t *testing.T) {
 
 	for _, themeName := range builtInThemes {
 		t.Run(themeName, func(t *testing.T) {
-			tm := NewThemeManager()
+			tm := NewThemeManager(t.TempDir())
 			theme, exists := tm.GetTheme(themeName)
 			if !exists {
 				t.Errorf("Built-in theme %s should exist", themeName)
@@ -397,7 +397,7 @@ func TestBuiltInThemes(t *testing.T) {
 }
 
 func TestThemeManager_Concurrent(t *testing.T) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 
 	// Test concurrent read operations
 	done := make(chan bool)
@@ -441,7 +441,7 @@ func TestThemeManager_Concurrent(t *testing.T) {
 }
 
 func BenchmarkThemeManager_GetActiveTheme(b *testing.B) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -450,7 +450,7 @@ func BenchmarkThemeManager_GetActiveTheme(b *testing.B) {
 }
 
 func BenchmarkThemeManager_SetActiveTheme(b *testing.B) {
-	tm := NewThemeManager()
+	tm := NewThemeManager(t.TempDir())
 	themes := []string{ThemeDefault, ThemeTokyoNight, ThemeGitHub, ThemeOneDark}
 	b.ResetTimer()
 
