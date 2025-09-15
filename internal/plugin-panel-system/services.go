@@ -128,8 +128,14 @@ func (eb *DefaultEventBus) Close() error {
 func (eb *DefaultEventBus) eventProcessor() {
 	for {
 		select {
-		case event := <-eb.eventQueue:
-			eb.distributeEvent(event)
+		case event, ok := <-eb.eventQueue:
+			if !ok {
+				// Channel is closed, exit
+				return
+			}
+			if event != nil {
+				eb.distributeEvent(event)
+			}
 		case <-eb.ctx.Done():
 			return
 		}

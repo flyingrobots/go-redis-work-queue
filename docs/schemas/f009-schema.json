@@ -1,0 +1,2187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chaos Harness Data Models",
+  "description": "Comprehensive data model definitions for the Chaos Harness system, enabling controlled fault injection and reliability testing",
+  "version": "1.0.0",
+  "definitions": {
+    "ScenarioCategory": {
+      "type": "string",
+      "enum": ["basic", "advanced", "game_day", "custom"],
+      "description": "Categories of chaos scenarios based on complexity and purpose"
+    },
+    "ComplexityLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Complexity levels for chaos scenarios"
+    },
+    "InjectorType": {
+      "type": "string",
+      "enum": ["worker", "redis", "network", "load"],
+      "description": "Types of fault injectors available in the system"
+    },
+    "ExecutionStatus": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "stopped"],
+      "description": "Possible states of chaos experiment execution"
+    },
+    "ChaosScenario": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique scenario identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable scenario name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Detailed scenario description"
+        },
+        "category": {
+          "$ref": "#/definitions/ScenarioCategory",
+          "description": "Scenario category"
+        },
+        "complexity": {
+          "$ref": "#/definitions/ComplexityLevel",
+          "description": "Complexity level"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Total scenario duration (e.g., '5m', '1h')"
+        },
+        "injection_steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/InjectionStep"
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "description": "Fault injection steps in execution order"
+        },
+        "expected_metrics": {
+          "$ref": "#/definitions/ExpectedMetrics",
+          "description": "Expected recovery and performance metrics"
+        },
+        "safety_limits": {
+          "$ref": "#/definitions/SafetyLimits",
+          "description": "Safety constraints and limits"
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed execution environments"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scenario tags for categorization"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "Creator identifier"
+        },
+        "execution_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times executed"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Historical success rate"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "category",
+        "complexity",
+        "duration",
+        "injection_steps",
+        "safety_limits",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "InjectionStep": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier within scenario"
+        },
+        "start_offset": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Delay before starting injection"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Injection duration"
+        },
+        "injector_type": {
+          "$ref": "#/definitions/InjectorType",
+          "description": "Type of fault injector to use"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Injector-specific parameters"
+        },
+        "target_scope": {
+          "$ref": "#/definitions/TargetScope",
+          "description": "Scope of targets for injection"
+        },
+        "description": {
+          "type": "string",
+          "description": "Step description"
+        },
+        "conditional": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether step has conditions"
+            },
+            "condition": {
+              "type": "string",
+              "description": "Condition expression"
+            },
+            "skip_on_failure": {
+              "type": "boolean",
+              "description": "Skip if previous step failed"
+            }
+          },
+          "description": "Conditional execution configuration"
+        }
+      },
+      "required": [
+        "start_offset",
+        "duration",
+        "injector_type",
+        "parameters",
+        "target_scope"
+      ],
+      "additionalProperties": false
+    },
+    "TargetScope": {
+      "type": "object",
+      "properties": {
+        "workers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific worker IDs to target (empty means all)"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific queue names to target (empty means all)"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of targets to affect"
+        },
+        "selection_strategy": {
+          "type": "string",
+          "enum": ["random", "round_robin", "specific", "least_loaded", "most_loaded"],
+          "default": "random",
+          "description": "Strategy for selecting targets"
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "worker_tags": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Worker tag filters"
+            },
+            "queue_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Queue name patterns (regex)"
+            },
+            "resource_constraints": {
+              "type": "object",
+              "properties": {
+                "min_memory_mb": {
+                  "type": "integer"
+                },
+                "max_memory_mb": {
+                  "type": "integer"
+                },
+                "min_cpu_cores": {
+                  "type": "number"
+                }
+              },
+              "description": "Resource-based filtering"
+            }
+          },
+          "description": "Advanced target filtering options"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExpectedMetrics": {
+      "type": "object",
+      "properties": {
+        "max_recovery_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Maximum expected recovery time"
+        },
+        "max_error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum acceptable error rate percentage"
+        },
+        "min_throughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum acceptable throughput (jobs/sec)"
+        },
+        "max_dlq_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum jobs allowed in dead letter queue"
+        },
+        "stability_threshold": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time to consider system stable after recovery"
+        },
+        "performance_degradation": {
+          "type": "object",
+          "properties": {
+            "max_latency_increase": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum acceptable latency increase percentage"
+            },
+            "max_throughput_decrease": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Maximum acceptable throughput decrease percentage"
+            }
+          },
+          "description": "Acceptable performance degradation limits"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SafetyLimits": {
+      "type": "object",
+      "properties": {
+        "max_affected_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of workers that can be affected"
+        },
+        "max_affected_workers_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum percentage of workers that can be affected"
+        },
+        "max_affected_queues": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of queues that can be affected"
+        },
+        "max_failure_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum allowed failure rate percentage"
+        },
+        "max_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Maximum scenario duration"
+        },
+        "requires_approval": {
+          "type": "boolean",
+          "description": "Whether execution requires approval"
+        },
+        "production_allowed": {
+          "type": "boolean",
+          "description": "Whether production execution is allowed"
+        },
+        "concurrent_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Maximum concurrent executions of this scenario"
+        },
+        "cooldown_period": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Required cooldown between executions"
+        }
+      },
+      "required": [
+        "max_affected_workers",
+        "max_affected_queues",
+        "max_failure_rate",
+        "max_duration"
+      ],
+      "additionalProperties": false
+    },
+    "ChaosExecution": {
+      "type": "object",
+      "properties": {
+        "execution_id": {
+          "type": "string",
+          "description": "Unique execution identifier"
+        },
+        "scenario_id": {
+          "type": "string",
+          "description": "Associated scenario ID"
+        },
+        "scenario": {
+          "$ref": "#/definitions/ChaosScenario",
+          "description": "Full scenario definition"
+        },
+        "status": {
+          "$ref": "#/definitions/ExecutionStatus",
+          "description": "Current execution status"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Target environment"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Execution start time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Execution completion time"
+        },
+        "estimated_completion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Estimated completion time"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Total execution duration"
+        },
+        "initiated_by": {
+          "type": "string",
+          "description": "User who initiated execution"
+        },
+        "current_step": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current injection step index"
+        },
+        "injections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ActiveInjection"
+          },
+          "description": "Currently active injections"
+        },
+        "metrics": {
+          "$ref": "#/definitions/ExecutionMetrics",
+          "description": "Real-time execution metrics"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChaosEvent"
+          },
+          "description": "Execution event timeline"
+        },
+        "safety_status": {
+          "$ref": "#/definitions/SafetyStatus",
+          "description": "Current safety status"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether execution was successful"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if execution failed"
+        },
+        "can_stop": {
+          "type": "boolean",
+          "description": "Whether execution can be manually stopped"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Execution-specific parameters"
+        }
+      },
+      "required": [
+        "execution_id",
+        "scenario_id",
+        "status",
+        "environment",
+        "started_at",
+        "initiated_by",
+        "current_step"
+      ],
+      "additionalProperties": false
+    },
+    "ActiveInjection": {
+      "type": "object",
+      "properties": {
+        "injection_id": {
+          "type": "string",
+          "description": "Unique injection identifier"
+        },
+        "execution_id": {
+          "type": "string",
+          "description": "Parent execution ID"
+        },
+        "step_id": {
+          "type": "string",
+          "description": "Associated injection step ID"
+        },
+        "injector_type": {
+          "$ref": "#/definitions/InjectorType",
+          "description": "Type of fault injector"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["initializing", "starting", "active", "stopping", "stopped", "failed"],
+          "description": "Current injection status"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Injection start time"
+        },
+        "ends_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Planned injection end time"
+        },
+        "stopped_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Actual injection stop time"
+        },
+        "target_scope": {
+          "$ref": "#/definitions/TargetScope",
+          "description": "Injection target scope"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Injection parameters"
+        },
+        "affected_targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string"
+              },
+              "target_type": {
+                "type": "string",
+                "enum": ["worker", "queue", "connection"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["targeted", "affected", "recovered", "failed"]
+              }
+            }
+          },
+          "description": "List of affected targets"
+        },
+        "affected_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of currently affected targets"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if injection failed"
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "success_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "average_latency": {
+              "type": "number",
+              "minimum": 0
+            },
+            "operations_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Injection-specific metrics"
+        }
+      },
+      "required": [
+        "injection_id",
+        "execution_id",
+        "injector_type",
+        "status",
+        "target_scope",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionMetrics": {
+      "type": "object",
+      "properties": {
+        "execution_id": {
+          "type": "string",
+          "description": "Associated execution ID"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last metrics update timestamp"
+        },
+        "system_metrics": {
+          "$ref": "#/definitions/SystemMetrics",
+          "description": "Current system performance metrics"
+        },
+        "recovery_metrics": {
+          "$ref": "#/definitions/RecoveryMetrics",
+          "description": "Recovery progress and timings"
+        },
+        "performance_metrics": {
+          "$ref": "#/definitions/PerformanceMetrics",
+          "description": "Performance impact measurements"
+        },
+        "baseline_metrics": {
+          "$ref": "#/definitions/BaselineMetrics",
+          "description": "Pre-chaos baseline measurements"
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetricDataPoint"
+          },
+          "description": "Time series metrics data"
+        },
+        "anomalies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetricAnomaly"
+          },
+          "description": "Detected metric anomalies"
+        }
+      },
+      "required": [
+        "execution_id",
+        "last_updated",
+        "system_metrics"
+      ],
+      "additionalProperties": false
+    },
+    "SystemMetrics": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics timestamp"
+        },
+        "worker_metrics": {
+          "type": "object",
+          "properties": {
+            "total_workers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "healthy_workers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unhealthy_workers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "average_cpu_usage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "average_memory_usage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "description": "Worker-related metrics"
+        },
+        "queue_metrics": {
+          "type": "object",
+          "properties": {
+            "total_queue_depth": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "processing_rate": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Jobs processed per second"
+            },
+            "enqueue_rate": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Jobs enqueued per second"
+            },
+            "error_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Error rate percentage"
+            },
+            "dlq_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Jobs in dead letter queue"
+            },
+            "retry_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total retry attempts"
+            }
+          },
+          "description": "Queue-related metrics"
+        },
+        "redis_metrics": {
+          "type": "object",
+          "properties": {
+            "connection_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "memory_usage_mb": {
+              "type": "number",
+              "minimum": 0
+            },
+            "operations_per_second": {
+              "type": "number",
+              "minimum": 0
+            },
+            "average_latency_ms": {
+              "type": "number",
+              "minimum": 0
+            },
+            "error_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Redis-related metrics"
+        },
+        "network_metrics": {
+          "type": "object",
+          "properties": {
+            "bytes_sent_per_second": {
+              "type": "number",
+              "minimum": 0
+            },
+            "bytes_received_per_second": {
+              "type": "number",
+              "minimum": 0
+            },
+            "packets_lost": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "connection_errors": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Network-related metrics"
+        }
+      },
+      "required": [
+        "timestamp",
+        "worker_metrics",
+        "queue_metrics"
+      ],
+      "additionalProperties": false
+    },
+    "RecoveryMetrics": {
+      "type": "object",
+      "properties": {
+        "recovery_phase": {
+          "type": "string",
+          "enum": ["not_started", "detecting", "responding", "recovering", "stabilizing", "completed"],
+          "description": "Current recovery phase"
+        },
+        "recovery_started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recovery process began"
+        },
+        "recovery_completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recovery was completed"
+        },
+        "recovery_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Total recovery duration"
+        },
+        "time_to_detection": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time from failure to detection"
+        },
+        "time_to_response": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time from detection to response"
+        },
+        "backlog_drain_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time to clear accumulated backlog"
+        },
+        "stability_achieved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When system achieved stability"
+        },
+        "recovery_efficiency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Recovery efficiency score (0-1)"
+        },
+        "resilience_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall system resilience score"
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "milestone": {
+                "type": "string"
+              },
+              "achieved_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "duration_from_start": {
+                "type": "string",
+                "pattern": "^\\d+[smh]$"
+              }
+            }
+          },
+          "description": "Recovery milestone timeline"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PerformanceMetrics": {
+      "type": "object",
+      "properties": {
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "baseline": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Baseline throughput (jobs/sec)"
+            },
+            "current": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Current throughput (jobs/sec)"
+            },
+            "minimum": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Minimum observed throughput"
+            },
+            "impact_percentage": {
+              "type": "number",
+              "description": "Percentage impact on throughput"
+            }
+          },
+          "description": "Throughput measurements"
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "baseline_p50": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Baseline 50th percentile latency (ms)"
+            },
+            "baseline_p95": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Baseline 95th percentile latency (ms)"
+            },
+            "baseline_p99": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Baseline 99th percentile latency (ms)"
+            },
+            "current_p50": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Current 50th percentile latency (ms)"
+            },
+            "current_p95": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Current 95th percentile latency (ms)"
+            },
+            "current_p99": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Current 99th percentile latency (ms)"
+            },
+            "max_observed": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum observed latency (ms)"
+            }
+          },
+          "description": "Latency measurements"
+        },
+        "error_rates": {
+          "type": "object",
+          "properties": {
+            "baseline_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Baseline error rate percentage"
+            },
+            "current_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Current error rate percentage"
+            },
+            "peak_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Peak error rate during chaos"
+            },
+            "error_types": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Breakdown by error type"
+            }
+          },
+          "description": "Error rate measurements"
+        },
+        "resource_utilization": {
+          "type": "object",
+          "properties": {
+            "cpu_impact": {
+              "type": "number",
+              "description": "CPU usage impact percentage"
+            },
+            "memory_impact": {
+              "type": "number",
+              "description": "Memory usage impact percentage"
+            },
+            "network_impact": {
+              "type": "number",
+              "description": "Network usage impact percentage"
+            }
+          },
+          "description": "Resource utilization impact"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BaselineMetrics": {
+      "type": "object",
+      "properties": {
+        "measurement_period": {
+          "type": "object",
+          "properties": {
+            "start_time": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "end_time": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "duration": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$"
+            }
+          },
+          "description": "Baseline measurement period"
+        },
+        "performance_baseline": {
+          "$ref": "#/definitions/PerformanceMetrics",
+          "description": "Baseline performance metrics"
+        },
+        "system_baseline": {
+          "$ref": "#/definitions/SystemMetrics",
+          "description": "Baseline system metrics"
+        },
+        "stability_indicators": {
+          "type": "object",
+          "properties": {
+            "performance_variance": {
+              "type": "number",
+              "description": "Performance variance coefficient"
+            },
+            "error_rate_stability": {
+              "type": "number",
+              "description": "Error rate stability score"
+            },
+            "resource_stability": {
+              "type": "number",
+              "description": "Resource usage stability score"
+            }
+          },
+          "description": "Baseline stability indicators"
+        }
+      },
+      "required": [
+        "measurement_period",
+        "performance_baseline",
+        "system_baseline"
+      ],
+      "additionalProperties": false
+    },
+    "MetricDataPoint": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data point timestamp"
+        },
+        "metric_name": {
+          "type": "string",
+          "description": "Name of the metric"
+        },
+        "value": {
+          "type": "number",
+          "description": "Metric value"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Metric unit"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Metric tags for filtering and grouping"
+        },
+        "source": {
+          "type": "string",
+          "description": "Metric source component"
+        },
+        "aggregation": {
+          "type": "string",
+          "enum": ["sum", "avg", "min", "max", "count", "rate"],
+          "description": "Aggregation method used"
+        }
+      },
+      "required": [
+        "timestamp",
+        "metric_name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "MetricAnomaly": {
+      "type": "object",
+      "properties": {
+        "anomaly_id": {
+          "type": "string",
+          "description": "Unique anomaly identifier"
+        },
+        "detected_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Anomaly detection timestamp"
+        },
+        "metric_name": {
+          "type": "string",
+          "description": "Affected metric name"
+        },
+        "anomaly_type": {
+          "type": "string",
+          "enum": ["spike", "drop", "trend_change", "outlier", "pattern_break"],
+          "description": "Type of anomaly detected"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Anomaly severity level"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Detection confidence score"
+        },
+        "baseline_value": {
+          "type": "number",
+          "description": "Expected baseline value"
+        },
+        "observed_value": {
+          "type": "number",
+          "description": "Actually observed value"
+        },
+        "deviation": {
+          "type": "number",
+          "description": "Deviation from baseline"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable anomaly description"
+        },
+        "related_injection": {
+          "type": "string",
+          "description": "Related injection ID if applicable"
+        }
+      },
+      "required": [
+        "anomaly_id",
+        "detected_at",
+        "metric_name",
+        "anomaly_type",
+        "severity",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "ChaosEvent": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "description": "Unique event identifier"
+        },
+        "execution_id": {
+          "type": "string",
+          "description": "Associated execution ID"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": ["injection", "system", "recovery", "alert", "error", "milestone", "user_action"],
+          "description": "Type of event"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["debug", "info", "warning", "error", "critical"],
+          "description": "Event severity level"
+        },
+        "source": {
+          "type": "string",
+          "description": "Event source component or service"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable event message"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional event details and context"
+        },
+        "related_injection": {
+          "type": "string",
+          "description": "Related injection ID if applicable"
+        },
+        "affected_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "IDs of affected targets"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation ID for related events"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Event tags for filtering"
+        }
+      },
+      "required": [
+        "event_id",
+        "execution_id",
+        "timestamp",
+        "event_type",
+        "severity",
+        "source",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "SafetyStatus": {
+      "type": "object",
+      "properties": {
+        "overall_status": {
+          "type": "string",
+          "enum": ["safe", "warning", "danger", "emergency"],
+          "description": "Overall safety status"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last safety status update"
+        },
+        "environment_guard": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether environment protection is enabled"
+            },
+            "current_environment": {
+              "type": "string",
+              "description": "Current execution environment"
+            },
+            "production_locked": {
+              "type": "boolean",
+              "description": "Whether production is locked"
+            },
+            "allowed_environments": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of allowed environments"
+            }
+          },
+          "description": "Environment protection status"
+        },
+        "blast_radius_limits": {
+          "type": "object",
+          "properties": {
+            "max_affected_workers": {
+              "type": "integer"
+            },
+            "current_affected_workers": {
+              "type": "integer"
+            },
+            "max_affected_queues": {
+              "type": "integer"
+            },
+            "current_affected_queues": {
+              "type": "integer"
+            },
+            "max_failure_rate": {
+              "type": "number"
+            },
+            "current_failure_rate": {
+              "type": "number"
+            },
+            "max_concurrent_scenarios": {
+              "type": "integer"
+            },
+            "current_concurrent_scenarios": {
+              "type": "integer"
+            }
+          },
+          "description": "Blast radius limit status"
+        },
+        "emergency_stop": {
+          "type": "object",
+          "properties": {
+            "available": {
+              "type": "boolean",
+              "description": "Whether emergency stop is available"
+            },
+            "last_used": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last emergency stop usage"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for last emergency stop"
+            },
+            "triggered_by": {
+              "type": "string",
+              "description": "User who triggered last emergency stop"
+            }
+          },
+          "description": "Emergency stop status"
+        },
+        "active_violations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SafetyViolation"
+          },
+          "description": "Current safety violations"
+        },
+        "resource_utilization": {
+          "type": "object",
+          "properties": {
+            "chaos_cpu_usage": {
+              "type": "number",
+              "description": "CPU usage by chaos system"
+            },
+            "chaos_memory_usage": {
+              "type": "number",
+              "description": "Memory usage by chaos system"
+            },
+            "system_load_impact": {
+              "type": "number",
+              "description": "Impact on overall system load"
+            }
+          },
+          "description": "Chaos system resource utilization"
+        }
+      },
+      "required": [
+        "overall_status",
+        "last_updated",
+        "environment_guard",
+        "blast_radius_limits",
+        "emergency_stop"
+      ],
+      "additionalProperties": false
+    },
+    "SafetyViolation": {
+      "type": "object",
+      "properties": {
+        "violation_id": {
+          "type": "string",
+          "description": "Unique violation identifier"
+        },
+        "violation_type": {
+          "type": "string",
+          "enum": ["environment", "blast_radius", "approval_required", "resource_limit", "concurrent_limit", "cooldown"],
+          "description": "Type of safety violation"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Violation severity"
+        },
+        "detected_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When violation was detected"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable violation description"
+        },
+        "current_value": {
+          "type": "number",
+          "description": "Current value that triggered violation"
+        },
+        "limit_value": {
+          "type": "number",
+          "description": "Safety limit that was exceeded"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requirements to resolve violation"
+        },
+        "can_override": {
+          "type": "boolean",
+          "description": "Whether violation can be overridden"
+        },
+        "override_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requirements for override authorization"
+        },
+        "auto_resolved": {
+          "type": "boolean",
+          "description": "Whether violation was automatically resolved"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When violation was resolved"
+        }
+      },
+      "required": [
+        "violation_id",
+        "violation_type",
+        "severity",
+        "detected_at",
+        "message",
+        "can_override"
+      ],
+      "additionalProperties": false
+    },
+    "InjectorInfo": {
+      "type": "object",
+      "properties": {
+        "injector_id": {
+          "type": "string",
+          "description": "Unique injector identifier"
+        },
+        "injector_type": {
+          "$ref": "#/definitions/InjectorType",
+          "description": "Type of fault injector"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable injector name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Injector description and capabilities"
+        },
+        "version": {
+          "type": "string",
+          "description": "Injector version"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "busy", "disabled", "error", "maintenance"],
+          "description": "Current injector status"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of injector capabilities"
+        },
+        "supported_parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ParameterDefinition"
+          },
+          "description": "Supported configuration parameters"
+        },
+        "current_injections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active injections"
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent injections"
+        },
+        "last_health_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last health check timestamp"
+        },
+        "health_status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Health check status"
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Current injector configuration"
+        }
+      },
+      "required": [
+        "injector_id",
+        "injector_type",
+        "name",
+        "status",
+        "capabilities",
+        "current_injections",
+        "max_concurrent"
+      ],
+      "additionalProperties": false
+    },
+    "ParameterDefinition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "number", "boolean", "array", "object", "duration", "percentage"],
+          "description": "Parameter data type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether parameter is required"
+        },
+        "default_value": {
+          "description": "Default parameter value"
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number",
+              "description": "Minimum value (for numbers)"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum value (for numbers)"
+            },
+            "min_length": {
+              "type": "integer",
+              "description": "Minimum length (for strings/arrays)"
+            },
+            "max_length": {
+              "type": "integer",
+              "description": "Maximum length (for strings/arrays)"
+            },
+            "pattern": {
+              "type": "string",
+              "description": "Regex pattern (for strings)"
+            },
+            "enum": {
+              "type": "array",
+              "items": {},
+              "description": "Allowed values"
+            },
+            "custom_validator": {
+              "type": "string",
+              "description": "Custom validation function name"
+            }
+          },
+          "description": "Parameter validation rules"
+        },
+        "examples": {
+          "type": "array",
+          "items": {},
+          "description": "Example parameter values"
+        },
+        "group": {
+          "type": "string",
+          "description": "Parameter group for UI organization"
+        },
+        "advanced": {
+          "type": "boolean",
+          "description": "Whether this is an advanced parameter"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "description",
+        "required"
+      ],
+      "additionalProperties": false
+    },
+    "ChaosReport": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "description": "Unique report identifier"
+        },
+        "execution_id": {
+          "type": "string",
+          "description": "Associated execution ID"
+        },
+        "report_type": {
+          "type": "string",
+          "enum": ["summary", "detailed", "comparison"],
+          "description": "Type of report"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "html", "pdf"],
+          "description": "Report format"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Report generation timestamp"
+        },
+        "generated_by": {
+          "type": "string",
+          "description": "Report generator identifier"
+        },
+        "scenario": {
+          "$ref": "#/definitions/ChaosScenario",
+          "description": "Scenario that was executed"
+        },
+        "execution_summary": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether execution was successful"
+            },
+            "duration": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "description": "Total execution duration"
+            },
+            "environment": {
+              "type": "string",
+              "description": "Execution environment"
+            },
+            "initiated_by": {
+              "type": "string",
+              "description": "User who initiated execution"
+            }
+          },
+          "description": "High-level execution summary"
+        },
+        "executive_summary": {
+          "type": "object",
+          "properties": {
+            "overview": {
+              "type": "string",
+              "description": "Executive overview of the chaos experiment"
+            },
+            "key_findings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Key findings from the experiment"
+            },
+            "impact_assessment": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "description": "Overall impact assessment"
+            },
+            "recovery_assessment": {
+              "type": "string",
+              "enum": ["excellent", "good", "fair", "poor"],
+              "description": "Recovery capability assessment"
+            },
+            "recommendations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "High-level recommendations"
+            }
+          },
+          "description": "Executive summary for leadership"
+        },
+        "metrics_analysis": {
+          "type": "object",
+          "properties": {
+            "baseline_performance": {
+              "$ref": "#/definitions/PerformanceMetrics",
+              "description": "Pre-chaos baseline metrics"
+            },
+            "impact_metrics": {
+              "$ref": "#/definitions/PerformanceMetrics",
+              "description": "Metrics during chaos injection"
+            },
+            "recovery_metrics": {
+              "$ref": "#/definitions/RecoveryMetrics",
+              "description": "Recovery performance metrics"
+            },
+            "comparative_analysis": {
+              "type": "string",
+              "description": "Comparative analysis narrative"
+            },
+            "slo_impact": {
+              "type": "object",
+              "properties": {
+                "slo_violations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "slo_name": {
+                        "type": "string"
+                      },
+                      "threshold": {
+                        "type": "number"
+                      },
+                      "actual_value": {
+                        "type": "number"
+                      },
+                      "duration": {
+                        "type": "string",
+                        "pattern": "^\\d+[smh]$"
+                      }
+                    }
+                  }
+                },
+                "error_budget_consumed": {
+                  "type": "number",
+                  "description": "Percentage of error budget consumed"
+                }
+              },
+              "description": "Service Level Objective impact analysis"
+            }
+          },
+          "description": "Detailed metrics analysis"
+        },
+        "timeline_analysis": {
+          "type": "object",
+          "properties": {
+            "key_events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ChaosEvent"
+              },
+              "description": "Most significant events during execution"
+            },
+            "phase_breakdown": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase_name": {
+                    "type": "string"
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "duration": {
+                    "type": "string",
+                    "pattern": "^\\d+[smh]$"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "key_metrics": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "description": "Breakdown of execution phases"
+            },
+            "critical_path": {
+              "type": "string",
+              "description": "Analysis of the critical path through recovery"
+            }
+          },
+          "description": "Timeline and phase analysis"
+        },
+        "detailed_recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": ["performance", "reliability", "monitoring", "process", "infrastructure"],
+                "description": "Recommendation category"
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"],
+                "description": "Implementation priority"
+              },
+              "title": {
+                "type": "string",
+                "description": "Recommendation title"
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed recommendation description"
+              },
+              "rationale": {
+                "type": "string",
+                "description": "Why this recommendation is important"
+              },
+              "implementation_effort": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Estimated implementation effort"
+              },
+              "expected_impact": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Expected impact if implemented"
+              },
+              "timeline": {
+                "type": "string",
+                "description": "Recommended implementation timeline"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Implementation dependencies"
+              }
+            }
+          },
+          "description": "Detailed actionable recommendations"
+        },
+        "appendices": {
+          "type": "object",
+          "properties": {
+            "raw_metrics": {
+              "type": "boolean",
+              "description": "Whether raw metrics data is included"
+            },
+            "event_timeline": {
+              "type": "boolean",
+              "description": "Whether complete event timeline is included"
+            },
+            "configuration_details": {
+              "type": "boolean",
+              "description": "Whether configuration details are included"
+            }
+          },
+          "description": "Report appendices inclusion flags"
+        }
+      },
+      "required": [
+        "report_id",
+        "execution_id",
+        "report_type",
+        "format",
+        "generated_at",
+        "scenario",
+        "execution_summary"
+      ],
+      "additionalProperties": false
+    },
+    "ChaosConfig": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Configuration version"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last configuration update"
+        },
+        "safety": {
+          "type": "object",
+          "properties": {
+            "environment_protection": {
+              "type": "object",
+              "properties": {
+                "production_locked": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether production environment is locked"
+                },
+                "allowed_environments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": ["development", "staging"],
+                  "description": "Environments where chaos is allowed"
+                },
+                "approval_required_environments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": ["production", "staging"],
+                  "description": "Environments requiring approval"
+                },
+                "emergency_contact": {
+                  "type": "string",
+                  "description": "Emergency contact information"
+                }
+              },
+              "description": "Environment protection settings"
+            },
+            "blast_radius_limits": {
+              "type": "object",
+              "properties": {
+                "global_max_affected_workers_percentage": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 50,
+                  "description": "Global limit on affected worker percentage"
+                },
+                "global_max_affected_queues_percentage": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 30,
+                  "description": "Global limit on affected queue percentage"
+                },
+                "max_global_failure_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 25,
+                  "description": "Maximum global failure rate"
+                },
+                "max_concurrent_scenarios": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 3,
+                  "description": "Maximum concurrent chaos scenarios"
+                },
+                "max_scenario_duration": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "1h",
+                  "description": "Maximum duration for any scenario"
+                }
+              },
+              "description": "Blast radius limitation settings"
+            },
+            "emergency_controls": {
+              "type": "object",
+              "properties": {
+                "auto_stop_on_violation": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Automatically stop on safety violations"
+                },
+                "escalation_timeout": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "5m",
+                  "description": "Timeout for emergency escalation"
+                },
+                "emergency_stop_enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether emergency stop is enabled"
+                }
+              },
+              "description": "Emergency control settings"
+            }
+          },
+          "description": "Safety system configuration"
+        },
+        "injectors": {
+          "type": "object",
+          "properties": {
+            "worker_injector": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether worker injector is enabled"
+                },
+                "max_latency": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "30s",
+                  "description": "Maximum latency injection"
+                },
+                "max_failure_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 50,
+                  "description": "Maximum failure rate injection"
+                },
+                "allowed_operations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["latency", "failure", "panic", "memory_pressure"]
+                  },
+                  "default": ["latency", "failure"],
+                  "description": "Allowed injection operations"
+                }
+              },
+              "description": "Worker injector configuration"
+            },
+            "redis_injector": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether Redis injector is enabled"
+                },
+                "proxy_required": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether proxy is required for Redis injection"
+                },
+                "max_latency": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "10s",
+                  "description": "Maximum Redis latency injection"
+                },
+                "allowed_operations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["latency", "connection_drop", "memory_pressure", "failover"]
+                  },
+                  "default": ["latency", "connection_drop"],
+                  "description": "Allowed Redis injection operations"
+                }
+              },
+              "description": "Redis injector configuration"
+            },
+            "network_injector": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether network injector is enabled"
+                },
+                "requires_privileges": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether network injection requires elevated privileges"
+                },
+                "max_packet_loss": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 10,
+                  "description": "Maximum packet loss percentage"
+                },
+                "max_latency": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "5s",
+                  "description": "Maximum network latency injection"
+                }
+              },
+              "description": "Network injector configuration"
+            },
+            "load_injector": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether load injector is enabled"
+                },
+                "max_load_multiplier": {
+                  "type": "number",
+                  "minimum": 1,
+                  "default": 10,
+                  "description": "Maximum load multiplication factor"
+                },
+                "max_burst_duration": {
+                  "type": "string",
+                  "pattern": "^\\d+[smh]$",
+                  "default": "10m",
+                  "description": "Maximum burst duration"
+                }
+              },
+              "description": "Load injector configuration"
+            }
+          },
+          "description": "Fault injector configurations"
+        },
+        "monitoring": {
+          "type": "object",
+          "properties": {
+            "metrics_retention": {
+              "type": "string",
+              "pattern": "^\\d+[smh]$",
+              "default": "30d",
+              "description": "Metrics retention period"
+            },
+            "real_time_updates": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable real-time metric updates"
+            },
+            "alert_on_violations": {
+              "type": "boolean",
+              "default": true,
+              "description": "Send alerts on safety violations"
+            },
+            "export_metrics": {
+              "type": "boolean",
+              "default": true,
+              "description": "Export metrics to external systems"
+            },
+            "metric_resolution": {
+              "type": "string",
+              "enum": ["1s", "5s", "10s", "30s", "1m"],
+              "default": "5s",
+              "description": "Default metric collection resolution"
+            }
+          },
+          "description": "Monitoring and metrics configuration"
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "scenario_builder": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable custom scenario builder"
+            },
+            "report_generation": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable automatic report generation"
+            },
+            "scheduled_chaos": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable scheduled chaos experiments"
+            },
+            "game_day_mode": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable game day collaboration features"
+            },
+            "api_access": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable programmatic API access"
+            },
+            "webhook_notifications": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable webhook notifications"
+            }
+          },
+          "description": "Feature flags and capabilities"
+        },
+        "integrations": {
+          "type": "object",
+          "properties": {
+            "slack": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "webhook_url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "channels": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "prometheus": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "endpoint": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "metric_prefix": {
+                  "type": "string",
+                  "default": "chaos_"
+                }
+              }
+            },
+            "grafana": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "dashboard_url": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "description": "External system integrations"
+        }
+      },
+      "required": [
+        "version",
+        "safety",
+        "injectors",
+        "monitoring",
+        "features"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

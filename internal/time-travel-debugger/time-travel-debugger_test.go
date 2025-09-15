@@ -420,7 +420,7 @@ func TestTimeTravelDebuggerHealth(t *testing.T) {
 	assert.Equal(t, 0, health["active_recordings"])
 
 	// Start a recording and check health again
-	err := ttd.StartRecording("health_test_job", "testing", 5)
+	err = ttd.StartRecording("health_test_job", "testing", 5)
 	require.NoError(t, err)
 
 	health = ttd.Health()
@@ -444,7 +444,7 @@ func TestTimeTravelDebuggerDisabledOperations(t *testing.T) {
 	defer ttd.Stop()
 
 	// All capture operations should return ErrCaptureDisabled
-	err := ttd.StartRecording("test_job", "testing", 5)
+	err = ttd.StartRecording("test_job", "testing", 5)
 	assert.Equal(t, ErrCaptureDisabled, err)
 
 	err = ttd.CaptureJobEvent("test_job", EventEnqueued, nil, nil)

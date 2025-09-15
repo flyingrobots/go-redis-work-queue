@@ -380,6 +380,8 @@ const (
 
 ### Optimization Strategies
 
+The core technical approach implements rolling rates and percentiles with light sampling, combined with configurable SLO targets and windows for simple burn rate calculation. This approach ensures lightweight CPU/memory footprint while providing accurate real-time SLO monitoring.
+
 #### 1. Efficient Rolling Windows
 
 ```go
@@ -724,25 +726,415 @@ func TestSLOMonitor_PerformanceUnderLoad(t *testing.T) {
 - [ ] TUI interaction validation
 - [ ] Documentation and deployment guides
 
+## Detailed Implementation Examples
+
+### SLO Calculator Implementation
+
+```go
+package slo
+
+import (
+    "context"
+    "sync"
+    "time"
+)
+
+type SLOCalculator struct {
+    config        *SLOConfig
+    windows       map[string]*RollingWindow
+    alerts        *AlertManager
+    mu            sync.RWMutex
+    lastUpdate    time.Time
+    updateTicker  *time.Ticker
+}
+
+func NewSLOCalculator(config *SLOConfig) *SLOCalculator {
+    return &SLOCalculator{
+        config:  config,
+        windows: make(map[string]*RollingWindow),
+        alerts:  NewAlertManager(config.BurnRateThresholds),
+    }
+}
+
+func (calc *SLOCalculator) Start(ctx context.Context) error {
+    interval, err := time.ParseDuration(calc.config.UpdateInterval)
+    if err != nil {
+        return fmt.Errorf("invalid update interval: %w", err)
+    }
+
+    calc.updateTicker = time.NewTicker(interval)
+
+    go calc.updateLoop(ctx)
+    go calc.alertLoop(ctx)
+
+    return nil
+}
+
+func (calc *SLOCalculator) updateLoop(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case <-calc.updateTicker.C:
+            metrics := calc.calculateCurrentMetrics()
+            calc.updateBurnRate(metrics)
+            calc.checkThresholds(metrics)
+        }
+    }
+}
+
+func (calc *SLOCalculator) calculateCurrentMetrics() *SLOMetrics {
+    calc.mu.RLock()
+    defer calc.mu.RUnlock()
+
+    now := time.Now()
+    windowDuration, _ := time.ParseDuration(calc.config.Window)
+    windowStart := now.Add(-windowDuration)
+
+    successWindow := calc.windows["success"]
+    totalWindow := calc.windows["total"]
+    latencyWindow := calc.windows["latency"]
+
+    successCount := successWindow.Sum(windowStart, now)
+    totalCount := totalWindow.Sum(windowStart, now)
+
+    successRate := float64(successCount) / float64(totalCount)
+    if totalCount == 0 {
+        successRate = 1.0 // No requests means 100% success
+    }
+
+    p95Latency := latencyWindow.Percentile(0.95, windowStart, now)
+
+    return &SLOMetrics{
+        Timestamp:       now,
+        WindowStart:     windowStart,
+        WindowEnd:       now,
+        TotalRequests:   totalCount,
+        SuccessfulJobs:  successCount,
+        FailedJobs:      totalCount - successCount,
+        SuccessRate:     successRate,
+        P95Latency:      time.Duration(p95Latency),
+        ErrorBudget:     calc.calculateErrorBudget(successRate),
+        BurnRate:        calc.calculateBurnRate(successRate),
+    }
+}
+
+func (calc *SLOCalculator) calculateErrorBudget(successRate float64) ErrorBudget {
+    windowDuration, _ := time.ParseDuration(calc.config.Window)
+
+    // Total allowable error time = (1 - target) * window
+    totalBudget := time.Duration(float64(windowDuration) * (1 - calc.config.Target))
+
+    // Consumed error time = (1 - current_success_rate) * window
+    consumedBudget := time.Duration(float64(windowDuration) * (1 - successRate))
+
+    // Ensure consumed doesn't exceed total
+    if consumedBudget > totalBudget {
+        consumedBudget = totalBudget
+    }
+
+    remaining := totalBudget - consumedBudget
+    percentage := float64(consumedBudget) / float64(totalBudget)
+
+    // Calculate time until exhaustion at current burn rate
+    burnRate := calc.calculateBurnRate(successRate)
+    var timeLeft time.Duration
+    if burnRate.Current > 0 {
+        timeLeft = time.Duration(float64(remaining) / burnRate.Current)
+    } else {
+        timeLeft = time.Duration(math.MaxInt64) // Effectively infinite
+    }
+
+    return ErrorBudget{
+        Total:      totalBudget,
+        Consumed:   consumedBudget,
+        Remaining:  remaining,
+        Percentage: percentage,
+        TimeLeft:   timeLeft,
+    }
+}
+
+func (calc *SLOCalculator) calculateBurnRate(successRate float64) BurnRate {
+    target := calc.config.Target
+
+    // Normal burn rate: error rate / error budget rate
+    normalErrorRate := 1 - target
+    currentErrorRate := 1 - successRate
+
+    var currentBurnRate float64
+    if normalErrorRate > 0 {
+        currentBurnRate = currentErrorRate / normalErrorRate
+    } else {
+        currentBurnRate = 0
+    }
+
+    // Determine alert level
+    alertLevel := "ok"
+    if currentBurnRate >= calc.config.BurnRateThresholds.Critical {
+        alertLevel = "critical"
+    } else if currentBurnRate >= calc.config.BurnRateThresholds.Warning {
+        alertLevel = "warning"
+    }
+
+    return BurnRate{
+        Current:    currentBurnRate,
+        AlertLevel: alertLevel,
+        Trend:      calc.calculateBurnRateTrend(),
+    }
+}
+```
+
+### Alert Engine Implementation
+
+```go
+type AlertEngine struct {
+    config     *SLOConfig
+    alerts     map[string]*SLOAlert
+    handlers   []AlertHandler
+    mu         sync.RWMutex
+}
+
+func (ae *AlertEngine) ProcessMetrics(metrics *SLOMetrics) {
+    ae.mu.Lock()
+    defer ae.mu.Unlock()
+
+    // Check burn rate alerts
+    if metrics.BurnRate.AlertLevel == "critical" {
+        ae.triggerBurnRateAlert(metrics, "critical")
+    } else if metrics.BurnRate.AlertLevel == "warning" {
+        ae.triggerBurnRateAlert(metrics, "warning")
+    }
+
+    // Check SLO breach
+    if metrics.SuccessRate < ae.config.Target {
+        ae.triggerSLOBreachAlert(metrics)
+    }
+
+    // Check latency thresholds
+    latencyThreshold, _ := time.ParseDuration(ae.config.SuccessThreshold.LatencyThreshold)
+    if metrics.P95Latency > latencyThreshold {
+        ae.triggerLatencyAlert(metrics)
+    }
+
+    // Resolve alerts if conditions improve
+    ae.resolveAlertsIfNeeded(metrics)
+}
+
+func (ae *AlertEngine) triggerBurnRateAlert(metrics *SLOMetrics, severity string) {
+    alertID := fmt.Sprintf("burn_rate_%s_%d", severity, time.Now().Unix())
+
+    alert := &SLOAlert{
+        ID:          alertID,
+        Timestamp:   time.Now(),
+        SLOName:     ae.config.Name,
+        Severity:    severity,
+        Type:        "burn_rate",
+        Message:     fmt.Sprintf("Burn rate is %.1fx above normal", metrics.BurnRate.Current),
+        Cause:       fmt.Sprintf("Error rate increased to %.2f%% from target %.2f%%",
+                        (1-metrics.SuccessRate)*100, (1-ae.config.Target)*100),
+        CurrentValue: metrics.BurnRate.Current,
+        Threshold:   ae.getThresholdForSeverity(severity),
+        BurnRate:    metrics.BurnRate.Current,
+        TimeToExhaustion: metrics.ErrorBudget.TimeLeft,
+        Status:      "active",
+    }
+
+    ae.alerts[alertID] = alert
+    ae.notifyHandlers(alert)
+}
+```
+
+### TUI Widget Implementation
+
+```go
+package tui
+
+import (
+    "fmt"
+    "strings"
+    "time"
+
+    "github.com/charmbracelet/lipgloss"
+)
+
+type SLOWidget struct {
+    metrics    *SLOMetrics
+    config     *SLOConfig
+    width      int
+    height     int
+    colorTheme ColorTheme
+}
+
+func (w *SLOWidget) Render() string {
+    if w.width < 80 {
+        return w.renderCompact()
+    }
+    return w.renderFull()
+}
+
+func (w *SLOWidget) renderFull() string {
+    header := w.renderHeader()
+    statusLine := w.renderStatusLine()
+    budgetBar := w.renderBudgetBar()
+    trendsLine := w.renderTrends()
+    alertsLine := w.renderAlerts()
+    actionsLine := w.renderActions()
+
+    return lipgloss.JoinVertical(
+        lipgloss.Left,
+        header,
+        statusLine,
+        budgetBar,
+        trendsLine,
+        alertsLine,
+        actionsLine,
+    )
+}
+
+func (w *SLOWidget) renderStatusLine() string {
+    // Left panel: SLO Target
+    targetPanel := fmt.Sprintf(
+        "🎯 Reliability SLO\nTarget: %.1f%%\nBudget: %s remaining\nWindow: %s rolling",
+        w.config.Target*100,
+        w.formatDuration(w.metrics.ErrorBudget.Remaining),
+        w.config.Window,
+    )
+
+    // Center panel: Current metrics
+    uptimeColor := w.getUptimeColor(w.metrics.SuccessRate)
+    currentPanel := fmt.Sprintf(
+        "📊 Current Period (%s)\nUptime: %.2f%% %s\nErrors: %d/%d\nP95: %s %s",
+        w.config.Window,
+        w.metrics.SuccessRate*100,
+        uptimeColor,
+        w.metrics.FailedJobs,
+        w.metrics.TotalRequests,
+        w.formatDuration(w.metrics.P95Latency),
+        w.getLatencyColor(w.metrics.P95Latency),
+    )
+
+    // Right panel: Burn rate
+    burnColor := w.getBurnRateColor(w.metrics.BurnRate.Current)
+    burnPanel := fmt.Sprintf(
+        "⚡ Burn Rate\n%s: %.1fx %s\nCritical: >%.1fx ❌\nTime Left: %s",
+        strings.Title(w.metrics.BurnRate.AlertLevel),
+        w.metrics.BurnRate.Current,
+        burnColor,
+        w.config.BurnRateThresholds.Critical,
+        w.formatDuration(w.metrics.ErrorBudget.TimeLeft),
+    )
+
+    return lipgloss.JoinHorizontal(
+        lipgloss.Top,
+        w.stylePanel(targetPanel, w.colorTheme.Info),
+        w.stylePanel(currentPanel, w.colorTheme.Primary),
+        w.stylePanel(burnPanel, burnColor),
+    )
+}
+
+func (w *SLOWidget) renderBudgetBar() string {
+    percentage := w.metrics.ErrorBudget.Percentage
+    barWidth := w.width - 20
+    filledWidth := int(float64(barWidth) * percentage)
+
+    filled := strings.Repeat("▓", filledWidth)
+    empty := strings.Repeat("░", barWidth-filledWidth)
+
+    barColor := w.colorTheme.Success
+    if percentage > 0.8 {
+        barColor = w.colorTheme.Warning
+    }
+    if percentage > 0.9 {
+        barColor = w.colorTheme.Error
+    }
+
+    bar := lipgloss.NewStyle().
+        Foreground(barColor).
+        Render(filled + empty)
+
+    return fmt.Sprintf("%s %.0f%% budget consumed", bar, percentage*100)
+}
+```
+
+## Advanced Configuration Examples
+
+### Multi-Queue SLO Configuration
+
+```yaml
+slo_configs:
+  payment_queue:
+    target: 0.999    # 99.9% SLO
+    window: "30d"
+    burn_rate_thresholds:
+      warning: 2.0
+      critical: 6.0
+    success_threshold:
+      latency_threshold: "500ms"
+
+  background_queue:
+    target: 0.95     # 95% SLO (less critical)
+    window: "7d"
+    burn_rate_thresholds:
+      warning: 3.0
+      critical: 10.0
+    success_threshold:
+      latency_threshold: "5s"
+
+  notification_queue:
+    target: 0.9999   # 99.99% SLO (critical)
+    window: "24h"
+    burn_rate_thresholds:
+      warning: 1.5
+      critical: 4.0
+    success_threshold:
+      latency_threshold: "100ms"
+```
+
+### Advanced Alerting Rules
+
+```yaml
+alerting_rules:
+  - name: "critical_burn_rate"
+    condition: "burn_rate > 6.0"
+    for: "2m"
+    actions:
+      - page_oncall
+      - create_incident
+      - notify_slack
+
+  - name: "sustained_high_burn"
+    condition: "burn_rate > 2.0"
+    for: "15m"
+    actions:
+      - notify_team
+      - escalate_if_no_ack: "30m"
+
+  - name: "budget_exhaustion_warning"
+    condition: "budget_time_left < 24h"
+    actions:
+      - notify_team
+      - create_ticket
+```
+
 ## Future Enhancements
 
 ### Advanced Analytics
-- **Anomaly Detection**: Machine learning models for pattern recognition
-- **Predictive Alerting**: Forecast SLO violations before they occur
-- **Capacity Planning**: Trend analysis for infrastructure scaling
-- **Root Cause Analysis**: Automated correlation with deployment events
+- **Anomaly Detection**: Machine learning models for pattern recognition using seasonal decomposition and outlier detection
+- **Predictive Alerting**: Forecast SLO violations before they occur using ARIMA time series analysis
+- **Capacity Planning**: Trend analysis for infrastructure scaling with growth projections
+- **Root Cause Analysis**: Automated correlation with deployment events, traffic patterns, and external dependencies
 
 ### Integration Expansions
-- **Multi-Service SLOs**: Cross-service dependency tracking
-- **Custom SLI Definitions**: User-defined service level indicators
-- **External Data Sources**: Metrics from APM tools and cloud providers
-- **Incident Response**: Integration with PagerDuty, Slack, and ITSM tools
+- **Multi-Service SLOs**: Cross-service dependency tracking with cascade failure detection
+- **Custom SLI Definitions**: User-defined service level indicators beyond latency and availability
+- **External Data Sources**: Metrics from APM tools (DataDog, New Relic), cloud providers (AWS CloudWatch), and custom endpoints
+- **Incident Response**: Integration with PagerDuty, Slack, ITSM tools, and automated runbook execution
 
 ### Enterprise Features
-- **Multi-Tenancy**: SLO isolation for different teams/services
-- **Advanced RBAC**: Fine-grained permissions and audit trails
-- **Historical Analysis**: Long-term trend analysis and reporting
-- **Compliance Reporting**: SLA compliance documentation generation
+- **Multi-Tenancy**: SLO isolation for different teams/services with hierarchical budget allocation
+- **Advanced RBAC**: Fine-grained permissions with attribute-based access control and audit trails
+- **Historical Analysis**: Long-term trend analysis and reporting with data warehouse integration
+- **Compliance Reporting**: SLA compliance documentation generation for SOC2, ISO27001, and industry standards
 
 ---
 

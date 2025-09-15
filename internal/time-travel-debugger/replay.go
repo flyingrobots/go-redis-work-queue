@@ -1,6 +1,7 @@
 package timetraveldebugger
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -55,18 +56,18 @@ func (re *ReplayEngine) LoadRecording(recordID string) (*ExecutionRecord, error)
 
 	// Try to decompress if it looks like compressed data
 	if len(data) > 2 && data[0] == 0x1f && data[1] == 0x8b {
-		reader, err := gzip.NewReader(&data)
+		reader, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, NewRecordingError(recordID, "", "failed to decompress recording", err)
 		}
 		defer reader.Close()
 
-		var decompressed []byte
-		_, err = reader.Read(decompressed)
+		var decompressed bytes.Buffer
+		_, err = decompressed.ReadFrom(reader)
 		if err != nil {
 			return nil, NewRecordingError(recordID, "", "failed to read decompressed data", err)
 		}
-		data = decompressed
+		data = decompressed.Bytes()
 	}
 
 	var record ExecutionRecord

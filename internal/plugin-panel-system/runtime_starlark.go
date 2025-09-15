@@ -4,6 +4,7 @@ package pluginpanel
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -143,7 +144,7 @@ func (i *StarlarkInstance) Stop(ctx context.Context) error {
 	}
 
 	// Call plugin's stop method if it exists
-	if stopFn, exists := i.methods["stop"]; exists {
+	if _, exists := i.methods["stop"]; exists {
 		// Simulate calling stop function
 		i.callMethod("stop", nil)
 	}
@@ -166,7 +167,7 @@ func (i *StarlarkInstance) Call(ctx context.Context, method string, args interfa
 		return nil, fmt.Errorf("plugin not running")
 	}
 
-	fn, exists := i.methods[method]
+	_, exists := i.methods[method]
 	if !exists {
 		return nil, fmt.Errorf("method not found: %s", method)
 	}
@@ -268,7 +269,7 @@ func (i *StarlarkInstance) processEvents() {
 // handleEvent processes a single event
 func (i *StarlarkInstance) handleEvent(event *Event) {
 	i.mu.RLock()
-	onEventFn, exists := i.methods["on_event"]
+	_, exists := i.methods["on_event"]
 	i.mu.RUnlock()
 
 	if !exists {
@@ -384,7 +385,7 @@ func (i *StarlarkInstance) builtinEnqueue(args ...interface{}) (interface{}, err
 		return nil, fmt.Errorf("queue must be string")
 	}
 
-	payload := args[1]
+	_ = args[1] // payload
 
 	// This would require capability checking and integration with the job system
 	i.logger.Debug("Plugin enqueue request",

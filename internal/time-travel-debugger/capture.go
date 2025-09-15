@@ -1,6 +1,7 @@
 package timetraveldebugger
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/rand"
@@ -424,7 +425,7 @@ func (ec *EventCapture) createStateSnapshot(jobID string, jobState *JobState, pe
 }
 
 func (ec *EventCapture) compressData(data []byte) ([]byte, error) {
-	var compressed []byte
+	var compressed bytes.Buffer
 
 	// Use gzip compression
 	writer := gzip.NewWriter(&compressed)
@@ -438,5 +439,5 @@ func (ec *EventCapture) compressData(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return compressed, nil
+	return compressed.Bytes(), nil
 }
