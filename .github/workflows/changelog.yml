@@ -26,13 +26,15 @@ jobs:
         run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4
       - name: Generate CHANGELOG.md
         run: |
-          $(go env GOPATH)/bin/git-chglog -o CHANGELOG.md || echo "git-chglog not configured; keeping existing CHANGELOG.md"
+          if ! $(go env GOPATH)/bin/git-chglog -o CHANGELOG.md; then
+            echo "git-chglog not configured; skipping update"; exit 0
+          fi
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add CHANGELOG.md || true
-          git commit -m "chore(changelog): update CHANGELOG for ${GITHUB_REF_NAME}" || echo "no changes"
+          git add CHANGELOG.md
+          git diff --cached --quiet && echo "no changes" || git commit -m "chore(changelog): update CHANGELOG for ${GITHUB_REF_NAME}"
       - name: Push changes
         run: |
           git push origin HEAD:${{ github.event.repository.default_branch }} || echo "no push"
