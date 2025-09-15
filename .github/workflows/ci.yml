@@ -24,7 +24,18 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
           go-version: '1.25.x'
+          cache: true
+      - name: Tidy
+        run: go mod download
+      - name: Govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: '1.25.x'
+          vulncheck-version: 'v1.1.3'
       - name: Tidy
         run: go mod tidy
       - name: Vet
