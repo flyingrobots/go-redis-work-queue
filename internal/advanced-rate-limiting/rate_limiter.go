@@ -359,7 +359,7 @@ func (rl *RateLimiter) UpdateConfig(tenantConfig *TenantConfig) error {
 	}
 
 	// Store in configuration map (in production, this would be persisted)
-	key := fmt.Sprintf("config:%s", tenantConfig.TenantID)
+	_ = fmt.Sprintf("config:%s", tenantConfig.TenantID)
 	rl.logger.Info("Updated rate limit configuration",
 		zap.String("tenant", tenantConfig.TenantID),
 		zap.Int64("rate", tenantConfig.RatePerSecond),

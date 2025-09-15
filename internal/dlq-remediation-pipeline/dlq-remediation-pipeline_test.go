@@ -443,7 +443,7 @@ func TestBatchProcessing(t *testing.T) {
 	// Add jobs to Redis DLQ
 	for _, job := range testJobs {
 		jobData, _ := json.Marshal(job)
-		mr.LPush(config.Storage.DLQStreamKey, string(jobData))
+		mr.Lpush(config.Storage.DLQStreamKey, string(jobData))
 	}
 
 	// Add a test rule

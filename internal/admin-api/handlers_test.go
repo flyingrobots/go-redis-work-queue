@@ -63,10 +63,10 @@ func TestHandlerGetStats(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	mr.LPush("jobqueue:high", "job1")
-	mr.LPush("jobqueue:high", "job2")
-	mr.LPush("jobqueue:low", "job3")
-	mr.LPush("jobqueue:completed", "job4")
+	mr.Lpush("jobqueue:high", "job1")
+	mr.Lpush("jobqueue:high", "job2")
+	mr.Lpush("jobqueue:low", "job3")
+	mr.Lpush("jobqueue:completed", "job4")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/stats", nil)
@@ -100,9 +100,9 @@ func TestPeekQueue(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	mr.LPush("jobqueue:high", "job1")
-	mr.LPush("jobqueue:high", "job2")
-	mr.LPush("jobqueue:high", "job3")
+	mr.Lpush("jobqueue:high", "job1")
+	mr.Lpush("jobqueue:high", "job2")
+	mr.Lpush("jobqueue:high", "job3")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/queues/high/peek?count=2", nil)
@@ -140,8 +140,8 @@ func TestPurgeDLQ(t *testing.T) {
 	defer cleanup()
 
 	// Add test data
-	mr.LPush("jobqueue:dead_letter", "failed1")
-	mr.LPush("jobqueue:dead_letter", "failed2")
+	mr.Lpush("jobqueue:dead_letter", "failed1")
+	mr.Lpush("jobqueue:dead_letter", "failed2")
 
 	// Create request with proper confirmation
 	reqBody := PurgeRequest{

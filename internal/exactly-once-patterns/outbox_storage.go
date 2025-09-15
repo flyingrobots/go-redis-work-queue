@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -80,7 +80,7 @@ func (s *RedisOutboxStorage) Store(ctx context.Context, event OutboxEvent) error
 
 	// Add to pending queue with timestamp score
 	score := float64(event.CreatedAt.Unix())
-	pipe.ZAdd(ctx, s.pendingKey(), &redis.Z{
+	pipe.ZAdd(ctx, s.pendingKey(), redis.Z{
 		Score:  score,
 		Member: event.ID,
 	})
@@ -198,7 +198,7 @@ func (s *RedisOutboxStorage) MarkFailed(ctx context.Context, eventID string, fai
 	if event.RetryCount >= s.cfg.Outbox.MaxRetries {
 		event.Status = "failed"
 		// Move to failed queue
-		s.client.ZAdd(ctx, s.failedKey(), &redis.Z{
+		s.client.ZAdd(ctx, s.failedKey(), redis.Z{
 			Score:  float64(now.Unix()),
 			Member: event.ID,
 		})
@@ -206,7 +206,7 @@ func (s *RedisOutboxStorage) MarkFailed(ctx context.Context, eventID string, fai
 		s.client.ZRem(ctx, s.pendingKey(), event.ID)
 	} else {
 		// Update position in pending queue with next retry time
-		s.client.ZAdd(ctx, s.pendingKey(), &redis.Z{
+		s.client.ZAdd(ctx, s.pendingKey(), redis.Z{
 			Score:  float64(nextRetry.Unix()),
 			Member: event.ID,
 		})

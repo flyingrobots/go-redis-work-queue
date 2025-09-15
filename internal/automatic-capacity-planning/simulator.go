@@ -3,6 +3,7 @@ package capacityplanning
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -730,16 +731,3 @@ func generateSimulationID() string {
 	return fmt.Sprintf("sim_%d", time.Now().UnixNano())
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

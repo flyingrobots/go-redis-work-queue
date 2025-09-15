@@ -84,7 +84,7 @@ func (cm *CalendarManager) GetCalendarData(view *CalendarView) (*CalendarData, e
 	// Get recurring rules
 	ruleFilter := RuleFilter{
 		QueueNames: view.Filter.QueueNames,
-		IsActive:   true,
+		IsActive:   &[]bool{true}[0],
 	}
 	rules, err := cm.dataSource.GetRecurringRules(ruleFilter)
 	if err != nil {

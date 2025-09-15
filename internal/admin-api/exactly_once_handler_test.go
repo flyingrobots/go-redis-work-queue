@@ -13,7 +13,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 	"github.com/flyingrobots/go-redis-work-queue/internal/exactly_once"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

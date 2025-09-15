@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"sort"
 	"time"
 )
 
@@ -520,7 +519,7 @@ func (p *planner) ApplyPlan(ctx context.Context, planID string) error {
 
 // SimulateWhatIf runs a what-if simulation
 func (p *planner) SimulateWhatIf(ctx context.Context, scenario SimulationScenario) (*Simulation, error) {
-	return p.simulator.Run(ctx, scenario)
+	return p.simulator.Simulate(ctx, scenario)
 }
 
 // Utility functions

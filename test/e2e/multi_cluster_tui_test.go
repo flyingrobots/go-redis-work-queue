@@ -353,10 +353,14 @@ func TestMultiClusterTUI_CompareMode(t *testing.T) {
 	defer mr2.Close()
 
 	// Add different data to each cluster
-	mr1.Lpush("jobqueue:queue:high", "job1", "job2", "job3")
+	mr1.Lpush("jobqueue:queue:high", "job1")
+	mr1.Lpush("jobqueue:queue:high", "job2")
+	mr1.Lpush("jobqueue:queue:high", "job3")
 	mr1.Lpush("jobqueue:dead_letter", "dead1")
-	mr2.Lpush("jobqueue:queue:high", "job4", "job5")
-	mr2.Lpush("jobqueue:dead_letter", "dead2", "dead3")
+	mr2.Lpush("jobqueue:queue:high", "job4")
+	mr2.Lpush("jobqueue:queue:high", "job5")
+	mr2.Lpush("jobqueue:dead_letter", "dead2")
+	mr2.Lpush("jobqueue:dead_letter", "dead3")
 
 	cfg := &multicluster.Config{
 		Clusters: []multicluster.ClusterConfig{
@@ -558,7 +562,8 @@ func TestMultiClusterTUI_DataRefresh(t *testing.T) {
 	initialHistory := len(renderer.getRenderHistory())
 
 	// Add more data to simulate changes
-	mr.Lpush("jobqueue:queue:test", "new_job1", "new_job2")
+	mr.Lpush("jobqueue:queue:test", "new_job1")
+	mr.Lpush("jobqueue:queue:test", "new_job2")
 
 	// Wait for polling to pick up changes
 	time.Sleep(200 * time.Millisecond)
