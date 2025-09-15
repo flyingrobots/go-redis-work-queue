@@ -14,17 +14,16 @@ func (cb *CircuitBreaker) ShouldAllow() bool {
 
 	switch cb.State {
 	case Closed:
+		// Check if failure window has expired and reset if so
+		if cb.FailureCount > 0 && now.Sub(cb.LastFailureTime) > cb.Config.TripWindow {
+			cb.FailureCount = 0
+		}
+
 		// Check if we should trip due to failures in the window
 		if cb.FailureCount >= cb.Config.FailureThreshold {
-			if now.Sub(cb.LastFailureTime) <= cb.Config.TripWindow {
-				cb.State = Open
-				cb.LastFailureTime = now
-				return false
-			} else {
-				// Failure window expired, reset failure count
-				cb.FailureCount = 0
-				return true
-			}
+			cb.State = Open
+			cb.LastFailureTime = now
+			return false
 		}
 		return true
 
@@ -90,6 +89,11 @@ func (cb *CircuitBreaker) RecordFailure() {
 
 	switch cb.State {
 	case Closed:
+		// Check if failure window has expired and reset if so
+		if cb.FailureCount > 0 && now.Sub(cb.LastFailureTime) > cb.Config.TripWindow {
+			cb.FailureCount = 0
+		}
+
 		cb.FailureCount++
 		cb.LastFailureTime = now
 

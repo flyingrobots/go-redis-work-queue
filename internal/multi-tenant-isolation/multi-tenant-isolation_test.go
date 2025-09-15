@@ -3,6 +3,7 @@ package multitenantiso
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -43,7 +44,8 @@ func TestTenantManager_CreateTenant(t *testing.T) {
 	// Test duplicate creation
 	err = tm.CreateTenant(config)
 	assert.Error(t, err)
-	assert.True(t, IsTenantNotFound(err))
+	var tae TenantAlreadyExistsError
+	assert.True(t, errors.As(err, &tae))
 
 	// Verify tenant exists
 	exists, err := tm.TenantExists("test-tenant")

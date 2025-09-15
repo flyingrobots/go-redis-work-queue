@@ -2,6 +2,7 @@
 package multitenantiso
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -142,31 +143,31 @@ func (c *Config) IsKEKProviderAllowed(provider string) bool {
 // ValidateTenantQuotas checks if tenant quotas are within allowed limits
 func (c *Config) ValidateTenantQuotas(quotas *TenantQuotas) error {
 	if quotas.MaxJobsPerHour < c.MinTenantQuotaLimits.MaxJobsPerHour {
-		return NewValidationError("max_jobs_per_hour", string(rune(quotas.MaxJobsPerHour)), "below minimum limit")
+		return NewValidationError("max_jobs_per_hour", fmt.Sprintf("%d", quotas.MaxJobsPerHour), "below minimum limit")
 	}
 	if quotas.MaxJobsPerHour > c.MaxTenantQuotaLimits.MaxJobsPerHour {
-		return NewValidationError("max_jobs_per_hour", string(rune(quotas.MaxJobsPerHour)), "exceeds maximum limit")
+		return NewValidationError("max_jobs_per_hour", fmt.Sprintf("%d", quotas.MaxJobsPerHour), "exceeds maximum limit")
 	}
 
 	if quotas.MaxJobsPerDay < c.MinTenantQuotaLimits.MaxJobsPerDay {
-		return NewValidationError("max_jobs_per_day", string(rune(quotas.MaxJobsPerDay)), "below minimum limit")
+		return NewValidationError("max_jobs_per_day", fmt.Sprintf("%d", quotas.MaxJobsPerDay), "below minimum limit")
 	}
 	if quotas.MaxJobsPerDay > c.MaxTenantQuotaLimits.MaxJobsPerDay {
-		return NewValidationError("max_jobs_per_day", string(rune(quotas.MaxJobsPerDay)), "exceeds maximum limit")
+		return NewValidationError("max_jobs_per_day", fmt.Sprintf("%d", quotas.MaxJobsPerDay), "exceeds maximum limit")
 	}
 
 	if quotas.MaxBacklogSize < c.MinTenantQuotaLimits.MaxBacklogSize {
-		return NewValidationError("max_backlog_size", string(rune(quotas.MaxBacklogSize)), "below minimum limit")
+		return NewValidationError("max_backlog_size", fmt.Sprintf("%d", quotas.MaxBacklogSize), "below minimum limit")
 	}
 	if quotas.MaxBacklogSize > c.MaxTenantQuotaLimits.MaxBacklogSize {
-		return NewValidationError("max_backlog_size", string(rune(quotas.MaxBacklogSize)), "exceeds maximum limit")
+		return NewValidationError("max_backlog_size", fmt.Sprintf("%d", quotas.MaxBacklogSize), "exceeds maximum limit")
 	}
 
 	if quotas.MaxStorageBytes < c.MinTenantQuotaLimits.MaxStorageBytes {
-		return NewValidationError("max_storage_bytes", string(rune(quotas.MaxStorageBytes)), "below minimum limit")
+		return NewValidationError("max_storage_bytes", fmt.Sprintf("%d", quotas.MaxStorageBytes), "below minimum limit")
 	}
 	if quotas.MaxStorageBytes > c.MaxTenantQuotaLimits.MaxStorageBytes {
-		return NewValidationError("max_storage_bytes", string(rune(quotas.MaxStorageBytes)), "exceeds maximum limit")
+		return NewValidationError("max_storage_bytes", fmt.Sprintf("%d", quotas.MaxStorageBytes), "exceeds maximum limit")
 	}
 
 	return nil

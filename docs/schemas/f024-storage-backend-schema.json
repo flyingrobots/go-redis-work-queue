@@ -1,0 +1,738 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://queue.example.com/schemas/storage-backends.json",
+  "title": "Storage Backends Data Models",
+  "description": "JSON Schema definitions for pluggable storage backends in Redis Work Queue",
+  "definitions": {
+    "BackendType": {
+      "type": "string",
+      "enum": ["redis-lists", "redis-streams", "keydb", "dragonfly", "kafka-bridge", "postgresql", "custom"],
+      "description": "Type of storage backend"
+    },
+    "BackendStatus": {
+      "type": "string",
+      "enum": ["available", "unavailable", "degraded", "initializing", "terminating"],
+      "description": "Current status of the backend"
+    },
+    "BackendCapabilities": {
+      "type": "object",
+      "description": "Capabilities supported by a storage backend",
+      "properties": {
+        "atomic_ack": {
+          "type": "boolean",
+          "description": "Supports atomic job acknowledgment"
+        },
+        "consumer_groups": {
+          "type": "boolean",
+          "description": "Supports multiple consumer groups"
+        },
+        "replay": {
+          "type": "boolean",
+          "description": "Supports replaying historical jobs"
+        },
+        "idempotent_enqueue": {
+          "type": "boolean",
+          "description": "Supports duplicate detection on enqueue"
+        },
+        "transactions": {
+          "type": "boolean",
+          "description": "Supports multi-operation transactions"
+        },
+        "persistence": {
+          "type": "boolean",
+          "description": "Data survives system restarts"
+        },
+        "clustering": {
+          "type": "boolean",
+          "description": "Supports distributed/clustered operation"
+        },
+        "sharding": {
+          "type": "boolean",
+          "description": "Supports horizontal data partitioning"
+        },
+        "time_to_live": {
+          "type": "boolean",
+          "description": "Supports automatic job expiration"
+        },
+        "prioritization": {
+          "type": "boolean",
+          "description": "Supports job priority levels"
+        },
+        "batch_operations": {
+          "type": "boolean",
+          "description": "Supports bulk enqueue/dequeue"
+        },
+        "streaming": {
+          "type": "boolean",
+          "description": "Supports real-time event streaming"
+        },
+        "max_throughput": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum operations per second"
+        },
+        "max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent connections"
+        },
+        "max_queue_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum jobs per queue"
+        }
+      }
+    },
+    "BackendConfiguration": {
+      "type": "object",
+      "required": ["type", "name"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/BackendType"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "description": "Unique backend identifier"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Backend connection endpoint"
+        },
+        "auth": {
+          "$ref": "#/definitions/AuthConfiguration"
+        },
+        "connection": {
+          "$ref": "#/definitions/ConnectionConfiguration"
+        },
+        "performance": {
+          "$ref": "#/definitions/PerformanceConfiguration"
+        },
+        "redis_config": {
+          "$ref": "#/definitions/RedisConfiguration"
+        },
+        "streams_config": {
+          "$ref": "#/definitions/StreamsConfiguration"
+        },
+        "kafka_config": {
+          "$ref": "#/definitions/KafkaConfiguration"
+        }
+      }
+    },
+    "AuthConfiguration": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "password", "certificate", "token"],
+          "default": "none"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "format": "password"
+        },
+        "certificate": {
+          "type": "object",
+          "properties": {
+            "cert_file": {
+              "type": "string"
+            },
+            "key_file": {
+              "type": "string"
+            },
+            "ca_file": {
+              "type": "string"
+            }
+          }
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "ConnectionConfiguration": {
+      "type": "object",
+      "properties": {
+        "pool_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10
+        },
+        "max_idle": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5
+        },
+        "connect_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "5s"
+        },
+        "read_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "3s"
+        },
+        "write_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "3s"
+        },
+        "idle_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "5m"
+        },
+        "retry_policy": {
+          "$ref": "#/definitions/RetryPolicy"
+        }
+      }
+    },
+    "PerformanceConfiguration": {
+      "type": "object",
+      "properties": {
+        "pipeline_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 100,
+          "description": "Number of operations to batch"
+        },
+        "compression": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable payload compression"
+        },
+        "prefetch_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 10,
+          "description": "Number of jobs to prefetch"
+        },
+        "buffer_size": {
+          "type": "integer",
+          "minimum": 1024,
+          "default": 65536,
+          "description": "I/O buffer size in bytes"
+        }
+      }
+    },
+    "RedisConfiguration": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15,
+          "default": 0
+        },
+        "key_prefix": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9:_-]+$",
+          "default": "queue:"
+        },
+        "sentinel": {
+          "type": "object",
+          "properties": {
+            "master_name": {
+              "type": "string"
+            },
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "hostname:port"
+              }
+            }
+          }
+        },
+        "cluster": {
+          "type": "object",
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "hostname:port"
+              }
+            },
+            "max_redirects": {
+              "type": "integer",
+              "default": 3
+            }
+          }
+        }
+      }
+    },
+    "StreamsConfiguration": {
+      "type": "object",
+      "properties": {
+        "consumer_group": {
+          "type": "string",
+          "default": "workers"
+        },
+        "consumer_name": {
+          "type": "string"
+        },
+        "block_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "1s"
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum stream length (0 = unlimited)"
+        },
+        "trim_strategy": {
+          "type": "string",
+          "enum": ["MAXLEN", "MINID"],
+          "default": "MAXLEN"
+        },
+        "claim_min_idle": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "30s"
+        },
+        "claim_count": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        }
+      }
+    },
+    "KafkaConfiguration": {
+      "type": "object",
+      "required": ["brokers"],
+      "properties": {
+        "brokers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "hostname:port"
+          },
+          "minItems": 1
+        },
+        "topic_prefix": {
+          "type": "string",
+          "default": "queue-"
+        },
+        "producer": {
+          "type": "object",
+          "properties": {
+            "acks": {
+              "type": "string",
+              "enum": ["none", "leader", "all"],
+              "default": "leader"
+            },
+            "compression": {
+              "type": "string",
+              "enum": ["none", "gzip", "snappy", "lz4", "zstd"],
+              "default": "snappy"
+            },
+            "batch_size": {
+              "type": "integer",
+              "default": 16384
+            },
+            "linger_ms": {
+              "type": "integer",
+              "default": 10
+            },
+            "buffer_memory": {
+              "type": "integer",
+              "default": 33554432
+            }
+          }
+        },
+        "consumer": {
+          "type": "object",
+          "properties": {
+            "group_id": {
+              "type": "string"
+            },
+            "auto_offset_reset": {
+              "type": "string",
+              "enum": ["earliest", "latest"],
+              "default": "latest"
+            },
+            "enable_auto_commit": {
+              "type": "boolean",
+              "default": true
+            },
+            "max_poll_records": {
+              "type": "integer",
+              "default": 500
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "protocol": {
+              "type": "string",
+              "enum": ["PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL"],
+              "default": "PLAINTEXT"
+            },
+            "sasl": {
+              "type": "object",
+              "properties": {
+                "mechanism": {
+                  "type": "string",
+                  "enum": ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"]
+                },
+                "username": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string",
+                  "format": "password"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "QueueBackendAssignment": {
+      "type": "object",
+      "required": ["queue_name", "backend_name"],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-_.]*[a-zA-Z0-9]$"
+        },
+        "backend_name": {
+          "type": "string"
+        },
+        "config_overrides": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Queue-specific backend configuration overrides"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "MigrationPlan": {
+      "type": "object",
+      "required": ["id", "queue_name", "source_backend", "target_backend"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "queue_name": {
+          "type": "string"
+        },
+        "source_backend": {
+          "type": "string"
+        },
+        "target_backend": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planning", "ready", "running", "verifying", "switching", "completed", "failed", "cancelled", "rolling_back"]
+        },
+        "options": {
+          "$ref": "#/definitions/MigrationOptions"
+        },
+        "validation": {
+          "$ref": "#/definitions/MigrationValidation"
+        },
+        "progress": {
+          "$ref": "#/definitions/MigrationProgress"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "MigrationOptions": {
+      "type": "object",
+      "properties": {
+        "drain_source": {
+          "type": "boolean",
+          "default": false,
+          "description": "Stop accepting new jobs during migration"
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 100
+        },
+        "parallel_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5
+        },
+        "verify_integrity": {
+          "type": "boolean",
+          "default": true
+        },
+        "preserve_order": {
+          "type": "boolean",
+          "default": true
+        },
+        "rollback_on_error": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_duration": {
+          "type": "string",
+          "pattern": "^PT[0-9]+(H|M|S)$",
+          "description": "ISO 8601 duration"
+        },
+        "checkpoint_interval": {
+          "type": "integer",
+          "default": 1000,
+          "description": "Jobs between checkpoints"
+        }
+      }
+    },
+    "MigrationValidation": {
+      "type": "object",
+      "properties": {
+        "compatibility_check": {
+          "type": "string",
+          "enum": ["pass", "warn", "fail"]
+        },
+        "estimated_jobs": {
+          "type": "integer"
+        },
+        "estimated_size_bytes": {
+          "type": "integer"
+        },
+        "estimated_duration": {
+          "type": "string",
+          "pattern": "^PT[0-9]+(H|M|S)$"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "capability_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Features not available in target backend"
+        }
+      }
+    },
+    "MigrationProgress": {
+      "type": "object",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["initializing", "copying", "verifying", "switching", "cleaning_up"]
+        },
+        "total_jobs": {
+          "type": "integer"
+        },
+        "migrated_jobs": {
+          "type": "integer"
+        },
+        "failed_jobs": {
+          "type": "integer"
+        },
+        "skipped_jobs": {
+          "type": "integer"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "current_rate": {
+          "type": "number",
+          "description": "Jobs per second"
+        },
+        "eta": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_checkpoint": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "job_id": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "BackendMetrics": {
+      "type": "object",
+      "properties": {
+        "backend_name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operations": {
+          "type": "object",
+          "properties": {
+            "enqueue_rate": {
+              "type": "number"
+            },
+            "dequeue_rate": {
+              "type": "number"
+            },
+            "ack_rate": {
+              "type": "number"
+            },
+            "nack_rate": {
+              "type": "number"
+            },
+            "error_rate": {
+              "type": "number"
+            }
+          }
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "enqueue_p50": {
+              "type": "number"
+            },
+            "enqueue_p99": {
+              "type": "number"
+            },
+            "dequeue_p50": {
+              "type": "number"
+            },
+            "dequeue_p99": {
+              "type": "number"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "memory_bytes": {
+              "type": "integer"
+            },
+            "connections_active": {
+              "type": "integer"
+            },
+            "connections_idle": {
+              "type": "integer"
+            },
+            "cpu_percent": {
+              "type": "number"
+            }
+          }
+        },
+        "queue_stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "depth": {
+                "type": "integer"
+              },
+              "oldest_job_age": {
+                "type": "integer",
+                "description": "Seconds"
+              }
+            }
+          }
+        }
+      }
+    },
+    "RetryPolicy": {
+      "type": "object",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 3
+        },
+        "initial_delay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "100ms"
+        },
+        "max_delay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "default": "30s"
+        },
+        "multiplier": {
+          "type": "number",
+          "minimum": 1,
+          "default": 2
+        },
+        "jitter": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "backend_configuration": {
+      "$ref": "#/definitions/BackendConfiguration"
+    },
+    "backend_capabilities": {
+      "$ref": "#/definitions/BackendCapabilities"
+    },
+    "queue_backend_assignment": {
+      "$ref": "#/definitions/QueueBackendAssignment"
+    },
+    "migration_plan": {
+      "$ref": "#/definitions/MigrationPlan"
+    },
+    "backend_metrics": {
+      "$ref": "#/definitions/BackendMetrics"
+    }
+  }
+}

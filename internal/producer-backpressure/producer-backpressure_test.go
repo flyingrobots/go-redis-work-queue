@@ -184,8 +184,8 @@ func TestSuggestThrottleRedZone(t *testing.T) {
 	require.NoError(t, err)
 	defer controller.Stop()
 
-	// Set high backlog (red zone)
-	statsProvider.SetQueueStats("test-queue", 3000)
+	// Set high backlog (red zone for high priority: >5000)
+	statsProvider.SetQueueStats("test-queue", 6000)
 
 	// Test high priority (reduced throttling)
 	decision, err := controller.SuggestThrottle(ctx, HighPriority, "test-queue")
@@ -194,14 +194,16 @@ func TestSuggestThrottleRedZone(t *testing.T) {
 	assert.False(t, decision.ShouldShed)
 	assert.Equal(t, "backlog_red_high_priority", decision.Reason)
 
-	// Test medium priority (full throttling)
+	// Test medium priority (full throttling) - red zone is >2000
+	statsProvider.SetQueueStats("test-queue", 3000)
 	decision, err = controller.SuggestThrottle(ctx, MediumPriority, "test-queue")
 	require.NoError(t, err)
 	assert.Greater(t, decision.Delay, time.Duration(0))
 	assert.False(t, decision.ShouldShed)
 	assert.Equal(t, "backlog_red_medium_priority", decision.Reason)
 
-	// Test low priority (heavy throttling)
+	// Test low priority (heavy throttling) - red zone is >500
+	statsProvider.SetQueueStats("test-queue", 800)
 	decision, err = controller.SuggestThrottle(ctx, LowPriority, "test-queue")
 	require.NoError(t, err)
 	assert.Greater(t, decision.Delay, time.Duration(0))
@@ -223,7 +225,9 @@ func TestSuggestThrottleShedding(t *testing.T) {
 	defer controller.Stop()
 
 	// Set extremely high backlog that should cause shedding for low priority
-	statsProvider.SetQueueStats("test-queue", 900) // Close to red threshold for low priority
+	// For low priority: Green=100, Yellow=500, Red=1000
+	// Shedding happens when ratio > 0.8 in red zone, so backlog > 500 + 0.8*(1000-500) = 900
+	statsProvider.SetQueueStats("test-queue", 950) // Should cause shedding
 
 	decision, err := controller.SuggestThrottle(ctx, LowPriority, "test-queue")
 	require.NoError(t, err)
@@ -275,8 +279,8 @@ func TestRunWithShedding(t *testing.T) {
 	require.NoError(t, err)
 	defer controller.Stop()
 
-	// Set extremely high backlog for shedding
-	statsProvider.SetQueueStats("test-queue", 900) // Should shed low priority
+	// Set extremely high backlog for shedding (same as in previous test)
+	statsProvider.SetQueueStats("test-queue", 950) // Should shed low priority
 
 	executed := false
 	err = controller.Run(ctx, LowPriority, "test-queue", func() error {

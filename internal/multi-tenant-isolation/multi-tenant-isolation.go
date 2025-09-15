@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"

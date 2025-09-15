@@ -1,0 +1,1292 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.workqueue.com/schemas/job-budgeting/v1",
+  "title": "Job Budgeting System Schemas",
+  "description": "JSON Schema definitions for the Job Budgeting system data models",
+  "definitions": {
+    "CostModel": {
+      "$id": "#/definitions/CostModel",
+      "type": "object",
+      "title": "Cost Model",
+      "description": "Configuration for calculating job costs",
+      "required": [
+        "id",
+        "name",
+        "components",
+        "created_at",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cost_model_[a-zA-Z0-9_-]+$",
+          "description": "Unique cost model identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable cost model name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Cost model description"
+        },
+        "components": {
+          "$ref": "#/definitions/CostComponents"
+        },
+        "calibration": {
+          "$ref": "#/definitions/CalibrationSettings"
+        },
+        "environment_multipliers": {
+          "type": "object",
+          "patternProperties": {
+            "^(development|staging|production)$": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10
+            }
+          },
+          "additionalProperties": false,
+          "description": "Environment-specific cost multipliers"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether this cost model is active"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the cost model"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CostComponents": {
+      "$id": "#/definitions/CostComponents",
+      "type": "object",
+      "title": "Cost Components",
+      "description": "Individual cost component configurations",
+      "required": [
+        "processing_time",
+        "memory_usage",
+        "payload_size",
+        "redis_operations",
+        "network_egress"
+      ],
+      "properties": {
+        "processing_time": {
+          "$ref": "#/definitions/CostComponent"
+        },
+        "memory_usage": {
+          "$ref": "#/definitions/CostComponent"
+        },
+        "payload_size": {
+          "$ref": "#/definitions/CostComponent"
+        },
+        "redis_operations": {
+          "$ref": "#/definitions/CostComponent"
+        },
+        "network_egress": {
+          "$ref": "#/definitions/CostComponent"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CostComponent": {
+      "$id": "#/definitions/CostComponent",
+      "type": "object",
+      "title": "Cost Component",
+      "description": "Individual cost component configuration",
+      "required": [
+        "weight",
+        "unit_cost"
+      ],
+      "properties": {
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Relative weight of this component in cost calculation"
+        },
+        "unit_cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cost per unit of this component"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Human-readable description of this component"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["ms", "mb", "kb", "ops", "bytes"],
+          "description": "Unit of measurement for this component"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CalibrationSettings": {
+      "$id": "#/definitions/CalibrationSettings",
+      "type": "object",
+      "title": "Calibration Settings",
+      "description": "Settings for automatic cost model calibration",
+      "properties": {
+        "auto_calibrate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic calibration"
+        },
+        "calibration_interval": {
+          "type": "string",
+          "pattern": "^\\d+[hdwm]$",
+          "description": "Calibration frequency (e.g., '24h', '7d', '30d')"
+        },
+        "benchmark_samples": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 10000,
+          "default": 100,
+          "description": "Number of benchmark samples to collect"
+        },
+        "target_accuracy": {
+          "type": "number",
+          "minimum": 0.7,
+          "maximum": 1.0,
+          "default": 0.95,
+          "description": "Target calibration accuracy (0-1)"
+        },
+        "last_calibration": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last calibration"
+        },
+        "calibration_history": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/CalibrationResult"
+          },
+          "description": "History of calibration results"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CalibrationResult": {
+      "$id": "#/definitions/CalibrationResult",
+      "type": "object",
+      "title": "Calibration Result",
+      "description": "Result of a cost model calibration",
+      "required": [
+        "calibration_id",
+        "timestamp",
+        "accuracy_improvement"
+      ],
+      "properties": {
+        "calibration_id": {
+          "type": "string",
+          "pattern": "^cal_[a-zA-Z0-9_-]+$",
+          "description": "Unique calibration identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Calibration completion timestamp"
+        },
+        "accuracy_improvement": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Improvement in accuracy (-1 to 1)"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WeightRecommendation"
+          },
+          "description": "Weight adjustment recommendations"
+        },
+        "benchmark_stats": {
+          "$ref": "#/definitions/BenchmarkStats"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WeightRecommendation": {
+      "$id": "#/definitions/WeightRecommendation",
+      "type": "object",
+      "title": "Weight Recommendation",
+      "description": "Recommendation for adjusting component weights",
+      "required": [
+        "component",
+        "current_weight",
+        "recommended_weight",
+        "confidence"
+      ],
+      "properties": {
+        "component": {
+          "type": "string",
+          "enum": ["processing_time", "memory_usage", "payload_size", "redis_operations", "network_egress"]
+        },
+        "current_weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "recommended_weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in recommendation (0-1)"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Explanation for the recommendation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BenchmarkStats": {
+      "$id": "#/definitions/BenchmarkStats",
+      "type": "object",
+      "title": "Benchmark Statistics",
+      "description": "Statistics from calibration benchmarks",
+      "required": [
+        "total_jobs",
+        "total_duration",
+        "average_cost"
+      ],
+      "properties": {
+        "total_jobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_duration": {
+          "type": "string",
+          "pattern": "^\\d+[hms]+$",
+          "description": "Total benchmark duration"
+        },
+        "average_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cost_variance": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Budget": {
+      "$id": "#/definitions/Budget",
+      "type": "object",
+      "title": "Budget",
+      "description": "Spending budget configuration",
+      "required": [
+        "id",
+        "tenant_id",
+        "period",
+        "limit",
+        "thresholds",
+        "created_at",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^budget_[a-zA-Z0-9_-]+$",
+          "description": "Unique budget identifier"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Tenant this budget applies to"
+        },
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Specific queue (null for all queues)"
+        },
+        "period": {
+          "type": "string",
+          "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+          "description": "Budget period"
+        },
+        "limit": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Budget limit in cost units"
+        },
+        "thresholds": {
+          "$ref": "#/definitions/BudgetThresholds"
+        },
+        "enforcement": {
+          "$ref": "#/definitions/EnforcementSettings"
+        },
+        "cost_model_id": {
+          "type": "string",
+          "pattern": "^cost_model_[a-zA-Z0-9_-]+$",
+          "description": "Cost model to use for this budget"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether this budget is active"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BudgetThresholds": {
+      "$id": "#/definitions/BudgetThresholds",
+      "type": "object",
+      "title": "Budget Thresholds",
+      "description": "Warning and critical thresholds for budgets",
+      "required": [
+        "warning_percent",
+        "critical_percent"
+      ],
+      "properties": {
+        "warning_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Warning threshold percentage"
+        },
+        "critical_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Critical threshold percentage"
+        },
+        "notification_channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["email", "slack", "webhook", "sms"]
+          },
+          "uniqueItems": true,
+          "description": "Channels to send notifications"
+        },
+        "custom_thresholds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CustomThreshold"
+          },
+          "maxItems": 10,
+          "description": "Additional custom thresholds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CustomThreshold": {
+      "$id": "#/definitions/CustomThreshold",
+      "type": "object",
+      "title": "Custom Threshold",
+      "description": "Custom alert threshold",
+      "required": [
+        "name",
+        "percent",
+        "action"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "action": {
+          "type": "string",
+          "enum": ["notify", "throttle", "block"]
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EnforcementSettings": {
+      "$id": "#/definitions/EnforcementSettings",
+      "type": "object",
+      "title": "Enforcement Settings",
+      "description": "Budget enforcement configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable budget enforcement"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["warn_only", "throttle", "block"],
+          "default": "warn_only",
+          "description": "Enforcement strategy when budget is exceeded"
+        },
+        "throttle_config": {
+          "$ref": "#/definitions/ThrottleConfig"
+        },
+        "grace_period": {
+          "type": "string",
+          "pattern": "^\\d+[hms]$",
+          "description": "Grace period before enforcement kicks in"
+        },
+        "exemptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_.-]+$"
+          },
+          "uniqueItems": true,
+          "description": "Job types exempt from enforcement"
+        },
+        "escalation_ladder": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EscalationStep"
+          },
+          "maxItems": 5,
+          "description": "Graduated enforcement escalation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThrottleConfig": {
+      "$id": "#/definitions/ThrottleConfig",
+      "type": "object",
+      "title": "Throttle Configuration",
+      "description": "Configuration for throttling enforcement",
+      "properties": {
+        "reduction_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Percentage reduction in job processing"
+        },
+        "apply_to_priority": {
+          "type": "string",
+          "enum": ["all", "low", "medium", "low_medium"],
+          "default": "low",
+          "description": "Job priorities to throttle"
+        },
+        "ramp_up_duration": {
+          "type": "string",
+          "pattern": "^\\d+[hms]$",
+          "default": "5m",
+          "description": "Time to gradually apply throttling"
+        },
+        "ramp_down_duration": {
+          "type": "string",
+          "pattern": "^\\d+[hms]$",
+          "default": "10m",
+          "description": "Time to gradually remove throttling"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EscalationStep": {
+      "$id": "#/definitions/EscalationStep",
+      "type": "object",
+      "title": "Escalation Step",
+      "description": "Step in enforcement escalation ladder",
+      "required": [
+        "threshold_percent",
+        "action",
+        "severity"
+      ],
+      "properties": {
+        "threshold_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "action": {
+          "type": "string",
+          "enum": ["notify", "warn_producer", "throttle_low", "throttle_medium", "block_new"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "critical"]
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Action-specific parameters"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SpendData": {
+      "$id": "#/definitions/SpendData",
+      "type": "object",
+      "title": "Spend Data",
+      "description": "Aggregated spending data",
+      "required": [
+        "total_spend",
+        "period"
+      ],
+      "properties": {
+        "total_spend": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total spend amount"
+        },
+        "period": {
+          "$ref": "#/definitions/TimePeriod"
+        },
+        "breakdown": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SpendBreakdownItem"
+          },
+          "description": "Spend breakdown by dimension"
+        },
+        "time_series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          },
+          "description": "Time series spend data"
+        },
+        "cost_drivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CostDriver"
+          },
+          "description": "Top cost driving factors"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimePeriod": {
+      "$id": "#/definitions/TimePeriod",
+      "type": "object",
+      "title": "Time Period",
+      "description": "Time period specification",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[hdwm]+$",
+          "description": "Period duration"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SpendBreakdownItem": {
+      "$id": "#/definitions/SpendBreakdownItem",
+      "type": "object",
+      "title": "Spend Breakdown Item",
+      "description": "Individual item in spend breakdown",
+      "required": [
+        "dimension",
+        "value",
+        "spend",
+        "percentage"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "enum": ["tenant", "queue", "job_type", "component", "day", "hour"]
+        },
+        "value": {
+          "type": "string",
+          "description": "Dimension value"
+        },
+        "spend": {
+          "type": "number",
+          "minimum": 0
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "job_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs contributing to this spend"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimeSeriesPoint": {
+      "$id": "#/definitions/TimeSeriesPoint",
+      "type": "object",
+      "title": "Time Series Point",
+      "description": "Single point in time series data",
+      "required": [
+        "timestamp",
+        "spend"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "spend": {
+          "type": "number",
+          "minimum": 0
+        },
+        "job_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "average_cost": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CostDriver": {
+      "$id": "#/definitions/CostDriver",
+      "type": "object",
+      "title": "Cost Driver",
+      "description": "Factor contributing to costs",
+      "required": [
+        "component",
+        "contribution",
+        "trend"
+      ],
+      "properties": {
+        "component": {
+          "type": "string",
+          "enum": ["processing_time", "memory_usage", "payload_size", "redis_operations", "network_egress"]
+        },
+        "contribution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage contribution to total cost"
+        },
+        "trend": {
+          "type": "string",
+          "enum": ["increasing", "decreasing", "stable"]
+        },
+        "change_percentage": {
+          "type": "number",
+          "description": "Percentage change from previous period"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Alert": {
+      "$id": "#/definitions/Alert",
+      "type": "object",
+      "title": "Budget Alert",
+      "description": "Budget threshold alert",
+      "required": [
+        "id",
+        "type",
+        "severity",
+        "message",
+        "timestamp",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^alert_[a-zA-Z0-9_-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["budget_warning", "budget_critical", "budget_exceeded", "enforcement_applied", "forecast_warning"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "critical"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Alert-specific details"
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "budget_id": {
+          "type": "string",
+          "pattern": "^budget_[a-zA-Z0-9_-]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "acknowledged", "resolved", "suppressed"]
+        },
+        "acknowledged_by": {
+          "type": "string",
+          "description": "User who acknowledged the alert"
+        },
+        "acknowledged_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolution_notes": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Notes about alert resolution"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SpendForecast": {
+      "$id": "#/definitions/SpendForecast",
+      "type": "object",
+      "title": "Spend Forecast",
+      "description": "Forecasted spending data",
+      "required": [
+        "period",
+        "current_spend",
+        "forecast",
+        "confidence_interval"
+      ],
+      "properties": {
+        "period": {
+          "$ref": "#/definitions/TimePeriod"
+        },
+        "current_spend": {
+          "type": "number",
+          "minimum": 0
+        },
+        "forecast": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Forecasted end-of-period spend"
+        },
+        "confidence_interval": {
+          "$ref": "#/definitions/ConfidenceInterval"
+        },
+        "trend": {
+          "type": "string",
+          "enum": ["increasing", "decreasing", "stable"]
+        },
+        "trend_strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Strength of the trend (0-1)"
+        },
+        "daily_forecasts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DailyForecast"
+          },
+          "description": "Daily breakdown of forecast"
+        },
+        "model_accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Historical accuracy of forecast model"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ConfidenceInterval": {
+      "$id": "#/definitions/ConfidenceInterval",
+      "type": "object",
+      "title": "Confidence Interval",
+      "description": "Statistical confidence interval",
+      "required": [
+        "lower",
+        "upper",
+        "confidence_level"
+      ],
+      "properties": {
+        "lower": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Lower bound"
+        },
+        "upper": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Upper bound"
+        },
+        "confidence_level": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "description": "Confidence level (e.g., 0.95 for 95%)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DailyForecast": {
+      "$id": "#/definitions/DailyForecast",
+      "type": "object",
+      "title": "Daily Forecast",
+      "description": "Daily spend forecast",
+      "required": [
+        "date",
+        "forecast"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "forecast": {
+          "type": "number",
+          "minimum": 0
+        },
+        "lower_bound": {
+          "type": "number",
+          "minimum": 0
+        },
+        "upper_bound": {
+          "type": "number",
+          "minimum": 0
+        },
+        "actual": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Actual spend (if date is in the past)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobMetrics": {
+      "$id": "#/definitions/JobMetrics",
+      "type": "object",
+      "title": "Job Metrics",
+      "description": "Resource usage metrics for a job",
+      "required": [
+        "job_id",
+        "tenant_id",
+        "queue",
+        "timestamp"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "queue": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$"
+        },
+        "job_type": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "processing_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Job processing time in milliseconds"
+        },
+        "memory_usage_mb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak memory usage in MB"
+        },
+        "payload_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Job payload size in bytes"
+        },
+        "redis_operations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of Redis operations"
+        },
+        "network_egress_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Network egress in bytes"
+        },
+        "calculated_cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Calculated cost for this job"
+        },
+        "cost_model_id": {
+          "type": "string",
+          "pattern": "^cost_model_[a-zA-Z0-9_-]+$"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the job completed successfully"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MonthlyReport": {
+      "$id": "#/definitions/MonthlyReport",
+      "type": "object",
+      "title": "Monthly Budget Report",
+      "description": "Comprehensive monthly budget and spend report",
+      "required": [
+        "period",
+        "summary"
+      ],
+      "properties": {
+        "period": {
+          "type": "object",
+          "required": ["year", "month"],
+          "properties": {
+            "year": {
+              "type": "integer",
+              "minimum": 2020,
+              "maximum": 2100
+            },
+            "month": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          "additionalProperties": false
+        },
+        "summary": {
+          "$ref": "#/definitions/ReportSummary"
+        },
+        "tenant_breakdown": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TenantSpendSummary"
+          }
+        },
+        "cost_trends": {
+          "$ref": "#/definitions/CostTrends"
+        },
+        "top_cost_drivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CostDriver"
+          }
+        },
+        "budget_performance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BudgetPerformance"
+          }
+        },
+        "alerts_summary": {
+          "$ref": "#/definitions/AlertsSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ReportSummary": {
+      "$id": "#/definitions/ReportSummary",
+      "type": "object",
+      "title": "Report Summary",
+      "description": "High-level report summary",
+      "required": [
+        "total_spend",
+        "total_budget",
+        "utilization_percentage",
+        "total_jobs"
+      ],
+      "properties": {
+        "total_spend": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_budget": {
+          "type": "number",
+          "minimum": 0
+        },
+        "utilization_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "total_jobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "average_job_cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cost_per_tenant": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TenantSpendSummary": {
+      "$id": "#/definitions/TenantSpendSummary",
+      "type": "object",
+      "title": "Tenant Spend Summary",
+      "description": "Spending summary for a specific tenant",
+      "required": [
+        "tenant_id",
+        "spend",
+        "utilization"
+      ],
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "spend": {
+          "type": "number",
+          "minimum": 0
+        },
+        "budget": {
+          "type": "number",
+          "minimum": 0
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "alerts_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "top_queues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "queue": {
+                "type": "string"
+              },
+              "spend": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CostTrends": {
+      "$id": "#/definitions/CostTrends",
+      "type": "object",
+      "title": "Cost Trends",
+      "description": "Cost trend analysis",
+      "properties": {
+        "month_over_month": {
+          "type": "number",
+          "description": "Month-over-month change percentage"
+        },
+        "year_over_year": {
+          "type": "number",
+          "description": "Year-over-year change percentage"
+        },
+        "seasonal_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "strength": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BudgetPerformance": {
+      "$id": "#/definitions/BudgetPerformance",
+      "type": "object",
+      "title": "Budget Performance",
+      "description": "Budget vs actual performance analysis",
+      "required": [
+        "budget_id",
+        "tenant_id",
+        "target",
+        "actual",
+        "variance"
+      ],
+      "properties": {
+        "budget_id": {
+          "type": "string",
+          "pattern": "^budget_[a-zA-Z0-9_-]+$"
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0
+        },
+        "actual": {
+          "type": "number",
+          "minimum": 0
+        },
+        "variance": {
+          "type": "number",
+          "description": "Variance as percentage (positive = over budget)"
+        },
+        "variance_category": {
+          "type": "string",
+          "enum": ["under_budget", "on_budget", "over_budget", "significantly_over"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AlertsSummary": {
+      "$id": "#/definitions/AlertsSummary",
+      "type": "object",
+      "title": "Alerts Summary",
+      "description": "Summary of alerts for the period",
+      "properties": {
+        "total_alerts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_severity": {
+          "type": "object",
+          "properties": {
+            "info": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warning": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "critical": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "by_type": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "resolution_time": {
+          "type": "object",
+          "properties": {
+            "average": {
+              "type": "string",
+              "pattern": "^\\d+[hms]+$"
+            },
+            "median": {
+              "type": "string",
+              "pattern": "^\\d+[hms]+$"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -22,7 +22,7 @@ type DeadLetterHook struct {
 
 // DLHStorage interface for dead letter hook storage
 type DLHStorage interface {
-	Store(ctx context.Context, entry DLHEntry) error
+	Store(ctx context.Context, entry DLHEntry) (*DLHEntry, error)
 	GetByID(ctx context.Context, id string) (*DLHEntry, error)
 	List(ctx context.Context, filter DLHFilter) ([]DLHEntry, error)
 	UpdateStatus(ctx context.Context, id string, status DLHStatus) error
@@ -148,7 +148,7 @@ func NewInMemoryDLHStorage() *InMemoryDLHStorage {
 }
 
 // Store stores a DLH entry
-func (s *InMemoryDLHStorage) Store(ctx context.Context, entry DLHEntry) error {
+func (s *InMemoryDLHStorage) Store(ctx context.Context, entry DLHEntry) (*DLHEntry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -160,7 +160,7 @@ func (s *InMemoryDLHStorage) Store(ctx context.Context, entry DLHEntry) error {
 	entry.UpdatedAt = time.Now()
 
 	s.entries[entry.ID] = entry
-	return nil
+	return &entry, nil
 }
 
 // GetByID retrieves a DLH entry by ID
@@ -378,7 +378,8 @@ func (dlh *DeadLetterHook) StoreFailedDelivery(ctx context.Context, webhookID, u
 		},
 	}
 
-	return dlh.storage.Store(ctx, entry)
+	_, err = dlh.storage.Store(ctx, entry)
+	return err
 }
 
 // GetEntries retrieves DLH entries based on filter
@@ -427,7 +428,8 @@ func (rm *ReplayManager) ReplayEntry(ctx context.Context, entryID string) error 
 		}
 
 		// Store updated entry
-		return rm.storage.Store(ctx, *entry)
+		_, err = rm.storage.Store(ctx, *entry)
+		return err
 	}
 
 	// Success - mark as completed
@@ -479,15 +481,10 @@ func TestDLH_BasicStorage(t *testing.T) {
 		Status:       DLHStatusPending,
 	}
 
-	err := storage.Store(ctx, entry)
+	storedEntry, err := storage.Store(ctx, entry)
 	assert.NoError(t, err)
-
-	// Get the stored entry to retrieve the generated ID
-	entries, err := storage.List(ctx, DLHFilter{Limit: 1})
-	assert.NoError(t, err)
-	assert.Len(t, entries, 1)
-	entry = entries[0]
-	assert.NotEmpty(t, entry.ID)
+	assert.NotEmpty(t, storedEntry.ID)
+	entry = *storedEntry
 
 	// Retrieve entry by ID
 	retrieved, err := storage.GetByID(ctx, entry.ID)
@@ -518,7 +515,7 @@ func TestDLH_FilteringAndList(t *testing.T) {
 	}
 
 	for _, entry := range entries {
-		err := storage.Store(ctx, entry)
+		_, err := storage.Store(ctx, entry)
 		assert.NoError(t, err)
 	}
 
@@ -554,7 +551,7 @@ func TestDLH_Metrics(t *testing.T) {
 	}
 
 	for _, entry := range entries {
-		err := storage.Store(ctx, entry)
+		_, err := storage.Store(ctx, entry)
 		assert.NoError(t, err)
 	}
 
@@ -609,8 +606,9 @@ func TestReplayManager_SingleEntryReplay(t *testing.T) {
 		Headers:   map[string]string{"Content-Type": "application/json"},
 	}
 
-	err := storage.Store(ctx, entry)
+	storedEntry, err := storage.Store(ctx, entry)
 	assert.NoError(t, err)
+	entry = *storedEntry
 
 	// Configure client to succeed
 	client.SetResponse("https://example.com/webhook", nil)
@@ -646,8 +644,9 @@ func TestReplayManager_FailedReplay(t *testing.T) {
 		FailureCount: 1,
 	}
 
-	err := storage.Store(ctx, entry)
+	storedEntry, err := storage.Store(ctx, entry)
 	assert.NoError(t, err)
+	entry = *storedEntry
 
 	// Configure client to fail
 	client.SetResponse("https://example.com/webhook", fmt.Errorf("service unavailable"))
@@ -684,8 +683,9 @@ func TestReplayManager_ExhaustedRetries(t *testing.T) {
 		FailureCount: 4,
 	}
 
-	err := storage.Store(ctx, entry)
+	storedEntry, err := storage.Store(ctx, entry)
 	assert.NoError(t, err)
+	entry = *storedEntry
 
 	// Configure client to fail
 	client.SetResponse("https://example.com/webhook", fmt.Errorf("persistent failure"))
@@ -722,7 +722,7 @@ func TestReplayManager_BatchReplay(t *testing.T) {
 			Status:    DLHStatusPending,
 		}
 
-		err := storage.Store(ctx, entry)
+		_, err := storage.Store(ctx, entry)
 		assert.NoError(t, err)
 
 		// Configure some to succeed, some to fail
@@ -739,7 +739,7 @@ func TestReplayManager_BatchReplay(t *testing.T) {
 		URL:       "https://example.com/completed",
 		Status:    DLHStatusCompleted,
 	}
-	err := storage.Store(ctx, completedEntry)
+	_, err := storage.Store(ctx, completedEntry)
 	assert.NoError(t, err)
 
 	// Replay batch
@@ -771,8 +771,9 @@ func TestDLH_ArchiveEntry(t *testing.T) {
 		Status:    DLHStatusExhausted,
 	}
 
-	err := storage.Store(ctx, entry)
+	storedEntry, err := storage.Store(ctx, entry)
 	assert.NoError(t, err)
+	entry = *storedEntry
 
 	// Archive the entry
 	err = dlh.ArchiveEntry(ctx, entry.ID)

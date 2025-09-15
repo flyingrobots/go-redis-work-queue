@@ -68,18 +68,17 @@ func NewController(config BackpressureConfig, statsProvider StatsProvider, logge
 		logger = zap.NewNop()
 	}
 
+	metrics := NewBackpressureMetrics()
+
 	controller := &Controller{
 		config:          config,
 		statsProvider:   statsProvider,
-		metrics:         NewBackpressureMetrics(),
+		metrics:         metrics,
 		logger:          logger,
 		circuitBreakers: make(map[string]*CircuitBreaker),
 		throttleCache:   make(map[string]*CachedDecision),
 		rng:            rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
-
-	// Register metrics
-	controller.metrics.Register()
 
 	return controller, nil
 }

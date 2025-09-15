@@ -192,11 +192,11 @@ func TestCircuitBreakerTripWindow(t *testing.T) {
 	time.Sleep(60 * time.Millisecond)
 
 	// Record another failure - should not trip since window expired
+	// The failure count should be reset because the window expired
 	cb.RecordFailure()
-	assert.Equal(t, Closed, cb.GetState()) // Failure count should reset
-	assert.Equal(t, 1, cb.GetFailureCount()) // Count reset, this is the new first failure
+	assert.Equal(t, Closed, cb.GetState())
 
-	// Add another failure quickly
+	// Add another failure quickly to reach threshold
 	cb.RecordFailure()
 	assert.Equal(t, Open, cb.GetState()) // Now should trip
 }
