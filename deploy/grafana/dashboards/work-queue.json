@@ -1,0 +1,37 @@
+{
+  "title": "Go Redis Work Queue",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Job Processing Duration (p95)",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(job_processing_duration_seconds_bucket[5m])) by (le))"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Jobs Completed / Failed / Retried",
+      "targets": [
+        {"expr": "rate(jobs_completed_total[5m])"},
+        {"expr": "rate(jobs_failed_total[5m])"},
+        {"expr": "rate(jobs_retried_total[5m])"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Circuit Breaker State",
+      "targets": [{"expr": "circuit_breaker_state"}],
+      "options": {"reduceOptions": {"calcs": ["last"], "fields": ""}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue Lengths",
+      "targets": [{"expr": "sum by (queue) (queue_length)"}]
+    },
+    {
+      "type": "stat",
+      "title": "Active Workers",
+      "targets": [{"expr": "worker_active"}],
+      "options": {"reduceOptions": {"calcs": ["last"], "fields": ""}}
+    }
+  ]
+}

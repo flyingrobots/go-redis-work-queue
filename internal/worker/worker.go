@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package worker
 
 import (
@@ -21,20 +22,24 @@ type Worker struct {
     rdb *redis.Client
     log *zap.Logger
     cb  *breaker.CircuitBreaker
+    baseID string
 }
 
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
     cb := breaker.New(cfg.CircuitBreaker.Window, cfg.CircuitBreaker.CooldownPeriod, cfg.CircuitBreaker.FailureThreshold, cfg.CircuitBreaker.MinSamples)
-    return &Worker{cfg: cfg, rdb: rdb, log: log, cb: cb}
+    host, _ := os.Hostname()
+    pid := os.Getpid()
+    now := time.Now().UnixNano()
+    randSfx := fmt.Sprintf("%04x", time.Now().UnixNano()&0xffff)
+    base := fmt.Sprintf("%s-%d-%d-%s", host, pid, now, randSfx)
+    return &Worker{cfg: cfg, rdb: rdb, log: log, cb: cb, baseID: base}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
     var wg sync.WaitGroup
-    host, _ := os.Hostname()
-    pid := os.Getpid()
     for i := 0; i < w.cfg.Worker.Count; i++ {
         wg.Add(1)
-        id := fmt.Sprintf("%s-%d-%d", host, pid, i)
+        id := fmt.Sprintf("%s-%d", w.baseID, i)
         go func(workerID string) {
             defer wg.Done()
             obs.WorkerActive.Inc()
@@ -74,7 +79,7 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 
     for ctx.Err() == nil {
         if !w.cb.Allow() {
-            time.Sleep(100 * time.Millisecond)
+            time.Sleep(w.cfg.Worker.BreakerPause)
             continue
         }
 
@@ -106,11 +111,17 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
         // heartbeat set
         _ = w.rdb.Set(ctx, hbKey, payload, w.cfg.Worker.HeartbeatTTL).Err()
 
+        // measure state transition around Record() to count trips
         start := time.Now()
         // process job
         ok := w.processJob(ctx, workerID, srcQueue, procList, hbKey, payload)
         obs.JobProcessingDuration.Observe(time.Since(start).Seconds())
+        prev := w.cb.State()
         w.cb.Record(ok)
+        curr := w.cb.State()
+        if prev != curr && curr == breaker.Open {
+            obs.CircuitBreakerTrips.Inc()
+        }
     }
 }
 
@@ -127,13 +138,23 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
     ctx, span := obs.ContextWithJobSpan(ctx, job)
     defer span.End()
 
-    // Simulated processing: sleep based on filesize
+    // Simulated processing: sleep based on filesize with cancellable timer
     dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
     canceled := false
-    select {
-    case <-ctx.Done():
-        canceled = true
-    case <-time.After(dur):
+    if dur > 0 {
+        timer := time.NewTimer(dur)
+        defer func() { if !timer.Stop() { <-timer.C } }()
+        select {
+        case <-ctx.Done():
+            canceled = true
+        case <-timer.C:
+        }
+    } else {
+        select {
+        case <-ctx.Done():
+            canceled = true
+        default:
+        }
     }
 
     // For demonstration, consider processing success unless canceled or filename contains "fail"
@@ -141,9 +162,15 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 
     if success {
         // complete
-        _ = w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err()
-        _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
-        _ = w.rdb.Del(ctx, hbKey).Err()
+        if err := w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err(); err != nil {
+            w.log.Error("LPUSH completed failed", obs.Err(err))
+        }
+        if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
+            w.log.Error("LREM processing failed", obs.Err(err))
+        }
+        if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
+            w.log.Error("DEL heartbeat failed", obs.Err(err))
+        }
         obs.JobsCompleted.Inc()
         w.log.Info("job completed", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
         return true
@@ -162,17 +189,29 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
     if job.Retries <= w.cfg.Worker.MaxRetries {
         obs.JobsRetried.Inc()
         payload2, _ := job.Marshal()
-        _ = w.rdb.LPush(ctx, srcQueue, payload2).Err()
-        _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
-        _ = w.rdb.Del(ctx, hbKey).Err()
+        if err := w.rdb.LPush(ctx, srcQueue, payload2).Err(); err != nil {
+            w.log.Error("LPUSH retry failed", obs.Err(err))
+        }
+        if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
+            w.log.Error("LREM processing failed", obs.Err(err))
+        }
+        if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
+            w.log.Error("DEL heartbeat failed", obs.Err(err))
+        }
         w.log.Warn("job retried", obs.String("id", job.ID), obs.Int("retries", job.Retries), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
         return false
     }
 
     // dead letter
-    _ = w.rdb.LPush(ctx, w.cfg.Worker.DeadLetterList, payload).Err()
-    _ = w.rdb.LRem(ctx, procList, 1, payload).Err()
-    _ = w.rdb.Del(ctx, hbKey).Err()
+    if err := w.rdb.LPush(ctx, w.cfg.Worker.DeadLetterList, payload).Err(); err != nil {
+        w.log.Error("LPUSH DLQ failed", obs.Err(err))
+    }
+    if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
+        w.log.Error("LREM processing failed", obs.Err(err))
+    }
+    if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
+        w.log.Error("DEL heartbeat failed", obs.Err(err))
+    }
     obs.JobsDeadLetter.Inc()
     w.log.Error("job dead-lettered", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
     return false

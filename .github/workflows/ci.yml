@@ -24,7 +24,18 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: true
+      - name: Tidy
+        run: go mod download
+      - name: Govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: '1.25.x'
+          vulncheck-version: 'v1.1.3'
       - name: Tidy
         run: go mod tidy
       - name: Vet
@@ -35,6 +46,15 @@ jobs:
         env:
           E2E_REDIS_ADDR: localhost:6379
         run: go test ./... -race -count=1
+      - name: E2E determinism (5x)
+        env:
+          E2E_REDIS_ADDR: 127.0.0.1:6379
+        run: |
+          set -euo pipefail
+          for i in {1..5}; do
+            echo "Run #$i"
+            go test ./test/e2e -run TestE2E_WorkerCompletesJobWithRealRedis -race -count=1
+          done
       - name: Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest

@@ -24,9 +24,16 @@ go.work
 
 # IDE/Editor
 .idea/
-.vscode/
+# VS Code: ignore all by default, allow key shared files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
 *.swp
 *.swo
+
+# Obsidian
+.obsidian/
 
 # Logs
 *.log

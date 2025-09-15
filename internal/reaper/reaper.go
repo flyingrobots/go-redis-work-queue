@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package reaper
 
 import (
@@ -65,8 +66,12 @@ func (r *Reaper) scanOnce(ctx context.Context) {
                 prio := job.Priority
                 dest := r.cfg.Worker.Queues[prio]
                 if dest == "" { dest = r.cfg.Worker.Queues[r.cfg.Producer.DefaultPriority] }
-                _ = r.rdb.LPush(ctx, dest, payload).Err()
-                r.log.Warn("requeued abandoned job", obs.String("id", job.ID), obs.String("to", dest), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID))
+                if err := r.rdb.LPush(ctx, dest, payload).Err(); err != nil {
+                    r.log.Error("requeue failed", obs.Err(err))
+                } else {
+                    obs.ReaperRecovered.Inc()
+                    r.log.Warn("requeued abandoned job", obs.String("id", job.ID), obs.String("to", dest), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID))
+                }
             }
         }
         if cursor == 0 { break }

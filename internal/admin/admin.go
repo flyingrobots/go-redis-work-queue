@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package admin
 
 import (
@@ -152,4 +153,111 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
         res.P95 = time.Duration(lats[int(math.Round(0.95*float64(len(lats)-1)))]*float64(time.Second))
     }
     return res, nil
+}
+
+// KeysStats summarizes managed Redis keys and queue lengths.
+type KeysStats struct {
+    QueueLengths      map[string]int64 `json:"queue_lengths"`
+    ProcessingLists   int64            `json:"processing_lists"`
+    ProcessingItems   int64            `json:"processing_items"`
+    Heartbeats        int64            `json:"heartbeats"`
+    RateLimitKey      string           `json:"rate_limit_key"`
+    RateLimitTTL      string           `json:"rate_limit_ttl,omitempty"`
+}
+
+// StatsKeys scans for managed keys and returns counts and lengths.
+func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (KeysStats, error) {
+    out := KeysStats{QueueLengths: map[string]int64{}}
+    // Known queues
+    qset := map[string]string{
+        "high": cfg.Worker.Queues["high"],
+        "low":  cfg.Worker.Queues["low"],
+        "completed": cfg.Worker.CompletedList,
+        "dead_letter": cfg.Worker.DeadLetterList,
+    }
+    for name, key := range qset {
+        if key == "" { continue }
+        n, err := rdb.LLen(ctx, key).Result()
+        if err != nil && err != redis.Nil { return out, err }
+        out.QueueLengths[name+"("+key+")"] = n
+    }
+    // Processing lists
+    var cursor uint64
+    for {
+        keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:worker:*:processing", 500).Result()
+        if err != nil { return out, err }
+        cursor = cur
+        out.ProcessingLists += int64(len(keys))
+        for _, k := range keys {
+            n, _ := rdb.LLen(ctx, k).Result()
+            out.ProcessingItems += n
+        }
+        if cursor == 0 { break }
+    }
+    // Heartbeats
+    cursor = 0
+    for {
+        keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:processing:worker:*", 1000).Result()
+        if err != nil { return out, err }
+        cursor = cur
+        out.Heartbeats += int64(len(keys))
+        if cursor == 0 { break }
+    }
+    // Rate limiter
+    if cfg.Producer.RateLimitKey != "" {
+        out.RateLimitKey = cfg.Producer.RateLimitKey
+        if ttl, err := rdb.TTL(ctx, cfg.Producer.RateLimitKey).Result(); err == nil && ttl > 0 {
+            out.RateLimitTTL = ttl.String()
+        }
+    }
+    return out, nil
+}
+
+// PurgeAll deletes common test keys used by this system, including
+// priority queues, completed/dead_letter, rate limiter key, and
+// per-worker processing lists and heartbeats. Returns number of keys deleted.
+func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
+    var deleted int64
+    // Explicit keys
+    keys := []string{
+        cfg.Worker.Queues["high"], cfg.Worker.Queues["low"],
+        cfg.Worker.CompletedList, cfg.Worker.DeadLetterList,
+    }
+    if cfg.Producer.RateLimitKey != "" {
+        keys = append(keys, cfg.Producer.RateLimitKey)
+    }
+    // Dedup
+    uniq := map[string]struct{}{}
+    ek := make([]string, 0, len(keys))
+    for _, k := range keys {
+        if k == "" { continue }
+        if _, ok := uniq[k]; ok { continue }
+        uniq[k] = struct{}{}
+        ek = append(ek, k)
+    }
+    if len(ek) > 0 {
+        n, err := rdb.Del(ctx, ek...).Result()
+        if err != nil { return deleted, err }
+        deleted += n
+    }
+    // Patterns: processing lists and heartbeats
+    patterns := []string{
+        "jobqueue:worker:*:processing",
+        "jobqueue:processing:worker:*",
+    }
+    for _, pat := range patterns {
+        var cursor uint64
+        for {
+            keys, cur, err := rdb.Scan(ctx, cursor, pat, 500).Result()
+            if err != nil { return deleted, err }
+            cursor = cur
+            if len(keys) > 0 {
+                n, err := rdb.Del(ctx, keys...).Result()
+                if err != nil { return deleted, err }
+                deleted += n
+            }
+            if cursor == 0 { break }
+        }
+    }
+    return deleted, nil
 }

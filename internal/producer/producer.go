@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package producer
 
 import (
@@ -29,39 +30,42 @@ func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Producer {
 
 func (p *Producer) Run(ctx context.Context) error {
     root := p.cfg.Producer.ScanDir
+    absRoot, errAbs := filepath.Abs(root)
+    if errAbs != nil {
+        return errAbs
+    }
     include := p.cfg.Producer.IncludeGlobs
     exclude := p.cfg.Producer.ExcludeGlobs
 
-    var files []string
     err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
         if err != nil { return err }
         if d.IsDir() { return nil }
+        // Safety: ensure file under root
+        abs, err2 := filepath.Abs(path)
+        if err2 != nil { return nil }
+        if !strings.HasPrefix(abs, absRoot+string(os.PathSeparator)) && abs != absRoot {
+            return nil
+        }
         rel, _ := filepath.Rel(root, path)
         // include check
         incMatch := len(include) == 0
         for _, g := range include { if ok, _ := doublestar.PathMatch(g, rel); ok { incMatch = true; break } }
         if !incMatch { return nil }
         for _, g := range exclude { if ok, _ := doublestar.PathMatch(g, rel); ok { return nil } }
-        files = append(files, path)
-        return nil
-    })
-    if err != nil {
-        return err
-    }
 
-    for _, f := range files {
+        // Per-file enqueue (streaming)
         select {
         case <-ctx.Done():
             return ctx.Err()
         default:
         }
         if err := p.rateLimit(ctx); err != nil { return err }
-        fi, err := os.Stat(f)
-        if err != nil { continue }
-        prio := p.priorityForExt(filepath.Ext(f))
+        fi, err := os.Stat(path)
+        if err != nil { return nil }
+        prio := p.priorityForExt(filepath.Ext(path))
         id := randID()
         traceID, spanID := randTraceAndSpan()
-        j := queue.NewJob(id, f, fi.Size(), prio, traceID, spanID)
+        j := queue.NewJob(id, abs, fi.Size(), prio, traceID, spanID)
         payload, _ := j.Marshal()
         key := p.cfg.Worker.Queues[prio]
         if key == "" { key = p.cfg.Worker.Queues[p.cfg.Producer.DefaultPriority] }
@@ -70,6 +74,10 @@ func (p *Producer) Run(ctx context.Context) error {
         }
         obs.JobsProduced.Inc()
         p.log.Info("enqueued job", obs.String("id", j.ID), obs.String("queue", key), obs.String("trace_id", j.TraceID), obs.String("span_id", j.SpanID))
+        return nil
+    })
+    if err != nil {
+        return err
     }
     return nil
 }

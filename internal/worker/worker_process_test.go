@@ -1,3 +1,4 @@
+// Copyright 2025 James Ross
 package worker
 
 import (
@@ -63,4 +64,3 @@ func TestProcessJobRetryThenDLQ(t *testing.T) {
     if ok2 { t.Fatalf("expected failure to DLQ") }
     if n, _ := rdb.LLen(ctx, cfg.Worker.DeadLetterList).Result(); n != 1 { t.Fatalf("expected DLQ 1, got %d", n) }
 }
-
