@@ -3,14 +3,11 @@ package eventhooks
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"math/rand"
-	"net/http"
-	"strconv"
 	"sync"
 	"time"
 

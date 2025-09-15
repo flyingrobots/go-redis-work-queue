@@ -2,7 +2,6 @@
 package eventhooks
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/redis/go-redis/v9"
 )
 
 // EventHooksService provides HTTP handlers for event hooks management
@@ -345,7 +343,7 @@ func (ehs *EventHooksService) ListDeadLetterHooks(w http.ResponseWriter, r *http
 // GetDeadLetterHook handles retrieving a specific dead letter hook
 func (ehs *EventHooksService) GetDeadLetterHook(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
+	_ = vars["id"]
 
 	// This would retrieve from Redis
 	// For now, return not found

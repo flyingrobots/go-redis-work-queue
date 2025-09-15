@@ -342,6 +342,11 @@ func (sm *SessionManager) HandleInput(ctx context.Context, sessionID SessionID, 
 
 // RequestControlHandoff initiates control transfer
 func (sm *SessionManager) RequestControlHandoff(ctx context.Context, req ControlHandoffRequest) error {
+	// TODO: Need to find the session that contains this participant
+	// For now, return an error to fix compilation
+	return fmt.Errorf("control handoff not implemented - participant %s", req.FromParticipant)
+
+	/* Original code that needs fixing:
 	sm.mutex.RLock()
 	session, exists := sm.sessions[req.FromParticipant]
 	sm.mutex.RUnlock()

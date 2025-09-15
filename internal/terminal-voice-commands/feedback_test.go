@@ -1,6 +1,7 @@
 package voice
 
 import (
+	"regexp"
 	"testing"
 	"time"
 )
@@ -622,5 +623,3 @@ func stringContainsSubstring(s, substr string) bool {
 	return false
 }
 
-// Add missing import for regexp
-import "regexp"
