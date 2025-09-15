@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -138,11 +139,13 @@ func (s *MockNATSServer) PublishWithHeaders(subject string, data []byte, headers
 
 	s.subjects[subject] = append(s.subjects[subject], message)
 
-	// Notify subscribers
-	if subs, exists := s.subscribers[subject]; exists {
-		for _, sub := range subs {
-			if sub.Active {
-				go sub.Handler(&message)
+	// Notify subscribers (including pattern matches)
+	for pattern, subs := range s.subscribers {
+		if pattern == subject || s.matchesPattern(pattern, subject) {
+			for _, sub := range subs {
+				if sub.Active {
+					go sub.Handler(&message)
+				}
 			}
 		}
 	}
@@ -163,6 +166,29 @@ func (s *MockNATSServer) Subscribe(subject string, handler func(*MockMessage)) e
 
 	s.subscribers[subject] = append(s.subscribers[subject], subscription)
 	return nil
+}
+
+// matchesPattern checks if a subject matches a subscription pattern
+func (s *MockNATSServer) matchesPattern(pattern, subject string) bool {
+	// Simple wildcard matching for testing
+	// "*" matches any single token, ">" matches remaining tokens
+	patternParts := strings.Split(pattern, ".")
+	subjectParts := strings.Split(subject, ".")
+
+	if len(patternParts) != len(subjectParts) {
+		return false
+	}
+
+	for i, patternPart := range patternParts {
+		if patternPart == "*" {
+			continue // Wildcard matches any token
+		}
+		if patternPart != subjectParts[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // GetMessages returns all messages for a subject

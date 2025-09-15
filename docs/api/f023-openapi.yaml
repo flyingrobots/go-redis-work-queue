@@ -1,0 +1,1407 @@
+openapi: 3.0.3
+info:
+  title: Smart Retry Strategies API
+  description: |
+    The Smart Retry Strategies API provides intelligent, adaptive retry timing based on
+    historical failure patterns, Bayesian inference, and machine learning predictions.
+
+    This API allows management of retry strategies, model training and deployment,
+    prediction generation, and comprehensive analytics for retry performance optimization.
+  version: 1.0.0
+  contact:
+    name: Smart Retry Team
+    email: smart-retry@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue.company.com/v1
+    description: Production server
+  - url: https://staging-api.queue.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+paths:
+  /retry/strategies:
+    get:
+      summary: List retry strategies
+      description: Retrieve all configured retry strategies with their performance metrics
+      tags: [Strategy Management]
+      parameters:
+        - name: queue
+          in: query
+          description: Filter strategies by queue name
+          schema:
+            type: string
+        - name: enabled
+          in: query
+          description: Filter by enabled status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of strategies to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of strategies to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of retry strategies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  strategies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RetryStrategy'
+                  total:
+                    type: integer
+                    description: Total number of strategies
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Create retry strategy
+      description: Create a new intelligent retry strategy for specified queues
+      tags: [Strategy Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRetryStrategyRequest'
+      responses:
+        '201':
+          description: Strategy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryStrategy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Strategy already exists for specified queues
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /retry/strategies/{strategyId}:
+    get:
+      summary: Get retry strategy
+      description: Retrieve detailed information about a specific retry strategy
+      tags: [Strategy Management]
+      parameters:
+        - name: strategyId
+          in: path
+          required: true
+          description: Unique identifier for the retry strategy
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Retry strategy details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryStrategy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    put:
+      summary: Update retry strategy
+      description: Update configuration for an existing retry strategy
+      tags: [Strategy Management]
+      parameters:
+        - name: strategyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRetryStrategyRequest'
+      responses:
+        '200':
+          description: Strategy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryStrategy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    delete:
+      summary: Delete retry strategy
+      description: Remove a retry strategy and revert to default behavior
+      tags: [Strategy Management]
+      parameters:
+        - name: strategyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Strategy deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /retry/models:
+    get:
+      summary: List trained models
+      description: Retrieve information about all trained retry prediction models
+      tags: [Model Management]
+      parameters:
+        - name: type
+          in: query
+          description: Filter by model type
+          schema:
+            type: string
+            enum: [heuristic, bayesian, ml]
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by model status
+          schema:
+            type: string
+            enum: [training, active, deprecated, failed]
+      responses:
+        '200':
+          description: List of trained models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RetryModel'
+                  total:
+                    type: integer
+
+  /retry/models/{modelType}/{queue}:
+    get:
+      summary: Get model details
+      description: Retrieve detailed information about a specific retry model
+      tags: [Model Management]
+      parameters:
+        - name: modelType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [heuristic, bayesian, ml]
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryModel'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete model
+      description: Remove a trained model and fall back to lower-tier intelligence
+      tags: [Model Management]
+      parameters:
+        - name: modelType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [bayesian, ml]
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Model deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /retry/models/{modelType}/retrain:
+    post:
+      summary: Retrain models
+      description: Trigger retraining of models with latest failure data
+      tags: [Model Management]
+      parameters:
+        - name: modelType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [bayesian, ml]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrainRequest'
+      responses:
+        '202':
+          description: Retraining job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /retry/predict:
+    post:
+      summary: Get retry prediction
+      description: Generate intelligent retry timing recommendation for a job failure
+      tags: [Prediction]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+      responses:
+        '200':
+          description: Retry recommendation generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryRecommendation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /retry/test:
+    post:
+      summary: Test prediction accuracy
+      description: Test retry prediction against known historical outcomes
+      tags: [Prediction]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestPredictionRequest'
+      responses:
+        '200':
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestPredictionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /retry/recommendations/{recommendationId}:
+    get:
+      summary: Get recommendation details
+      description: Retrieve detailed information about a specific retry recommendation
+      tags: [Prediction]
+      parameters:
+        - name: recommendationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recommendation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryRecommendation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /retry/metrics:
+    get:
+      summary: Get retry metrics
+      description: Retrieve comprehensive retry performance metrics and analytics
+      tags: [Analytics]
+      parameters:
+        - name: from
+          in: query
+          description: Start date for metrics (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date for metrics (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: queue
+          in: query
+          description: Filter by specific queue
+          schema:
+            type: string
+        - name: granularity
+          in: query
+          description: Time granularity for metrics
+          schema:
+            type: string
+            enum: [hour, day, week]
+            default: day
+      responses:
+        '200':
+          description: Retry metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryMetrics'
+
+  /retry/metrics/performance:
+    get:
+      summary: Get model performance metrics
+      description: Retrieve detailed performance metrics for all retry models
+      tags: [Analytics]
+      parameters:
+        - name: model_type
+          in: query
+          schema:
+            type: string
+            enum: [heuristic, bayesian, ml]
+        - name: queue
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model performance metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelPerformanceMetrics'
+
+  /retry/analytics/success-rates:
+    get:
+      summary: Get success rate analytics
+      description: Analyze retry success rates across different dimensions
+      tags: [Analytics]
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: group_by
+          in: query
+          description: Dimension to group results by
+          schema:
+            type: string
+            enum: [queue, error_class, time_of_day, tenant]
+      responses:
+        '200':
+          description: Success rate analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessRateAnalytics'
+
+  /retry/analytics/recommendations:
+    get:
+      summary: Get recommendation analytics
+      description: Analyze recommendation patterns and effectiveness
+      tags: [Analytics]
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Recommendation analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationAnalytics'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    RetryStrategy:
+      type: object
+      required: [id, name, queues, enabled, config]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the strategy
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable strategy name
+        description:
+          type: string
+          maxLength: 1000
+          description: Strategy description and purpose
+        queues:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Queues this strategy applies to
+        enabled:
+          type: boolean
+          description: Whether the strategy is active
+        config:
+          $ref: '#/components/schemas/StrategyConfig'
+        guardrails:
+          $ref: '#/components/schemas/Guardrails'
+        performance:
+          $ref: '#/components/schemas/StrategyPerformance'
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        last_modified_at:
+          type: string
+          format: date-time
+        last_modified_by:
+          type: string
+
+    StrategyConfig:
+      type: object
+      properties:
+        enable_ml:
+          type: boolean
+          default: false
+          description: Enable machine learning predictions
+        enable_bayesian:
+          type: boolean
+          default: true
+          description: Enable Bayesian inference models
+        enable_heuristics:
+          type: boolean
+          default: true
+          description: Enable heuristic fallback rules
+        bayesian_confidence_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Minimum confidence for Bayesian recommendations
+        ml_confidence_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.8
+          description: Minimum confidence for ML recommendations
+        success_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.85
+          description: Target success probability for recommendations
+        max_delay:
+          type: string
+          format: duration
+          default: "300s"
+          description: Maximum retry delay allowed
+        min_delay:
+          type: string
+          format: duration
+          default: "1s"
+          description: Minimum retry delay allowed
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+          description: Maximum retry attempts allowed
+
+    Guardrails:
+      type: object
+      properties:
+        max_retries_per_minute:
+          type: integer
+          minimum: 1
+          default: 1000
+          description: Maximum retries per minute across all jobs
+        max_retries_per_queue:
+          type: integer
+          minimum: 1
+          description: Maximum retries per minute per queue
+        circuit_breaker_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.5
+          description: Failure rate threshold for circuit breaker
+        tenant_quotas:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 1
+          description: Per-tenant retry quotas
+
+    StrategyPerformance:
+      type: object
+      properties:
+        success_rate_improvement:
+          type: number
+          description: Improvement in success rate vs baseline
+        retry_reduction:
+          type: number
+          description: Percentage reduction in total retry attempts
+        average_time_to_success:
+          type: string
+          format: duration
+          description: Average time from failure to successful retry
+        cost_savings:
+          type: number
+          description: Estimated cost savings in USD
+        last_evaluated:
+          type: string
+          format: date-time
+
+    CreateRetryStrategyRequest:
+      type: object
+      required: [name, queues]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        queues:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        enabled:
+          type: boolean
+          default: true
+        config:
+          $ref: '#/components/schemas/StrategyConfig'
+        guardrails:
+          $ref: '#/components/schemas/Guardrails'
+
+    UpdateRetryStrategyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+        config:
+          $ref: '#/components/schemas/StrategyConfig'
+        guardrails:
+          $ref: '#/components/schemas/Guardrails'
+
+    RetryModel:
+      type: object
+      required: [model_id, type, queue, status]
+      properties:
+        model_id:
+          type: string
+          description: Unique model identifier
+        type:
+          type: string
+          enum: [heuristic, bayesian, ml]
+          description: Model type
+        queue:
+          type: string
+          description: Queue this model applies to
+        error_class:
+          type: string
+          description: Error class this model handles
+        status:
+          type: string
+          enum: [training, active, deprecated, failed]
+          description: Current model status
+        performance:
+          $ref: '#/components/schemas/ModelPerformance'
+        training_data:
+          $ref: '#/components/schemas/TrainingDataInfo'
+        last_updated:
+          type: string
+          format: date-time
+        version:
+          type: string
+          description: Model version identifier
+
+    ModelPerformance:
+      type: object
+      properties:
+        accuracy:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Model prediction accuracy
+        precision:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Model precision score
+        recall:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Model recall score
+        f1_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Model F1 score
+        predictions_made:
+          type: integer
+          minimum: 0
+          description: Total predictions made by this model
+        correct_predictions:
+          type: integer
+          minimum: 0
+          description: Number of correct predictions
+
+    TrainingDataInfo:
+      type: object
+      properties:
+        sample_count:
+          type: integer
+          minimum: 0
+          description: Number of training samples
+        date_range:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+        feature_count:
+          type: integer
+          description: Number of features used
+
+    RetrainRequest:
+      type: object
+      properties:
+        queues:
+          type: array
+          items:
+            type: string
+          description: Specific queues to retrain (empty for all)
+        force:
+          type: boolean
+          default: false
+          description: Force retraining even if recent models exist
+        training_window_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 90
+          description: Number of days of historical data to use
+
+    TrainingJob:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Training job identifier
+        model_type:
+          type: string
+          enum: [bayesian, ml]
+        queues:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        started_at:
+          type: string
+          format: date-time
+        estimated_completion:
+          type: string
+          format: date-time
+        progress_percentage:
+          type: number
+          minimum: 0.0
+          maximum: 100.0
+
+    PredictionRequest:
+      type: object
+      required: [job_type, queue, error_class, features]
+      properties:
+        job_type:
+          type: string
+          description: Type of job that failed
+        queue:
+          type: string
+          description: Queue containing the failed job
+        error_class:
+          type: string
+          description: Classification of the error
+        features:
+          $ref: '#/components/schemas/RetryFeatures'
+        override_model:
+          type: string
+          enum: [heuristic, bayesian, ml]
+          description: Force use of specific model type
+
+    RetryFeatures:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: Unique job identifier
+        tenant_id:
+          type: string
+          description: Tenant identifier
+        attempt_number:
+          type: integer
+          minimum: 1
+          description: Current retry attempt number
+        payload_size:
+          type: integer
+          minimum: 0
+          description: Job payload size in bytes
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+          description: Job priority level
+        error_code:
+          type: string
+          description: Specific error code from failure
+        http_status:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: HTTP status code if applicable
+        execution_time:
+          type: string
+          format: duration
+          description: Time job ran before failing
+        time_of_day:
+          type: integer
+          minimum: 0
+          maximum: 23
+          description: Hour of day when failure occurred
+        day_of_week:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: Day of week when failure occurred
+        worker_version:
+          type: string
+          description: Version of worker that processed job
+        cpu_utilization:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: CPU utilization at time of failure
+        memory_usage:
+          type: number
+          minimum: 0.0
+          description: Memory usage in MB at time of failure
+        queue_depth:
+          type: integer
+          minimum: 0
+          description: Number of jobs in queue at time of failure
+        recent_failures:
+          type: integer
+          minimum: 0
+          description: Number of failures in last hour
+        success_rate_24h:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Success rate for similar jobs in last 24h
+        downstream_latency_p95:
+          type: number
+          minimum: 0.0
+          description: 95th percentile downstream latency in ms
+        circuit_breaker_state:
+          type: string
+          enum: [closed, open, half_open]
+          description: Circuit breaker state for downstream services
+
+    RetryRecommendation:
+      type: object
+      required: [delay, confidence, model_used, reasoning]
+      properties:
+        delay:
+          type: string
+          format: duration
+          description: Recommended retry delay
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence in recommendation
+        success_probability:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Estimated success probability
+        model_used:
+          type: string
+          enum: [heuristic, bayesian, ml]
+          description: Model that generated recommendation
+        reasoning:
+          type: string
+          description: Human-readable explanation of recommendation
+        factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendationFactor'
+          description: Factors that influenced the recommendation
+        alternatives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alternative'
+          description: Alternative retry options
+        recommendation_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this recommendation
+        generated_at:
+          type: string
+          format: date-time
+          description: When recommendation was generated
+        guardrails_applied:
+          type: array
+          items:
+            type: string
+          description: Guardrails that were applied to this recommendation
+        override_reason:
+          type: string
+          description: Reason if recommendation was overridden
+
+    RecommendationFactor:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Factor name
+        weight:
+          type: number
+          description: Weight of this factor in decision
+        impact:
+          type: string
+          enum: [increases_delay, decreases_delay, neutral]
+          description: How this factor affects delay
+        description:
+          type: string
+          description: Human-readable factor description
+
+    Alternative:
+      type: object
+      properties:
+        delay:
+          type: string
+          format: duration
+          description: Alternative delay option
+        success_probability:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Success probability for this option
+        reasoning:
+          type: string
+          description: Reasoning for this alternative
+        tradeoffs:
+          type: string
+          description: Tradeoffs of choosing this alternative
+
+    TestPredictionRequest:
+      type: object
+      required: [test_data]
+      properties:
+        test_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoricalFailure'
+          minItems: 1
+          maxItems: 1000
+          description: Historical failures to test against
+        model_type:
+          type: string
+          enum: [heuristic, bayesian, ml]
+          description: Specific model type to test
+
+    HistoricalFailure:
+      type: object
+      required: [features, actual_outcome]
+      properties:
+        features:
+          $ref: '#/components/schemas/RetryFeatures'
+        actual_outcome:
+          $ref: '#/components/schemas/ActualOutcome'
+
+    ActualOutcome:
+      type: object
+      required: [retry_delay, success, time_to_success]
+      properties:
+        retry_delay:
+          type: string
+          format: duration
+          description: Actual delay that was used
+        success:
+          type: boolean
+          description: Whether retry succeeded
+        time_to_success:
+          type: string
+          format: duration
+          description: Total time from failure to success
+        attempt_number:
+          type: integer
+          description: Attempt number when success occurred
+
+    TestPredictionResult:
+      type: object
+      properties:
+        overall_accuracy:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Overall prediction accuracy
+        improvement_vs_baseline:
+          type: number
+          description: Improvement over exponential backoff baseline
+        test_cases:
+          type: integer
+          description: Number of test cases evaluated
+        by_error_class:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ErrorClassResults'
+          description: Results broken down by error class
+        confusion_matrix:
+          $ref: '#/components/schemas/ConfusionMatrix'
+
+    ErrorClassResults:
+      type: object
+      properties:
+        accuracy:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        sample_count:
+          type: integer
+        average_improvement:
+          type: number
+
+    ConfusionMatrix:
+      type: object
+      properties:
+        true_positives:
+          type: integer
+        false_positives:
+          type: integer
+        true_negatives:
+          type: integer
+        false_negatives:
+          type: integer
+
+    RetryMetrics:
+      type: object
+      properties:
+        time_range:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+        overall_performance:
+          $ref: '#/components/schemas/OverallPerformance'
+        by_model:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ModelUsageMetrics'
+        by_queue:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/QueueMetrics'
+        guardrail_stats:
+          $ref: '#/components/schemas/GuardrailStats'
+
+    OverallPerformance:
+      type: object
+      properties:
+        success_rate_improvement:
+          type: number
+          description: Overall improvement in success rate
+        average_time_to_success:
+          type: string
+          format: duration
+          description: Average time from failure to success
+        total_retries_saved:
+          type: integer
+          description: Total retry attempts saved
+        cost_savings_usd:
+          type: number
+          description: Estimated cost savings in USD
+        predictions_made:
+          type: integer
+          description: Total predictions made in time range
+
+    ModelUsageMetrics:
+      type: object
+      properties:
+        usage_percentage:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Percentage of predictions from this model
+        accuracy:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Model accuracy in time range
+        avg_confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Average confidence score
+        avg_delay:
+          type: string
+          format: duration
+          description: Average recommended delay
+
+    QueueMetrics:
+      type: object
+      properties:
+        predictions_made:
+          type: integer
+        success_rate_improvement:
+          type: number
+        retry_reduction:
+          type: number
+        dominant_model:
+          type: string
+          enum: [heuristic, bayesian, ml]
+
+    GuardrailStats:
+      type: object
+      properties:
+        overrides_applied:
+          type: integer
+          description: Number of times guardrails overrode recommendations
+        quota_violations:
+          type: integer
+          description: Number of quota violations prevented
+        circuit_breaker_activations:
+          type: integer
+          description: Number of circuit breaker activations
+
+    ModelPerformanceMetrics:
+      type: object
+      properties:
+        by_model_type:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ModelTypeMetrics'
+        by_queue:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/QueueModelMetrics'
+
+    ModelTypeMetrics:
+      type: object
+      properties:
+        active_models:
+          type: integer
+        total_predictions:
+          type: integer
+        avg_accuracy:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        avg_confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+
+    QueueModelMetrics:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueModelInfo'
+
+    QueueModelInfo:
+      type: object
+      properties:
+        model_type:
+          type: string
+          enum: [heuristic, bayesian, ml]
+        error_classes:
+          type: array
+          items:
+            type: string
+        performance:
+          $ref: '#/components/schemas/ModelPerformance'
+
+    SuccessRateAnalytics:
+      type: object
+      properties:
+        overall_success_rate:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        baseline_success_rate:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        improvement:
+          type: number
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuccessRateGroup'
+
+    SuccessRateGroup:
+      type: object
+      properties:
+        group_key:
+          type: string
+          description: Value for the group_by dimension
+        success_rate:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        baseline_rate:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        improvement:
+          type: number
+        sample_count:
+          type: integer
+
+    RecommendationAnalytics:
+      type: object
+      properties:
+        total_recommendations:
+          type: integer
+        by_model:
+          type: object
+          additionalProperties:
+            type: integer
+        avg_confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        delay_distribution:
+          $ref: '#/components/schemas/DelayDistribution'
+        accuracy_over_time:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimePoint'
+
+    DelayDistribution:
+      type: object
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/DelayBucket'
+
+    DelayBucket:
+      type: object
+      properties:
+        min_delay:
+          type: string
+          format: duration
+        max_delay:
+          type: string
+          format: duration
+        count:
+          type: integer
+        percentage:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+
+    TimePoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+        trace_id:
+          type: string
+          description: Request trace ID
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+
+tags:
+  - name: Strategy Management
+    description: Manage intelligent retry strategies
+  - name: Model Management
+    description: Train and manage prediction models
+  - name: Prediction
+    description: Generate retry recommendations
+  - name: Analytics
+    description: Analyze retry performance and patterns

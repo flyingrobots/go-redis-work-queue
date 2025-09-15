@@ -279,8 +279,6 @@ func TestWorkflowTemplates_E2E(t *testing.T) {
 }
 
 func TestCanvasOperations_E2E(t *testing.T) {
-	builder := NewDAGBuilder(Config{})
-
 	// Create a simple workflow for canvas testing
 	workflow := &WorkflowDefinition{
 		ID:   "canvas-test",

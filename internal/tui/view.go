@@ -200,6 +200,31 @@ func (m model) View() string {
 		fbBox.SetRows([]*flexbox.Row{single})
 		body = fbBox.Render()
 
+	case tabEventHooks:
+		// Event Hooks management view
+		lines := []string{
+			"Event Hooks - Real-time Job Event Notifications",
+			"",
+			"📡 Webhook Subscriptions: 0 active",
+			"📊 Event Bus: Running | Events: 0 | Subscribers: 0",
+			"🔄 Dead Letter Hooks: 0 failed deliveries",
+			"",
+			"Available Events:",
+			"  • job_enqueued, job_started, job_succeeded",
+			"  • job_failed, job_dlq, job_retried",
+			"",
+			"Management via Admin API:",
+			"  POST /api/v1/event-hooks/webhooks - Create subscription",
+			"  GET  /api/v1/event-hooks/health - View status",
+		}
+		bodyW, bodyH := m.bodyDims()
+		fbBox := flexbox.New(bodyW, bodyH)
+		single := fbBox.NewRow().AddCells(
+			flexbox.NewCell(1, 1).SetStyle(panel).SetContent(m.boxTitle.Render("Event Hooks") + "\n" + strings.Join(lines, "\n")),
+		)
+		fbBox.SetRows([]*flexbox.Row{single})
+		body = fbBox.Render()
+
 	case tabSettings:
 		// Subset of key config values
 		lines := []string{

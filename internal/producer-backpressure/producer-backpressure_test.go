@@ -420,7 +420,7 @@ func TestCacheHitBehavior(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Third call should hit stats provider again
-	decision3, err := controller.SuggestThrottle(ctx, MediumPriority, "test-queue")
+	_, err = controller.SuggestThrottle(ctx, MediumPriority, "test-queue")
 	require.NoError(t, err)
 	assert.Greater(t, statsProvider.callCount, callCountAfterFirst)
 }
