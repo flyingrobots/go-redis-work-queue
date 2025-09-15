@@ -23,7 +23,7 @@ jobs:
         with:
           go-version: '1.25.x'
       - name: Install git-chglog
-        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4
       - name: Generate CHANGELOG.md
         run: |
           $(go env GOPATH)/bin/git-chglog -o CHANGELOG.md || echo "git-chglog not configured; keeping existing CHANGELOG.md"
