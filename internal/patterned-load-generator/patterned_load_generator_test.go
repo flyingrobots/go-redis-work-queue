@@ -3,9 +3,7 @@ package patternedloadgenerator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"math"
 	"testing"
 	"time"
 
