@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if [ -f scripts/update_progress.py ]; then
+  echo "[pre-commit] Recomputing weighted progress and updating bars…"
+  if ! python3 scripts/update_progress.py; then
+    echo "[pre-commit] Progress update failed. Aborting commit." >&2
+    exit 1
+  fi
+  # Stage updated docs so the commit includes refreshed bars/KLoC
+  git add docs/features-ledger.md README.md || true
+fi
+
+exit 0
+

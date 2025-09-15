@@ -9,6 +9,20 @@ Production-ready Go-based job queue system backed by Redis. Provides producer, w
 
 See docs/ for the Product Requirements Document (PRD) and detailed design. A sample configuration will be provided in config/config.example.yaml once the implementation lands.
 
+## Progress
+
+For full details, see the Features Ledger at [docs/features-ledger.md](docs/features-ledger.md).
+
+<!-- progress:begin -->
+```text
+██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
+------------|-------------|------------|
+           MVP          Alpha    v1.0.0 
+```
+<!-- progress:end -->
+
+----
+
 ## Quick start
 
 - Clone the repo
