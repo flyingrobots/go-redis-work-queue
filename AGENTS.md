@@ -139,6 +139,11 @@ Progress automation
 - The script weights features by approximate Go LOC of the linked code paths and recomputes the overall percent, updating both docs in place between `<!-- progress:begin -->` and `<!-- progress:end -->` markers.
 - When adding rows, use valid repo paths in the Code column (e.g., `[internal/admin-api](../internal/admin-api)`) so LOC can be computed. If no code path, the row gets a minimum weight.
 
+Pre-commit hook
+- A pre-commit hook runs the progress update script automatically and stages `docs/features-ledger.md` and `README.md` so bars/KLoC stay current.
+- Enable hooks once per clone: `make hooks` (sets `core.hooksPath=.githooks`).
+- Reminder: Whenever you touch `AGENTS.md`, also ensure the features ledger is current (the hook will do this, but run the script manually if needed).
+
 Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done. This is your backlog.
 
 ### Prioritized Backlog

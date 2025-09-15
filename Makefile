@@ -36,7 +36,7 @@ version:
 hooks:
 	@git config core.hooksPath .githooks
 	@chmod +x .githooks/pre-commit
-	@echo "Git hooks enabled (pre-commit markdownlint autofix)."
+	@echo "Git hooks enabled (pre-commit updates progress bars and stages docs)."
 
 .PHONY: mdlint
 mdlint:
