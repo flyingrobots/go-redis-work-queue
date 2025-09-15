@@ -1,0 +1,777 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.queue-system.company.com/schemas/f021-backpressure.json",
+  "title": "Producer Backpressure Data Models",
+  "description": "JSON Schema definitions for the Producer Backpressure system (F021) data models",
+  "version": "1.0.0",
+
+  "definitions": {
+    "Priority": {
+      "$id": "#/definitions/Priority",
+      "type": "string",
+      "title": "Job Priority Level",
+      "description": "Priority level for job processing and backpressure decisions",
+      "enum": ["high", "medium", "low"],
+      "examples": ["medium"]
+    },
+
+    "CircuitState": {
+      "$id": "#/definitions/CircuitState",
+      "type": "string",
+      "title": "Circuit Breaker State",
+      "description": "Current state of a circuit breaker",
+      "enum": ["closed", "open", "half_open"],
+      "examples": ["closed"]
+    },
+
+    "ThresholdZone": {
+      "$id": "#/definitions/ThresholdZone",
+      "type": "string",
+      "title": "Threshold Zone",
+      "description": "Current backlog zone based on threshold configuration",
+      "enum": ["green", "yellow", "red"],
+      "examples": ["yellow"]
+    },
+
+    "BacklogWindow": {
+      "$id": "#/definitions/BacklogWindow",
+      "type": "object",
+      "title": "Backlog Threshold Window",
+      "description": "Defines backlog ranges for different throttling behaviors",
+      "required": ["green_max", "yellow_max", "red_max"],
+      "properties": {
+        "green_max": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Green Zone Maximum",
+          "description": "Maximum backlog for green zone (no throttling)",
+          "examples": [500]
+        },
+        "yellow_max": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "Yellow Zone Maximum",
+          "description": "Maximum backlog for yellow zone (light throttling)",
+          "examples": [2000]
+        },
+        "red_max": {
+          "type": "integer",
+          "minimum": 1,
+          "title": "Red Zone Maximum",
+          "description": "Maximum backlog for red zone (heavy throttling/shedding)",
+          "examples": [5000]
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "green_max": 500,
+          "yellow_max": 2000,
+          "red_max": 5000
+        }
+      ]
+    },
+
+    "QueueStats": {
+      "$id": "#/definitions/QueueStats",
+      "type": "object",
+      "title": "Queue Health Statistics",
+      "description": "Real-time queue health metrics for backpressure decisions",
+      "required": [
+        "queue_name",
+        "current_backlog",
+        "processing_rate",
+        "oldest_job_age_ms",
+        "current_zone",
+        "last_updated"
+      ],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "title": "Queue Name",
+          "description": "Name of the queue",
+          "examples": ["email-queue"]
+        },
+        "current_backlog": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Current Backlog",
+          "description": "Current number of jobs in queue",
+          "examples": [1250]
+        },
+        "processing_rate": {
+          "type": "number",
+          "minimum": 0,
+          "title": "Processing Rate",
+          "description": "Jobs processed per second (recent average)",
+          "examples": [45.7]
+        },
+        "oldest_job_age_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Oldest Job Age",
+          "description": "Age of oldest job in milliseconds",
+          "examples": [30000]
+        },
+        "avg_job_latency_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Average Job Latency",
+          "description": "Average job processing latency in milliseconds",
+          "examples": [150]
+        },
+        "rate_limit_budget": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "title": "Rate Limit Budget",
+          "description": "Remaining rate limit budget (0.0 to 1.0)",
+          "examples": [0.75]
+        },
+        "current_zone": {
+          "$ref": "#/definitions/ThresholdZone"
+        },
+        "worker_count": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Worker Count",
+          "description": "Number of active workers processing this queue",
+          "examples": [5]
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated",
+          "description": "When these stats were last updated",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThresholdConfig": {
+      "$id": "#/definitions/ThresholdConfig",
+      "type": "object",
+      "title": "Threshold Configuration",
+      "description": "Threshold configuration for a specific queue and priority level",
+      "required": ["queue_name", "priority", "thresholds"],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "title": "Queue Name",
+          "description": "Name of the queue",
+          "examples": ["email-queue"]
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "thresholds": {
+          "$ref": "#/definitions/BacklogWindow"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At",
+          "description": "When these thresholds were last updated",
+          "examples": ["2024-01-15T09:00:00Z"]
+        },
+        "updated_by": {
+          "type": "string",
+          "title": "Updated By",
+          "description": "User or system that updated these thresholds",
+          "examples": ["admin", "auto-tuner"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CircuitBreakerConfig": {
+      "$id": "#/definitions/CircuitBreakerConfig",
+      "type": "object",
+      "title": "Circuit Breaker Configuration",
+      "description": "Configuration parameters for circuit breaker behavior",
+      "required": [
+        "failure_threshold",
+        "recovery_threshold",
+        "trip_window_ms",
+        "recovery_timeout_ms",
+        "probe_interval_ms"
+      ],
+      "properties": {
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Failure Threshold",
+          "description": "Number of failures to trip circuit breaker",
+          "examples": [5]
+        },
+        "recovery_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Recovery Threshold",
+          "description": "Number of successes to close circuit breaker",
+          "examples": [3]
+        },
+        "trip_window_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 300000,
+          "title": "Trip Window",
+          "description": "Time window for failure counting in milliseconds",
+          "examples": [30000]
+        },
+        "recovery_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000,
+          "title": "Recovery Timeout",
+          "description": "Wait time before allowing probe in milliseconds",
+          "examples": [60000]
+        },
+        "probe_interval_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 60000,
+          "title": "Probe Interval",
+          "description": "Interval between probes in half-open state in milliseconds",
+          "examples": [10000]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CircuitBreakerState": {
+      "$id": "#/definitions/CircuitBreakerState",
+      "type": "object",
+      "title": "Circuit Breaker State",
+      "description": "Current state and metrics of a circuit breaker",
+      "required": [
+        "queue_name",
+        "state",
+        "failure_count",
+        "success_count",
+        "last_state_change"
+      ],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "title": "Queue Name",
+          "description": "Name of the queue",
+          "examples": ["email-queue"]
+        },
+        "state": {
+          "$ref": "#/definitions/CircuitState"
+        },
+        "failure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Failure Count",
+          "description": "Current failure count in the current window",
+          "examples": [2]
+        },
+        "success_count": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Success Count",
+          "description": "Current success count in the current window",
+          "examples": [8]
+        },
+        "last_state_change": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last State Change",
+          "description": "When the circuit last changed state",
+          "examples": ["2024-01-15T10:25:00Z"]
+        },
+        "next_probe_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Next Probe Time",
+          "description": "When the next probe will be attempted (half-open state only)",
+          "examples": ["2024-01-15T10:35:00Z"]
+        },
+        "trip_reason": {
+          "type": "string",
+          "maxLength": 500,
+          "title": "Trip Reason",
+          "description": "Reason why circuit was tripped (if manual)",
+          "examples": ["Emergency load shedding during incident"]
+        },
+        "config": {
+          "$ref": "#/definitions/CircuitBreakerConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BackpressureConfig": {
+      "$id": "#/definitions/BackpressureConfig",
+      "type": "object",
+      "title": "Backpressure System Configuration",
+      "description": "Overall configuration for the backpressure system",
+      "required": [
+        "poll_interval_ms",
+        "poll_jitter_ms",
+        "poll_timeout_ms"
+      ],
+      "properties": {
+        "poll_interval_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000,
+          "title": "Poll Interval",
+          "description": "Base polling interval in milliseconds",
+          "examples": [5000]
+        },
+        "poll_jitter_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "title": "Poll Jitter",
+          "description": "Random jitter added to polling interval in milliseconds",
+          "examples": [1000]
+        },
+        "poll_timeout_ms": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 30000,
+          "title": "Poll Timeout",
+          "description": "Timeout for admin API calls in milliseconds",
+          "examples": [2000]
+        },
+        "cache_ttl_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 300000,
+          "title": "Cache TTL",
+          "description": "Time-to-live for cached stats in milliseconds",
+          "examples": [30000]
+        },
+        "fallback_mode": {
+          "type": "boolean",
+          "title": "Fallback Mode",
+          "description": "Use cached values when API is unavailable",
+          "examples": [true]
+        },
+        "graceful_degrade_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600000,
+          "title": "Graceful Degrade",
+          "description": "Time to gradually relax throttling during outages in milliseconds",
+          "examples": [120000]
+        },
+        "manual_override_enabled": {
+          "type": "boolean",
+          "title": "Manual Override Enabled",
+          "description": "Allow manual override of backpressure decisions",
+          "examples": [true]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RecommendationRequest": {
+      "$id": "#/definitions/RecommendationRequest",
+      "type": "object",
+      "title": "Throttling Recommendation Request",
+      "description": "Request for specific throttling recommendations",
+      "required": ["queue_name", "priority"],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "title": "Queue Name",
+          "description": "Name of the queue",
+          "examples": ["email-queue"]
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "current_rate": {
+          "type": "number",
+          "minimum": 0,
+          "title": "Current Rate",
+          "description": "Current enqueue rate in jobs per second",
+          "examples": [10.5]
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "title": "Batch Size",
+          "description": "Number of jobs in current batch",
+          "examples": [5]
+        },
+        "client_id": {
+          "type": "string",
+          "maxLength": 100,
+          "title": "Client ID",
+          "description": "Identifier for the requesting client",
+          "examples": ["payment-service-v2"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RecommendationResponse": {
+      "$id": "#/definitions/RecommendationResponse",
+      "type": "object",
+      "title": "Throttling Recommendation Response",
+      "description": "Specific throttling recommendations for a request context",
+      "required": [
+        "action",
+        "queue_name",
+        "priority",
+        "timestamp"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["allow", "throttle", "shed"],
+          "title": "Recommended Action",
+          "description": "Action the producer should take",
+          "examples": ["throttle"]
+        },
+        "queue_name": {
+          "type": "string",
+          "title": "Queue Name",
+          "description": "Name of the queue",
+          "examples": ["email-queue"]
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300000,
+          "title": "Delay",
+          "description": "Recommended delay in milliseconds (if throttling)",
+          "examples": [250]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200,
+          "title": "Reason",
+          "description": "Explanation for the recommendation",
+          "examples": ["Queue backlog in yellow zone, applying light throttling"]
+        },
+        "circuit_breaker_state": {
+          "$ref": "#/definitions/CircuitState"
+        },
+        "current_zone": {
+          "$ref": "#/definitions/ThresholdZone"
+        },
+        "backlog_size": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Backlog Size",
+          "description": "Current queue backlog size",
+          "examples": [1250]
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Expires At",
+          "description": "When this recommendation expires",
+          "examples": ["2024-01-15T10:30:30Z"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp",
+          "description": "When this recommendation was generated",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BackpressureStatsResponse": {
+      "$id": "#/definitions/BackpressureStatsResponse",
+      "type": "object",
+      "title": "Backpressure Statistics Response",
+      "description": "Complete response with queue health statistics",
+      "required": ["queues", "timestamp"],
+      "properties": {
+        "queues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QueueStats"
+          },
+          "title": "Queue Statistics",
+          "description": "Array of queue health statistics"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Response Timestamp",
+          "description": "When this response was generated",
+          "examples": ["2024-01-15T10:30:00Z"]
+        },
+        "cache_until": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Cache Until",
+          "description": "When this data should be considered stale",
+          "examples": ["2024-01-15T10:30:30Z"]
+        },
+        "server_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Server Time",
+          "description": "Current server timestamp for clock sync",
+          "examples": ["2024-01-15T10:30:00.123Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThresholdsResponse": {
+      "$id": "#/definitions/ThresholdsResponse",
+      "type": "object",
+      "title": "Thresholds Configuration Response",
+      "description": "Complete threshold configuration for all queues and priorities",
+      "required": ["thresholds", "timestamp"],
+      "properties": {
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ThresholdConfig"
+          },
+          "title": "Threshold Configurations",
+          "description": "Array of threshold configurations"
+        },
+        "defaults": {
+          "type": "object",
+          "title": "Default Thresholds",
+          "description": "Default thresholds for queues without specific configuration",
+          "patternProperties": {
+            "^(high|medium|low)$": {
+              "$ref": "#/definitions/BacklogWindow"
+            }
+          },
+          "additionalProperties": false
+        },
+        "global_config": {
+          "$ref": "#/definitions/BackpressureConfig"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Response Timestamp",
+          "description": "When this response was generated",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CircuitBreakersResponse": {
+      "$id": "#/definitions/CircuitBreakersResponse",
+      "type": "object",
+      "title": "Circuit Breakers State Response",
+      "description": "Complete circuit breaker states for all queues",
+      "required": ["circuit_breakers", "timestamp"],
+      "properties": {
+        "circuit_breakers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CircuitBreakerState"
+          },
+          "title": "Circuit Breaker States",
+          "description": "Array of circuit breaker states"
+        },
+        "summary": {
+          "type": "object",
+          "title": "Summary Statistics",
+          "description": "Summary of circuit breaker states",
+          "properties": {
+            "total_circuits": {
+              "type": "integer",
+              "minimum": 0,
+              "title": "Total Circuits",
+              "description": "Total number of circuit breakers"
+            },
+            "open_circuits": {
+              "type": "integer",
+              "minimum": 0,
+              "title": "Open Circuits",
+              "description": "Number of open circuit breakers"
+            },
+            "half_open_circuits": {
+              "type": "integer",
+              "minimum": 0,
+              "title": "Half-Open Circuits",
+              "description": "Number of half-open circuit breakers"
+            }
+          },
+          "additionalProperties": false
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Response Timestamp",
+          "description": "When this response was generated",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateThresholdsRequest": {
+      "$id": "#/definitions/UpdateThresholdsRequest",
+      "type": "object",
+      "title": "Update Thresholds Request",
+      "description": "Request to update threshold configurations",
+      "required": ["thresholds"],
+      "properties": {
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ThresholdConfig"
+          },
+          "minItems": 1,
+          "title": "Threshold Configurations",
+          "description": "Array of threshold configurations to update"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "title": "Update Reason",
+          "description": "Reason for threshold update",
+          "examples": ["Adjusting for increased traffic capacity"]
+        },
+        "validate_only": {
+          "type": "boolean",
+          "title": "Validate Only",
+          "description": "Only validate the request without applying changes",
+          "examples": [false]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ErrorResponse": {
+      "$id": "#/definitions/ErrorResponse",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "required": ["error", "message", "timestamp"],
+      "properties": {
+        "error": {
+          "type": "string",
+          "title": "Error Code",
+          "description": "Machine-readable error code",
+          "examples": ["QUEUE_NOT_FOUND"]
+        },
+        "message": {
+          "type": "string",
+          "title": "Error Message",
+          "description": "Human-readable error message",
+          "examples": ["Queue 'invalid-queue' not found"]
+        },
+        "details": {
+          "type": "object",
+          "title": "Error Details",
+          "description": "Additional error details",
+          "additionalProperties": true
+        },
+        "trace_id": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{16,32}$",
+          "title": "Trace ID",
+          "description": "Request trace ID for debugging",
+          "examples": ["abc123def456"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Error Timestamp",
+          "description": "When this error occurred",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationError": {
+      "$id": "#/definitions/ValidationError",
+      "type": "object",
+      "title": "Validation Error Response",
+      "description": "Validation error response with detailed violations",
+      "required": ["error", "message", "violations", "timestamp"],
+      "properties": {
+        "error": {
+          "type": "string",
+          "title": "Error Code",
+          "description": "Machine-readable error code",
+          "examples": ["VALIDATION_FAILED"]
+        },
+        "message": {
+          "type": "string",
+          "title": "Error Message",
+          "description": "Human-readable error message",
+          "examples": ["Threshold validation failed"]
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "message"],
+            "properties": {
+              "field": {
+                "type": "string",
+                "title": "Field Path",
+                "description": "JSON path to the field that failed validation",
+                "examples": ["thresholds[0].yellow_max"]
+              },
+              "message": {
+                "type": "string",
+                "title": "Violation Message",
+                "description": "Description of the validation failure",
+                "examples": ["yellow_max must be greater than green_max"]
+              },
+              "value": {
+                "title": "Invalid Value",
+                "description": "The value that failed validation",
+                "examples": [100]
+              },
+              "rule": {
+                "type": "string",
+                "title": "Validation Rule",
+                "description": "The validation rule that was violated",
+                "examples": ["threshold_ordering"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "title": "Validation Violations",
+          "description": "List of specific validation failures"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Error Timestamp",
+          "description": "When this error occurred",
+          "examples": ["2024-01-15T10:30:00Z"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

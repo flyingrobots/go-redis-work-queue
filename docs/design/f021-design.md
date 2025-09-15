@@ -453,52 +453,249 @@ type CircuitBreakerState struct {
 
 ## Security Model
 
-### Threat Analysis
+### Comprehensive Threat Analysis
 
-**T1: Backpressure Signal Manipulation**
-- **Risk**: Malicious actors could manipulate queue metrics to cause inappropriate throttling
-- **Mitigation**: Read-only API credentials, authenticated polling, metric validation
+#### T1: Backpressure Signal Manipulation
+- **Risk Level**: Medium
+- **Description**: Malicious actors could manipulate queue metrics to cause inappropriate throttling, potentially creating denial of service conditions or allowing resource exhaustion
+- **Attack Vectors**:
+  - Man-in-the-middle attacks on Admin API communications
+  - Compromised API endpoints returning false metrics
+  - Replay attacks using stale metric data
+- **Impact**: Service degradation, resource waste, potential cascade failures
+- **Mitigation**:
+  - TLS 1.3 encryption for all API communications
+  - API response signing using HMAC-SHA256
+  - Metric validation with sanity checks and outlier detection
+  - Rate limiting on API endpoints to prevent abuse
+  - Network-level protections (VPC, security groups)
 
-**T2: Denial of Service via Circuit Breaking**
-- **Risk**: Triggering circuit breakers to deny legitimate traffic
-- **Mitigation**: Rate limiting, authentication, manual override capabilities
+#### T2: Denial of Service via Circuit Breaking
+- **Risk Level**: High
+- **Description**: Attackers could trigger circuit breakers maliciously to deny legitimate traffic
+- **Attack Vectors**:
+  - Flooding systems with requests to trigger failure thresholds
+  - Manipulating circuit breaker configuration to be overly sensitive
+  - Exploiting manual circuit breaker controls
+- **Impact**: Complete service outage for affected queues
+- **Mitigation**:
+  - Multi-factor authentication for manual circuit breaker controls
+  - Rate limiting and anomaly detection on circuit breaker triggers
+  - Audit logging of all circuit breaker state changes
+  - Emergency bypass mechanisms for critical operations
+  - Graduated response system preventing immediate circuit opening
 
-**T3: Information Disclosure**
-- **Risk**: Queue health metrics could reveal system capacity and usage patterns
-- **Mitigation**: Least-privilege access, secure credential management, audit logging
+#### T3: Information Disclosure
+- **Risk Level**: Medium
+- **Description**: Queue health metrics could reveal sensitive information about system capacity, usage patterns, and business operations
+- **Attack Vectors**:
+  - Unauthorized access to metrics endpoints
+  - Inference attacks using timing and backlog data
+  - Credential theft for metric polling
+- **Impact**: Business intelligence leakage, competitive disadvantage
+- **Mitigation**:
+  - Principle of least privilege for API access
+  - Data masking and aggregation for sensitive metrics
+  - Audit logging of all metric access
+  - Regular credential rotation (90-day cycle)
+  - Network segmentation for metrics infrastructure
 
-**T4: Configuration Tampering**
-- **Risk**: Unauthorized threshold changes could disable protection mechanisms
-- **Mitigation**: Role-based access control, configuration versioning, change auditing
+#### T4: Configuration Tampering
+- **Risk Level**: High
+- **Description**: Unauthorized changes to threshold configurations could disable protection mechanisms or create operational disruptions
+- **Attack Vectors**:
+  - Privilege escalation to configuration management systems
+  - Social engineering to obtain admin credentials
+  - Supply chain attacks on configuration management tools
+- **Impact**: Loss of backpressure protection, system instability
+- **Mitigation**:
+  - Role-based access control with approval workflows
+  - Configuration change auditing and rollback capabilities
+  - Multi-party approval for critical threshold changes
+  - Immutable configuration versioning
+  - Automated validation of configuration changes
 
-### Security Controls
+#### T5: Timing Attacks
+- **Risk Level**: Low
+- **Description**: Attackers could use response timing to infer queue states and system load
+- **Attack Vectors**:
+  - Statistical analysis of API response times
+  - Correlation of timing with known business events
+- **Impact**: Information leakage about system capacity and utilization
+- **Mitigation**:
+  - Consistent response timing regardless of queue state
+  - Request timing normalization and jitter
+  - Rate limiting to prevent statistical analysis
+
+#### T6: Supply Chain Attacks
+- **Risk Level**: Medium
+- **Description**: Compromise of SDK or dependencies could inject malicious backpressure behavior
+- **Attack Vectors**:
+  - Malicious packages in dependency chain
+  - Compromised build systems
+  - Social engineering of maintainers
+- **Impact**: Widespread service disruption across all consumers
+- **Mitigation**:
+  - Dependency scanning and vulnerability assessment
+  - Code signing and integrity verification
+  - Minimal dependency principle
+  - Regular security audits of third-party components
+
+### Security Controls Framework
 
 ```go
 type SecurityConfig struct {
-    // Authentication
-    APICredentials   SecureCredentials `json:"api_credentials"`
-    CredentialRotation time.Duration  `json:"credential_rotation"`
+    // Authentication & Authorization
+    Authentication   AuthConfig       `json:"authentication"`
+    Authorization    AuthzConfig      `json:"authorization"`
 
-    // Authorization
-    RequiredScopes   []string         `json:"required_scopes"`
-    RoleBasedAccess  bool             `json:"role_based_access"`
+    // Data Protection
+    Encryption       EncryptionConfig `json:"encryption"`
+    DataMasking      MaskingConfig    `json:"data_masking"`
 
-    // Audit and monitoring
-    AuditLogging     bool             `json:"audit_logging"`
-    SecurityMetrics  bool             `json:"security_metrics"`
+    // Monitoring & Auditing
+    AuditLogging     AuditConfig      `json:"audit_logging"`
+    SecurityMetrics  MetricsConfig    `json:"security_metrics"`
 
-    // Emergency controls
-    ManualOverride   bool             `json:"manual_override"`
-    EmergencyDisable bool             `json:"emergency_disable"`
+    // Incident Response
+    EmergencyControls EmergencyConfig `json:"emergency_controls"`
+    IncidentResponse  ResponseConfig  `json:"incident_response"`
+}
+
+type AuthConfig struct {
+    Method              AuthMethod      `json:"method"`              // JWT, mTLS, API_KEY
+    TokenExpiry         time.Duration   `json:"token_expiry"`
+    RefreshWindow       time.Duration   `json:"refresh_window"`
+    CredentialRotation  time.Duration   `json:"credential_rotation"`
+    RequiredScopes      []string        `json:"required_scopes"`
+}
+
+type AuthzConfig struct {
+    RoleBasedAccess     bool            `json:"role_based_access"`
+    RequiredRoles       map[string][]string `json:"required_roles"`
+    ApprovalWorkflows   bool            `json:"approval_workflows"`
+    MultiPartyApproval  bool            `json:"multi_party_approval"`
+}
+
+type EncryptionConfig struct {
+    TransitEncryption   bool            `json:"transit_encryption"`
+    TLSVersion          string          `json:"tls_version"`          // "1.3"
+    CipherSuites        []string        `json:"cipher_suites"`
+    ResponseSigning     bool            `json:"response_signing"`
+    SigningAlgorithm    string          `json:"signing_algorithm"`    // "HMAC-SHA256"
+}
+
+type AuditConfig struct {
+    Enabled             bool            `json:"enabled"`
+    LogLevel            string          `json:"log_level"`
+    RetentionPeriod     time.Duration   `json:"retention_period"`
+    TamperProtection    bool            `json:"tamper_protection"`
+    RemoteLogging       bool            `json:"remote_logging"`
 }
 ```
 
+### Security Implementation Details
+
+#### Authentication & Authorization
+- **JWT Tokens**: Short-lived tokens (15-minute expiry) with refresh mechanism
+- **mTLS**: Mutual TLS for service-to-service communication
+- **API Keys**: For automated systems with proper rotation and scoping
+- **Role-Based Access Control**: Granular permissions for different operations
+- **Multi-Factor Authentication**: Required for administrative operations
+
+#### Data Protection
+- **TLS 1.3**: All communications encrypted with modern cipher suites
+- **Response Signing**: HMAC-SHA256 signatures prevent tampering
+- **Data Masking**: Sensitive metrics masked for non-privileged users
+- **Field-Level Encryption**: Critical configuration data encrypted at rest
+
+#### Audit and Monitoring
+- **Comprehensive Logging**: All API calls, configuration changes, and security events
+- **Tamper-Proof Logs**: Cryptographic integrity protection for audit trails
+- **Real-Time Alerting**: Immediate notification of security violations
+- **Anomaly Detection**: ML-based detection of unusual access patterns
+
+#### Incident Response
+- **Emergency Circuits**: Immediate circuit breaker controls for security incidents
+- **Killswitch**: Complete backpressure system shutdown capability
+- **Forensic Logging**: Enhanced logging during security incidents
+- **Automated Response**: Pre-configured responses to common attack patterns
+
+### Security Testing Strategy
+
+#### Penetration Testing
+- **API Security Testing**: Comprehensive testing of all endpoints
+- **Authentication Bypass**: Attempts to circumvent authentication
+- **Authorization Testing**: Privilege escalation and access control validation
+- **Input Validation**: Testing for injection attacks and malformed data
+
+#### Security Automation
+```yaml
+security_tests:
+  - name: "API Authentication Test"
+    type: "automated"
+    frequency: "daily"
+    tools: ["OWASP ZAP", "custom scripts"]
+
+  - name: "Credential Rotation Test"
+    type: "automated"
+    frequency: "weekly"
+    description: "Verify credential rotation doesn't break functionality"
+
+  - name: "Circuit Breaker Abuse Test"
+    type: "automated"
+    frequency: "daily"
+    description: "Attempt to maliciously trigger circuit breakers"
+
+  - name: "Configuration Tampering Test"
+    type: "automated"
+    frequency: "daily"
+    description: "Verify unauthorized configuration changes are prevented"
+```
+
+### Compliance and Governance
+
+#### Regulatory Compliance
+- **SOC 2 Type II**: Security controls documentation and testing
+- **ISO 27001**: Information security management system compliance
+- **GDPR**: Data protection for EU-related queue metrics
+- **SOX**: Financial controls for payment-related queues
+
+#### Security Governance
+- **Security Review Board**: Regular review of security posture
+- **Threat Modeling Updates**: Quarterly threat model updates
+- **Security Metrics**: KPIs for security effectiveness
+- **Vendor Assessment**: Security evaluation of all dependencies
+
 ### Credential Management
 
-- **Principle of Least Privilege**: Backpressure polling uses read-only credentials
-- **Credential Rotation**: Automatic rotation every 90 days with seamless transition
-- **Secure Storage**: Credentials stored in secure credential management systems
-- **Network Security**: TLS encryption for all API communications
+#### Credential Lifecycle
+- **Generation**: Cryptographically secure credential generation
+- **Distribution**: Secure, out-of-band credential distribution
+- **Rotation**: Automated 90-day rotation cycle with overlap period
+- **Revocation**: Immediate revocation capability for compromised credentials
+- **Monitoring**: Real-time monitoring of credential usage
+
+#### Storage and Protection
+- **Hardware Security Modules**: Critical keys stored in HSMs
+- **Vault Integration**: HashiCorp Vault for credential management
+- **Encryption at Rest**: All stored credentials encrypted
+- **Access Logging**: Comprehensive logging of credential access
+- **Zero-Knowledge Architecture**: Minimal credential exposure principles
+
+### Network Security
+
+#### Network Architecture
+- **Network Segmentation**: Isolated network segments for backpressure infrastructure
+- **VPC Security**: AWS VPC with security groups and NACLs
+- **DMZ Deployment**: Public-facing components in DMZ
+- **Internal Communication**: Private networks for internal component communication
+
+#### Traffic Protection
+- **DDoS Protection**: CloudFlare/AWS Shield for DDoS mitigation
+- **WAF Rules**: Web Application Firewall for API protection
+- **Rate Limiting**: Multiple layers of rate limiting
+- **Geographic Restrictions**: IP geolocation-based access controls
 
 ## Performance Requirements
 
@@ -728,7 +925,351 @@ backpressure:
 4. Investigate root cause and implement fixes
 5. Plan careful re-deployment with lessons learned
 
-## Conclusion
+## Performance Requirements and Testing Strategy
+
+### Performance Requirements
+
+#### Latency Requirements
+
+**Throttle Decision Latency:**
+- Target: <1ms for throttle decision calculation
+- Maximum: <5ms under high load (99th percentile)
+- Caching: 30-second cache for recent decisions
+
+**API Response Times:**
+- Admin API polling: <100ms (95th percentile)
+- Health check endpoints: <10ms (99th percentile)
+- Configuration updates: <50ms (95th percentile)
+
+**End-to-End Producer Impact:**
+- Additional latency from backpressure: <10ms (median)
+- Maximum throttle delay: 5 seconds (configurable)
+- Circuit breaker decision: <1ms
+
+#### Throughput Requirements
+
+**API Capacity:**
+- Admin API: 1,000 requests/second per instance
+- Health checks: 10,000 requests/second per instance
+- Configuration reads: 5,000 requests/second per instance
+
+**Producer Support:**
+- Concurrent producers: 10,000+ per controller instance
+- Throttle decisions: 100,000+ per second per instance
+- Queue monitoring: 1,000+ queues per controller
+
+**Resource Efficiency:**
+- Memory usage: <100MB per 1,000 producers
+- CPU overhead: <2% of total system resources
+- Network bandwidth: <1MB/s for typical deployments
+
+#### Scalability Targets
+
+**Horizontal Scaling:**
+- Multiple controller instances with consistent decisions
+- Load distribution across controller fleet
+- Graceful degradation with instance failures
+
+**Queue Scale:**
+- Support for 10,000+ queues per deployment
+- Independent threshold management per queue
+- Efficient polling strategies to minimize API load
+
+**Producer Scale:**
+- Linear scaling with producer count
+- Constant-time throttle decision complexity
+- Minimal memory growth with producer addition
+
+### Testing Strategy
+
+#### Unit Testing
+
+**Core Algorithm Testing:**
+```go
+func TestThrottleDecisionLogic(t *testing.T) {
+    tests := []struct {
+        name         string
+        backlogSize  int
+        priority     Priority
+        expectedDelay time.Duration
+    }{
+        {"Green zone, no throttle", 100, HighPriority, 0},
+        {"Yellow zone, light throttle", 1500, MediumPriority, 250 * time.Millisecond},
+        {"Red zone, heavy throttle", 8000, LowPriority, 3 * time.Second},
+        {"Red zone, priority protection", 8000, HighPriority, 1 * time.Second},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            controller := NewBackpressureController(defaultConfig)
+            delay := controller.calculateThrottle(tt.backlogSize, tt.priority)
+            assert.InDelta(t, tt.expectedDelay, delay, float64(100*time.Millisecond))
+        })
+    }
+}
+
+func TestCircuitBreakerStates(t *testing.T) {
+    breaker := NewCircuitBreaker(CircuitConfig{
+        FailureThreshold: 3,
+        RecoveryThreshold: 2,
+        TripWindow: 30 * time.Second,
+    })
+
+    // Test state transitions
+    assert.Equal(t, Closed, breaker.State())
+
+    // Trigger failures
+    for i := 0; i < 3; i++ {
+        breaker.RecordFailure()
+    }
+    assert.Equal(t, Open, breaker.State())
+
+    // Test recovery after timeout
+    time.Sleep(35 * time.Second)
+    assert.Equal(t, HalfOpen, breaker.State())
+}
+```
+
+**Performance Unit Tests:**
+```go
+func BenchmarkThrottleDecision(b *testing.B) {
+    controller := NewBackpressureController(defaultConfig)
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        controller.SuggestThrottle(MediumPriority)
+    }
+}
+
+func TestMemoryUsage(t *testing.T) {
+    var m1, m2 runtime.MemStats
+    runtime.GC()
+    runtime.ReadMemStats(&m1)
+
+    // Create 1000 producers
+    controllers := make([]*BackpressureController, 1000)
+    for i := range controllers {
+        controllers[i] = NewBackpressureController(defaultConfig)
+    }
+
+    runtime.GC()
+    runtime.ReadMemStats(&m2)
+
+    memUsed := m2.Alloc - m1.Alloc
+    assert.Less(t, memUsed, uint64(100*1024*1024), "Memory usage should be under 100MB for 1000 controllers")
+}
+```
+
+#### Integration Testing
+
+**End-to-End Flow Testing:**
+```go
+func TestBackpressureIntegration(t *testing.T) {
+    // Set up test environment
+    redis := setupTestRedis(t)
+    adminAPI := setupTestAdminAPI(t)
+    controller := NewBackpressureController(testConfig)
+
+    // Create high backlog scenario
+    for i := 0; i < 5000; i++ {
+        redis.LPush("test-queue", fmt.Sprintf("job-%d", i))
+    }
+
+    // Test producer throttling
+    producer := NewTestProducer(controller)
+    start := time.Now()
+    producer.Enqueue("test-queue", "test-job")
+    duration := time.Since(start)
+
+    // Should be throttled due to high backlog
+    assert.Greater(t, duration, 100*time.Millisecond)
+    assert.Less(t, duration, 2*time.Second)
+}
+
+func TestMultiProducerCoordination(t *testing.T) {
+    // Test multiple producers with same controller
+    controller := NewBackpressureController(testConfig)
+
+    var wg sync.WaitGroup
+    var totalDelay int64
+
+    // Launch 100 concurrent producers
+    for i := 0; i < 100; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            delay := controller.SuggestThrottle(MediumPriority)
+            atomic.AddInt64(&totalDelay, int64(delay))
+        }()
+    }
+
+    wg.Wait()
+
+    // All producers should get consistent throttling
+    avgDelay := time.Duration(totalDelay / 100)
+    assert.InDelta(t, controller.lastThrottle, avgDelay, float64(50*time.Millisecond))
+}
+```
+
+#### Load Testing
+
+**High-Throughput Scenarios:**
+```go
+func TestHighThroughputThrottling(t *testing.T) {
+    controller := NewBackpressureController(testConfig)
+
+    // Simulate 10,000 requests/second
+    requests := 10000
+    duration := 1 * time.Second
+
+    start := time.Now()
+    for i := 0; i < requests; i++ {
+        go controller.SuggestThrottle(randomPriority())
+    }
+
+    elapsed := time.Since(start)
+    assert.Less(t, elapsed, duration*2, "Should handle 10k req/s with reasonable latency")
+}
+
+func TestStressConditions(t *testing.T) {
+    // Test with extreme backlog sizes
+    controller := NewBackpressureController(testConfig)
+    controller.updateBacklog(1000000) // 1M backlog
+
+    delay := controller.SuggestThrottle(LowPriority)
+    assert.Equal(t, InfiniteDelay, delay, "Should shed low priority under extreme load")
+
+    delay = controller.SuggestThrottle(HighPriority)
+    assert.Less(t, delay, 10*time.Second, "High priority should still be served")
+}
+```
+
+#### Chaos Testing
+
+**Failure Scenario Testing:**
+```go
+func TestAdminAPIFailures(t *testing.T) {
+    controller := NewBackpressureController(testConfig)
+
+    // Start with working API
+    controller.pollAdminAPI()
+    baseline := controller.SuggestThrottle(MediumPriority)
+
+    // Simulate API failure
+    controller.adminAPI = &FailingAdminAPI{}
+
+    // Should use cached values
+    for i := 0; i < 10; i++ {
+        delay := controller.SuggestThrottle(MediumPriority)
+        assert.InDelta(t, baseline, delay, float64(100*time.Millisecond))
+    }
+
+    // After cache expires, should degrade gracefully
+    time.Sleep(35 * time.Second)
+    delay := controller.SuggestThrottle(MediumPriority)
+    assert.Greater(t, delay, baseline, "Should be more conservative without API")
+}
+
+func TestNetworkPartitions(t *testing.T) {
+    // Test behavior during network splits
+    controller := NewBackpressureController(testConfig)
+
+    // Create network partition
+    networkPartition := &NetworkPartition{}
+    controller.adminAPI = networkPartition
+
+    // Circuit breaker should trip
+    assert.Eventually(t, func() bool {
+        return controller.circuitBreaker.State() == Open
+    }, 30*time.Second, 1*time.Second)
+
+    // Should reject requests to prevent cascade
+    delay := controller.SuggestThrottle(LowPriority)
+    assert.Equal(t, InfiniteDelay, delay)
+}
+```
+
+#### Performance Benchmarks
+
+**Latency Benchmarks:**
+```bash
+# Throttle decision latency
+go test -bench=BenchmarkThrottleDecision -benchtime=10s
+
+# Memory allocation benchmarks
+go test -bench=BenchmarkMemoryAllocation -benchmem
+
+# Concurrent access benchmarks
+go test -bench=BenchmarkConcurrentAccess -cpu=1,2,4,8
+```
+
+**Load Testing Scripts:**
+```bash
+#!/bin/bash
+# Load test with varying producer counts
+for producers in 100 500 1000 5000 10000; do
+    echo "Testing with $producers producers"
+    go run loadtest/main.go -producers=$producers -duration=60s
+done
+
+# Test with varying queue backlogs
+for backlog in 1000 5000 10000 50000 100000; do
+    echo "Testing with $backlog backlog"
+    go run loadtest/main.go -backlog=$backlog -duration=60s
+done
+```
+
+### Performance Monitoring
+
+#### Key Performance Indicators
+
+**Latency Metrics:**
+- `backpressure_throttle_decision_duration_seconds` - Time to calculate throttle
+- `backpressure_api_poll_duration_seconds` - Admin API polling latency
+- `backpressure_producer_overhead_duration_seconds` - Added latency per enqueue
+
+**Throughput Metrics:**
+- `backpressure_decisions_total` - Total throttle decisions per second
+- `backpressure_api_requests_total` - Admin API request rate
+- `backpressure_producer_requests_total` - Producer request handling rate
+
+**Resource Metrics:**
+- `backpressure_memory_usage_bytes` - Memory consumption
+- `backpressure_cpu_usage_percent` - CPU utilization
+- `backpressure_goroutines_count` - Active goroutine count
+
+#### Performance Alerts
+
+```yaml
+groups:
+- name: backpressure_performance
+  rules:
+  - alert: HighThrottleLatency
+    expr: histogram_quantile(0.95, backpressure_throttle_decision_duration_seconds) > 0.005
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Backpressure throttle decisions are slow"
+
+  - alert: HighMemoryUsage
+    expr: backpressure_memory_usage_bytes > 100 * 1024 * 1024
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Backpressure controller using excessive memory"
+
+  - alert: APIPollingFailure
+    expr: rate(backpressure_api_poll_failures_total[5m]) > 0.1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Admin API polling failing frequently"
+```
+
+### Conclusion
 
 The Producer Backpressure system represents a fundamental shift from reactive failure handling to proactive flow control. By providing real-time queue health signals, intelligent throttling, and priority-aware circuit breakers, this system transforms how applications handle load spikes and prevent cascade failures.
 

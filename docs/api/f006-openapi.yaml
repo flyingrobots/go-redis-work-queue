@@ -1,0 +1,2046 @@
+openapi: 3.0.3
+info:
+  title: Time Travel Debugger API
+  description: |
+    The Time Travel Debugger API provides comprehensive access to job execution recordings,
+    replay functionality, and timeline analysis tools. This API enables developers to
+    capture, replay, and analyze job execution history with VCR-style controls.
+
+    ## Key Features
+    - **Complete Event Capture**: Record every state transition during job execution
+    - **Timeline Replay**: Navigate through execution history with precision
+    - **State Reconstruction**: Rebuild exact system state at any point in time
+    - **Diff Analysis**: Compare states and identify what changed
+    - **Export and Sharing**: Create shareable replay sessions for collaboration
+
+    ## Authentication
+    All endpoints require authentication via API key or JWT token.
+    Some endpoints may require additional permissions based on data sensitivity.
+
+  version: 1.0.0
+  contact:
+    name: Platform Team
+    url: https://github.com/company/go-redis-work-queue
+    email: platform-team@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.company.com/v1
+    description: Production server
+  - url: https://staging-api.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - apiKey: []
+  - bearerAuth: []
+
+paths:
+  /timetravel/recordings:
+    get:
+      summary: List job recordings
+      description: |
+        Retrieve a paginated list of job execution recordings.
+        Supports filtering by job ID, queue, status, and time range.
+      tags:
+        - Recordings
+      parameters:
+        - name: job_id
+          in: query
+          description: Filter by specific job ID
+          schema:
+            type: string
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by job status
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+        - name: start_time
+          in: query
+          description: Start of time range (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End of time range (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: failed_only
+          in: query
+          description: Show only failed job recordings
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of recordings per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of job recordings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recordings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecordingSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create job recording
+      description: |
+        Start recording execution for specified jobs or queues.
+        Can be used for on-demand recording of specific scenarios.
+      tags:
+        - Recordings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordingRequest'
+      responses:
+        '201':
+          description: Recording created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Recording already exists for specified criteria
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/recordings/{recording_id}:
+    get:
+      summary: Get recording details
+      description: |
+        Retrieve complete details for a specific job execution recording,
+        including metadata, event count, and storage information.
+      tags:
+        - Recordings
+      parameters:
+        - name: recording_id
+          in: path
+          required: true
+          description: Unique recording identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recording details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete recording
+      description: |
+        Permanently delete a job execution recording and all associated data.
+        This action cannot be undone.
+      tags:
+        - Recordings
+      parameters:
+        - name: recording_id
+          in: path
+          required: true
+          description: Unique recording identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Recording deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/recordings/{recording_id}/replay:
+    post:
+      summary: Create replay session
+      description: |
+        Initialize a new replay session for a specific recording.
+        Returns a session ID that can be used for timeline navigation.
+      tags:
+        - Replay
+      parameters:
+        - name: recording_id
+          in: path
+          required: true
+          description: Unique recording identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaySessionRequest'
+      responses:
+        '201':
+          description: Replay session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplaySession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}:
+    get:
+      summary: Get replay session state
+      description: |
+        Retrieve current state of a replay session, including timeline position,
+        current system state, and available navigation options.
+      tags:
+        - Replay
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current replay session state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayState'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: End replay session
+      description: |
+        Terminate a replay session and free associated resources.
+        Session data is not persisted after termination.
+      tags:
+        - Replay
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Replay session terminated
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/seek:
+    post:
+      summary: Seek to timeline position
+      description: |
+        Navigate to a specific position in the execution timeline.
+        Supports seeking by timestamp, event index, or relative position.
+      tags:
+        - Navigation
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeekRequest'
+      responses:
+        '200':
+          description: Successfully seeked to position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeekResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/step:
+    post:
+      summary: Step through timeline
+      description: |
+        Move forward or backward by one or more events in the timeline.
+        Supports fine-grained navigation through execution history.
+      tags:
+        - Navigation
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepRequest'
+      responses:
+        '200':
+          description: Successfully stepped through timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/play:
+    post:
+      summary: Start/stop automatic playback
+      description: |
+        Begin automatic timeline playback at specified speed.
+        Playback continues until manually stopped or breakpoint hit.
+      tags:
+        - Navigation
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaybackRequest'
+      responses:
+        '200':
+          description: Playback started/stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/state:
+    get:
+      summary: Get current state
+      description: |
+        Retrieve complete system state at current timeline position,
+        including job state, worker state, queue state, and Redis snapshot.
+      tags:
+        - State
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+        - name: include_redis
+          in: query
+          description: Include Redis key snapshot in response
+          schema:
+            type: boolean
+            default: true
+        - name: include_payload
+          in: query
+          description: Include full job payload in response
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Current system state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemState'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/diff:
+    get:
+      summary: Get state diff
+      description: |
+        Calculate and return differences between current state and
+        a comparison point (previous state, start state, or custom position).
+      tags:
+        - State
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+        - name: compare_to
+          in: query
+          description: Comparison target
+          schema:
+            type: string
+            enum: [previous, start, custom]
+            default: previous
+        - name: compare_position
+          in: query
+          description: Custom comparison position (if compare_to=custom)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: State differences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateDiff'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/timeline:
+    get:
+      summary: Get timeline events
+      description: |
+        Retrieve events within a specified time range or event index range.
+        Supports filtering by event type and pagination for large timelines.
+      tags:
+        - Timeline
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+        - name: start_index
+          in: query
+          description: Starting event index
+          schema:
+            type: integer
+        - name: end_index
+          in: query
+          description: Ending event index
+          schema:
+            type: integer
+        - name: event_types
+          in: query
+          description: Filter by event types (comma-separated)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimelineEvent'
+                  total_events:
+                    type: integer
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/breakpoints:
+    get:
+      summary: List breakpoints
+      description: |
+        Retrieve all breakpoints configured for the replay session.
+      tags:
+        - Breakpoints
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of breakpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  breakpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Breakpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Add breakpoint
+      description: |
+        Create a new breakpoint that will pause playback when conditions are met.
+        Supports conditional, state-based, and event-based breakpoints.
+      tags:
+        - Breakpoints
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BreakpointRequest'
+      responses:
+        '201':
+          description: Breakpoint created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Breakpoint'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/replay/{session_id}/breakpoints/{breakpoint_id}:
+    delete:
+      summary: Remove breakpoint
+      description: |
+        Delete a specific breakpoint from the replay session.
+      tags:
+        - Breakpoints
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Unique replay session identifier
+          schema:
+            type: string
+        - name: breakpoint_id
+          in: path
+          required: true
+          description: Unique breakpoint identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Breakpoint removed successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/recordings/{recording_id}/export:
+    post:
+      summary: Export recording
+      description: |
+        Generate an exportable bundle of the recording for sharing or offline analysis.
+        Supports multiple export formats and compression options.
+      tags:
+        - Export
+      parameters:
+        - name: recording_id
+          in: path
+          required: true
+          description: Unique recording identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/exports/{export_id}:
+    get:
+      summary: Get export status
+      description: |
+        Check the status of an export job and retrieve download information
+        when the export is complete.
+      tags:
+        - Export
+      parameters:
+        - name: export_id
+          in: path
+          required: true
+          description: Unique export job identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/exports/{export_id}/download:
+    get:
+      summary: Download export file
+      description: |
+        Download the completed export file. Files are available for
+        a limited time after export completion.
+      tags:
+        - Export
+      parameters:
+        - name: export_id
+          in: path
+          required: true
+          description: Unique export job identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export file download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          description: Export file expired or no longer available
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/compare:
+    post:
+      summary: Compare recordings
+      description: |
+        Create a comparison session between two or more job recordings
+        to identify differences in execution patterns.
+      tags:
+        - Comparison
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComparisonRequest'
+      responses:
+        '201':
+          description: Comparison session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/compare/{comparison_id}:
+    get:
+      summary: Get comparison results
+      description: |
+        Retrieve detailed comparison analysis between recordings,
+        highlighting differences in execution paths and outcomes.
+      tags:
+        - Comparison
+      parameters:
+        - name: comparison_id
+          in: path
+          required: true
+          description: Unique comparison session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comparison analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonResults'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/analytics/patterns:
+    get:
+      summary: Get failure patterns
+      description: |
+        Analyze multiple recordings to identify common failure patterns,
+        performance bottlenecks, and execution anomalies.
+      tags:
+        - Analytics
+      parameters:
+        - name: time_range
+          in: query
+          description: Analysis time range in days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+        - name: queue
+          in: query
+          description: Filter by specific queue
+          schema:
+            type: string
+        - name: failed_only
+          in: query
+          description: Analyze only failed jobs
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Pattern analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternAnalysis'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /timetravel/config:
+    get:
+      summary: Get configuration
+      description: |
+        Retrieve current time travel debugger configuration including
+        retention policies, capture settings, and performance limits.
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeTravelConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update configuration
+      description: |
+        Update time travel debugger configuration. Changes may require
+        system restart depending on the modified settings.
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeTravelConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeTravelConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JobStatus:
+      type: string
+      enum:
+        - enqueued
+        - processing
+        - completed
+        - failed
+        - retrying
+        - cancelled
+        - dlq
+      description: Current status of a job
+
+    EventType:
+      type: string
+      enum:
+        - ENQUEUED
+        - DEQUEUED
+        - PROCESSING
+        - RETRYING
+        - FAILED
+        - COMPLETED
+        - MOVED_TO_DLQ
+        - SCHEDULED
+        - CANCELLED
+      description: Type of state transition event
+
+    RecordingSummary:
+      type: object
+      properties:
+        recording_id:
+          type: string
+          description: Unique recording identifier
+        job_id:
+          type: string
+          description: Associated job identifier
+        queue_name:
+          type: string
+          description: Queue where job was processed
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        started_at:
+          type: string
+          format: date-time
+          description: Recording start timestamp
+        completed_at:
+          type: string
+          format: date-time
+          description: Recording completion timestamp
+        duration:
+          type: number
+          description: Total execution duration in seconds
+        event_count:
+          type: integer
+          description: Number of events captured
+        storage_size:
+          type: integer
+          description: Storage size in bytes
+        has_failure:
+          type: boolean
+          description: Whether recording contains failure events
+      required:
+        - recording_id
+        - job_id
+        - queue_name
+        - status
+        - started_at
+        - event_count
+
+    RecordingDetails:
+      allOf:
+        - $ref: '#/components/schemas/RecordingSummary'
+        - type: object
+          properties:
+            metadata:
+              type: object
+              additionalProperties: true
+              description: Additional recording metadata
+            worker_id:
+              type: string
+              description: Worker that processed the job
+            retry_count:
+              type: integer
+              description: Number of retry attempts
+            failure_reason:
+              type: string
+              description: Reason for failure if applicable
+            snapshot_count:
+              type: integer
+              description: Number of state snapshots
+            compression_ratio:
+              type: number
+              description: Storage compression ratio
+            tags:
+              type: array
+              items:
+                type: string
+              description: Recording tags for categorization
+
+    RecordingRequest:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: Specific job ID to record
+        queue_name:
+          type: string
+          description: Queue name to record jobs from
+        duration:
+          type: integer
+          description: Recording duration in seconds
+        filters:
+          type: object
+          properties:
+            job_types:
+              type: array
+              items:
+                type: string
+              description: Job types to include
+            worker_ids:
+              type: array
+              items:
+                type: string
+              description: Worker IDs to include
+            priority_min:
+              type: integer
+              description: Minimum job priority
+        capture_config:
+          type: object
+          properties:
+            include_payload:
+              type: boolean
+              default: true
+              description: Include job payload in capture
+            include_redis_snapshot:
+              type: boolean
+              default: true
+              description: Include Redis state snapshots
+            snapshot_interval:
+              type: integer
+              default: 5
+              description: Snapshot interval in seconds
+      anyOf:
+        - required: [job_id]
+        - required: [queue_name]
+
+    RecordingConfig:
+      type: object
+      properties:
+        recording_id:
+          type: string
+          description: Generated recording identifier
+        config:
+          $ref: '#/components/schemas/RecordingRequest'
+        status:
+          type: string
+          enum: [active, paused, completed, failed]
+          description: Recording status
+        created_at:
+          type: string
+          format: date-time
+          description: Recording creation timestamp
+        expires_at:
+          type: string
+          format: date-time
+          description: Recording expiration timestamp
+      required:
+        - recording_id
+        - config
+        - status
+        - created_at
+
+    ReplaySessionRequest:
+      type: object
+      properties:
+        session_name:
+          type: string
+          description: Optional session name for identification
+        initial_position:
+          type: integer
+          default: 0
+          description: Starting position in timeline (event index)
+        filters:
+          type: object
+          properties:
+            event_types:
+              type: array
+              items:
+                $ref: '#/components/schemas/EventType'
+              description: Event types to include in replay
+            include_system_events:
+              type: boolean
+              default: true
+              description: Include system-generated events
+        options:
+          type: object
+          properties:
+            enable_breakpoints:
+              type: boolean
+              default: true
+              description: Enable breakpoint functionality
+            max_memory_mb:
+              type: integer
+              default: 100
+              description: Maximum memory usage for session
+      required: []
+
+    ReplaySession:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Unique session identifier
+        recording_id:
+          type: string
+          description: Associated recording identifier
+        config:
+          $ref: '#/components/schemas/ReplaySessionRequest'
+        status:
+          type: string
+          enum: [active, paused, completed, error]
+          description: Current session status
+        created_at:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+        last_active:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        current_position:
+          type: integer
+          description: Current position in timeline
+        total_events:
+          type: integer
+          description: Total number of events in timeline
+      required:
+        - session_id
+        - recording_id
+        - status
+        - created_at
+        - current_position
+        - total_events
+
+    ReplayState:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Session identifier
+        current_position:
+          type: integer
+          description: Current event index
+        timestamp:
+          type: string
+          format: date-time
+          description: Current timeline timestamp
+        event:
+          $ref: '#/components/schemas/TimelineEvent'
+        state:
+          $ref: '#/components/schemas/SystemState'
+        navigation:
+          type: object
+          properties:
+            can_step_backward:
+              type: boolean
+            can_step_forward:
+              type: boolean
+            next_error_index:
+              type: integer
+            next_retry_index:
+              type: integer
+            total_events:
+              type: integer
+      required:
+        - session_id
+        - current_position
+        - timestamp
+        - navigation
+
+    SeekRequest:
+      type: object
+      properties:
+        target:
+          type: object
+          oneOf:
+            - type: object
+              properties:
+                timestamp:
+                  type: string
+                  format: date-time
+              required: [timestamp]
+            - type: object
+              properties:
+                event_index:
+                  type: integer
+              required: [event_index]
+            - type: object
+              properties:
+                relative_position:
+                  type: integer
+                  description: Relative movement from current position
+              required: [relative_position]
+      required:
+        - target
+
+    SeekResponse:
+      type: object
+      properties:
+        new_position:
+          type: integer
+          description: New current position
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp at new position
+        event:
+          $ref: '#/components/schemas/TimelineEvent'
+        state_changed:
+          type: boolean
+          description: Whether system state changed
+      required:
+        - new_position
+        - timestamp
+        - state_changed
+
+    StepRequest:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [forward, backward]
+          default: forward
+          description: Step direction
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of steps to take
+        step_type:
+          type: string
+          enum: [event, state_change, significant]
+          default: event
+          description: Type of step granularity
+      required: []
+
+    StepResponse:
+      type: object
+      properties:
+        steps_taken:
+          type: integer
+          description: Actual number of steps taken
+        new_position:
+          type: integer
+          description: New current position
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEvent'
+          description: Events encountered during stepping
+        state_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/StateDiff'
+          description: State changes during stepping
+      required:
+        - steps_taken
+        - new_position
+        - events
+
+    PlaybackRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [play, pause, stop]
+          description: Playback action
+        speed:
+          type: number
+          minimum: 0.1
+          maximum: 10.0
+          default: 1.0
+          description: Playback speed multiplier
+        until:
+          type: object
+          oneOf:
+            - type: object
+              properties:
+                event_index:
+                  type: integer
+              required: [event_index]
+            - type: object
+              properties:
+                timestamp:
+                  type: string
+                  format: date-time
+              required: [timestamp]
+            - type: object
+              properties:
+                condition:
+                  type: string
+                  description: Stop condition expression
+              required: [condition]
+          description: Playback stop condition
+      required:
+        - action
+
+    PlaybackResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [playing, paused, stopped, completed]
+          description: Current playback status
+        speed:
+          type: number
+          description: Current playback speed
+        stop_reason:
+          type: string
+          enum: [manual, breakpoint, end_of_timeline, condition, error]
+          description: Reason playback stopped
+        position:
+          type: integer
+          description: Current position when stopped
+      required:
+        - status
+
+    SystemState:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: State timestamp
+        job_state:
+          type: object
+          properties:
+            id:
+              type: string
+            status:
+              $ref: '#/components/schemas/JobStatus'
+            payload:
+              type: object
+              additionalProperties: true
+            retry_count:
+              type: integer
+            priority:
+              type: integer
+            metadata:
+              type: object
+              additionalProperties: true
+            processing_time:
+              type: number
+              description: Processing time in seconds
+        worker_state:
+          type: object
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum: [idle, processing, error, shutdown]
+            resource_usage:
+              type: object
+              properties:
+                cpu_percent:
+                  type: number
+                memory_mb:
+                  type: number
+                connections:
+                  type: integer
+            last_heartbeat:
+              type: string
+              format: date-time
+        queue_state:
+          type: object
+          properties:
+            name:
+              type: string
+            length:
+              type: integer
+            processing_rate:
+              type: number
+              description: Jobs per second
+            error_rate:
+              type: number
+              description: Error percentage
+            backpressure:
+              type: boolean
+        redis_snapshot:
+          type: object
+          additionalProperties: true
+          description: Relevant Redis keys and values
+      required:
+        - timestamp
+        - job_state
+
+    StateDiff:
+      type: object
+      properties:
+        from_position:
+          type: integer
+          description: Source position for comparison
+        to_position:
+          type: integer
+          description: Target position for comparison
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                description: JSON path to changed field
+              operation:
+                type: string
+                enum: [added, removed, modified]
+                description: Type of change
+              old_value:
+                description: Previous value (for modified/removed)
+              new_value:
+                description: New value (for added/modified)
+        summary:
+          type: object
+          properties:
+            total_changes:
+              type: integer
+            significant_changes:
+              type: integer
+            categories:
+              type: array
+              items:
+                type: string
+              description: Categories of changes detected
+      required:
+        - from_position
+        - to_position
+        - changes
+
+    TimelineEvent:
+      type: object
+      properties:
+        index:
+          type: integer
+          description: Event index in timeline
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        type:
+          $ref: '#/components/schemas/EventType'
+        job_id:
+          type: string
+          description: Associated job ID
+        worker_id:
+          type: string
+          description: Worker that generated event
+        queue_name:
+          type: string
+          description: Queue name
+        data:
+          type: object
+          additionalProperties: true
+          description: Event-specific data
+        context:
+          type: object
+          additionalProperties: true
+          description: Event context information
+        significant:
+          type: boolean
+          description: Whether this is a significant event
+      required:
+        - index
+        - timestamp
+        - type
+        - job_id
+
+    Breakpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique breakpoint identifier
+        type:
+          type: string
+          enum: [event, state, condition, performance]
+          description: Breakpoint type
+        condition:
+          type: string
+          description: Breakpoint condition expression
+        enabled:
+          type: boolean
+          description: Whether breakpoint is active
+        hit_count:
+          type: integer
+          description: Number of times breakpoint was hit
+        created_at:
+          type: string
+          format: date-time
+          description: Breakpoint creation time
+      required:
+        - id
+        - type
+        - condition
+        - enabled
+
+    BreakpointRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [event, state, condition, performance]
+          description: Breakpoint type
+        condition:
+          type: string
+          description: Breakpoint condition expression
+        description:
+          type: string
+          description: Human-readable breakpoint description
+        enabled:
+          type: boolean
+          default: true
+          description: Whether breakpoint should be active
+      required:
+        - type
+        - condition
+
+    ExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [bundle, video, report, test_case]
+          description: Export format
+        options:
+          type: object
+          properties:
+            include_snapshots:
+              type: boolean
+              default: true
+            include_timeline:
+              type: boolean
+              default: true
+            compression_level:
+              type: integer
+              minimum: 0
+              maximum: 9
+              default: 6
+            video_quality:
+              type: string
+              enum: [low, medium, high]
+              default: medium
+            annotations:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: integer
+                  text:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional export metadata
+      required:
+        - format
+
+    ExportJob:
+      type: object
+      properties:
+        export_id:
+          type: string
+          description: Unique export job identifier
+        recording_id:
+          type: string
+          description: Source recording identifier
+        format:
+          type: string
+          description: Export format
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+          description: Export job status
+        created_at:
+          type: string
+          format: date-time
+          description: Export creation time
+        estimated_completion:
+          type: string
+          format: date-time
+          description: Estimated completion time
+      required:
+        - export_id
+        - recording_id
+        - format
+        - status
+        - created_at
+
+    ExportStatus:
+      allOf:
+        - $ref: '#/components/schemas/ExportJob'
+        - type: object
+          properties:
+            progress_percent:
+              type: integer
+              minimum: 0
+              maximum: 100
+              description: Export progress percentage
+            file_size:
+              type: integer
+              description: Generated file size in bytes
+            download_url:
+              type: string
+              format: uri
+              description: Download URL (when completed)
+            expires_at:
+              type: string
+              format: date-time
+              description: Download expiration time
+            error_message:
+              type: string
+              description: Error message if failed
+
+    ComparisonRequest:
+      type: object
+      properties:
+        recording_ids:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 10
+          description: Recording IDs to compare
+        comparison_type:
+          type: string
+          enum: [execution_path, performance, state_changes, outcomes]
+          description: Type of comparison to perform
+        options:
+          type: object
+          properties:
+            align_by:
+              type: string
+              enum: [timestamp, event_index, state_change]
+              default: event_index
+            ignore_timing:
+              type: boolean
+              default: false
+            focus_on_differences:
+              type: boolean
+              default: true
+      required:
+        - recording_ids
+        - comparison_type
+
+    ComparisonSession:
+      type: object
+      properties:
+        comparison_id:
+          type: string
+          description: Unique comparison identifier
+        recording_ids:
+          type: array
+          items:
+            type: string
+          description: Recordings being compared
+        status:
+          type: string
+          enum: [analyzing, completed, failed]
+          description: Comparison status
+        created_at:
+          type: string
+          format: date-time
+          description: Comparison creation time
+        completed_at:
+          type: string
+          format: date-time
+          description: Comparison completion time
+      required:
+        - comparison_id
+        - recording_ids
+        - status
+        - created_at
+
+    ComparisonResults:
+      type: object
+      properties:
+        comparison_id:
+          type: string
+          description: Comparison identifier
+        summary:
+          type: object
+          properties:
+            total_differences:
+              type: integer
+            significant_differences:
+              type: integer
+            common_patterns:
+              type: integer
+            divergence_points:
+              type: array
+              items:
+                type: object
+                properties:
+                  event_index:
+                    type: integer
+                  description:
+                    type: string
+                  severity:
+                    type: string
+                    enum: [low, medium, high, critical]
+        detailed_analysis:
+          type: object
+          properties:
+            execution_paths:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            performance_metrics:
+              type: object
+              additionalProperties: true
+            state_differences:
+              type: array
+              items:
+                $ref: '#/components/schemas/StateDiff'
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              description:
+                type: string
+              priority:
+                type: string
+                enum: [low, medium, high, critical]
+      required:
+        - comparison_id
+        - summary
+
+    PatternAnalysis:
+      type: object
+      properties:
+        analysis_period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date-time
+            end_date:
+              type: string
+              format: date-time
+            total_recordings:
+              type: integer
+        common_patterns:
+          type: array
+          items:
+            type: object
+            properties:
+              pattern_id:
+                type: string
+              description:
+                type: string
+              frequency:
+                type: integer
+              severity:
+                type: string
+                enum: [low, medium, high, critical]
+              examples:
+                type: array
+                items:
+                  type: string
+                  description: Recording IDs exhibiting this pattern
+        failure_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              count:
+                type: integer
+              percentage:
+                type: number
+              trend:
+                type: string
+                enum: [increasing, decreasing, stable]
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              recommendation:
+                type: string
+              impact:
+                type: string
+                enum: [low, medium, high]
+              effort:
+                type: string
+                enum: [low, medium, high]
+      required:
+        - analysis_period
+        - common_patterns
+
+    TimeTravelConfig:
+      type: object
+      properties:
+        recording:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            automatic_capture:
+              type: object
+              properties:
+                failed_jobs:
+                  type: boolean
+                  default: true
+                sample_rate:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.01
+                performance_threshold:
+                  type: number
+                  description: Capture jobs slower than N seconds
+                  default: 10
+            manual_capture:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: true
+                max_concurrent:
+                  type: integer
+                  default: 10
+        storage:
+          type: object
+          properties:
+            retention_days:
+              type: integer
+              default: 30
+            compression_enabled:
+              type: boolean
+              default: true
+            archive_enabled:
+              type: boolean
+              default: true
+            max_storage_gb:
+              type: integer
+              default: 100
+        performance:
+          type: object
+          properties:
+            max_capture_overhead_percent:
+              type: number
+              default: 2.0
+            max_memory_mb:
+              type: integer
+              default: 500
+            snapshot_interval_seconds:
+              type: integer
+              default: 5
+        security:
+          type: object
+          properties:
+            redact_sensitive_data:
+              type: boolean
+              default: true
+            sensitive_fields:
+              type: array
+              items:
+                type: string
+              default: ["password", "token", "key", "secret"]
+            access_logging:
+              type: boolean
+              default: true
+      required: []
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+        total_pages:
+          type: integer
+          minimum: 0
+        total_items:
+          type: integer
+          minimum: 0
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+      required:
+        - page
+        - limit
+        - total_pages
+        - total_items
+        - has_next
+        - has_previous
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+      required:
+        - error
+        - message
+        - request_id
+        - timestamp
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Recordings
+    description: Job execution recording management
+  - name: Replay
+    description: Timeline replay session management
+  - name: Navigation
+    description: Timeline navigation and playback controls
+  - name: State
+    description: System state retrieval and analysis
+  - name: Timeline
+    description: Event timeline operations
+  - name: Breakpoints
+    description: Breakpoint management for replay sessions
+  - name: Export
+    description: Recording export and sharing
+  - name: Comparison
+    description: Multi-recording comparison and analysis
+  - name: Analytics
+    description: Pattern analysis and insights
+  - name: Configuration
+    description: System configuration management

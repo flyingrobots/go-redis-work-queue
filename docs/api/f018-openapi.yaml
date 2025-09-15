@@ -1,0 +1,1651 @@
+openapi: 3.0.3
+info:
+  title: Long Term Archives API
+  description: |
+    API for managing long-term job archives with multi-tier storage, schema evolution,
+    and GDPR-compliant data retention. Provides comprehensive historical analysis
+    capabilities while maintaining optimal performance and cost efficiency.
+  version: 1.0.0
+  contact:
+    name: Engineering Team
+    email: engineering@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+paths:
+  /archives/config:
+    get:
+      summary: Get archive configuration
+      description: Retrieve current archive system configuration including retention policies
+      operationId: getArchiveConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Archive configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchiveConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update archive configuration
+      description: Update archive system configuration and retention policies
+      operationId: updateArchiveConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateArchiveConfigRequest'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchiveConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/export/status:
+    get:
+      summary: Get export pipeline status
+      description: Retrieve real-time status of the export pipeline
+      operationId: getExportStatus
+      tags:
+        - Export Pipeline
+      responses:
+        '200':
+          description: Export status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/export/start:
+    post:
+      summary: Start export pipeline
+      description: Start or restart the archive export pipeline
+      operationId: startExport
+      tags:
+        - Export Pipeline
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force_restart:
+                  type: boolean
+                  description: Force restart even if already running
+                  default: false
+                config_override:
+                  $ref: '#/components/schemas/ExportConfig'
+      responses:
+        '200':
+          description: Export pipeline started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Export pipeline already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/export/stop:
+    post:
+      summary: Stop export pipeline
+      description: Gracefully stop the archive export pipeline
+      operationId: stopExport
+      tags:
+        - Export Pipeline
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeout:
+                  type: string
+                  format: duration
+                  description: Timeout for graceful shutdown
+                  default: "30s"
+                force:
+                  type: boolean
+                  description: Force stop without waiting for graceful shutdown
+                  default: false
+      responses:
+        '200':
+          description: Export pipeline stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/query:
+    post:
+      summary: Execute analytical query
+      description: Execute SQL query against archived job data
+      operationId: executeQuery
+      tags:
+        - Queries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/query/templates:
+    get:
+      summary: Get query templates
+      description: Retrieve predefined query templates for common analysis patterns
+      operationId: getQueryTemplates
+      tags:
+        - Queries
+      parameters:
+        - name: category
+          in: query
+          description: Filter templates by category
+          schema:
+            type: string
+            enum: [performance, errors, capacity, trends, compliance]
+      responses:
+        '200':
+          description: Query templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueryTemplate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/query/history:
+    get:
+      summary: Get query history
+      description: Retrieve query execution history for audit and optimization
+      operationId: getQueryHistory
+      tags:
+        - Queries
+      parameters:
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: Start time for query history
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for query history
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of queries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Query history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueryHistoryEntry'
+                  total_count:
+                    type: integer
+                    description: Total number of queries matching criteria
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/schema:
+    get:
+      summary: Get current schema
+      description: Retrieve the current archive schema definition
+      operationId: getCurrentSchema
+      tags:
+        - Schema Management
+      responses:
+        '200':
+          description: Current schema retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaDefinition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/schema/versions:
+    get:
+      summary: List schema versions
+      description: Retrieve all available schema versions and their metadata
+      operationId: getSchemaVersions
+      tags:
+        - Schema Management
+      responses:
+        '200':
+          description: Schema versions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SchemaVersion'
+                  current_version:
+                    type: string
+                    description: Currently active schema version
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/schema/migrate:
+    post:
+      summary: Trigger schema migration
+      description: Initiate migration to a new schema version
+      operationId: migrateSchema
+      tags:
+        - Schema Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - target_version
+              properties:
+                target_version:
+                  type: string
+                  description: Target schema version for migration
+                  example: "2.1.0"
+                dry_run:
+                  type: boolean
+                  description: Perform validation without actual migration
+                  default: false
+                batch_size:
+                  type: integer
+                  description: Number of records to migrate per batch
+                  minimum: 100
+                  maximum: 10000
+                  default: 1000
+      responses:
+        '200':
+          description: Migration initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Migration already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/retention:
+    get:
+      summary: Get retention status
+      description: Retrieve current retention policy status and statistics
+      operationId: getRetentionStatus
+      tags:
+        - Retention Management
+      responses:
+        '200':
+          description: Retention status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/retention/cleanup:
+    post:
+      summary: Trigger retention cleanup
+      description: Manually trigger retention cleanup process
+      operationId: triggerRetentionCleanup
+      tags:
+        - Retention Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tier:
+                  type: string
+                  enum: [redis, clickhouse, s3]
+                  description: Storage tier to clean up (all tiers if not specified)
+                dry_run:
+                  type: boolean
+                  description: Simulate cleanup without actual deletion
+                  default: false
+                force:
+                  type: boolean
+                  description: Force cleanup even if not scheduled
+                  default: false
+      responses:
+        '200':
+          description: Retention cleanup initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanupStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/gdpr/deletion-requests:
+    get:
+      summary: List GDPR deletion requests
+      description: Retrieve list of GDPR deletion requests and their status
+      operationId: listDeletionRequests
+      tags:
+        - GDPR Compliance
+      parameters:
+        - name: status
+          in: query
+          description: Filter by deletion request status
+          schema:
+            $ref: '#/components/schemas/DeletionStatus'
+        - name: requested_by
+          in: query
+          description: Filter by requesting user
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Filter requests from this date
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Deletion requests retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeletionRequest'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create GDPR deletion request
+      description: Submit a new GDPR deletion request
+      operationId: createDeletionRequest
+      tags:
+        - GDPR Compliance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeletionRequest'
+      responses:
+        '201':
+          description: Deletion request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/gdpr/deletion-requests/{requestId}:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        description: Deletion request identifier
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get deletion request details
+      description: Retrieve detailed information about a specific deletion request
+      operationId: getDeletionRequest
+      tags:
+        - GDPR Compliance
+      responses:
+        '200':
+          description: Deletion request details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      summary: Update deletion request status
+      description: Update the status of a deletion request (admin only)
+      operationId: updateDeletionRequest
+      tags:
+        - GDPR Compliance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: '#/components/schemas/DeletionStatus'
+                notes:
+                  type: string
+                  maxLength: 1000
+                  description: Administrative notes
+      responses:
+        '200':
+          description: Deletion request updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/metrics:
+    get:
+      summary: Get archive metrics
+      description: Retrieve comprehensive metrics about the archive system
+      operationId: getArchiveMetrics
+      tags:
+        - Metrics
+      parameters:
+        - name: time_range
+          in: query
+          description: Time range for metrics
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+        - name: granularity
+          in: query
+          description: Metrics granularity
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 1d]
+            default: 1h
+      responses:
+        '200':
+          description: Archive metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchiveMetrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /archives/health:
+    get:
+      summary: Get system health status
+      description: Retrieve health status of all archive system components
+      operationId: getArchiveHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service unavailable - system unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    ArchiveConfig:
+      type: object
+      required:
+        - retention_policy
+        - export_config
+        - storage_config
+      properties:
+        retention_policy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        export_config:
+          $ref: '#/components/schemas/ExportConfig'
+        storage_config:
+          $ref: '#/components/schemas/StorageConfig'
+        privacy_config:
+          $ref: '#/components/schemas/PrivacyConfig'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+
+    RetentionPolicy:
+      type: object
+      required:
+        - redis_ttl
+        - clickhouse_ttl
+        - s3_archive_ttl
+      properties:
+        redis_ttl:
+          type: string
+          format: duration
+          description: TTL for data in Redis
+          example: "168h"
+        clickhouse_ttl:
+          type: string
+          format: duration
+          description: TTL for data in ClickHouse
+          example: "8760h"
+        s3_archive_ttl:
+          type: string
+          format: duration
+          description: TTL for data in S3
+          example: "61320h"
+        payload_sampling_rate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Sampling rate for payload data
+          default: 0.01
+        payload_max_size:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Maximum payload size to archive
+          default: 1048576
+        gdpr_compliance_enabled:
+          type: boolean
+          description: Enable GDPR compliance features
+          default: true
+
+    ExportConfig:
+      type: object
+      required:
+        - stream_key
+        - batch_size
+        - flush_interval
+      properties:
+        stream_key:
+          type: string
+          description: Redis stream key for completed jobs
+          example: "completed_jobs"
+        consumer_group:
+          type: string
+          description: Consumer group name for stream processing
+          example: "archive_exporter"
+        batch_size:
+          type: integer
+          minimum: 100
+          maximum: 10000
+          description: Number of records per batch
+          default: 1000
+        flush_interval:
+          type: string
+          format: duration
+          description: Maximum time between flushes
+          default: "30s"
+        worker_count:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Number of export workers
+          default: 5
+        retry_attempts:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Number of retry attempts for failed exports
+          default: 3
+        retry_backoff:
+          type: string
+          format: duration
+          description: Backoff duration between retries
+          default: "1s"
+
+    StorageConfig:
+      type: object
+      properties:
+        clickhouse:
+          $ref: '#/components/schemas/ClickHouseConfig'
+        s3:
+          $ref: '#/components/schemas/S3Config'
+
+    ClickHouseConfig:
+      type: object
+      required:
+        - host
+        - database
+        - table
+      properties:
+        host:
+          type: string
+          description: ClickHouse host
+          example: "clickhouse.example.com:9000"
+        database:
+          type: string
+          description: Database name
+          example: "job_archives"
+        table:
+          type: string
+          description: Table name
+          example: "jobs_archive"
+        username:
+          type: string
+          description: Username for authentication
+        compression:
+          type: string
+          enum: [none, lz4, zstd, gzip]
+          description: Compression codec
+          default: "zstd"
+        batch_size:
+          type: integer
+          minimum: 100
+          maximum: 100000
+          description: Insert batch size
+          default: 10000
+
+    S3Config:
+      type: object
+      required:
+        - bucket
+        - region
+      properties:
+        bucket:
+          type: string
+          description: S3 bucket name
+          example: "job-archives"
+        region:
+          type: string
+          description: AWS region
+          example: "us-west-2"
+        prefix:
+          type: string
+          description: Key prefix for archived files
+          example: "archives/"
+        storage_class:
+          type: string
+          enum: [STANDARD, STANDARD_IA, GLACIER, DEEP_ARCHIVE]
+          description: S3 storage class
+          default: "STANDARD_IA"
+        compression:
+          type: string
+          enum: [none, gzip, snappy, lz4]
+          description: File compression
+          default: "gzip"
+        partition_format:
+          type: string
+          description: Partitioning format
+          example: "year=%Y/month=%m/day=%d/hour=%H"
+
+    PrivacyConfig:
+      type: object
+      properties:
+        pii_redaction_enabled:
+          type: boolean
+          description: Enable PII redaction
+          default: true
+        pii_patterns:
+          type: array
+          items:
+            type: string
+          description: Regex patterns for PII detection
+        redaction_strategy:
+          type: string
+          enum: [mask, hash, remove]
+          description: Strategy for PII redaction
+          default: "mask"
+        retention_max_days:
+          type: integer
+          minimum: 1
+          description: Maximum data retention period
+          example: 2555
+
+    ExportStatus:
+      type: object
+      required:
+        - status
+        - last_updated
+      properties:
+        status:
+          type: string
+          enum: [running, stopped, error, starting, stopping]
+          description: Current export pipeline status
+        last_updated:
+          type: string
+          format: date-time
+          description: Last status update timestamp
+        workers_active:
+          type: integer
+          description: Number of active worker processes
+        stream_lag:
+          type: integer
+          description: Number of unprocessed messages in stream
+        last_export_time:
+          type: string
+          format: date-time
+          description: Timestamp of last successful export
+        records_exported_today:
+          type: integer
+          format: int64
+          description: Number of records exported today
+        error_count:
+          type: integer
+          description: Number of errors in last 24 hours
+        throughput_per_second:
+          type: number
+          format: float
+          description: Current export throughput
+
+    QueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: SQL query to execute
+          example: "SELECT queue, count(*) FROM jobs_archive WHERE created_date = today() GROUP BY queue"
+        timeout:
+          type: string
+          format: duration
+          description: Query timeout
+          default: "30s"
+        max_rows:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+          description: Maximum number of rows to return
+          default: 10000
+        format:
+          type: string
+          enum: [json, csv, parquet]
+          description: Output format
+          default: "json"
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Query parameters for parameterized queries
+
+    QueryResult:
+      type: object
+      required:
+        - columns
+        - rows
+        - execution_time
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnInfo'
+          description: Column metadata
+        rows:
+          type: array
+          items:
+            type: array
+          description: Query result rows
+        execution_time:
+          type: string
+          format: duration
+          description: Query execution time
+        rows_read:
+          type: integer
+          format: int64
+          description: Number of rows processed
+        bytes_read:
+          type: integer
+          format: int64
+          description: Number of bytes processed
+        truncated:
+          type: boolean
+          description: Whether results were truncated
+        query_id:
+          type: string
+          description: Unique query identifier for tracking
+
+    ColumnInfo:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: Column name
+        type:
+          type: string
+          description: Column data type
+        nullable:
+          type: boolean
+          description: Whether column can be null
+
+    QueryTemplate:
+      type: object
+      required:
+        - id
+        - name
+        - category
+        - query
+      properties:
+        id:
+          type: string
+          description: Unique template identifier
+        name:
+          type: string
+          description: Human-readable template name
+        description:
+          type: string
+          description: Template description
+        category:
+          type: string
+          enum: [performance, errors, capacity, trends, compliance]
+          description: Template category
+        query:
+          type: string
+          description: SQL query template with parameters
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueryParameter'
+          description: Template parameters
+        tags:
+          type: array
+          items:
+            type: string
+          description: Template tags
+
+    QueryParameter:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: Parameter name
+        type:
+          type: string
+          enum: [string, integer, float, boolean, date, datetime]
+          description: Parameter data type
+        description:
+          type: string
+          description: Parameter description
+        default:
+          description: Default parameter value
+        required:
+          type: boolean
+          description: Whether parameter is required
+          default: true
+
+    QueryHistoryEntry:
+      type: object
+      required:
+        - id
+        - query
+        - executed_at
+        - execution_time
+      properties:
+        id:
+          type: string
+          description: Query execution identifier
+        query:
+          type: string
+          description: Executed SQL query
+        user_id:
+          type: string
+          description: User who executed the query
+        executed_at:
+          type: string
+          format: date-time
+          description: Query execution timestamp
+        execution_time:
+          type: string
+          format: duration
+          description: Query execution duration
+        rows_returned:
+          type: integer
+          format: int64
+          description: Number of rows returned
+        status:
+          type: string
+          enum: [success, error, timeout, cancelled]
+          description: Query execution status
+        error_message:
+          type: string
+          description: Error message if query failed
+
+    SchemaDefinition:
+      type: object
+      required:
+        - version
+        - fields
+      properties:
+        version:
+          type: string
+          description: Schema version
+          example: "1.2.0"
+        fields:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FieldSchema'
+          description: Field definitions
+        required:
+          type: array
+          items:
+            type: string
+          description: Required field names
+        deprecated:
+          type: array
+          items:
+            type: string
+          description: Deprecated field names
+        created_at:
+          type: string
+          format: date-time
+          description: Schema creation timestamp
+        description:
+          type: string
+          description: Schema description
+
+    FieldSchema:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Field data type
+          example: "string"
+        description:
+          type: string
+          description: Field description
+        nullable:
+          type: boolean
+          description: Whether field can be null
+          default: false
+        default:
+          description: Default field value
+        deprecated:
+          type: boolean
+          description: Whether field is deprecated
+          default: false
+        added_in:
+          type: string
+          description: Version when field was added
+        removed_in:
+          type: string
+          description: Version when field was removed
+
+    SchemaVersion:
+      type: object
+      required:
+        - version
+        - created_at
+      properties:
+        version:
+          type: string
+          description: Schema version
+        description:
+          type: string
+          description: Version description
+        created_at:
+          type: string
+          format: date-time
+          description: Version creation timestamp
+        created_by:
+          type: string
+          description: User who created this version
+        backward_compatible:
+          type: boolean
+          description: Whether version is backward compatible
+        migration_required:
+          type: boolean
+          description: Whether migration is required
+        deprecated:
+          type: boolean
+          description: Whether version is deprecated
+
+    MigrationStatus:
+      type: object
+      required:
+        - id
+        - status
+        - started_at
+      properties:
+        id:
+          type: string
+          description: Migration identifier
+        from_version:
+          type: string
+          description: Source schema version
+        to_version:
+          type: string
+          description: Target schema version
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+          description: Migration status
+        started_at:
+          type: string
+          format: date-time
+          description: Migration start timestamp
+        completed_at:
+          type: string
+          format: date-time
+          description: Migration completion timestamp
+        progress:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Migration progress (0.0 to 1.0)
+        records_migrated:
+          type: integer
+          format: int64
+          description: Number of records migrated
+        total_records:
+          type: integer
+          format: int64
+          description: Total number of records to migrate
+        error_message:
+          type: string
+          description: Error message if migration failed
+
+    RetentionStatus:
+      type: object
+      required:
+        - policy
+        - statistics
+      properties:
+        policy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        statistics:
+          $ref: '#/components/schemas/RetentionStatistics'
+        last_cleanup:
+          type: string
+          format: date-time
+          description: Last cleanup execution timestamp
+        next_cleanup:
+          type: string
+          format: date-time
+          description: Next scheduled cleanup timestamp
+
+    RetentionStatistics:
+      type: object
+      properties:
+        redis:
+          $ref: '#/components/schemas/TierStatistics'
+        clickhouse:
+          $ref: '#/components/schemas/TierStatistics'
+        s3:
+          $ref: '#/components/schemas/TierStatistics'
+        total_records:
+          type: integer
+          format: int64
+          description: Total records across all tiers
+        total_size_bytes:
+          type: integer
+          format: int64
+          description: Total size across all tiers
+
+    TierStatistics:
+      type: object
+      properties:
+        record_count:
+          type: integer
+          format: int64
+          description: Number of records in tier
+        size_bytes:
+          type: integer
+          format: int64
+          description: Storage size in bytes
+        oldest_record:
+          type: string
+          format: date-time
+          description: Timestamp of oldest record
+        newest_record:
+          type: string
+          format: date-time
+          description: Timestamp of newest record
+        retention_violations:
+          type: integer
+          description: Number of records exceeding retention policy
+
+    CleanupStatus:
+      type: object
+      required:
+        - id
+        - status
+        - started_at
+      properties:
+        id:
+          type: string
+          description: Cleanup job identifier
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+          description: Cleanup status
+        tier:
+          type: string
+          enum: [redis, clickhouse, s3, all]
+          description: Storage tier being cleaned
+        started_at:
+          type: string
+          format: date-time
+          description: Cleanup start timestamp
+        completed_at:
+          type: string
+          format: date-time
+          description: Cleanup completion timestamp
+        records_deleted:
+          type: integer
+          format: int64
+          description: Number of records deleted
+        bytes_freed:
+          type: integer
+          format: int64
+          description: Number of bytes freed
+        dry_run:
+          type: boolean
+          description: Whether this was a dry run
+        errors:
+          type: array
+          items:
+            type: string
+          description: Cleanup errors
+
+    DeletionRequest:
+      type: object
+      required:
+        - id
+        - status
+        - criteria
+        - requested_at
+        - requested_by
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Deletion request identifier
+        status:
+          $ref: '#/components/schemas/DeletionStatus'
+        criteria:
+          $ref: '#/components/schemas/DeletionCriteria'
+        requested_at:
+          type: string
+          format: date-time
+          description: Request timestamp
+        requested_by:
+          type: string
+          description: User who requested deletion
+        processed_at:
+          type: string
+          format: date-time
+          description: Processing completion timestamp
+        records_deleted:
+          type: integer
+          format: int64
+          description: Number of records deleted
+        bytes_deleted:
+          type: integer
+          format: int64
+          description: Number of bytes deleted
+        notes:
+          type: string
+          description: Administrative notes
+        errors:
+          type: array
+          items:
+            type: string
+          description: Deletion errors
+
+    DeletionStatus:
+      type: string
+      enum: [pending, processing, completed, failed, cancelled]
+      description: Status of deletion request
+
+    DeletionCriteria:
+      type: object
+      properties:
+        job_ids:
+          type: array
+          items:
+            type: string
+          description: Specific job IDs to delete
+        trace_ids:
+          type: array
+          items:
+            type: string
+          description: Trace IDs to delete
+        user_id:
+          type: string
+          description: Delete all data for specific user ID
+        date_range:
+          $ref: '#/components/schemas/DateRange'
+        queue_names:
+          type: array
+          items:
+            type: string
+          description: Queue names to delete from
+        payload_hashes:
+          type: array
+          items:
+            type: string
+          description: Payload hashes to delete
+
+    DateRange:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date-time
+          description: Start date for range
+        end_date:
+          type: string
+          format: date-time
+          description: End date for range
+
+    CreateDeletionRequest:
+      type: object
+      required:
+        - criteria
+        - reason
+      properties:
+        criteria:
+          $ref: '#/components/schemas/DeletionCriteria'
+        reason:
+          type: string
+          maxLength: 1000
+          description: Reason for deletion request
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+          description: Request priority
+          default: normal
+
+    ArchiveMetrics:
+      type: object
+      properties:
+        export_metrics:
+          $ref: '#/components/schemas/ExportMetrics'
+        storage_metrics:
+          $ref: '#/components/schemas/StorageMetrics'
+        query_metrics:
+          $ref: '#/components/schemas/QueryMetrics'
+        time_range:
+          type: string
+          description: Time range for metrics
+        collected_at:
+          type: string
+          format: date-time
+          description: Metrics collection timestamp
+
+    ExportMetrics:
+      type: object
+      properties:
+        records_exported:
+          type: integer
+          format: int64
+          description: Total records exported
+        export_rate:
+          type: number
+          format: float
+          description: Records exported per second
+        pipeline_lag:
+          type: string
+          format: duration
+          description: Export pipeline lag
+        error_rate:
+          type: number
+          format: float
+          description: Export error rate percentage
+        batch_size_avg:
+          type: number
+          format: float
+          description: Average batch size
+        throughput_mbps:
+          type: number
+          format: float
+          description: Throughput in MB/s
+
+    StorageMetrics:
+      type: object
+      properties:
+        total_size_bytes:
+          type: integer
+          format: int64
+          description: Total storage used
+        compression_ratio:
+          type: number
+          format: float
+          description: Compression ratio achieved
+        tier_distribution:
+          type: object
+          properties:
+            redis_percent:
+              type: number
+              format: float
+            clickhouse_percent:
+              type: number
+              format: float
+            s3_percent:
+              type: number
+              format: float
+        growth_rate_per_day:
+          type: number
+          format: float
+          description: Storage growth rate in bytes per day
+
+    QueryMetrics:
+      type: object
+      properties:
+        queries_executed:
+          type: integer
+          description: Total queries executed
+        avg_execution_time:
+          type: string
+          format: duration
+          description: Average query execution time
+        p95_execution_time:
+          type: string
+          format: duration
+          description: 95th percentile execution time
+        cache_hit_rate:
+          type: number
+          format: float
+          description: Query cache hit rate percentage
+        most_frequent_queries:
+          type: array
+          items:
+            type: object
+            properties:
+              query_pattern:
+                type: string
+              execution_count:
+                type: integer
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall system health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+        components:
+          type: object
+          properties:
+            export_pipeline:
+              $ref: '#/components/schemas/ComponentHealth'
+            redis:
+              $ref: '#/components/schemas/ComponentHealth'
+            clickhouse:
+              $ref: '#/components/schemas/ComponentHealth'
+            s3:
+              $ref: '#/components/schemas/ComponentHealth'
+            schema_registry:
+              $ref: '#/components/schemas/ComponentHealth'
+
+    ComponentHealth:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Component health status
+        message:
+          type: string
+          description: Health status message
+        last_check:
+          type: string
+          format: date-time
+          description: Last health check timestamp
+        metrics:
+          type: object
+          additionalProperties: true
+          description: Component-specific health metrics
+
+    UpdateArchiveConfigRequest:
+      type: object
+      properties:
+        retention_policy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        export_config:
+          $ref: '#/components/schemas/ExportConfig'
+        storage_config:
+          $ref: '#/components/schemas/StorageConfig'
+        privacy_config:
+          $ref: '#/components/schemas/PrivacyConfig'
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        has_more:
+          type: boolean
+          description: Whether more pages are available
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        request_id:
+          type: string
+          description: Request identifier for debugging
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+tags:
+  - name: Configuration
+    description: Archive system configuration management
+  - name: Export Pipeline
+    description: Data export pipeline control
+  - name: Queries
+    description: Historical data analysis and querying
+  - name: Schema Management
+    description: Schema evolution and versioning
+  - name: Retention Management
+    description: Data retention and cleanup policies
+  - name: GDPR Compliance
+    description: Privacy and data deletion compliance
+  - name: Metrics
+    description: System performance and usage metrics
+  - name: Health
+    description: System health monitoring
