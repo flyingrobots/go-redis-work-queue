@@ -165,6 +165,5 @@ func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[len(s)-len(substr):] == substr ||
-		   len(s) > len(substr) && s[len(s)-len(substr)-1:len(s)-1] == substr
+	return strings.Contains(s, substr)
 }

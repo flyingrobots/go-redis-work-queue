@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func setupTestHandler(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
+func setupHandlerTest(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
 	// Create mini redis
 	mr, err := miniredis.Run()
 	if err != nil {
@@ -58,15 +58,15 @@ func setupTestHandler(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
 	return handler, mr, cleanup
 }
 
-func TestGetStats(t *testing.T) {
-	handler, mr, cleanup := setupTestHandler(t)
+func TestHandlerGetStats(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
 	defer cleanup()
 
 	// Add test data
-	mr.Lpush("jobqueue:high", "job1")
-	mr.Lpush("jobqueue:high", "job2")
-	mr.Lpush("jobqueue:low", "job3")
-	mr.Lpush("jobqueue:completed", "job4")
+	mr.LPush("jobqueue:high", "job1")
+	mr.LPush("jobqueue:high", "job2")
+	mr.LPush("jobqueue:low", "job3")
+	mr.LPush("jobqueue:completed", "job4")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/stats", nil)
@@ -96,13 +96,13 @@ func TestGetStats(t *testing.T) {
 }
 
 func TestPeekQueue(t *testing.T) {
-	handler, mr, cleanup := setupTestHandler(t)
+	handler, mr, cleanup := setupHandlerTest(t)
 	defer cleanup()
 
 	// Add test data
-	mr.Lpush("jobqueue:high", "job1")
-	mr.Lpush("jobqueue:high", "job2")
-	mr.Lpush("jobqueue:high", "job3")
+	mr.LPush("jobqueue:high", "job1")
+	mr.LPush("jobqueue:high", "job2")
+	mr.LPush("jobqueue:high", "job3")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/queues/high/peek?count=2", nil)
@@ -136,12 +136,12 @@ func TestPeekQueue(t *testing.T) {
 }
 
 func TestPurgeDLQ(t *testing.T) {
-	handler, mr, cleanup := setupTestHandler(t)
+	handler, mr, cleanup := setupHandlerTest(t)
 	defer cleanup()
 
 	// Add test data
-	mr.Lpush("jobqueue:dead_letter", "failed1")
-	mr.Lpush("jobqueue:dead_letter", "failed2")
+	mr.LPush("jobqueue:dead_letter", "failed1")
+	mr.LPush("jobqueue:dead_letter", "failed2")
 
 	// Create request with proper confirmation
 	reqBody := PurgeRequest{

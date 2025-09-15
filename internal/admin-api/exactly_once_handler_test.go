@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 	"github.com/flyingrobots/go-redis-work-queue/internal/exactly_once"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
@@ -29,9 +30,9 @@ func setupTestHandler(t *testing.T) (*ExactlyOnceHandler, *redis.Client, func())
 		Addr: mr.Addr(),
 	})
 
-	// Create handler
+	// Create handler with custom config to disable metrics
 	logger := zap.NewNop()
-	handler := NewExactlyOnceHandler(client, logger)
+	handler := newExactlyOnceHandlerWithConfig(client, logger, false)
 
 	cleanup := func() {
 		client.Close()
@@ -39,6 +40,27 @@ func setupTestHandler(t *testing.T) (*ExactlyOnceHandler, *redis.Client, func())
 	}
 
 	return handler, client, cleanup
+}
+
+// Helper function to create handler with configurable metrics
+func newExactlyOnceHandlerWithConfig(redisClient *redis.Client, logger *zap.Logger, enableMetrics bool) *ExactlyOnceHandler {
+	// Import the exactly-once-patterns package
+	cfg := exactlyonce.DefaultConfig()
+	cfg.Metrics.Enabled = enableMetrics // Disable metrics for tests
+	manager := exactlyonce.NewManager(cfg, redisClient, logger)
+
+	idempManager := exactly_once.NewRedisIdempotencyManager(
+		redisClient,
+		"admin",
+		24*time.Hour,
+	)
+
+	return &ExactlyOnceHandler{
+		manager:      manager,
+		idempManager: idempManager,
+		redisClient:  redisClient,
+		logger:       logger,
+	}
 }
 
 func TestGetStats(t *testing.T) {

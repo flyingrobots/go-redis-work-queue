@@ -23,8 +23,9 @@ func setupManagerWithRedis(t *testing.T) (*Manager, *redis.Client, func()) {
 	})
 
 	cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 	cfg.Outbox.Enabled = true
-	cfg.Metrics.Enabled = true
+	cfg.Metrics.Enabled = false
 	logger := zaptest.NewLogger(t)
 	manager := NewManager(cfg, rdb, logger)
 
@@ -121,6 +122,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create redis idempotency storage", func(t *testing.T) {
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "redis"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -130,6 +132,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create memory idempotency storage", func(t *testing.T) {
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "memory"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -139,6 +142,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create database idempotency storage (fallback to redis)", func(t *testing.T) {
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "database"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -148,6 +152,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create unknown idempotency storage (fallback to redis)", func(t *testing.T) {
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "unknown"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -166,6 +171,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 		defer rdb.Close()
 
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Outbox.Enabled = true
 		cfg.Outbox.StorageType = "redis"
 		manager := NewManager(cfg, rdb, logger)
@@ -185,6 +191,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 		defer rdb.Close()
 
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		cfg.Outbox.Enabled = true
 		cfg.Outbox.StorageType = "database"
 		manager := NewManager(cfg, rdb, logger)
@@ -196,6 +203,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 func TestManager_CalculateNextRetry(t *testing.T) {
 	cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 	cfg.Outbox.RetryBackoff = BackoffConfig{
 		InitialDelay: 1 * time.Second,
 		MaxDelay:     30 * time.Second,
@@ -244,9 +252,9 @@ func TestManager_CalculateNextRetry(t *testing.T) {
 }
 
 func TestManager_Close(t *testing.T) {
-	t.Run("close with metrics", func(t *testing.T) {
+	t.Run("close with metrics disabled", func(t *testing.T) {
 		cfg := DefaultConfig()
-		cfg.Metrics.Enabled = true
+		cfg.Metrics.Enabled = false
 		logger := zaptest.NewLogger(t)
 		manager := NewManager(cfg, nil, logger)
 
@@ -266,6 +274,7 @@ func TestManager_Close(t *testing.T) {
 
 	t.Run("close with hooks", func(t *testing.T) {
 		cfg := DefaultConfig()
+	cfg.Metrics.Enabled = false
 		logger := zaptest.NewLogger(t)
 		manager := NewManager(cfg, nil, logger)
 

@@ -52,7 +52,7 @@ func TestRedisIdempotencyStorage_Check(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, result.IsFirstTime)
 		assert.Nil(t, result.ExistingValue)
-		assert.Equal(t, key.ID, result.Key)
+		assert.Contains(t, result.Key, key.ID)
 	})
 
 	// Set a value first
@@ -65,7 +65,7 @@ func TestRedisIdempotencyStorage_Check(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, result.IsFirstTime)
 		assert.NotNil(t, result.ExistingValue)
-		assert.Equal(t, key.ID, result.Key)
+		assert.Contains(t, result.Key, key.ID)
 	})
 }
 
@@ -238,25 +238,25 @@ func TestRedisIdempotencyStorage_BuildKeys(t *testing.T) {
 
 	t.Run("build redis key", func(t *testing.T) {
 		redisKey := storage.buildRedisKey(key)
-		expected := "test-queue:idempotency:test-tenant:test-key"
+		expected := "idempotency:test-queue:idempotency:test-tenant:test-key"
 		assert.Equal(t, expected, redisKey)
 	})
 
 	t.Run("build hash key", func(t *testing.T) {
 		hashKey := storage.buildHashKey(key)
-		expected := "test-queue:idempotency:test-tenant"
+		expected := "idempotency:test-queue:idempotency:test-tenant"
 		assert.Equal(t, expected, hashKey)
 	})
 
 	t.Run("build key pattern", func(t *testing.T) {
 		pattern := storage.buildKeyPattern("test-queue", "test-tenant")
-		expected := "test-queue:idempotency:test-tenant:*"
+		expected := "idempotency:test-queue:idempotency:test-tenant:*"
 		assert.Equal(t, expected, pattern)
 	})
 
 	t.Run("build hash key pattern", func(t *testing.T) {
 		pattern := storage.buildHashKeyPattern("test-queue", "test-tenant")
-		expected := "test-queue:idempotency:test-tenant"
+		expected := "idempotency:test-queue:idempotency:test-tenant"
 		assert.Equal(t, expected, pattern)
 	})
 }

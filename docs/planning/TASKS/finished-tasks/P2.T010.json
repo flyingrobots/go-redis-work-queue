@@ -1,6 +1,6 @@
 {
   "task_id": "P2.T010",
-  "created_at": "2025-09-14T19:39:40.943940Z",
+  "created_at": "2025-09-14T19:41:47.126154Z",
   "task": {
     "id": "P2.T010",
     "feature_id": "F003",
@@ -195,7 +195,9 @@
       ]
     }
   },
-  "dependencies_completed": [],
+  "dependencies": [
+    "P2.T009"
+  ],
   "instructions": {
     "on_complete": "Move this file to finished-tasks/P2.T010.json",
     "on_failure": "Move this file to failed-tasks/P2.T010.json",

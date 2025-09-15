@@ -4,6 +4,7 @@ package distributed_tracing_integration
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -91,9 +92,9 @@ func TestEndToEnd_TracePropagatThroughWorkflow(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Record processing events
-		processSpan.AddEvent("job.started", trace.WithAttributes(
+		processSpan.AddEvent("job.started",
 			attribute.String("job.id", traceableJob.ID),
-		))
+		)
 
 		time.Sleep(25 * time.Millisecond)
 

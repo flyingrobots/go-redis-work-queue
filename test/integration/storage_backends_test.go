@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -540,11 +542,6 @@ func logPerformanceResult(t *testing.T, result BenchmarkResult) {
 	t.Logf("  Total Jobs: %d", result.TotalJobs)
 }
 
-// Import required packages for atomic operations and sorting
-import (
-	"sort"
-	"sync/atomic"
-)
 
 // Helper function to create Redis Lists backend (copy from unit tests)
 func createRedisListsBackend(config storage.RedisListsConfig, queueName string) (storage.QueueBackend, error) {

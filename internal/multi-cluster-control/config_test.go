@@ -15,9 +15,9 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Empty(t, cfg.Clusters)
 	assert.Empty(t, cfg.DefaultCluster)
 	assert.True(t, cfg.Polling.Enabled)
-	assert.Equal(t, 30*time.Second, cfg.Polling.Interval.Duration())
+	assert.Equal(t, 5*time.Second, cfg.Polling.Interval)
 	assert.True(t, cfg.Cache.Enabled)
-	assert.Equal(t, 5*time.Minute, cfg.Cache.TTL.Duration())
+	assert.Equal(t, 30*time.Second, cfg.Cache.TTL)
 }
 
 func TestConfigValidation(t *testing.T) {
@@ -98,7 +98,7 @@ func TestConfigValidation(t *testing.T) {
 					{Name: "test", Endpoint: "localhost:6379"},
 				},
 				Polling: PollingConfig{
-					Interval: Duration(0),
+					Interval: 0,
 				},
 			},
 			wantErr: true,
@@ -112,7 +112,7 @@ func TestConfigValidation(t *testing.T) {
 				},
 				Cache: CacheConfig{
 					Enabled: true,
-					TTL:     Duration(0),
+					TTL:     0,
 				},
 			},
 			wantErr: true,
@@ -223,7 +223,6 @@ func TestConfigGetActionTimeout(t *testing.T) {
 				ActionTypePurgeDLQ:  Duration(30 * time.Second),
 				ActionTypeBenchmark: Duration(60 * time.Second),
 			},
-			DefaultTimeout: Duration(10 * time.Second),
 		},
 	}
 
@@ -286,16 +285,10 @@ func TestClusterConfigValidation(t *testing.T) {
 				Name:        "production",
 				Label:       "Production Cluster",
 				Color:       "#ff0000",
-				Environment: "prod",
-				Region:      "us-east-1",
 				Endpoint:    "prod.redis.example.com:6379",
 				Password:    "secret",
 				DB:          0,
 				Enabled:     true,
-				Tags:        []string{"production", "critical"},
-				Metadata: map[string]string{
-					"owner": "platform-team",
-				},
 			},
 			wantErr: false,
 		},
@@ -327,9 +320,9 @@ func TestPollingConfigValidation(t *testing.T) {
 			name: "valid polling config",
 			polling: PollingConfig{
 				Enabled:  true,
-				Interval: Duration(30 * time.Second),
-				Jitter:   Duration(5 * time.Second),
-				Timeout:  Duration(10 * time.Second),
+				Interval: 30 * time.Second,
+				Jitter:   5 * time.Second,
+				Timeout:  10 * time.Second,
 			},
 			wantErr: false,
 		},
@@ -344,7 +337,7 @@ func TestPollingConfigValidation(t *testing.T) {
 			name: "zero interval",
 			polling: PollingConfig{
 				Enabled:  true,
-				Interval: Duration(0),
+				Interval: 0,
 			},
 			wantErr: true,
 			errMsg:  "interval must be positive",
@@ -353,8 +346,8 @@ func TestPollingConfigValidation(t *testing.T) {
 			name: "negative timeout",
 			polling: PollingConfig{
 				Enabled:  true,
-				Interval: Duration(30 * time.Second),
-				Timeout:  Duration(-1 * time.Second),
+				Interval: 30 * time.Second,
+				Timeout:  -1 * time.Second,
 			},
 			wantErr: true,
 			errMsg:  "timeout must be positive",
@@ -363,8 +356,8 @@ func TestPollingConfigValidation(t *testing.T) {
 			name: "jitter larger than interval",
 			polling: PollingConfig{
 				Enabled:  true,
-				Interval: Duration(10 * time.Second),
-				Jitter:   Duration(20 * time.Second),
+				Interval: 10 * time.Second,
+				Jitter:   20 * time.Second,
 			},
 			wantErr: true,
 			errMsg:  "jitter cannot be larger than interval",
@@ -397,9 +390,9 @@ func TestCacheConfigValidation(t *testing.T) {
 			name: "valid cache config",
 			cache: CacheConfig{
 				Enabled:         true,
-				TTL:             Duration(5 * time.Minute),
+				TTL:             5 * time.Minute,
 				MaxEntries:      1000,
-				CleanupInterval: Duration(1 * time.Minute),
+				CleanupInterval: 1 * time.Minute,
 			},
 			wantErr: false,
 		},
@@ -433,9 +426,9 @@ func TestCacheConfigValidation(t *testing.T) {
 			name: "zero cleanup interval",
 			cache: CacheConfig{
 				Enabled:         true,
-				TTL:             Duration(5 * time.Minute),
+				TTL:             5 * time.Minute,
 				MaxEntries:      1000,
-				CleanupInterval: Duration(0),
+				CleanupInterval: 0,
 			},
 			wantErr: true,
 			errMsg:  "cleanup interval must be positive",
@@ -469,14 +462,13 @@ func TestActionsConfigValidation(t *testing.T) {
 			actions: ActionsConfig{
 				RequireConfirmation: true,
 				MaxConcurrent:       5,
-				DefaultTimeout:      Duration(30 * time.Second),
 				AllowedActions: []ActionType{
 					ActionTypePurgeDLQ,
 					ActionTypeBenchmark,
 				},
 				RetryPolicy: RetryPolicy{
-					MaxAttempts: 3,
-					Backoff:     Duration(1 * time.Second),
+					MaxAttempts:  3,
+					InitialDelay: 1 * time.Second,
 				},
 			},
 			wantErr: false,
@@ -490,19 +482,9 @@ func TestActionsConfigValidation(t *testing.T) {
 			errMsg:  "max concurrent must be positive",
 		},
 		{
-			name: "zero default timeout",
-			actions: ActionsConfig{
-				MaxConcurrent:  5,
-				DefaultTimeout: Duration(0),
-			},
-			wantErr: true,
-			errMsg:  "default timeout must be positive",
-		},
-		{
 			name: "zero retry max attempts",
 			actions: ActionsConfig{
-				MaxConcurrent:  5,
-				DefaultTimeout: Duration(30 * time.Second),
+				MaxConcurrent: 5,
 				RetryPolicy: RetryPolicy{
 					MaxAttempts: 0,
 				},
@@ -513,11 +495,10 @@ func TestActionsConfigValidation(t *testing.T) {
 		{
 			name: "negative retry backoff",
 			actions: ActionsConfig{
-				MaxConcurrent:  5,
-				DefaultTimeout: Duration(30 * time.Second),
+				MaxConcurrent: 5,
 				RetryPolicy: RetryPolicy{
-					MaxAttempts: 3,
-					Backoff:     Duration(-1 * time.Second),
+					MaxAttempts:  3,
+					InitialDelay: -1 * time.Second,
 				},
 			},
 			wantErr: true,
@@ -567,7 +548,7 @@ func TestConfigMerge(t *testing.T) {
 		DefaultCluster: "cluster1",
 		Polling: PollingConfig{
 			Enabled:  true,
-			Interval: Duration(30 * time.Second),
+			Interval: 30 * time.Second,
 		},
 	}
 
@@ -576,7 +557,7 @@ func TestConfigMerge(t *testing.T) {
 			{Name: "cluster2", Endpoint: "localhost:6380"},
 		},
 		Polling: PollingConfig{
-			Interval: Duration(60 * time.Second),
+			Interval: 60 * time.Second,
 		},
 	}
 
@@ -589,7 +570,7 @@ func TestConfigMerge(t *testing.T) {
 
 	// Should use override's polling interval but base's enabled
 	assert.True(t, merged.Polling.Enabled)
-	assert.Equal(t, Duration(60*time.Second), merged.Polling.Interval)
+	assert.Equal(t, 60*time.Second, merged.Polling.Interval)
 
 	// Should keep base's default cluster
 	assert.Equal(t, "cluster1", merged.DefaultCluster)

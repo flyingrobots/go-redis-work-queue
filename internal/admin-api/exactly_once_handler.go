@@ -4,6 +4,7 @@ package adminapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
@@ -96,13 +97,10 @@ func (h *ExactlyOnceHandler) GetDedupStats(w http.ResponseWriter, r *http.Reques
 
 // GetPendingOutboxEvents returns pending outbox events
 func (h *ExactlyOnceHandler) GetPendingOutboxEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	// Parse query parameters
 	limit := 100
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		var parsedLimit int
-		if _, err := json.Marshal(limitStr); err == nil {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
 			limit = parsedLimit
 		}
 	}
@@ -155,7 +153,7 @@ func (h *ExactlyOnceHandler) PublishOutboxEvents(w http.ResponseWriter, r *http.
 func (h *ExactlyOnceHandler) CleanupOutboxEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	err := h.manager.CleanupOutbox(ctx)
+	err := h.manager.CleanupOutboxEvents(ctx)
 	if err != nil {
 		if err == exactlyonce.ErrOutboxDisabled {
 			response := map[string]interface{}{

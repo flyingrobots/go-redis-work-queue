@@ -54,7 +54,7 @@ func TestClusterConnection(t *testing.T) {
 func TestClusterStats(t *testing.T) {
 	stats := &ClusterStats{
 		ClusterName:     "test",
-		QueueSizes:      map[string]int{"high": 10, "normal": 20},
+		QueueSizes:      map[string]int64{"high": 10, "normal": 20},
 		ProcessingCount: 5,
 		DeadLetterCount: 2,
 		WorkerCount:     3,
@@ -349,8 +349,8 @@ func TestActionType(t *testing.T) {
 		{ActionTypePauseQueue, "pause_queue"},
 		{ActionTypeResumeQueue, "resume_queue"},
 		{ActionTypeBenchmark, "benchmark"},
-		{ActionTypeRestartWorkers, "restart_workers"},
-		{ActionTypeScaleWorkers, "scale_workers"},
+		{ActionTypeRebalance, "rebalance"},
+		{ActionTypeFailover, "failover"},
 	}
 
 	for _, tt := range tests {
@@ -375,7 +375,7 @@ func TestActionStatus(t *testing.T) {
 		{ActionStatusExecuting, "executing"},
 		{ActionStatusCompleted, "completed"},
 		{ActionStatusFailed, "failed"},
-		{ActionStatusCanceled, "canceled"},
+		{ActionStatusCancelled, "cancelled"},
 	}
 
 	for _, tt := range tests {
