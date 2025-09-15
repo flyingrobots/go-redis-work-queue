@@ -13,6 +13,20 @@ See `docs/` to learn more. A sample configuration is provided in `config/config.
 
 ----
 
+## Progress
+
+For full details, see the Features Ledger at [docs/features-ledger.md](docs/features-ledger.md).
+
+<!-- progress:begin -->
+```text
+██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
+------------|-------------|------------|
+           MVP          Alpha    v1.0.0 
+```
+<!-- progress:end -->
+
+----
+
 ## Quick start
 
 1. Clone the repo

@@ -26,13 +26,16 @@
 	2. [[AGENTS## Working Tasklist|Working Tasklist]]
 		1. [[AGENTS### Prioritized Backlog|Prioritized Backlog]]
 		2. [[AGENTS### Finished Log|Finished Log]]
-	3. [[AGENTS## Daily Activity Logs|Daily Activity Logs]]
+	3. [[AGENTS## TUI Tasks|TUI Tasks]]
+		1. [[AGENTS### TUI Task Chains|TUI Task Chains]]
+		2. [[AGENTS### TUI Parallelization & Priorities|TUI Parallelization & Priorities]]
+	4. [[AGENTS## Daily Activity Logs|Daily Activity Logs]]
 		1. [[AGENTS### 2025-09-13–Rewrote `AGENTS.md`|2025-09-13–Rewrote `AGENTS.md`]]
 			1. [[AGENTS#### ##### 06:39 – Starting `AGENTS.md` Enhancements|##### 06:39 – Starting `AGENTS.md` Enhancements]]
 				1. [[AGENTS##### 06:39 – Starting `AGENTS.md` Enhancements|06:39 – Starting `AGENTS.md` Enhancements]]
-	4. [[AGENTS## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM|APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM]]
+	5. [[AGENTS## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM|APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM]]
 		1. [[AGENTS### Codex's Top Picks|Codex's Top Picks]]
-	5. [[AGENTS## Appendix C: Codex Ideas in Detail|Appendix C: Codex Ideas in Detail]]
+	6. [[AGENTS## Appendix C: Codex Ideas in Detail|Appendix C: Codex Ideas in Detail]]
 
 <!-- End of TOC -->
 
@@ -115,6 +118,8 @@ There's a fancy TUI for interacting with and monitoring the job system. The app'
 - Alpha RC in PR
 - TUI started
 
+Feature status is tracked in `docs/features-ledger.md`.
+
 ### Notes
 
 Near-term TODOs I’m targeting:
@@ -126,6 +131,13 @@ Near-term TODOs I’m targeting:
 ## Working Tasklist
 
 (maintain and use this from now on)
+
+Note: Whenever you update this tasklist, please also update the features ledger document at `docs/features-ledger.md`.
+
+Progress automation
+- To refresh the overall project progress bars (in the Features Ledger and README) after editing the features table, run: `python3 scripts/update_progress.py` and commit the changes.
+- The script weights features by approximate Go LOC of the linked code paths and recomputes the overall percent, updating both docs in place between `<!-- progress:begin -->` and `<!-- progress:end -->` markers.
+- When adding rows, use valid repo paths in the Code column (e.g., `[internal/admin-api](../internal/admin-api)`) so LOC can be computed. If no code path, the row gets a minimum weight.
 
 Use this checklist to track work. Keep it prioritized, update statuses, and reference it in PRs/commits. Add new items as they surface; close them when done. This is your backlog.
 
@@ -170,6 +182,355 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
   - Fixed Queues table bottom-border clipping by clamping table height from cell height
   - Rendered charts using cell width; resized Info viewport from cell dims
   - Added TUI design doc with SVG mockups under `docs/TUI/`
+
+- [x] Theme Playground MVP **2025-09-14**
+  - Added persistence (`internal/theme-playground/persistence.go`) and tests
+  - Implemented playground + types; integrated with theme system
+  - Extended docs and examples
+
+- [x] Terminal Voice Commands MVP **2025-09-14–15**
+  - Implemented recognizer/processor/config with full test suite
+  - Added API docs (`docs/api/terminal-voice-commands.md`)
+  - Prepared for TUI integration (feedback loop and config)
+
+- [x] Admin API v1 (HTTP) **2025-09-15**
+  - Endpoints: Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench
+  - Middleware chain: Auth (deny-by-default), Rate Limit, Audit, CORS, Recovery
+  - OpenAPI served at `/api/v1/openapi.yaml`; integration tests green
+  - TUI switchover for Stats pending
+
+## TUI Tasks
+
+Step-by-step task list to build the TUI up to design spec.
+
+- [ ] `TUI001`
+> [!info]- Launch CLI + Config Discovery
+> Implement flags/env/config bootstrap for smooth first-run.
+> - Add flags in `cmd/tui/main.go`: `--config`, `--redis-url`, `--cluster`, `--namespace`, `--read-only`, `--refresh`, `--metrics-addr`, `--log-level`, `--theme`, `--fps`, `--no-mouse`.
+> - Read env overrides: `GRQ_*` (see docs/design/TUI2-design.md Launch section).
+> - Config discovery precedence: flag > env > XDG (`~/.config/grq/config.yaml`) > `./config/config.yaml` > defaults.
+> - Validate config; on error return a dedicated message to the model to show an error modal (don’t exit hard).
+> - Persist last-good config path and last cluster (no secrets) under XDG data dir.
+
+- [ ] `TUI002`
+> [!info]- First‑Run Welcome Overlay
+> Fullscreen scrim with: Quick Connect, Demo Mode, Init Config.
+> - Add `internal/tui/overlays.go` view+model for Welcome; trigger when no config/URL or connection fails.
+> - Inputs: Redis URL (with auth), cluster name, namespace; test button runs a lightweight `PING`.
+> - Actions: `Enter` connect, `d` Demo Mode, `i` Init Config, `esc` to Help.
+> - On success, dismiss and hydrate dashboard; store connection metadata in state.
+
+- [ ] `TUI003`
+> [!info]- Demo Mode (Seeded, Read‑only)
+> Provide instant value safely.
+> - Add `tui demo` subcommand and Welcome shortcut; seed queues/workers using existing `admin.Bench` with low rate and cap.
+> - Mark UI as read‑only (status bar badge + theme accent); gate destructive ops.
+> - Auto-clean on exit or keep ephemeral keys under `rq:demo:*` namespace.
+
+- [ ] `TUI004`
+> [!info]- Doctor Subcommand
+> Connectivity and permissions diagnostics for support and CI.
+> - Implement `tui doctor` in `cmd/tui`: DNS/TCP, TLS/mTLS, Redis PING, role (INFO), latency sample.
+> - ACL probe for required commands (LLEN, XRANGE, HGETALL, etc.); print table + exit code.
+> - Optional `--redis-url`/`--cluster`; respect config discovery.
+
+- [ ] `TUI005`
+> [!info]- Global Read‑only Mode + Guardrails
+> Enforce safe defaults everywhere.
+> - Add `readOnly bool` to `internal/tui/model.go`; render status bar indicator and toggle (if allowed).
+> - Wrap dangerous actions: Purge, Requeue, Enqueue > confirm modal; block when read‑only.
+> - `--read-only` flag overrides persisted state; cannot be disabled from UI.
+
+- [ ] `TUI006`
+> [!info]- Responsive Breakpoints (Mobile/Tablet/Desktop/Ultrawide)
+> Finish breakpoint-aware layouts using stickers flexbox.
+> - Implement thresholds (≤40, 41–80, 81–120, 121+) in `WindowSizeMsg` handler.
+> - Define per-breakpoint cell grids and hide/reflow panels accordingly.
+> - Adaptive tab bar: bottom (mobile), top (tablet/desktop), sidebar (ultrawide).
+> - Ensure charts/tables clamp to cell inner dims; test very small widths.
+
+- [ ] `TUI007`
+> [!info]- Precise Mouse Hitboxes (bubblezone)
+> Map clickable regions for tabs, rows, splitters, context menus.
+> - Integrate `github.com/lrstanley/bubblezone` (or maintained fork) in `internal/tui/view.go`.
+> - Register zones for: tab labels, tables rows, charts panel, splitter.
+> - Update `MouseMsg` handling to resolve zone hits deterministically.
+
+- [ ] `TUI008`
+> [!info]- Table Polish (Threshold Colors, Glyphs, Striping)
+> Improve readability and status signaling in Queues table.
+> - Add thresholds (green/yellow/red) for backlog, latency; centralize in `internal/tui/styles.go`.
+> - Selection glyph and alternating row background; clamp height to cell.
+> - Ensure color accessibility in high-contrast theme.
+
+- [ ] `TUI009`
+> [!info]- Persist UI State
+> Restore previous session: tab, focus, filters, theme, split ratio.
+> - XDG data file (JSON/YAML) with `activeTab`, `focus`, `filter`, `theme`, `split`, `lastCluster`.
+> - Load at start, save on change (debounced); allow `--no-state` flag to disable.
+
+- [ ] `TUI010`
+> [!info]- Adjustable Panel Split (Keys + Mouse)
+> User-controlled left/right ratio within bounds.
+> - Keys `[`/`]` adjust ratio; mouse drag on splitter via bubblezone.
+> - Persist split ratio; constrain to 25–75% range; animate with Harmonica.
+
+- [ ] `TUI011`
+> [!info]- Enqueue Actions (`e`/`E`)
+> Quick enqueue to selected queue from Job Queue tab.
+> - `e` enqueue 1 with default payload; `E` opens inline form for count, payload size, jitter.
+> - Use admin enqueue/bench helper; show toasts on success/failure; respect read‑only.
+
+- [ ] `TUI012`
+> [!info]- Right‑click Peek on Queues
+> Contextual mouse shortcut for discoverability.
+> - Right‑click selected row to trigger Peek; fallback long‑press on touch terminals.
+> - Reuse existing peek panel; add bubblezone hit region per row.
+
+- [ ] `TUI013`
+> [!info]- Bench UX Enhancements
+> Cancel, ETA, live throughput, payload size/jitter, concurrency.
+> - Convert bench to non-blocking; ESC cancels (context cancel).
+> - Compute ETA from baseline + current rate; show progress + rate sparkline.
+> - Inputs for payload size, jitter %, concurrency; validate before run.
+
+- [ ] `TUI014`
+> [!info]- Bench Progress Baseline
+> Avoid overcount when Completed list pre-populated.
+> - On bench start, record `LLEN` of `cfg.Worker.CompletedList` as baseline; subtract from subsequent counts.
+> - Handle overflow/reset; guard against large lists by capping scan.
+
+- [ ] `TUI015` [blocked by Admin: Requeue-from-DLQ]
+> [!info]- DLQ Tab (List, Peek, Requeue, Purge, Search)
+> Full remediation workflow.
+> - Paginate DLQ items (cursor-based); peek full payload with pretty JSON.
+> - Actions: requeue selected, purge selected, bulk operations with confirm.
+> - Fuzzy search/filter, sort by age/queue; respect read‑only; show counts.
+>
+> Unblockers (Backend API Contract)
+> - Admin function: `admin.DLQList(ctx, ns string, cursor string, limit int) (items []DLQItem, next string, err error)`
+>   - DLQItem: `{ID string, Queue string, Payload []byte, Reason string, Attempts int, FirstSeen time.Time, LastSeen time.Time}`
+>   - Backed by Redis list/stream; stable cursor (opaque string) with upper bound on `limit` (e.g., 200)
+> - Admin function: `admin.DLQRequeue(ctx, ns string, ids []string, destQueue string) (requeued int, err error)`
+>   - If `destQueue==""`, requeue to original queue; idempotent on missing IDs
+> - Admin function: `admin.DLQPurge(ctx, ns string, ids []string) (purged int, err error)`
+> - HTTP mapping (Admin API v1):
+>   - `GET /api/v1/dlq?ns=NS&cursor=C&limit=N`
+>   - `POST /api/v1/dlq/requeue` `{ns, ids, destQueue}` → `{requeued}`
+>   - `POST /api/v1/dlq/purge` `{ns, ids}` → `{purged}`
+> - ACL: ensure endpoints honor read-only mode (reject with 403)
+> - Code stubs: see `internal/admin/tui_contracts.go` (DLQList, DLQRequeue, DLQPurge)
+
+- [ ] `TUI016` [blocked by Admin: Workers-list API]
+> [!info]- Workers Tab (Live View)
+> Worker IDs, last heartbeat, active job/queue; sort/filter.
+> - Admin call for workers list (IDs, timestamps, active item); poll periodically.
+> - Table with status coloring and sort; drill-in to worker details/log tail.
+>
+> Unblockers (Backend API Contract)
+> - Admin function: `admin.Workers(ctx, ns string) ([]WorkerInfo, error)`
+>   - WorkerInfo: `{ID string, LastHeartbeat time.Time, Queue string, JobID string, StartedAt *time.Time, Version string, Host string}`
+>   - Consider TTL (e.g., 15s) to mark workers stale/offline
+> - Optional details: `admin.Worker(ctx, ns, id string) (WorkerDetail, error)` including recent logs/metrics
+> - HTTP mapping:
+>   - `GET /api/v1/workers?ns=NS` → list
+>   - `GET /api/v1/workers/{id}?ns=NS` → detail (optional)
+> - ACL: read-only sufficient
+> - Code stubs: see `internal/admin/tui_contracts.go` (Workers)
+
+- [ ] `TUI017`
+> [!info]- Settings Tab (Interactive)
+> Theme toggle, config path, copy, open config.
+> - Implement theme chooser; display current config path; add "copy value" actions.
+> - Shortcut to open config in `$EDITOR` when available.
+
+- [ ] `TUI018`
+> [!info]- Theme System (Centralized + High Contrast)
+> Consistent styling with adaptive colors and playground integration.
+> - Centralize styles in `internal/tui/theme/*.go`; add dark/light/high-contrast palettes.
+> - Respect `NO_COLOR` and terminal truecolor detection; expose `--theme` and UI toggle.
+> - Surface Theme Playground under Settings.
+
+- [ ] `TUI019`
+> [!info]- Help Overlay Expansion
+> List all shortcuts (tabs, enqueue, right-click), mouse hints, README link.
+> - Context-aware help per tab and breakpoint; `?` or `esc` toggles.
+> - Include numeric tab shortcuts (1–4) and new commands.
+
+- [ ] `TUI020`
+> [!info]- Mouse UX Extras
+> Double-click row to peek; header click to sort (if supported).
+> - Implement double-click detection with time threshold; use bubblezone for headers.
+> - Sort toggles per column where data supports it; visual sort glyphs.
+
+- [ ] `TUI021`
+> [!info]- Non‑blocking Toasts / Status Area
+> Transient error/info messages without stealing focus.
+> - Top-right stack with auto-dismiss timers; queue messages; log tail in Info panel.
+> - Provide API `tui.toast(level, msg)` for internal use.
+
+- [ ] `TUI022`
+> [!info]- Command Palette (`Ctrl+P`)
+> Fuzzy action launcher with context-aware suggestions.
+> - Action registry with IDs, labels, shortcuts; integrate fzf-like filter.
+> - Invoke enqueue, peek, switch tabs, toggle theme, open docs, etc.
+
+- [ ] `TUI023`
+> [!info]- Frame‑Gated Batching (60/30fps)
+> Smooth updates without over-rendering.
+> - Switch `Update` to pointer receiver; implement coalescing buffer + `tea.Tick` frame messages.
+> - Cap FPS via `--fps` and auto-drop to 30fps if render >12ms.
+> - Enable `viewport.HighPerformanceRendering` and incremental content updates.
+
+- [ ] `TUI024`
+> [!info]- Cross‑Platform Compatibility
+> Terminal quirks and fallbacks.
+> - Windows/WSL truecolor detection; degrade gracefully; default 30fps on slow terms.
+> - tmux mouse escape hatch `--no-mouse`; document recommended settings.
+> - Verify selection/clipboard friendliness; avoid clearing screen unnecessarily.
+
+- [ ] `TUI025`
+> [!info]- TUI Runtime Metrics
+> Optional instrumentation for debugging.
+> - Export FPS, render time, RPC latency histograms at `:9090/metrics`.
+> - Add on/off flag `--metrics`; annotate frames with dropped/merged counts.
+
+- [ ] `TUI026`
+> [!info]- Tests (Helpers + Layout)
+> Unit tests for pure helpers; snapshot-ish rendering checks.
+> - Test filtering, formatting, thresholds, clamp functions.
+> - Add layout tests that render at key widths and assert presence of key strings.
+
+- [ ] `TUI027`
+> [!info]- Docs Update (README TUI)
+> Screenshots, tabs description, new keybindings, launch flags.
+> - Update README TUI section; include SVG mockups; cross-link design doc.
+> - Add short “Quickstart” with Demo Mode and Doctor.
+
+- [ ] `TUI028`
+> [!info]- Release Notes
+> Changelog entries for tabbed layout, overlays, and new UX.
+> - Summarize user-visible changes; include safety guardrails and flags.
+
+- [ ] `TUI029`
+> [!info]- Multi‑Cluster Foundation (Ultrawide)
+> Basic cluster selector + compare view scaffold.
+> - Add cluster switcher UI; persist recent clusters; wire to config.
+> - In ultrawide, render two clusters side-by-side (read-only compare to start).
+
+- [ ] `TUI030` [blocked by Admin: Job events stream]
+> [!info]- Time Travel Debugger (MVP)
+> Minimal timeline + state viewer for a single job.
+> - Open by ID; fetch event stream; scrub timeline with left/right.
+> - Show state deltas; no step-in code view yet; export link placeholder.
+>
+> Unblockers (Backend API Contract)
+> - Admin function: `admin.JobTimeline(ctx, ns, jobID string, start, end *time.Time, limit int) ([]JobEvent, error)`
+>   - JobEvent: `{TS time.Time, Type string, Data map[string]any}` with canonical types: enqueued, dequeued, started, heartbeat, completed, failed, retried, moved_to_dlq, requeued
+>   - Ordering ascending; `limit` cap (e.g., 1000); filterable by time range
+> - Optional streaming: `admin.SubscribeJob(ctx, ns, jobID string) (<-chan JobEvent, func(), error)` for live updates
+> - HTTP mapping:
+>   - `GET /api/v1/jobs/{id}/timeline?ns=NS&start=&end=&limit=`
+>   - `GET /api/v1/jobs/{id}/events` (SSE/WebSocket) for live follow (later)
+> - Storage: Redis Streams per job or namespaced global stream with jobID index
+> - ACL: read-only sufficient
+> - Code stubs: see `internal/admin/tui_contracts.go` (JobTimeline, SubscribeJob)
+
+- [ ] `TUI031`
+> [!info]- Voice Command Integration (MVP)
+> Hook Terminal Voice Commands to simple actions.
+> - Map phrases to palette actions (peek queue, switch tab, run bench).
+> - Provide visual feedback toast when recognized; allow disable in Settings.
+
+- [ ] `TUI032`
+> [!info]- Error & Offline Degrade
+> Friendly failure modes, no dead ends.
+> - On connection loss, show non-blocking banner + retry loop with backoff.
+> - Offer "Edit connection" and "Switch to Demo" inline; keep UI responsive.
+
+### TUI Task Chains
+
+Sequenced dependencies across tasks. Use these to plan workstreams; items in parentheses are non-TUI prerequisites from the backlog.
+
+- Launch & First‑Run
+  - TUI001 → TUI002 → TUI003 → TUI005 (with TUI004 parallel/optional)
+
+- Stats Data Source & Performance
+  - (Admin API v1 Stats/StatsKeys switchover) → TUI023 → TUI025
+
+- Responsive Layout & Interaction Polish
+  - TUI006 → TUI010 → TUI008 → TUI019
+
+- Mouse/Hitboxes & Contextual Actions
+  - TUI007 → TUI020 → TUI012
+
+- State, Theme, Settings
+  - TUI001 → TUI009 → TUI018 → TUI017
+
+- Queue Operations UX
+  - TUI011 → TUI021 → TUI022
+
+- Bench Improvements
+  - TUI013 → TUI014
+
+- DLQ Remediation
+  - (Admin: Requeue‑from‑DLQ) → TUI015
+
+- Workers Live View
+  - (Admin: Workers‑list API) → TUI016
+
+- Multi‑Cluster (Ultrawide foundation)
+  - TUI001 → TUI029
+
+- Advanced Features
+  - TUI022 → TUI031
+  - (Admin: Job events stream) → TUI030
+
+- Docs & Release
+  - TUI027 → TUI028
+
+### TUI Parallelization & Priorities
+
+Suggested execution order with safe parallel tracks. Parentheses note external prerequisites.
+
+**Start‑Here Priority (Suggested Order)**
+- P1 — Foundation: TUI001 (Launch/Config), TUI002 (Welcome), TUI004 (Doctor, parallel), TUI003 (Demo), TUI005 (Read‑only)
+- P2 — Performance Baseline: TUI023 (Frame‑gated batching), TUI025 (Runtime metrics, optional)
+- P3 — Responsive Layout: TUI006 (Breakpoints/adaptive tabs)
+- P4 — State & Theme & Settings: TUI009 (Persist UI), TUI018 (Theme System), TUI017 (Settings Tab)
+- P5 — Interaction Polish: TUI007 (Hitboxes), TUI010 (Split ratio), TUI008 (Table polish), TUI019 (Help), TUI021 (Toasts), TUI020 (Mouse extras)
+- P6 — Core Queue Ops: TUI011 (Enqueue actions), TUI022 (Command palette)
+- P7 — Bench Improvements: TUI013 (Bench UX), TUI014 (Bench baseline)
+- P8 — Error/Offline: TUI032 (Degrade & recovery)
+- P9 — DLQ & Workers: TUI015 (DLQ Remediation) [requires Admin Requeue], TUI016 (Workers View) [requires Admin Workers‑list]
+- P10 — Advanced Features: TUI029 (Multi‑cluster), TUI030 (Time Travel) [(Admin: job events stream)], TUI031 (Voice)
+- P11 — Docs & Release: TUI027 (Docs Update), TUI028 (Release Notes)
+
+**Parallelization Groups**
+- Group A — Boot Flow: TUI001, TUI002, TUI004 (small team can run these in parallel; coordinate shared config/types)
+- Group B — Safety/Demo: TUI003, TUI005 (can proceed after TUI001)
+- Group C — Performance: TUI023, TUI025 (unblocks UI smoothness; safe to start after skeleton renders)
+- Group D — Layout & State: TUI006, TUI009, TUI010 (shared view/layout code; sync on sizes/ratios)
+- Group E — Theme & Settings: TUI018, TUI017 (depends lightly on TUI009 for persistence hooks)
+- Group F — Mouse & Polish: TUI007, TUI008, TUI019, TUI021, TUI020 (independent polish tasks; coordinate on keymaps)
+- Group G — Queue Ops: TUI011, TUI022 (touches actions registry and overlays; align UX)
+- Group H — Bench: TUI013, TUI014 (bench pipeline; verify telemetry)
+- Group I — DLQ/Workers: TUI015, TUI016 [(Admin endpoints required)]
+- Group J — Advanced: TUI029, TUI030, TUI031 [(Admin job events for TUI030)]
+- Group K — Error/Offline: TUI032 (can be developed earlier if environment is flaky)
+- Group L — Docs/Release: TUI027, TUI028 (finalization; can draft alongside feature work)
+
+Notes
+- If switching TUI data source to Admin API v1 for stats, perform that switchover before P2 for realistic performance testing.
+- Where tasks overlap on input handling and overlays, designate a single owner to avoid keybinding conflicts.
+
+- [x] Storage Backends — core adapters **2025-09**
+  - Core adapters implemented with tests; API docs present
+  - Conformance matrix and migration docs ongoing
+
+- [x] RBAC & Tokens (v1; hardened) **2025-09-14**
+  - JWT manager + middleware; revoke/cache; security fixes merged
+  - Add’l e2e coverage planned
 
 ---
 ## Daily Activity Logs
@@ -226,6 +587,46 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Tune stacking threshold; optionally add min-widths per cell
 >
 
+> [!info]- ### 2025-09-15 – 24h Commit Review (Admin API hardening, TVC, Theme, Patterned Load)
+> Summary of changes over the last 24 hours across core modules.
+>
+> Highlights
+> - Admin API: hardened handlers/server; exactly-once integration; tests fixed (handlers, server, integration)
+> - Terminal Voice Commands: added core module and full test suite; docs added under docs/api/
+> - Theme Playground: added persistence/playground with tests; MVP complete
+> - Patterned Load Generator: added handlers and generator; tests extended
+> - Multi-Cluster Control: test suite reorganized; added types_basic tests; e2e/integration updated
+> - Kubernetes Operator: controllers/main refined; integration tests updated; examples extended
+> - RBAC & Tokens: critical security fixes merged; middleware tests updated
+>
+> Follow-ups
+> - Wire TUI to Admin API for stats/ops where applicable
+> - Add runtime Admin API for rate-limits (advanced RL); surface in TUI
+> - Add DLQ pagination + filters; extend tests
+
+
+> [!info]- ### 2025-09-15 – TUI Launch UX, Admin DLQ/Workers, Features Ledger
+> Summary of today’s changes to align TUI with the redesign and extend Admin API.
+>
+> Changes
+> - TUI2 design: added "Launch & First‑Run UX" section with flags/env mapping, config discovery, welcome wizard, error/offline flows, and guardrails (`docs/design/TUI2-design.md`).
+> - AGENTS: added “TUI Tasks”, “TUI Task Chains”, and “TUI Parallelization & Priorities”; marked blockers and documented backend contracts.
+> - Admin (library): added DLQ/Workers contracts and implementations (`internal/admin/tui_contracts.go`) — `DLQList`, `DLQRequeue`, `DLQPurge`, `Workers`.
+> - Admin API (service): added handlers + OpenAPI + RBAC for DLQ list/requeue/purge and workers list (`internal/admin-api/{handlers.go,server.go,openapi.go,types.go}`, `internal/rbac-and-tokens/config.go`).
+> - Endpoints now available: GET `/api/v1/dlq`, POST `/api/v1/dlq/requeue`, POST `/api/v1/dlq/purge`, GET `/api/v1/workers`.
+> - TUI CLI: scaffolded flags `--redis-url`, `--cluster`, `--namespace`, `--read-only`, `--metrics-addr`, `--log-level`, `--theme`, `--fps`, `--no-mouse` (`cmd/tui/main.go`).
+> - Docs: created Features Ledger tracking progress, domain tables, drift, and ported TUI task list (`docs/features-ledger.md`).
+>
+> Validation
+> - Built `./internal/admin/...` and `./internal/admin-api/...` successfully; noted unrelated repo-wide build issues and left them unchanged.
+>
+> Follow-ups
+> - Wire TUI DLQ and Workers tabs to new Admin API endpoints; decide DLQ requeue destination semantics.
+> - Unify Redis client versions (v8→v9) or keep TUI over HTTP Admin API to avoid coupling.
+> - Implement Job Timeline API and TUI Time Travel view.
+> - Add integration tests for the new endpoints.
+
+
 ---
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 
@@ -243,17 +644,13 @@ Capture ambitious, unconventional ideas. Some may be long-term or require new co
 - TUI: Worker fleet controls — pause/resume/drain nodes; rolling restarts; live CPU/mem/net graphs per worker.
 - TUI: Right-click context menus everywhere — requeue, purge, copy payload, copy Redis key, open trace, export sample.
 - TUI: Collaborative session — multiplexed read-only share over SSH; presenter hands control with a key.
-- TUI: Theme playground — high-contrast/accessible themes; auto-switch based on OS or time of day.
-- Project: HTTP/gRPC admin API — first-class, versioned contract used by both TUI and a web UI; enable remote control and automation.
 - Project: Kubernetes Operator — CRDs for queues/workers; reconcile deployments; autoscale by backlog and SLA targets; preemption policies.
 - Project: Advanced rate limiting — token-bucket with priority fairness; global and per-tenant budgets; dynamic tuning via feedback signals.
 - Project: Producer backpressure — SDK hints when queues are saturated; adaptive rate; circuit breaking by priority.
 - Project: Multi-tenant isolation — quotas, per-tenant keys, encryption at rest (payload), audit logs, privacy scrubbing hooks.
 - Project: DLQ remediation pipeline — automatic classifiers to cluster failures; rules to auto-retry, transform, or quarantine.
-- Project: Storage backends — pluggable engines (Redis Streams, KeyDB/Dragonfly, Redis Cluster); optional Kafka outbox bridge.
 - Project: Long-term archives — stream completed jobs to ClickHouse/S3; TTL retention; fast query for forensics.
 - Project: Event hooks — webhooks or NATS for job state changes; Slack/PagerDuty notifications with deep links to TUI.
-- Project: RBAC and tokens — signed admin commands, per-action permissions; audit trail UI.
 - Project: Chaos harness — inject latency, drops, and Redis failovers; visualize recovery; automate soak/chaos scenarios.
 - Project: Forecasting — simple ARIMA/Prophet on backlog/throughput; recommend scale-up/down and SLA adjustments.
 - Project: Exactly-once patterns — idempotency keys, dedup sets, and transactional outbox patterns documented and optionally enforced.
@@ -276,7 +673,6 @@ High‑leverage, high‑impact items to pursue first. Keep this table updated as
 
 The detailed mini design specs have been moved to separate documents under `docs/ideas/`:
 
-- HTTP/gRPC Admin API: `docs/ideas/admin-api.md`
 - DLQ Remediation UI: `docs/ideas/dlq-remediation-ui.md`
 - Trace Drill‑down + Log Tail: `docs/ideas/trace-drilldown-log-tail.md`
 - Interactive Policy Tuning + Simulator: `docs/ideas/policy-simulator.md`

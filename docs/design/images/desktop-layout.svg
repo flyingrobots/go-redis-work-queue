@@ -1,0 +1,416 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .desktop-bg { fill: #1a1b26; }
+      .panel-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .header-bg { fill: #1f2335; }
+      .sidebar-bg { fill: #16161e; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 10px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 9px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 10px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 9px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 9px; }
+      .warning-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 9px; }
+      .tab-active { fill: #7aa2f7; }
+      .tab-inactive { fill: #565f89; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" class="desktop-bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="50" class="header-bg"/>
+  <text x="60" y="20" class="primary-text">🚀 Redis Work Queue - Production Dashboard</text>
+  <text x="60" y="35" class="secondary-text">us-east-1 • 3 clusters • 15 workers • 1,247 jobs/min • 99.2% uptime</text>
+
+  <!-- Global actions -->
+  <g transform="translate(1000,10)">
+    <rect x="0" y="0" width="40" height="30" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="20" y="20" text-anchor="middle" class="secondary-text">⌘P</text>
+
+    <rect x="50" y="0" width="40" height="30" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="70" y="20" text-anchor="middle" class="accent-text">🎤</text>
+
+    <rect x="100" y="0" width="40" height="30" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="120" y="20" text-anchor="middle" class="success-text">◉</text>
+  </g>
+
+  <!-- Tab Bar -->
+  <g transform="translate(0,50)">
+    <rect x="0" y="0" width="1200" height="40" fill="#1f2335"/>
+
+    <!-- Queues Tab (Active) -->
+    <rect x="20" y="5" width="100" height="30" class="tab-active" rx="4"/>
+    <text x="70" y="23" text-anchor="middle" class="primary-text">📋 Queues</text>
+
+    <!-- Workers Tab -->
+    <rect x="130" y="5" width="100" height="30" fill="transparent"/>
+    <text x="180" y="23" text-anchor="middle" class="tab-inactive">👥 Workers</text>
+
+    <!-- DLQ Tab with Badge -->
+    <rect x="240" y="5" width="100" height="30" fill="transparent"/>
+    <text x="290" y="23" text-anchor="middle" class="tab-inactive">💀 DLQ</text>
+    <circle cx="330" cy="12" r="8" fill="#f7768e"/>
+    <text x="330" y="16" text-anchor="middle" class="primary-text" font-size="8">23</text>
+
+    <!-- Time Travel Tab -->
+    <rect x="350" y="5" width="120" height="30" fill="transparent"/>
+    <text x="410" y="23" text-anchor="middle" class="tab-inactive">⏰ Time Travel</text>
+
+    <!-- Event Hooks Tab -->
+    <rect x="480" y="5" width="120" height="30" fill="transparent"/>
+    <text x="540" y="23" text-anchor="middle" class="tab-inactive">🔗 Hooks</text>
+
+    <!-- Multi-Cluster Tab -->
+    <rect x="610" y="5" width="130" height="30" fill="transparent"/>
+    <text x="675" y="23" text-anchor="middle" class="tab-inactive">🌐 Multi-Cluster</text>
+
+    <!-- Plugins Tab -->
+    <rect x="750" y="5" width="100" height="30" fill="transparent"/>
+    <text x="800" y="23" text-anchor="middle" class="tab-inactive">🔌 Plugins</text>
+
+    <!-- Settings Tab -->
+    <rect x="860" y="5" width="100" height="30" fill="transparent"/>
+    <text x="910" y="23" text-anchor="middle" class="tab-inactive">⚙ Settings</text>
+  </g>
+
+  <!-- Main Dashboard Content -->
+  <g transform="translate(0,90)">
+    <!-- Left Panel: Queue Table -->
+    <rect x="20" y="0" width="480" height="650" class="panel-bg" rx="6"/>
+
+    <!-- Panel Header -->
+    <rect x="20" y="0" width="480" height="30" fill="#1f2335" stroke="#414868" rx="6"/>
+    <text x="30" y="20" class="accent-text">Queue Management</text>
+
+    <!-- Toolbar -->
+    <g transform="translate(30,35)">
+      <!-- Filter -->
+      <rect x="0" y="0" width="200" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+      <text x="5" y="13" class="secondary-text">🔍 Filter queues... (f)</text>
+
+      <!-- Actions -->
+      <rect x="210" y="0" width="50" height="20" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+      <text x="235" y="13" text-anchor="middle" class="secondary-text">Peek</text>
+
+      <rect x="270" y="0" width="50" height="20" class="panel-bg" stroke="#9ece6a" rx="2"/>
+      <text x="295" y="13" text-anchor="middle" class="success-text">Bench</text>
+
+      <rect x="330" y="0" width="60" height="20" class="panel-bg" stroke="#bb9af7" rx="2"/>
+      <text x="360" y="13" text-anchor="middle" class="accent-text">Enqueue</text>
+
+      <rect x="400" y="0" width="60" height="20" class="panel-bg" stroke="#e0af68" rx="2"/>
+      <text x="430" y="13" text-anchor="middle" class="warning-text">Bulk Ops</text>
+    </g>
+
+    <!-- Table Header -->
+    <g transform="translate(30,65)">
+      <rect x="0" y="0" width="440" height="25" fill="#1f2335"/>
+      <text x="5" y="16" class="accent-text">Queue Name</text>
+      <text x="150" y="16" class="accent-text">Jobs</text>
+      <text x="200" y="16" class="accent-text">Workers</text>
+      <text x="260" y="16" class="accent-text">Rate/min</text>
+      <text x="320" y="16" class="accent-text">Health</text>
+      <text x="370" y="16" class="accent-text">Trend</text>
+      <text x="410" y="16" class="accent-text">Actions</text>
+    </g>
+
+    <!-- Table Rows -->
+    <g transform="translate(30,90)">
+      <!-- High Priority (Selected) -->
+      <rect x="0" y="0" width="440" height="22" fill="#2d3561" rx="2"/>
+      <text x="5" y="14" class="primary-text">high-priority</text>
+      <text x="150" y="14" class="primary-text">1,451</text>
+      <text x="200" y="14" class="success-text">6/8</text>
+      <text x="260" y="14" class="success-text">+127</text>
+      <text x="320" y="14" class="success-text">●</text>
+      <text x="370" y="14" class="success-text">↗↗</text>
+      <text x="410" y="14" class="secondary-text">⚡📊</text>
+
+      <!-- Normal Priority -->
+      <rect x="0" y="25" width="440" height="22" fill="transparent"/>
+      <text x="5" y="39" class="primary-text">normal-priority</text>
+      <text x="150" y="39" class="primary-text">327</text>
+      <text x="200" y="39" class="success-text">4/5</text>
+      <text x="260" y="39" class="success-text">+45</text>
+      <text x="320" y="39" class="success-text">●</text>
+      <text x="370" y="39" class="success-text">↗</text>
+      <text x="410" y="39" class="secondary-text">⚡📊</text>
+
+      <!-- Low Priority -->
+      <rect x="0" y="50" width="440" height="22" fill="transparent"/>
+      <text x="5" y="64" class="primary-text">low-priority</text>
+      <text x="150" y="64" class="primary-text">89</text>
+      <text x="200" y="64" class="success-text">2/3</text>
+      <text x="260" y="64" class="secondary-text">+12</text>
+      <text x="320" y="64" class="success-text">●</text>
+      <text x="370" y="64" class="secondary-text">→</text>
+      <text x="410" y="64" class="secondary-text">⚡📊</text>
+
+      <!-- Email Queue -->
+      <rect x="0" y="75" width="440" height="22" fill="transparent"/>
+      <text x="5" y="89" class="primary-text">email-sender</text>
+      <text x="150" y="89" class="primary-text">234</text>
+      <text x="200" y="89" class="success-text">3/3</text>
+      <text x="260" y="89" class="success-text">+34</text>
+      <text x="320" y="89" class="success-text">●</text>
+      <text x="370" y="89" class="success-text">↗</text>
+      <text x="410" y="89" class="secondary-text">⚡📊</text>
+
+      <!-- Report Generation (Warning) -->
+      <rect x="0" y="100" width="440" height="22" fill="transparent"/>
+      <text x="5" y="114" class="primary-text">report-generator</text>
+      <text x="150" y="114" class="primary-text">1,023</text>
+      <text x="200" y="114" class="warning-text">1/4</text>
+      <text x="260" y="114" class="warning-text">+189</text>
+      <text x="320" y="114" class="warning-text">⚠</text>
+      <text x="370" y="114" class="warning-text">↗↗↗</text>
+      <text x="410" y="114" class="secondary-text">⚡📊</text>
+
+      <!-- Image Processing -->
+      <rect x="0" y="125" width="440" height="22" fill="transparent"/>
+      <text x="5" y="139" class="primary-text">image-processor</text>
+      <text x="150" y="139" class="primary-text">67</text>
+      <text x="200" y="139" class="success-text">2/2</text>
+      <text x="260" y="139" class="success-text">+8</text>
+      <text x="320" y="139" class="success-text">●</text>
+      <text x="370" y="139" class="secondary-text">→</text>
+      <text x="410" y="139" class="secondary-text">⚡📊</text>
+
+      <!-- Background Tasks -->
+      <rect x="0" y="150" width="440" height="22" fill="transparent"/>
+      <text x="5" y="164" class="primary-text">background-cleanup</text>
+      <text x="150" y="164" class="primary-text">12</text>
+      <text x="200" y="164" class="success-text">1/1</text>
+      <text x="260" y="164" class="secondary-text">+2</text>
+      <text x="320" y="164" class="success-text">●</text>
+      <text x="370" y="164" class="secondary-text">→</text>
+      <text x="410" y="164" class="secondary-text">⚡📊</text>
+    </g>
+
+    <!-- Queue Details Panel (Bottom) -->
+    <g transform="translate(30,280)">
+      <rect x="0" y="0" width="440" height="180" fill="#1f2335" stroke="#414868" rx="3"/>
+      <text x="10" y="20" class="accent-text">Selected Queue: high-priority</text>
+
+      <g transform="translate(10,35)">
+        <text x="0" y="0" class="secondary-text">Configuration:</text>
+        <text x="0" y="15" class="primary-text">• Max Workers: 8 (6 active)</text>
+        <text x="0" y="30" class="primary-text">• Retry Strategy: Exponential backoff (3x max)</text>
+        <text x="0" y="45" class="primary-text">• TTL: 24 hours</text>
+        <text x="0" y="60" class="primary-text">• Priority Weight: 10</text>
+
+        <text x="0" y="85" class="secondary-text">Recent Activity:</text>
+        <text x="0" y="100" class="success-text">✓ 14:32 - Job ABC123 completed (2.3s)</text>
+        <text x="0" y="115" class="success-text">✓ 14:31 - Job DEF456 completed (1.8s)</text>
+        <text x="0" y="130" class="warning-text">⚠ 14:30 - Job GHI789 retry attempt 2/3</text>
+        <text x="0" y="145" class="success-text">✓ 14:29 - Job JKL012 completed (0.9s)</text>
+      </g>
+    </g>
+
+    <!-- Progress Bar for Active Benchmark -->
+    <g transform="translate(30,470)">
+      <rect x="0" y="0" width="440" height="60" fill="#1f2335" stroke="#414868" rx="3"/>
+      <text x="10" y="20" class="accent-text">Benchmark Progress</text>
+
+      <!-- Progress bar -->
+      <rect x="10" y="25" width="420" height="15" fill="#16161e" stroke="#414868" rx="7"/>
+      <rect x="10" y="25" width="252" height="15" fill="#7aa2f7" rx="7"/>
+
+      <text x="10" y="55" class="secondary-text">60% complete • 600/1000 jobs • ETA: 2m 15s • 4.2 jobs/sec</text>
+    </g>
+
+    <!-- Right Panel: Charts and Metrics -->
+    <rect x="520" y="0" width="660" height="650" class="panel-bg" rx="6"/>
+
+    <!-- Panel Header -->
+    <rect x="520" y="0" width="660" height="30" fill="#1f2335" stroke="#414868" rx="6"/>
+    <text x="530" y="20" class="accent-text">Performance Analytics Dashboard</text>
+
+    <!-- Chart Controls -->
+    <g transform="translate(1000,5)">
+      <rect x="0" y="0" width="40" height="20" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+      <text x="20" y="13" text-anchor="middle" class="secondary-text">1h</text>
+
+      <rect x="45" y="0" width="40" height="20" class="panel-bg" stroke="#565f89" rx="2"/>
+      <text x="65" y="13" text-anchor="middle" class="secondary-text">6h</text>
+
+      <rect x="90" y="0" width="40" height="20" class="panel-bg" stroke="#565f89" rx="2"/>
+      <text x="110" y="13" text-anchor="middle" class="secondary-text">24h</text>
+
+      <rect x="135" y="0" width="40" height="20" class="panel-bg" stroke="#9ece6a" rx="2"/>
+      <text x="155" y="13" text-anchor="middle" class="success-text">🔄</text>
+    </g>
+
+    <!-- Chart 1: Throughput Over Time -->
+    <g transform="translate(530,40)">
+      <text x="0" y="15" class="accent-text">Job Throughput (Jobs/minute)</text>
+      <rect x="0" y="25" width="640" height="150" fill="#1f2335" stroke="#414868" rx="3"/>
+
+      <!-- Chart lines -->
+      <polyline points="20,160 80,150 140,140 200,130 260,125 320,120 380,115 440,110 500,105 560,100 620,95"
+                fill="none" stroke="#7aa2f7" stroke-width="2"/>
+      <polyline points="20,165 80,160 140,155 200,152 260,148 320,145 380,142 440,138 500,135 560,132 620,128"
+                fill="none" stroke="#9ece6a" stroke-width="2"/>
+      <polyline points="20,170 80,168 140,166 200,164 260,162 320,160 380,158 440,156 500,154 560,152 620,150"
+                fill="none" stroke="#bb9af7" stroke-width="2"/>
+
+      <!-- Y-axis labels -->
+      <text x="5" y="30" class="secondary-text" font-size="8">2000</text>
+      <text x="5" y="65" class="secondary-text" font-size="8">1500</text>
+      <text x="5" y="100" class="secondary-text" font-size="8">1000</text>
+      <text x="5" y="135" class="secondary-text" font-size="8">500</text>
+      <text x="5" y="170" class="secondary-text" font-size="8">0</text>
+
+      <!-- Legend -->
+      <g transform="translate(450,30)">
+        <rect x="0" y="0" width="10" height="2" fill="#7aa2f7"/>
+        <text x="15" y="8" class="secondary-text" font-size="8">High Priority</text>
+
+        <rect x="0" y="15" width="10" height="2" fill="#9ece6a"/>
+        <text x="15" y="23" class="secondary-text" font-size="8">Normal Priority</text>
+
+        <rect x="0" y="30" width="10" height="2" fill="#bb9af7"/>
+        <text x="15" y="38" class="secondary-text" font-size="8">Low Priority</text>
+      </g>
+    </g>
+
+    <!-- Chart 2: System Resources -->
+    <g transform="translate(530,210)">
+      <text x="0" y="15" class="accent-text">System Resources</text>
+
+      <!-- CPU Usage -->
+      <g transform="translate(0,25)">
+        <text x="0" y="15" class="secondary-text">CPU Usage</text>
+        <rect x="0" y="20" width="200" height="30" fill="#1f2335" stroke="#414868" rx="3"/>
+        <rect x="5" y="25" width="156" height="20" fill="#7aa2f7"/>
+        <text x="210" y="38" class="secondary-text">78%</text>
+      </g>
+
+      <!-- Memory Usage -->
+      <g transform="translate(0,80)">
+        <text x="0" y="15" class="secondary-text">Memory Usage</text>
+        <rect x="0" y="20" width="200" height="30" fill="#1f2335" stroke="#414868" rx="3"/>
+        <rect x="5" y="25" width="120" height="20" fill="#9ece6a"/>
+        <text x="210" y="38" class="success-text">60%</text>
+      </g>
+
+      <!-- Redis Memory -->
+      <g transform="translate(250,25)">
+        <text x="0" y="15" class="secondary-text">Redis Memory</text>
+        <rect x="0" y="20" width="200" height="30" fill="#1f2335" stroke="#414868" rx="3"/>
+        <rect x="5" y="25" width="168" height="20" fill="#e0af68"/>
+        <text x="210" y="38" class="warning-text">84%</text>
+      </g>
+
+      <!-- Network I/O -->
+      <g transform="translate(250,80)">
+        <text x="0" y="15" class="secondary-text">Network I/O</text>
+        <rect x="0" y="20" width="200" height="30" fill="#1f2335" stroke="#414868" rx="3"/>
+        <rect x="5" y="25" width="80" height="20" fill="#bb9af7"/>
+        <text x="210" y="38" class="accent-text">40%</text>
+      </g>
+    </g>
+
+    <!-- Chart 3: Worker Health Matrix -->
+    <g transform="translate(530,350)">
+      <text x="0" y="15" class="accent-text">Worker Health Matrix</text>
+      <rect x="0" y="25" width="640" height="120" fill="#1f2335" stroke="#414868" rx="3"/>
+
+      <!-- Worker boxes (grid) -->
+      <g transform="translate(20,40)">
+        <!-- Row 1 -->
+        <rect x="0" y="0" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="15" y="13" text-anchor="middle" class="primary-text" font-size="7">W1</text>
+
+        <rect x="40" y="0" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="55" y="13" text-anchor="middle" class="primary-text" font-size="7">W2</text>
+
+        <rect x="80" y="0" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="95" y="13" text-anchor="middle" class="primary-text" font-size="7">W3</text>
+
+        <rect x="120" y="0" width="30" height="20" fill="#e0af68" rx="2"/>
+        <text x="135" y="13" text-anchor="middle" class="primary-text" font-size="7">W4</text>
+
+        <rect x="160" y="0" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="175" y="13" text-anchor="middle" class="primary-text" font-size="7">W5</text>
+
+        <!-- Row 2 -->
+        <rect x="0" y="30" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="15" y="43" text-anchor="middle" class="primary-text" font-size="7">W6</text>
+
+        <rect x="40" y="30" width="30" height="20" fill="#f7768e" rx="2"/>
+        <text x="55" y="43" text-anchor="middle" class="primary-text" font-size="7">W7</text>
+
+        <rect x="80" y="30" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="95" y="43" text-anchor="middle" class="primary-text" font-size="7">W8</text>
+
+        <rect x="120" y="30" width="30" height="20" fill="#565f89" rx="2"/>
+        <text x="135" y="43" text-anchor="middle" class="primary-text" font-size="7">W9</text>
+
+        <rect x="160" y="30" width="30" height="20" fill="#9ece6a" rx="2"/>
+        <text x="175" y="43" text-anchor="middle" class="primary-text" font-size="7">W10</text>
+      </g>
+
+      <!-- Legend -->
+      <g transform="translate(250,40)">
+        <rect x="0" y="0" width="15" height="10" fill="#9ece6a" rx="1"/>
+        <text x="20" y="8" class="success-text" font-size="8">Healthy (10)</text>
+
+        <rect x="0" y="15" width="15" height="10" fill="#e0af68" rx="1"/>
+        <text x="20" y="23" class="warning-text" font-size="8">Degraded (1)</text>
+
+        <rect x="0" y="30" width="15" height="10" fill="#f7768e" rx="1"/>
+        <text x="20" y="38" class="danger-text" font-size="8">Error (1)</text>
+
+        <rect x="100" y="0" width="15" height="10" fill="#565f89" rx="1"/>
+        <text x="120" y="8" class="secondary-text" font-size="8">Idle (3)</text>
+      </g>
+    </g>
+
+    <!-- Alert Panel -->
+    <g transform="translate(530,490)">
+      <text x="0" y="15" class="accent-text">Active Alerts & Notifications</text>
+      <rect x="0" y="25" width="640" height="120" fill="#1f2335" stroke="#414868" rx="3"/>
+
+      <g transform="translate(10,45)">
+        <!-- Critical Alert -->
+        <rect x="0" y="0" width="620" height="20" fill="#441e1e" stroke="#f7768e" rx="2"/>
+        <text x="10" y="13" class="danger-text">🚨 CRITICAL: Worker-7 crashed - Queue backlog growing</text>
+        <text x="580" y="13" class="secondary-text">2m ago</text>
+
+        <!-- Warning Alert -->
+        <rect x="0" y="25" width="620" height="20" fill="#443822" stroke="#e0af68" rx="2"/>
+        <text x="10" y="38" class="warning-text">⚠ WARNING: Redis memory usage above 80% threshold</text>
+        <text x="580" y="38" class="secondary-text">5m ago</text>
+
+        <!-- Info Alert -->
+        <rect x="0" y="50" width="620" height="20" fill="#1e3a44" stroke="#7aa2f7" rx="2"/>
+        <text x="10" y="63" class="secondary-text">ℹ INFO: Benchmark completed - 1000 jobs processed in 4m 23s</text>
+        <text x="580" y="63" class="secondary-text">8m ago</text>
+
+        <!-- Success Alert -->
+        <rect x="0" y="75" width="620" height="20" fill="#1e441e" stroke="#9ece6a" rx="2"/>
+        <text x="10" y="88" class="success-text">✅ SUCCESS: Auto-scaling triggered - Added 2 workers to high-priority</text>
+        <text x="580" y="88" class="secondary-text">12m ago</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Status Bar -->
+  <rect x="0" y="750" width="1200" height="50" class="header-bg"/>
+  <g transform="translate(0,750)">
+    <!-- Left status -->
+    <text x="20" y="20" class="secondary-text">Connected: production-cluster-01 • Last sync: 1s ago • Uptime: 99.2%</text>
+    <text x="20" y="35" class="secondary-text">Memory: 342MB • CPU: 0.8 cores • Network: 2.3MB/s</text>
+
+    <!-- Center status -->
+    <text x="600" y="20" text-anchor="middle" class="accent-text">🟢 All Systems Operational</text>
+    <text x="600" y="35" text-anchor="middle" class="secondary-text">Next maintenance window: Wed 2AM UTC</text>
+
+    <!-- Right status -->
+    <text x="1180" y="20" text-anchor="end" class="secondary-text">Help: ? • Command: ⌘P</text>
+    <text x="1180" y="35" text-anchor="end" class="secondary-text">User: admin@company.com</text>
+  </g>
+</svg>
