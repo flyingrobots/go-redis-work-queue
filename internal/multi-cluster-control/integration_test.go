@@ -2,6 +2,7 @@ package multicluster
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -66,7 +67,7 @@ func TestIntegration_MultiClusterSetup(t *testing.T) {
 		Actions: ActionsConfig{
 			RequireConfirmation: false, // Disable for tests
 			MaxConcurrent:       3,
-			DefaultTimeout:      Duration(30 * time.Second),
+			// DefaultTimeout:      Duration(30 * time.Second),
 			AllowedActions: []ActionType{
 				ActionTypePurgeDLQ,
 				ActionTypeBenchmark,
@@ -106,17 +107,24 @@ func TestIntegration_StatsCollection(t *testing.T) {
 	defer redis2.Close()
 
 	// Add test data to redis1
-	redis1.Lpush("jobqueue:queue:high", "job1", "job2", "job3")
-	redis1.Lpush("jobqueue:queue:normal", "job4", "job5")
+	redis1.Lpush("jobqueue:queue:high", "job1")
+	redis1.Lpush("jobqueue:queue:high", "job2")
+	redis1.Lpush("jobqueue:queue:high", "job3")
+	redis1.Lpush("jobqueue:queue:normal", "job4")
+	redis1.Lpush("jobqueue:queue:normal", "job5")
 	redis1.Lpush("jobqueue:dead_letter", "deadjob1")
-	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
-	redis1.Set("worker:heartbeat:2", "alive", time.Hour)
+	redis1.Set("worker:heartbeat:1", "alive")
+	redis1.Set("worker:heartbeat:2", "alive")
 
 	// Add different data to redis2
 	redis2.Lpush("jobqueue:queue:high", "job6")
-	redis2.Lpush("jobqueue:queue:normal", "job7", "job8", "job9", "job10")
-	redis2.Lpush("jobqueue:dead_letter", "deadjob2", "deadjob3")
-	redis2.Set("worker:heartbeat:3", "alive", time.Hour)
+	redis2.Lpush("jobqueue:queue:normal", "job7")
+	redis2.Lpush("jobqueue:queue:normal", "job8")
+	redis2.Lpush("jobqueue:queue:normal", "job9")
+	redis2.Lpush("jobqueue:queue:normal", "job10")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob2")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob3")
+	redis2.Set("worker:heartbeat:3", "alive")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -136,7 +144,7 @@ func TestIntegration_StatsCollection(t *testing.T) {
 		DefaultCluster: "cluster1",
 		Cache: CacheConfig{
 			Enabled: true,
-			TTL:     Duration(30 * time.Second),
+			TTL:     30 * time.Second,
 		},
 	}
 
@@ -178,17 +186,25 @@ func TestIntegration_CompareMode(t *testing.T) {
 	defer redis2.Close()
 
 	// Cluster 1: High load
-	redis1.Lpush("jobqueue:queue:high", "job1", "job2", "job3", "job4", "job5")
-	redis1.Lpush("jobqueue:queue:normal", "job6", "job7")
+	redis1.Lpush("jobqueue:queue:high", "job1")
+	redis1.Lpush("jobqueue:queue:high", "job2")
+	redis1.Lpush("jobqueue:queue:high", "job3")
+	redis1.Lpush("jobqueue:queue:high", "job4")
+	redis1.Lpush("jobqueue:queue:high", "job5")
+	redis1.Lpush("jobqueue:queue:normal", "job6")
+	redis1.Lpush("jobqueue:queue:normal", "job7")
 	redis1.Lpush("jobqueue:dead_letter", "deadjob1")
-	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
-	redis1.Set("worker:heartbeat:2", "alive", time.Hour)
+	redis1.Set("worker:heartbeat:1", "alive")
+	redis1.Set("worker:heartbeat:2", "alive")
 
 	// Cluster 2: Lower load
 	redis2.Lpush("jobqueue:queue:high", "job8")
-	redis2.Lpush("jobqueue:queue:normal", "job9", "job10")
-	redis2.Lpush("jobqueue:dead_letter", "deadjob2", "deadjob3", "deadjob4")
-	redis2.Set("worker:heartbeat:3", "alive", time.Hour)
+	redis2.Lpush("jobqueue:queue:normal", "job9")
+	redis2.Lpush("jobqueue:queue:normal", "job10")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob2")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob3")
+	redis2.Lpush("jobqueue:dead_letter", "deadjob4")
+	redis2.Set("worker:heartbeat:3", "alive")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -253,8 +269,11 @@ func TestIntegration_MultiClusterActions(t *testing.T) {
 	defer redis2.Close()
 
 	// Add dead letter items to both clusters
-	redis1.Lpush("jobqueue:dead_letter", "dead1", "dead2")
-	redis2.Lpush("jobqueue:dead_letter", "dead3", "dead4", "dead5")
+	redis1.Lpush("jobqueue:dead_letter", "dead1")
+	redis1.Lpush("jobqueue:dead_letter", "dead2")
+	redis2.Lpush("jobqueue:dead_letter", "dead3")
+	redis2.Lpush("jobqueue:dead_letter", "dead4")
+	redis2.Lpush("jobqueue:dead_letter", "dead5")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -307,8 +326,10 @@ func TestIntegration_MultiClusterActions(t *testing.T) {
 	assert.True(t, result2.Success)
 
 	// Verify DLQ was actually purged
-	assert.Equal(t, 0, redis1.LLen("jobqueue:dead_letter"))
-	assert.Equal(t, 0, redis2.LLen("jobqueue:dead_letter"))
+	dlqLength1, _ := redis1.List("jobqueue:dead_letter")
+	dlqLength2, _ := redis2.List("jobqueue:dead_letter")
+	assert.Equal(t, 0, len(dlqLength1))
+	assert.Equal(t, 0, len(dlqLength2))
 
 	// Test benchmark action
 	benchmarkAction := &MultiAction{
@@ -335,10 +356,14 @@ func TestIntegration_HealthMonitoring(t *testing.T) {
 
 	// Setup cluster1 as healthy
 	redis1.Lpush("jobqueue:queue:high", "job1")
-	redis1.Set("worker:heartbeat:1", "alive", time.Hour)
+	redis1.Set("worker:heartbeat:1", "alive")
 
 	// Setup cluster2 as unhealthy (high DLQ count, no workers)
-	redis2.Lpush("jobqueue:dead_letter", "dead1", "dead2", "dead3", "dead4", "dead5")
+	redis2.Lpush("jobqueue:dead_letter", "dead1")
+	redis2.Lpush("jobqueue:dead_letter", "dead2")
+	redis2.Lpush("jobqueue:dead_letter", "dead3")
+	redis2.Lpush("jobqueue:dead_letter", "dead4")
+	redis2.Lpush("jobqueue:dead_letter", "dead5")
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
@@ -445,8 +470,8 @@ func TestIntegration_ClusterFailover(t *testing.T) {
 
 	cfg := &Config{
 		Clusters: []ClusterConfig{
-			{Name: "primary", Endpoint: redis1.Addr(), Enabled: true, Tags: []string{"primary"}},
-			{Name: "secondary", Endpoint: redis2.Addr(), Enabled: true, Tags: []string{"secondary"}},
+			{Name: "primary", Endpoint: redis1.Addr(), Enabled: true},
+			{Name: "secondary", Endpoint: redis2.Addr(), Enabled: true},
 		},
 		DefaultCluster: "primary",
 	}

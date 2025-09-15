@@ -30,6 +30,12 @@ func TestAuthMiddleware(t *testing.T) {
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(ContextKeyClaims).(*Claims)
 		if !ok {
+			// For bypassed routes, this is expected
+			if r.URL.Path == "/health" || r.URL.Path == "/auth/token" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("no claims in context"))
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("no claims in context"))
 			return

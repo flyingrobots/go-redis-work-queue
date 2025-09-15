@@ -27,6 +27,8 @@ type Manager struct {
 	logger       *zap.Logger
 	authzCache   map[string]*AuthorizationResult
 	cacheMutex   sync.RWMutex
+	shutdown     chan struct{}
+	wg           sync.WaitGroup
 }
 
 // NewManager creates a new RBAC and token manager
@@ -42,6 +44,7 @@ func NewManager(config *Config, audit *AuditLogger, logger *zap.Logger) (*Manage
 		audit:      audit,
 		logger:     logger,
 		authzCache: make(map[string]*AuthorizationResult),
+		shutdown:   make(chan struct{}),
 	}
 
 	// Initialize with a default key
@@ -51,19 +54,32 @@ func NewManager(config *Config, audit *AuditLogger, logger *zap.Logger) (*Manage
 
 	// Start key rotation if configured
 	if config.KeyConfig.RotationInterval > 0 {
+		m.wg.Add(1)
 		go m.rotateKeysRoutine()
 	}
 
 	// Start cache cleanup if enabled
 	if config.AuthzConfig.CacheEnabled {
+		m.wg.Add(1)
 		go m.cacheCleanupRoutine()
 	}
+
+	// Start revoked tokens cleanup
+	m.wg.Add(1)
+	go m.revokedTokensCleanupRoutine()
 
 	return m, nil
 }
 
 // GenerateToken creates a new token for the given subject with specified roles and scopes
 func (m *Manager) GenerateToken(subject string, roles []Role, scopes []Permission, ttl time.Duration) (string, error) {
+	// Validate inputs
+	if subject == "" {
+		return "", NewTokenError(fmt.Errorf("subject cannot be empty"), "INVALID_SUBJECT", "subject is required", "", "", nil)
+	}
+	if ttl < 0 {
+		return "", NewTokenError(fmt.Errorf("negative TTL"), "INVALID_TTL", "TTL cannot be negative", "", subject, nil)
+	}
 	m.keysMutex.RLock()
 	currentKey := m.keys[m.currentKeyID]
 	m.keysMutex.RUnlock()
@@ -181,9 +197,32 @@ func (m *Manager) Authorize(claims *Claims, action Permission, resource string) 
 		}, nil
 	}
 
+	// Validate inputs
+	if resource == "" {
+		return &AuthorizationResult{
+			Allowed: false,
+			Reason:  "resource cannot be empty",
+		}, nil
+	}
+
 	// Check cache first
+	var cacheKey string
 	if m.config.AuthzConfig.CacheEnabled {
-		cacheKey := fmt.Sprintf("%s:%s:%s:%s", claims.Subject, action, resource, strings.Join(roleSliceToStringSlice(claims.Roles), ","))
+		var sb strings.Builder
+		sb.WriteString(claims.Subject)
+		sb.WriteByte(':')
+		sb.WriteString(string(action))
+		sb.WriteByte(':')
+		sb.WriteString(resource)
+		sb.WriteByte(':')
+		for i, role := range claims.Roles {
+			if i > 0 {
+				sb.WriteByte(',')
+			}
+			sb.WriteString(string(role))
+		}
+		cacheKey = sb.String()
+
 		m.cacheMutex.RLock()
 		if cached, exists := m.authzCache[cacheKey]; exists {
 			m.cacheMutex.RUnlock()
@@ -202,7 +241,7 @@ func (m *Manager) Authorize(claims *Claims, action Permission, resource string) 
 				Scopes:  claims.Scopes,
 				Reason:  "admin role grants all permissions",
 			}
-			m.cacheAuthResult(fmt.Sprintf("%s:%s:%s:%s", claims.Subject, action, resource, strings.Join(roleSliceToStringSlice(claims.Roles), ",")), result)
+			m.cacheAuthResult(cacheKey, result)
 			return result, nil
 		}
 	}
@@ -217,7 +256,7 @@ func (m *Manager) Authorize(claims *Claims, action Permission, resource string) 
 				Scopes:  claims.Scopes,
 				Reason:  fmt.Sprintf("granted by scope: %s", scope),
 			}
-			m.cacheAuthResult(fmt.Sprintf("%s:%s:%s:%s", claims.Subject, action, resource, strings.Join(roleSliceToStringSlice(claims.Roles), ",")), result)
+			m.cacheAuthResult(cacheKey, result)
 			return result, nil
 		}
 	}
@@ -235,7 +274,7 @@ func (m *Manager) Authorize(claims *Claims, action Permission, resource string) 
 						Scopes:  claims.Scopes,
 						Reason:  fmt.Sprintf("granted by role: %s", role),
 					}
-					m.cacheAuthResult(fmt.Sprintf("%s:%s:%s:%s", claims.Subject, action, resource, strings.Join(roleSliceToStringSlice(claims.Roles), ",")), result)
+					m.cacheAuthResult(cacheKey, result)
 					return result, nil
 				}
 			}
@@ -251,8 +290,8 @@ func (m *Manager) Authorize(claims *Claims, action Permission, resource string) 
 		Reason:  fmt.Sprintf("insufficient permissions for action: %s", action),
 	}
 
-	if m.config.AuthzConfig.DefaultDeny {
-		m.cacheAuthResult(fmt.Sprintf("%s:%s:%s:%s", claims.Subject, action, resource, strings.Join(roleSliceToStringSlice(claims.Roles), ",")), result)
+	if m.config.AuthzConfig.DefaultDeny && m.config.AuthzConfig.CacheEnabled {
+		m.cacheAuthResult(cacheKey, result)
 	}
 
 	return result, nil
@@ -428,27 +467,39 @@ func (m *Manager) verifySignature(message, signatureB64, keyID string) error {
 }
 
 func (m *Manager) rotateKeysRoutine() {
+	defer m.wg.Done()
 	ticker := time.NewTicker(m.config.KeyConfig.RotationInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		if err := m.generateDefaultKey(); err != nil {
-			m.logger.Error("Failed to rotate keys", zap.Error(err))
-		} else {
-			m.logger.Info("Keys rotated successfully", zap.String("new_key_id", m.currentKeyID))
+	for {
+		select {
+		case <-ticker.C:
+			if err := m.generateDefaultKey(); err != nil {
+				m.logger.Error("Failed to rotate keys", zap.Error(err))
+			} else {
+				m.logger.Info("Keys rotated successfully", zap.String("new_key_id", m.currentKeyID))
+			}
+		case <-m.shutdown:
+			return
 		}
 	}
 }
 
 func (m *Manager) cacheCleanupRoutine() {
+	defer m.wg.Done()
 	ticker := time.NewTicker(m.config.AuthzConfig.CacheTTL)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		m.cacheMutex.Lock()
-		// Simple cache cleanup - in production this would be more sophisticated
-		m.authzCache = make(map[string]*AuthorizationResult)
-		m.cacheMutex.Unlock()
+	for {
+		select {
+		case <-ticker.C:
+			m.cacheMutex.Lock()
+			// Simple cache cleanup - in production this would be more sophisticated
+			m.authzCache = make(map[string]*AuthorizationResult)
+			m.cacheMutex.Unlock()
+		case <-m.shutdown:
+			return
+		}
 	}
 }
 
@@ -465,7 +516,12 @@ func (m *Manager) cacheAuthResult(key string, result *AuthorizationResult) {
 // Helper functions
 
 func generateID() string {
-	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Nanosecond())
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if crypto rand fails
+		return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Nanosecond())
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 func roleSliceToStringSlice(roles []Role) []string {
@@ -474,4 +530,40 @@ func roleSliceToStringSlice(roles []Role) []string {
 		result[i] = string(role)
 	}
 	return result
+}
+
+// Close gracefully shuts down the Manager and its goroutines
+func (m *Manager) Close() error {
+	close(m.shutdown)
+	m.wg.Wait()
+	return nil
+}
+
+// revokedTokensCleanupRoutine periodically cleans up expired revoked tokens
+func (m *Manager) revokedTokensCleanupRoutine() {
+	defer m.wg.Done()
+	ticker := time.NewTicker(1 * time.Hour) // Clean up every hour
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			m.cleanupRevokedTokens()
+		case <-m.shutdown:
+			return
+		}
+	}
+}
+
+func (m *Manager) cleanupRevokedTokens() {
+	m.revokedMutex.Lock()
+	defer m.revokedMutex.Unlock()
+
+	now := time.Now()
+	for jwtID, token := range m.revoked {
+		// Remove revoked tokens older than max TTL
+		if now.Sub(token.RevokedAt) > m.config.TokenConfig.MaxTTL {
+			delete(m.revoked, jwtID)
+		}
+	}
 }
