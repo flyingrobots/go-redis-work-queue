@@ -5,13 +5,6 @@ import (
 	"time"
 )
 
-// PolicySimulator provides what-if analysis for policy changes
-type PolicySimulator struct {
-	config          *SimulatorConfig
-	trafficPatterns map[string]*TrafficPattern
-	policies        map[string]*PolicyConfig
-	metrics         *SimulationMetrics
-}
 
 // SimulatorConfig configures the simulation parameters
 type SimulatorConfig struct {

@@ -1,0 +1,755 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.example.com/schemas/collaborative-session/v1",
+  "title": "Collaborative Session Schema Definitions",
+  "description": "JSON Schema definitions for collaborative session data structures and API validation",
+
+  "definitions": {
+    "SessionId": {
+      "type": "string",
+      "pattern": "^sess_[a-zA-Z0-9]{6,32}$",
+      "description": "Unique session identifier with sess_ prefix"
+    },
+
+    "ParticipantId": {
+      "type": "string",
+      "pattern": "^part_[a-zA-Z0-9]{6,32}$",
+      "description": "Unique participant identifier with part_ prefix"
+    },
+
+    "TokenId": {
+      "type": "string",
+      "pattern": "^tok_[a-zA-Z0-9]{6,32}$",
+      "description": "Unique token identifier with tok_ prefix"
+    },
+
+    "UserId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "User identifier string"
+    },
+
+    "TerminalSize": {
+      "type": "object",
+      "required": ["rows", "cols"],
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of terminal rows"
+        },
+        "cols": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of terminal columns"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Position": {
+      "type": "object",
+      "required": ["row", "col"],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Row position (0-based)"
+        },
+        "col": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Column position (0-based)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Cursor": {
+      "type": "object",
+      "required": ["row", "col"],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cursor row position (0-based)"
+        },
+        "col": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cursor column position (0-based)"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether cursor is visible"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TextAttributes": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}|[a-zA-Z]+)$",
+          "description": "Text color as hex code or color name"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}|[a-zA-Z]+)$",
+          "description": "Background color as hex code or color name"
+        },
+        "style": {
+          "type": "string",
+          "enum": ["normal", "bold", "italic", "underline", "strikethrough"],
+          "default": "normal",
+          "description": "Text style formatting"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TerminalLine": {
+      "type": "object",
+      "required": ["lineNumber", "content"],
+      "properties": {
+        "lineNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Line number in terminal (0-based)"
+        },
+        "content": {
+          "type": "string",
+          "description": "Text content of the line"
+        },
+        "attributes": {
+          "$ref": "#/definitions/TextAttributes",
+          "description": "Visual attributes for the line"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FrameDelta": {
+      "type": "object",
+      "required": ["sequence", "timestamp"],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0,
+          "description": "Monotonic sequence number for ordering"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Frame timestamp in ISO 8601 format"
+        },
+        "changedLines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TerminalLine"
+          },
+          "description": "Lines that changed in this frame"
+        },
+        "cursor": {
+          "$ref": "#/definitions/Cursor",
+          "description": "Current cursor position and state"
+        },
+        "terminalSize": {
+          "$ref": "#/definitions/TerminalSize",
+          "description": "Terminal dimensions for this frame"
+        },
+        "redacted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether redaction was applied to this frame"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "KeyEvent": {
+      "type": "object",
+      "required": ["key"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Key identifier (e.g., 'ArrowDown', 'Enter', 'a')"
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ctrl", "alt", "shift", "meta"]
+          },
+          "uniqueItems": true,
+          "description": "Key modifier states"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MouseEvent": {
+      "type": "object",
+      "required": ["button", "action", "position"],
+      "properties": {
+        "button": {
+          "type": "string",
+          "enum": ["left", "right", "middle", "wheel_up", "wheel_down"],
+          "description": "Mouse button or wheel action"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["press", "release", "move", "drag", "click", "double_click"],
+          "description": "Mouse action type"
+        },
+        "position": {
+          "$ref": "#/definitions/Position",
+          "description": "Mouse position in terminal coordinates"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ResizeEvent": {
+      "type": "object",
+      "required": ["size"],
+      "properties": {
+        "size": {
+          "$ref": "#/definitions/TerminalSize",
+          "description": "New terminal size"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "InputEvent": {
+      "type": "object",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["key", "mouse", "resize"],
+          "description": "Type of input event"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp in ISO 8601 format"
+        },
+        "key": {
+          "$ref": "#/definitions/KeyEvent",
+          "description": "Key event data (required when type=key)"
+        },
+        "mouse": {
+          "$ref": "#/definitions/MouseEvent",
+          "description": "Mouse event data (required when type=mouse)"
+        },
+        "resize": {
+          "$ref": "#/definitions/ResizeEvent",
+          "description": "Resize event data (required when type=resize)"
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "type": {"const": "key"},
+            "key": {"$ref": "#/definitions/KeyEvent"}
+          },
+          "required": ["key"]
+        },
+        {
+          "properties": {
+            "type": {"const": "mouse"},
+            "mouse": {"$ref": "#/definitions/MouseEvent"}
+          },
+          "required": ["mouse"]
+        },
+        {
+          "properties": {
+            "type": {"const": "resize"},
+            "resize": {"$ref": "#/definitions/ResizeEvent"}
+          },
+          "required": ["resize"]
+        }
+      ]
+    },
+
+    "ClientInfo": {
+      "type": "object",
+      "properties": {
+        "userAgent": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Client user agent string"
+        },
+        "terminalSize": {
+          "$ref": "#/definitions/TerminalSize",
+          "description": "Client terminal dimensions"
+        },
+        "ipAddress": {
+          "type": "string",
+          "oneOf": [
+            {"format": "ipv4"},
+            {"format": "ipv6"}
+          ],
+          "description": "Client IP address"
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["windows", "macos", "linux", "browser", "mobile", "unknown"],
+          "description": "Client platform type"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Client application version"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Participant": {
+      "type": "object",
+      "required": ["participantId", "sessionId", "userId", "role", "joinedAt"],
+      "properties": {
+        "participantId": {
+          "$ref": "#/definitions/ParticipantId",
+          "description": "Unique participant identifier"
+        },
+        "sessionId": {
+          "$ref": "#/definitions/SessionId",
+          "description": "Associated session identifier"
+        },
+        "userId": {
+          "$ref": "#/definitions/UserId",
+          "description": "User identifier"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["presenter", "observer", "controller"],
+          "description": "Participant role in session"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When participant joined the session"
+        },
+        "lastActivity": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last activity timestamp"
+        },
+        "hasControl": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether participant currently has control"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["view", "input", "navigation", "commands", "manage"]
+          },
+          "uniqueItems": true,
+          "description": "Participant permissions"
+        },
+        "clientInfo": {
+          "$ref": "#/definitions/ClientInfo",
+          "description": "Client connection information"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SessionMetadata": {
+      "type": "object",
+      "properties": {
+        "terminalSize": {
+          "$ref": "#/definitions/TerminalSize",
+          "description": "Session terminal dimensions"
+        },
+        "applicationName": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Name of the presenting application"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Application version"
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production"],
+          "description": "Environment type"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "maxItems": 20,
+          "description": "Session categorization tags"
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "Session": {
+      "type": "object",
+      "required": ["sessionId", "title", "presenterId", "status", "createdAt", "expiresAt"],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/definitions/SessionId",
+          "description": "Unique session identifier"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable session title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional session description"
+        },
+        "presenterId": {
+          "$ref": "#/definitions/UserId",
+          "description": "User ID of session presenter"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "expired", "terminated"],
+          "description": "Current session status"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Session creation timestamp"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Session expiration timestamp"
+        },
+        "maxObservers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10,
+          "description": "Maximum allowed observers"
+        },
+        "currentObservers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current number of observers"
+        },
+        "allowControlHandoff": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether control handoff is enabled"
+        },
+        "redactionRules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "description": "Active content redaction rules"
+        },
+        "metadata": {
+          "$ref": "#/definitions/SessionMetadata",
+          "description": "Additional session metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Token": {
+      "type": "object",
+      "required": ["tokenId", "sessionId", "type", "userId", "issuedAt", "expiresAt"],
+      "properties": {
+        "tokenId": {
+          "$ref": "#/definitions/TokenId",
+          "description": "Unique token identifier"
+        },
+        "sessionId": {
+          "$ref": "#/definitions/SessionId",
+          "description": "Associated session identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["presenter", "observer", "controller"],
+          "description": "Token type and role"
+        },
+        "userId": {
+          "$ref": "#/definitions/UserId",
+          "description": "User the token was issued to"
+        },
+        "issuedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token issuance timestamp"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token expiration timestamp"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["view", "input", "navigation", "commands", "manage"]
+          },
+          "uniqueItems": true,
+          "description": "Token permissions"
+        },
+        "used": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether token has been used"
+        },
+        "revokedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token revocation timestamp (if revoked)"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "description": "Token issuing service"
+            },
+            "clientIp": {
+              "type": "string",
+              "oneOf": [
+                {"format": "ipv4"},
+                {"format": "ipv6"}
+              ],
+              "description": "Client IP when token was issued"
+            },
+            "userAgent": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Client user agent when token was issued"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RedactionRule": {
+      "type": "object",
+      "required": ["name", "pattern", "replacement"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Rule identifier name"
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regular expression pattern to match"
+        },
+        "replacement": {
+          "type": "string",
+          "description": "Replacement text for matches"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether rule is active"
+        },
+        "caseInsensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether pattern matching is case insensitive"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Human-readable rule description"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ErrorDetails": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z_]+$",
+          "description": "Machine-readable error code"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error context"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error occurrence timestamp"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Request identifier for tracing"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "oneOf": [
+    {
+      "$ref": "#/definitions/Session",
+      "title": "Session Schema"
+    },
+    {
+      "$ref": "#/definitions/Participant",
+      "title": "Participant Schema"
+    },
+    {
+      "$ref": "#/definitions/Token",
+      "title": "Token Schema"
+    },
+    {
+      "$ref": "#/definitions/FrameDelta",
+      "title": "Frame Delta Schema"
+    },
+    {
+      "$ref": "#/definitions/InputEvent",
+      "title": "Input Event Schema"
+    },
+    {
+      "$ref": "#/definitions/RedactionRule",
+      "title": "Redaction Rule Schema"
+    },
+    {
+      "$ref": "#/definitions/ErrorDetails",
+      "title": "Error Details Schema"
+    }
+  ],
+
+  "examples": {
+    "session": {
+      "sessionId": "sess_abc123def456",
+      "title": "Production Incident Response",
+      "description": "Debugging queue backlog in production environment",
+      "presenterId": "user_12345",
+      "status": "active",
+      "createdAt": "2024-01-15T15:00:00Z",
+      "expiresAt": "2024-01-15T16:00:00Z",
+      "maxObservers": 10,
+      "currentObservers": 3,
+      "allowControlHandoff": true,
+      "redactionRules": ["password", "token", "api_key"],
+      "metadata": {
+        "terminalSize": {"rows": 24, "cols": 80},
+        "applicationName": "redis-work-queue",
+        "version": "1.0.0",
+        "environment": "production",
+        "tags": ["incident", "queue", "production"]
+      }
+    },
+
+    "participant": {
+      "participantId": "part_xyz789abc123",
+      "sessionId": "sess_abc123def456",
+      "userId": "user_67890",
+      "role": "observer",
+      "joinedAt": "2024-01-15T15:05:00Z",
+      "lastActivity": "2024-01-15T15:30:00Z",
+      "hasControl": false,
+      "permissions": ["view"],
+      "clientInfo": {
+        "userAgent": "TerminalClient/1.2.0",
+        "terminalSize": {"rows": 24, "cols": 80},
+        "ipAddress": "192.168.1.100",
+        "platform": "linux",
+        "version": "1.2.0"
+      }
+    },
+
+    "frameDelta": {
+      "sequence": 1234,
+      "timestamp": "2024-01-15T15:45:30Z",
+      "changedLines": [
+        {
+          "lineNumber": 5,
+          "content": "Queue: orders (1,234 items)",
+          "attributes": {
+            "color": "green",
+            "style": "bold"
+          }
+        },
+        {
+          "lineNumber": 6,
+          "content": "Status: ACTIVE",
+          "attributes": {
+            "color": "yellow"
+          }
+        }
+      ],
+      "cursor": {
+        "row": 5,
+        "col": 0,
+        "visible": true
+      },
+      "terminalSize": {"rows": 24, "cols": 80},
+      "redacted": true
+    },
+
+    "inputEvent": {
+      "type": "key",
+      "timestamp": "2024-01-15T15:45:31Z",
+      "key": {
+        "key": "ArrowDown",
+        "modifiers": ["ctrl"]
+      }
+    },
+
+    "redactionRule": {
+      "name": "password",
+      "pattern": "(?i)(password|passwd|pwd)\\s*[:=]\\s*\\S+",
+      "replacement": "PASSWORD=[REDACTED]",
+      "enabled": true,
+      "caseInsensitive": true,
+      "description": "Redacts password fields in terminal output"
+    },
+
+    "error": {
+      "code": "SESSION_NOT_FOUND",
+      "message": "The specified session does not exist or has expired",
+      "details": {
+        "sessionId": "sess_invalid123",
+        "suggestedAction": "Verify session ID and ensure it has not expired"
+      },
+      "timestamp": "2024-01-15T15:45:32Z",
+      "requestId": "req_abc123def456"
+    }
+  }
+}

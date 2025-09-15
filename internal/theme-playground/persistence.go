@@ -438,7 +438,8 @@ func (pm *PersistenceManager) RestoreThemes(backupPath string, overwrite bool) e
 			}
 		}
 
-		if err := pm.SaveCustomTheme(theme); err != nil {
+		// Save theme directly without additional locking since we already hold the lock
+		if err := pm.saveCustomThemeUnsafe(theme); err != nil {
 			return fmt.Errorf("failed to restore theme %s: %w", name, err)
 		}
 	}
