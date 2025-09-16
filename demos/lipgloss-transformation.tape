@@ -135,7 +135,7 @@ Sleep 1s
 # Simulate running the enhanced TUI
 Type "# Simulate starting the enhanced TUI"
 Enter
-Type "./bin/queue-tui --enhanced"
+Type "if [ -x ./bin/queue-tui ]; then ./bin/queue-tui --enhanced; else echo 'Skipping ./bin/queue-tui demo (binary missing)'; fi"
 Enter
 Sleep 1s
 
@@ -269,7 +269,7 @@ Enter
 Sleep 2s
 
 # Final frame
-Type "figlet -f small 'Redis TUI'"
+Type "if command -v figlet >/dev/null 2>&1; then figlet -f small 'Redis TUI'; else echo 'Redis TUI'; fi"
 Enter
 Type "echo 'Powered by LipGloss 💄'"
 Enter

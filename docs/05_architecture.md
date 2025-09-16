@@ -58,17 +58,18 @@ flowchart LR
 - Producer: scans directories, prioritizes files, rate-limits enqueue.
 - Worker: prioritized fetch via short-timeout BRPOPLPUSH per queue; heartbeat and cleanup.
 - Reaper: rescues jobs from processing lists when heartbeats expire.
+- Exactly-once & Idempotency: persisting `origin_queue`, guarding enqueue via idempotency keys, and writing side-effects to an outbox before acknowledging completion.
 - Circuit Breaker: sliding window with cooldown; pauses fetch on high failure rate.
 - Observability: metrics server, structured logging, optional OTEL tracing.
 
 ## Data Flows
 
-1) Produce: file -> Job JSON -> LPUSH to `high` or `low`.
-2) Consume: BRPOPLPUSH from `high` then `low` (short timeout) -> processing list.
-3) Heartbeat: SET `processing:worker:<id>` with EX=ttl, value=payload.
-4) Complete: LPUSH `completed`; LREM processing; DEL heartbeat.
-5) Fail: increment retries; backoff; LPUSH back or DLQ after threshold.
-6) Reap: if heartbeat missing, RPOP processing list items back to originating priority queue.
+1) Produce: file -> Job JSON -> idempotency key derived (`{queue}:{tenant}:{hash}`) -> first-write stored -> LPUSH to `high` or `low`.
+2) Consume: BRPOPLPUSH from `high` then `low` (short timeout) -> processing list; record heartbeat `processing:worker:<id>`.
+3) Side-effects: worker writes business outcome to outbox within same transaction; durable idempotency lookup prevents duplicates.
+4) Complete: LPUSH `completed`; LREM processing; DEL heartbeat; background outbox publisher emits events.
+5) Fail: increment retries; backoff; LPUSH back or DLQ after threshold; reuses original idempotency record to avoid re-processing.
+6) Reap: if heartbeat missing, Lua script removes from processing list and LPUSHes back to recorded `origin_queue`.
 
 ## Technology Stack
 

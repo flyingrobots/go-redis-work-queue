@@ -24,12 +24,18 @@ This guide provides a reproducible method to measure throughput and latency, and
 1) Start Redis
 
 ```bash
-docker run --rm -d --name jobq-redis -p 6379:6379 redis:7-alpine
+docker run --rm -d --name jobq-redis -p 6379:6379 redis:7.2.4-alpine
+```
+
+When finished, tear down the container:
+
+```bash
+docker stop jobq-redis
 ```
 
 2) Copy `config/config.example.yaml` to `config/config.yaml` and set:
    - `worker.count`: 16 on a 4 vCPU node (adjust as needed)
-   - `redis.addr`: "localhost:6379"
+   - `redis.addr`: "localhost:6379" (matches the container mapping above)
 3) In one shell, run the worker
 
 ```bash

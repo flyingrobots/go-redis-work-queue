@@ -22,6 +22,8 @@ All endpoints require authentication via JWT or PASETO tokens:
 Authorization: Bearer <token>
 ```
 
+Audit payloads are redacted by default. Configure behaviour via `audit_redaction` (see `config/audit.yaml`). The default mask list includes: `ssn`, `email`, `phone`, `full_name`, `address`, `credit_card`, `payment_token`, `auth_token`, and `password`. Operators can extend the list or select `redaction_level: none|default|strict` per environment.
+
 ## Pipeline Management
 
 ### Start Pipeline
@@ -127,14 +129,21 @@ GET /pipeline/metrics
   "actions_executed": 18765,
   "actions_successful": 18234,
   "actions_failed": 531,
-  "classification_time_ms": 45.2,
-  "action_time_ms": 123.7,
-  "end_to_end_time_ms": 168.9,
+  "classification_time_ms": 45,
+  "action_time_ms": 124,
+  "end_to_end_time_ms": 169,
   "rate_limit_hits": 12,
   "circuit_breaker_trips": 3,
   "cache_hit_rate": 0.85
 }
 ```
+
+**Field schema:**
+
+- `timestamp` — string (RFC3339)
+- `jobs_processed`, `jobs_matched`, `actions_executed`, `actions_successful`, `actions_failed`, `rate_limit_hits`, `circuit_breaker_trips` — integer
+- `classification_time_ms`, `action_time_ms`, `end_to_end_time_ms` — integer (milliseconds)
+- `cache_hit_rate` — number (0.0–1.0)
 
 ## Batch Processing
 
@@ -265,9 +274,9 @@ Content-Type: application/json
   "priority": 90,
   "enabled": true,
   "matcher": {
-    "error_type": "timeout",
-    "job_type": "payment_*",
-    "retry_count": "> 0"
+    "error_pattern": {"regex": "timeout"},
+    "job_type": {"wildcard": "payment_*"},
+    "retry_count": {"operator": ">", "value": 0}
   },
   "actions": [
     {
@@ -298,6 +307,24 @@ Content-Type: application/json
 {
   "status": "created",
   "rule_id": "rule_def456"
+}
+```
+
+**Matcher schema**
+
+- `error_pattern` — `{ "regex": "..." }` (ECMAScript-compatible)
+- `job_type` — one of `{ "equals": "queue" }`, `{ "wildcard": "pattern_*" }`, `{ "values": ["a", "b"] }`
+- `retry_count` — `{ "operator": "<|<=|=|>=|>", "value": <integer> }`
+- `time_window` (optional) — `{ "start": "09:00", "end": "17:00", "timezone": "America/Los_Angeles" }`
+
+Requests failing schema validation return `400 Bad Request` with payload:
+
+```json
+{
+  "status": "invalid_matcher",
+  "errors": [
+    {"field": "matcher.retry_count", "message": "operator must be one of <, <=, =, >=, >"}
+  ]
 }
 ```
 
@@ -583,15 +610,15 @@ GET /audit?job_id=job_123&start_time=2024-01-15T09:00:00Z&limit=100
       "user_id": "system",
       "duration": "145ms",
       "before_state": {
-        "job_id": "job_123",
-        "error": "validation failed",
-        "retry_count": 1
+        "job_id": "<redacted>",
+        "error": "<redacted>",
+        "retry_count": "<redacted>"
       },
       "after_state": {
-        "job_id": "job_123",
-        "error": "validation failed",
-        "retry_count": 0,
-        "queue": "user_registration_retry"
+        "job_id": "<redacted>",
+        "error": "<redacted>",
+        "retry_count": "<redacted>",
+        "queue": "<redacted>"
       }
     }
   ],
@@ -859,7 +886,14 @@ Pagination metadata is included in responses:
 
 ## WebSocket Events
 
-Real-time pipeline events are available via WebSocket at `/ws/dlq-remediation/events`:
+Real-time pipeline events are available via WebSocket at `/ws/dlq-remediation/events`. Clients must authenticate with `Authorization: Bearer <token>` (or `?token=` for service accounts); tokens follow the DLQ admin scope and expire per RBAC policy.
+
+- Server sends a ping frame every 20s; clients must reply with pong within 10s or the connection is closed with code `4001`.
+- Clients should send an application heartbeat event (`{"type":"client_heartbeat"}`) at least every 30s to confirm liveness; missing two heartbeats closes the session.
+- Each connection has a send buffer of 100 events. When full, the server drops the connection with code `4008` (slow consumer). Reconnect with exponential backoff starting at 5s.
+- Monitor `dlq_ws_active_connections` and `dlq_ws_dropped_connections_total` Prometheus metrics to track health.
+
+Example event payload:
 
 ```json
 {

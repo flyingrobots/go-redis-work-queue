@@ -5,7 +5,7 @@
 **Runtime:** ~7 hours across multiple sessions
 **Participants:** 10 autonomous Claude workers + human coordinator
 **Tasks Processed:** 88 complex software engineering tasks
-**Success Rate:** 100% (74 completed, 14 remaining, 0 failed)
+**Completion:** 84% (74/88 tasks finished; 14 remaining in backlog)
 **Paradigm Shift:** Achieved
 
 ---
@@ -331,7 +331,7 @@ What began as an academic exercise in distributed task coordination became a par
 - 74/88 tasks completed (84% completion rate)
 - 222 human-hours of work in 7 real hours
 - 5-6 weeks of solo development compressed into one session
-- 100% success rate on attempted tasks
+- 0 failures among attempted tasks
 - Zero infrastructure requirements
 
 **Qualitative Breakthroughs:**

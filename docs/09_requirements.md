@@ -42,10 +42,15 @@ Functional and non-functional requirements with user stories, acceptance criteri
 
 ## Acceptance Criteria
 
-- Each requirement has unit and/or integration tests.
-- Metrics appear in `/metrics` with expected names and types.
-- Health endpoints return correct status based on readiness.
-- Admin commands operate without data loss and require confirmation when destructive.
+- Observability metrics exposed at `/metrics` include:
+  - `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total` (counters)
+  - `job_processing_duration_seconds` (histogram) and `queue_length` (gauge)
+  - `worker_registered_total` (gauge) and `rate_limit_hits_total` if limiter enabled
+  Automated tests assert the presence and type of these metrics.
+- `/readyz` returns 200 only when Redis PING succeeds **and** at least one worker heartbeat/registration is present; failures (Redis down, no workers) return 503 with JSON body describing failing checks.
+- `/healthz` always returns 200 when process is running.
+- Destructive admin commands (`purge-dlq`, `purge-all`) prompt for confirmation interactively and also honour a `--yes` flag for non-interactive automation; tests cover both paths.
+- Each requirement is backed by unit and/or integration tests (including readiness, metrics, and admin flows).
 
 ## Definition of Done
 

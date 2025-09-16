@@ -1,6 +1,6 @@
 module github.com/flyingrobots/go-redis-work-queue
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/76creates/stickers v1.4.1

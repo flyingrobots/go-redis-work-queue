@@ -6,7 +6,12 @@ The DLQ Remediation UI provides a comprehensive REST API for managing Dead Lette
 
 ## Authentication
 
-Currently, the API does not require authentication. In production deployments, it is recommended to implement proper authentication and authorization mechanisms.
+All endpoints require authentication and RBAC with default-deny posture.
+
+- Requests must supply `Authorization: Bearer <token>` (service tokens) or session cookies protected by CSRF tokens.
+- Browser clients must include an `X-CSRF-Token` header or double-submit cookie when performing state-changing operations.
+- RBAC scope `dlq_admin` (or equivalent) is required for purge/requeue endpoints; read-only roles are limited to list/peek.
+- All destructive operations are audited with actor, reason, and outcome.
 
 ## Base URL
 
@@ -226,23 +231,23 @@ Permanently delete all DLQ entries matching the specified filter criteria.
 
 **Endpoint:** `POST /api/dlq/entries/purge-all`
 
-**Query Parameters:**
+**Request Body:**
 
-| Parameter | Type | Description | Required |
-|-----------|------|-------------|----------|
-| `confirm` | string | Must be "true" to confirm the operation | Yes |
-| `queue` | string | Filter by queue name | No |
-| `type` | string | Filter by job type | No |
-| `error_pattern` | string | Filter by error message pattern | No |
-| `start_time` | string | Filter entries failed after this time (RFC3339) | No |
-| `end_time` | string | Filter entries failed before this time (RFC3339) | No |
-| `min_attempts` | integer | Filter entries with at least N attempts | No |
-| `max_attempts` | integer | Filter entries with at most N attempts | No |
-
-**Example Request:**
-```bash
-POST /api/dlq/entries/purge-all?confirm=true&queue=payment-processing&error_pattern=timeout
+```json
+{
+  "filter": {
+    "queue": "payment-processing",
+    "error_pattern": "timeout"
+  },
+  "dry_run": false,
+  "confirmation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "change_reason": "Clearing duplicates after fix"
+}
 ```
+
+- `confirmation_token` — signed JWT issued via `POST /api/dlq/entries/purge-token`; expires in 10 minutes.
+- `dry_run` — required boolean; `true` returns the list of entries without deleting.
+- `change_reason` — required string explaining why purge is being performed; stored in audit log.
 
 **Response:**
 ```json
@@ -255,6 +260,8 @@ POST /api/dlq/entries/purge-all?confirm=true&queue=payment-processing&error_patt
   "duration": 5000
 }
 ```
+
+Requests missing a valid `confirmation_token`, `change_reason`, or `dry_run` flag return `400 Bad Request` with field-level errors.
 
 ### Get DLQ Statistics
 
@@ -386,11 +393,17 @@ All endpoints return appropriate HTTP status codes and error details in case of 
 
 ## Rate Limiting
 
-The API implements the following rate limits:
+Rate limits are enforced per token (sliding window, burst = limit × 2). Requests exceeding the quota receive `429 Too Many Requests` and Retry-After headers.
 
-- List operations: 100 requests per minute
-- Bulk operations: 10 requests per minute
-- Individual operations: 1000 requests per minute
+| Endpoint(s) | Role | Limit (req/min) | Notes |
+|-------------|------|-----------------|-------|
+| `GET /api/dlq/entries`, `GET /api/dlq/entries/{id}` | `dlq_read` | 60 | Read-only UI usage |
+| Same as above | service token | 300 | Automation/service accounts |
+| `POST /api/dlq/entries/requeue`, `POST /api/dlq/entries/purge` | `dlq_admin` | 10 | Destructive operations |
+| `POST /api/dlq/entries/purge-all` | `dlq_admin` | 4 | Global purge guardrail |
+| Any write endpoint | other roles | 0 | Denied (default deny) |
+
+Limits are enforced per token and IP; repeated violations escalate to temporary 10-minute blocks.
 
 ## Performance Considerations
 
@@ -402,10 +415,9 @@ The API implements the following rate limits:
 ## Security Considerations
 
 - Validate all input parameters
-- Implement proper authentication in production
+- Enforce authentication and RBAC (see [Authentication](#authentication))
 - Use HTTPS for all API communications
 - Log all DLQ operations for audit purposes
-- Consider implementing rate limiting and access controls
 
 ## Examples
 

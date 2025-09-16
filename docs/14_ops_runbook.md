@@ -18,10 +18,21 @@ Day-2 operations guide: deploy, scale, monitor, recover, and release/rollback pr
 
 ## Deployment
 
-- Docker build
+- Docker build (multi-arch, reproducible)
 
 ```bash
-docker build -t job-queue-system:local .
+BUILDKIT_INLINE_CACHE=1 docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --pull \
+  -t job-queue-system:local \
+  --build-arg GO_VERSION=1.25.0 \
+  --push .
+```
+
+- Docker Compose build (local parity)
+
+```bash
+docker compose -f deploy/docker-compose.yml build
 ```
 
 - docker-compose: see `deploy/docker-compose.yml` (services: redis, app-all, app-worker, app-producer)
@@ -30,7 +41,11 @@ docker build -t job-queue-system:local .
 ## Configuration
 
 - Primary: `config/config.yaml` (see `config/config.example.yaml`).
-- Overrides: environment vars (upper snake case replaces dots, e.g., `WORKER_COUNT=32`).
+- Overrides: environment vars (upper snake case replaces dots). Examples:
+  - `WORKER_COUNT=32` → `worker.count`
+  - `REDIS_ADDR=localhost:6379` → `redis.addr`
+  - `CIRCUIT_BREAKER__COOLDOWN_PERIOD=45s` → `circuit_breaker.cooldown_period` (durations use Go syntax)
+  Boolean values accept `true/false/1/0`; durations expect values like `30s`, `1m`, etc.
 - Validate: service fails to start with descriptive errors on invalid configs.
 
 ## Health and Monitoring
@@ -39,6 +54,7 @@ docker build -t job-queue-system:local .
 - Readiness: `/readyz` returns 200 when Redis is reachable.
 - Metrics: `/metrics` exposes Prometheus counters/gauges/histograms:
   - jobs_* counters, job_processing_duration_seconds, queue_length{queue}, circuit_breaker_state, worker_active.
+  - Bind metrics/health endpoints to localhost or a dedicated admin interface; restrict access via NetworkPolicy/firewall and require auth (mTLS or bearer tokens) when exposed beyond the cluster.
 
 ## Scaling
 
@@ -60,7 +76,11 @@ docker build -t job-queue-system:local .
 ./job-queue-system --role=admin --admin-cmd=peek --queue=high --n=20 --config=config.yaml
 ```
 
-- Purge dead-letter queue
+- Purge dead-letter queue (dry-run first, RBAC `admin:dlq` required)
+
+```bash
+./job-queue-system --role=admin --admin-cmd=purge-dlq --dry-run --config=config.yaml
+```
 
 ```bash
 ./job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config.yaml

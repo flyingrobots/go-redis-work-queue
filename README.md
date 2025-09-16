@@ -9,6 +9,8 @@ Provides producer, worker, and all-in-one modes with robust resilience, observab
 - Graceful shutdown, reaper for stuck jobs, circuit breaker
 - Prometheus metrics, structured logging, optional tracing
 
+See the [Feature Matrix](docs/features-ledger.md) for the latest capability status (stable, experimental, deprecated).
+
 See `docs/` to learn more. A sample configuration is provided in `config/config.example.yaml`.
 
 Developer tools and automation: see `docs/tools/README.md` for:
@@ -139,8 +141,8 @@ The CLI provides `--admin-cmd` flags that help you inspect the system.
 # Purge DLQ
 ./bin/job-queue-system --role=admin --admin-cmd=purge-dlq --yes --config=config/config.yaml
 
-# Purge all (test keys)
-./bin/job-queue-system --role=admin --admin-cmd=purge-all --yes --config=config/config.yaml
+# Purge all (test keys) — DEV ONLY; requires explicit --dev + --yes safeguards
+./bin/job-queue-system --role=admin --admin-cmd=purge-all --dev --yes --config=config/config.yaml
 
 # Stats (keys)
 ./bin/job-queue-system --role=admin --admin-cmd=stats-keys --config=config/config.yaml
@@ -151,7 +153,7 @@ The CLI provides `--admin-cmd` flags that help you inspect the system.
 
 ### Metrics
 
-Prometheus metrics exposed at <http://localhost:9090/metrics> by default
+Prometheus metrics exposed at <http://localhost:9091/metrics> by default (override via `observability.metrics_port` to avoid conflicts with local Prometheus).
 
 ### Health and Readiness
 
@@ -179,8 +181,14 @@ docker build -t job-queue-system:latest .
 #### Run
 
 ```bash
-docker run --rm -p 9090:9090 --env-file env.list job-queue-system:latest --role=all
+docker run --rm \
+  -p 9091:9091 \
+  -v $(pwd)/config/config.yaml:/app/config/config.yaml:ro \
+  --env-file env.list \
+  job-queue-system:latest --role=all --config=/app/config/config.yaml
 ```
+
+Ensure `config/config.yaml` exists locally and `env.list` provides credentials (see `config/config.example.yaml` for keys).
 
 #### Compose
 

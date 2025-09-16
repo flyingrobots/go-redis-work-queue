@@ -249,5 +249,98 @@ infrastructure = {
     "policy_engine": "Policy enforcement and evaluation engine",
     "sidecar_injector": "Sidecar injector integration",
     "ci_cd": "CI/CD automation glue",
-    "secrets_manager": "Secret management provider bindings"
+    "secrets_manager": "Secret management provider bindings",
+    "accessibility_framework": "Accessibility tooling and guidelines",
+    "bubblezone": "Precise hitbox library for Bubble Tea",
+    "capacity_planning": "Legacy capacity planning heuristics",
+    "circuit_breaker": "Circuit breaker primitives",
+    "classification_engine": "DLQ classification engine",
+    "clickhouse": "ClickHouse warehouse integration",
+    "completed_stream": "Redis stream for completed jobs",
+    "content_hashing": "Payload hashing utilities",
+    "fault_injection": "Chaos fault injection toolkit",
+    "git_integration": "Git repository integration hooks",
+    "graph_storage": "Graph storage backend",
+    "http_client": "Generic HTTP client utilities",
+    "json_editor": "JSON editor component",
+    "lipgloss": "Lip Gloss styling library",
+    "log_aggregation": "Centralized log aggregation platform",
+    "metrics_history": "Historical metrics store",
+    "migration_system": "Data migration tooling",
+    "ml_models": "Machine learning model runtime",
+    "multiplexing": "Session multiplexing subsystem",
+    "namespace_separation": "Namespace isolation helpers",
+    "opentelemetry_sdk": "OpenTelemetry SDK",
+    "rate_limiter": "Token bucket rate limiter",
+    "rate_limiting": "Legacy rate limiting utilities",
+    "relationship_tracking": "Job relationship tracking service",
+    "retry_system": "Retry strategy utilities",
+    "routing_system": "Traffic routing system",
+    "s3": "S3-compatible object storage",
+    "scheduler_primitives": "Scheduling primitives",
+    "scheduling_system": "Scheduling system core",
+    "schema_validation": "Schema validation library",
+    "serialization": "Serialization utilities",
+    "storage_abstraction": "Storage abstraction layer",
+    "storage_backend": "Pluggable storage backend",
+    "tenant_labels": "Tenant labelling utilities",
+    "time_series_analysis": "Time series analytics tooling",
+    "voice_recognition": "Speech-to-text recognition service",
+    "worker_management": "Worker lifecycle management",
+    "worker_versioning": "Worker version management",
+    "workers": "Worker pool infrastructure"
 }
+
+
+ALIASES = {
+    "distributed_tracing": "distributed_tracing_integration",
+    "capacity_planning": "automatic_capacity_planning",
+}
+
+
+def normalize_name(name: str) -> str:
+    """Convert feature/infrastructure identifiers to snake_case."""
+    return name.replace('-', '_')
+
+
+def resolve_alias(name: str) -> str:
+    """Map normalized aliases to their canonical counterpart."""
+    return ALIASES.get(name, name)
+
+
+def get_normalized_feature_map() -> dict[str, dict[str, list[str]]]:
+    """Return features with normalized identifiers and dependencies."""
+    normalized = {}
+    for raw_name, data in features.items():
+        norm_name = normalize_name(raw_name)
+        normalized[norm_name] = {
+            "original_name": raw_name,
+            "hard": [resolve_alias(normalize_name(dep)) for dep in data.get("hard", [])],
+            "soft": [resolve_alias(normalize_name(dep)) for dep in data.get("soft", [])],
+            "enables": [resolve_alias(normalize_name(dep)) for dep in data.get("enables", [])],
+            "provides": list(data.get("provides", [])),
+        }
+    return normalized
+
+
+def validate_dependencies() -> list[str]:
+    normalized_features = get_normalized_feature_map()
+    feature_names = set(normalized_features.keys())
+    infrastructure_names = {normalize_name(name) for name in infrastructure}
+
+    unresolved: set[str] = set()
+    for feature_name, meta in normalized_features.items():
+        for field in ("hard", "soft"):
+            for dep in meta[field]:
+                resolved = resolve_alias(dep)
+                if resolved not in feature_names and resolved not in infrastructure_names:
+                    unresolved.add(dep)
+    return sorted(unresolved)
+
+
+if __name__ == "__main__":
+    missing = validate_dependencies()
+    if missing:
+        raise SystemExit(
+            "Unresolved dependencies: " + ", ".join(sorted({resolve_alias(m) for m in missing}))
+        )

@@ -362,6 +362,8 @@ Enter
 Sleep 2s
 
 Type "echo ''"
+Type "if command -v figlet >/dev/null 2>&1; then figlet -f small 'Responsive TUI'; else echo 'Responsive TUI'; fi"
+Enter
 Type "echo '🎯 Implementation: Progressive Enhancement'"
 Enter
 Type "echo '   Base features work everywhere → Enhanced features for larger screens'"

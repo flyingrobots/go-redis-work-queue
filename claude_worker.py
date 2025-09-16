@@ -7,17 +7,30 @@ Run this in a Claude instance to become a worker
 import json
 import os
 import time
-import shutil
+from enum import Enum
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Callable, Optional, Tuple
 import random
 import sys
 
+class TaskStatus(Enum):
+    COMPLETED = "completed"
+    HELP = "help"
+    FAILED = "failed"
+
+
 class ClaudeWorker:
-    def __init__(self, worker_id: int, base_dir: str = "slaps-coordination"):
+    def __init__(
+        self,
+        worker_id: int,
+        base_dir: str = "slaps-coordination",
+        executor: Optional[Callable[[dict], Tuple[TaskStatus, str]]] = None,
+    ):
         self.worker_id = worker_id
         self.worker_name = f"claude-{worker_id:03d}"
         self.base_dir = Path(base_dir)
+        self.executor = executor or self._default_executor
 
         # Directory paths
         self.open_tasks_dir = self.base_dir / 'open-tasks'
@@ -52,11 +65,11 @@ class ClaudeWorker:
                 except FileNotFoundError:
                     # Someone else got it
                     continue
-                except Exception as e:
-                    print(f"[ERROR] Claiming {task_file.name}: {e}")
+                except Exception as err:
+                    print(f"[ERROR] Claiming {task_file.name}: {err}")
 
-        except Exception as e:
-            print(f"[ERROR] Scanning tasks: {e}")
+        except Exception as err:
+            print(f"[ERROR] Scanning tasks: {err}")
 
         return None
 
@@ -64,8 +77,8 @@ class ClaudeWorker:
         """Execute the claimed task"""
         try:
             # Load task
-            with open(task_file) as f:
-                task_data = json.load(f)
+            with open(task_file) as handle:
+                task_data = json.load(handle)
 
             task_id = task_data['task_id']
             task = task_data['task']
@@ -73,89 +86,56 @@ class ClaudeWorker:
             print(f"\n{'='*60}")
             print(f"[EXECUTE] Task {task_id}: {task['title']}")
             print(f"[DESC] {task['description']}")
+            status, message = self.executor(task)
 
-            # Show requirements
-            if 'boundaries' in task:
-                print(f"\n[REQUIREMENTS]")
-                for criterion in task['boundaries']['definition_of_done']['criteria'][:3]:
-                    print(f"  - {criterion}")
-                print(f"\n[STOP WHEN] {task['boundaries']['definition_of_done']['stop_when']}")
+            if status is TaskStatus.COMPLETED:
+                task_data['completed_at'] = datetime.now(timezone.utc).isoformat()
+                task_data['completed_by'] = self.worker_name
+                task_data['completion_summary'] = message or ""
+                destination = self.finished_dir / task_file.name
+                self._persist_task(destination, task_data)
+                task_file.unlink(missing_ok=True)
+                print(f"[COMPLETED] {task_id}")
+                return True
 
-            print(f"\n[INSTRUCTION] Please execute this task now.")
-            print(f"[INSTRUCTION] When complete, type 'done'")
-            print(f"[INSTRUCTION] If you need help, type 'help'")
-            print(f"[INSTRUCTION] If task fails, type 'failed'")
-            print(f"{'='*60}\n")
+            if status is TaskStatus.HELP:
+                task_data['help_request'] = message or "Assistance requested"
+                task_data['help_requested_at'] = datetime.now(timezone.utc).isoformat()
+                task_data['help_requested_by'] = self.worker_name
+                destination = self.help_dir / task_file.name
+                self._persist_task(destination, task_data)
+                task_file.unlink(missing_ok=True)
+                print(f"[HELP] Logged request for {task_id}")
+                return False
 
-            # Wait for user (Claude) to complete the task
-            while True:
-                response = input(f"[{self.worker_name}] Status (done/help/failed): ").strip().lower()
-
-                if response == 'done':
-                    # Mark as completed
-                    task_data['completed_at'] = datetime.now(timezone.utc).isoformat()
-                    task_data['completed_by'] = self.worker_name
-
-                    # Get summary of what was done
-                    summary = input("Brief summary of what you did: ")
-                    task_data['completion_summary'] = summary
-
-                    # Move to finished
-                    finished_file = self.finished_dir / task_file.name
-                    with open(finished_file, 'w') as f:
-                        json.dump(task_data, f, indent=2)
-                    task_file.unlink()
-
-                    print(f"[COMPLETED] {task_id}")
-                    return True
-
-                elif response == 'help':
-                    # Request help
-                    help_msg = input("What help do you need? ")
-                    task_data['help_request'] = help_msg
-                    task_data['help_requested_at'] = datetime.now(timezone.utc).isoformat()
-                    task_data['help_requested_by'] = self.worker_name
-
-                    # Move to help directory
-                    help_file = self.help_dir / task_file.name
-                    with open(help_file, 'w') as f:
-                        json.dump(task_data, f, indent=2)
-                    task_file.unlink()
-
-                    print(f"[HELP] Request sent for {task_id}")
-                    return False
-
-                elif response == 'failed':
-                    # Mark as failed
-                    error_msg = input("Error details: ")
-                    task_data['error'] = error_msg
-                    task_data['failed_at'] = datetime.now(timezone.utc).isoformat()
-                    task_data['failed_by'] = self.worker_name
-
-                    # Move to failed
-                    failed_file = self.failed_dir / task_file.name
-                    with open(failed_file, 'w') as f:
-                        json.dump(task_data, f, indent=2)
-                    task_file.unlink()
-
-                    print(f"[FAILED] {task_id}: {error_msg}")
-                    return False
-
-                else:
-                    print(f"[INVALID] Please enter 'done', 'help', or 'failed'")
-
-        except Exception as e:
-            print(f"[ERROR] Executing task: {e}")
-            # Move to failed on error
-            try:
-                task_data['error'] = str(e)
+            if status is TaskStatus.FAILED:
+                task_data['error'] = message or "Task execution failed"
                 task_data['failed_at'] = datetime.now(timezone.utc).isoformat()
-                failed_file = self.failed_dir / task_file.name
-                with open(failed_file, 'w') as f:
-                    json.dump(task_data, f, indent=2)
-                task_file.unlink()
-            except:
-                pass
+                task_data['failed_by'] = self.worker_name
+                destination = self.failed_dir / task_file.name
+                self._persist_task(destination, task_data)
+                task_file.unlink(missing_ok=True)
+                print(f"[FAILED] {task_id}: {task_data['error']}")
+                return False
+
+            print(f"[WARN] Unknown status {status} for task {task_id}; moving to help queue")
+            return False
+
+        except (json.JSONDecodeError, OSError) as err:
+            print(f"[ERROR] Reading task file {task_file.name}: {err}")
+            return False
+        except Exception as err:
+            print(f"[ERROR] Executing task: {err}")
+            try:
+                task_data = task_data if 'task_data' in locals() else {"task_id": task_file.stem}
+                task_data['error'] = str(err)
+                task_data['failed_at'] = datetime.now(timezone.utc).isoformat()
+                task_data['failed_by'] = self.worker_name
+                destination = self.failed_dir / task_file.name
+                self._persist_task(destination, task_data)
+                task_file.unlink(missing_ok=True)
+            except OSError as persist_err:
+                print(f"[ERROR] Writing failure record: {persist_err}")
             return False
 
     def run(self):
@@ -179,6 +159,14 @@ class ClaudeWorker:
 
         except KeyboardInterrupt:
             print(f"\n[STOP] {self.worker_name} shutting down")
+
+    def _persist_task(self, destination: Path, payload: dict) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with open(destination, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+
+    def _default_executor(self, task: dict) -> Tuple[TaskStatus, str]:
+        return TaskStatus.HELP, "Manual intervention required (no executor configured)"
 
 if __name__ == "__main__":
     import argparse
