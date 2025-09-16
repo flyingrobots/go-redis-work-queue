@@ -6,7 +6,7 @@ This is the canonical, grouped snapshot of features — shipped, in‑progress, 
 
 <!-- progress:begin -->
 ```text
-██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 56%
 ------------|-------------|------------|
            MVP          Alpha    v1.0.0 
 ```
@@ -32,7 +32,7 @@ Update via script
 █████████████████████████████████▓░░░░░░ 84%
 ------------|-------------|------------|
            MVP          Alpha    v1.0.0 
-weight=6.34 features=6 kloc=15.6
+weight=8.50 features=9 kloc=16.1
 ```
 <!-- group-progress:core-platform:end -->
 
@@ -44,6 +44,12 @@ weight=6.34 features=6 kloc=15.6
 |🛡️ | [RBAC & Tokens](../docs/ideas/rbac-and-tokens.md) | Security | [Spec](../docs/ideas/rbac-and-tokens.md) | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | V1 | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails. | Unit + middleware; good. | Security foundation. |
 |🔭 | Observability Core | Observability | — | [internal/obs](../internal/obs) | 1.0 | V1 | 85% (conf: high) | █████████░ | Logger/metrics/tracing wiring. | Dashboards; error budgets. | Unit present. | Solid base. |
 |🧹 | Reaper | Maintenance | — | [internal/reaper](../internal/reaper) | 0.1 | V1 | 90% (conf: high) | █████████░ | TTL/cleanup working. | Tune policies; monitoring. | Unit present. | Keep safe defaults. |
+
+|Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|🧯 | Breaker | Core/Runtime | — | [internal/breaker](../internal/breaker) | 0.2 | Alpha | 75% (conf: med) | ███████░░░ | Circuit breaker in place with unit tests. | Integrate metrics; document use; tune defaults. | Unit good. | Keep simple + safe. |
+|🧩 | Config | Core/Runtime | — | [internal/config](../internal/config) | 0.3 | V1 | 85% (conf: high) | █████████░ | Config loader stable. | Extend validation; env overrides docs. | Unit present. | Foundation module. |
+|🔌 | Redis Client | Core/Runtime | — | [internal/redisclient](../internal/redisclient) | 0.0 | V1 | 90% (conf: high) | █████████░ | Thin wrapper around go-redis. | Unify v8/v9 across app; connection tests. | None | Pending version unification. |
 
 ### TUI & UX
 <!-- group-progress:tui-ux:begin -->
@@ -70,13 +76,15 @@ weight=14.12 features=12 kloc=43.0
 |🔌 | [Plugin Panel System](../docs/ideas/plugin-panel-system.md) | Extensibility | [Spec](../docs/ideas/plugin-panel-system.md) | [internal/plugin-panel-system](../internal/plugin-panel-system) | 3.7 | In Progress | 50% (conf: med) | █████░░░░░ | Lifecycle + permissions. | Sandbox; TUI registry; SDK docs. | Unit present. | Watch plugin trust. |
 |🗺️ | [Visual DAG Builder](../docs/ideas/visual-dag-builder.md) | UX/Flow | [Spec](../docs/ideas/visual-dag-builder.md) | [internal/visual-dag-builder](../internal/visual-dag-builder) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Orchestrator/types; not wired. | Backend validation; DAG execution; TUI builder. | Unit partial. | Longer‑term. |
 
+|🤝 | Collaborative Session | UX/TUI | [Spec](../docs/ideas/collaborative-session.md) | [internal/collaborative-session](../internal/collaborative-session) | 0.3 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
+
 ### Reliability & Ops
 <!-- group-progress:reliability-ops:begin -->
 ```text
-███████████████████▓░░░░░░░░░░░░░░░░░░░░ 50%
+████████████████████▓░░░░░░░░░░░░░░░░░░░ 51%
 ------------|-------------|------------|
            MVP          Alpha    v1.0.0 
-weight=9.54 features=8 kloc=32.6
+weight=16.82 features=14 kloc=59.7
 ```
 <!-- group-progress:reliability-ops:end -->
 
@@ -90,6 +98,15 @@ weight=9.54 features=8 kloc=32.6
 |🛠️ | [Worker Fleet Controls](../docs/ideas/worker-fleet-controls.md) | Ops | [Spec](../docs/ideas/worker-fleet-controls.md) | [internal/worker-fleet-controls](../internal/worker-fleet-controls) | 3.1 | In Progress | 45% (conf: med) | ████░░░░░░ | Control scaffolding; safety checks TBD. | Pause/drain/resume + RBAC; per‑node metrics; TUI controls. | Unit present. | Add safety gates. |
 |🗃️ | [Long‑term Archives](../docs/ideas/long-term-archives.md) | Ops/Data | [Spec](../docs/ideas/long-term-archives.md) | [internal/long-term-archives](../internal/long-term-archives) | 4.2 | In Progress | 45% (conf: med) | ████░░░░░░ | Archival hooks; adapters TBD. | S3/ClickHouse adapters; retention; export path. | Unit partial. | Define retention/SLO. |
 |🔔 | [Event Hooks](../docs/ideas/event-hooks.md) | Integrations | [Spec](../docs/ideas/event-hooks.md) | [internal/event-hooks](../internal/event-hooks) | 3.6 | In Progress | 50% (conf: med) | █████░░░░░ | Plumbing exists; config/signing TODO. | Configurable base URL; HMAC signatures; retries; Admin mgmt. | Unit present. | Security first. |
+
+|Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|🧮 | [Job Budgeting](../docs/ideas/job-budgeting.md) | Reliability | [Spec](../docs/ideas/job-budgeting.md) | [internal/job-budgeting](../internal/job-budgeting) | 4.4 | In Progress | 45% (conf: med) | ████░░░░░░ | Budget manager, cost model; limited UI. | Enforcement hooks; Admin API; notifications. | Unit present. | Wire to TUI. |
+|🧩 | [Smart Payload Dedup](../docs/ideas/smart-payload-deduplication.md) | Reliability | [Spec](../docs/ideas/smart-payload-deduplication.md) | [internal/smart-payload-deduplication](../internal/smart-payload-deduplication) | 4.3 | In Progress | 50% (conf: med) | █████░░░░░ | Compression/dedup logic; TODOs on dict build. | Dict training; stats; enqueue integration. | Unit present. | Useful cost saver. |
+|🔁 | [Smart Retry Strategies](../docs/ideas/smart-retry-strategies.md) | Reliability | [Spec](../docs/ideas/smart-retry-strategies.md) | [internal/smart-retry-strategies](../internal/smart-retry-strategies) | 5.0 | Alpha | 75% (conf: high) | ███████░░░ | Strategies + tests; metrics TODO. | Prometheus metrics; TUI selector. | Unit/integration good. | Solid baseline. |
+|🧪 | [Automatic Capacity Planning](../docs/ideas/automatic-capacity-planning.md) | Planning | [Spec](../docs/ideas/automatic-capacity-planning.md) | [internal/automatic-capacity-planning](../internal/automatic-capacity-planning) | 5.1 | In Progress | 55% (conf: med) | █████░░░░░ | Planner + simulator; needs hooks. | Expose Admin API; scheduling; tests. | Unit/integration fair. | Pair with forecasting. |
+|🧪 | [Chaos Harness](../docs/ideas/chaos-harness.md) | Ops/Safety | [Spec](../docs/ideas/chaos-harness.md) | [internal/chaos-harness](../internal/chaos-harness) | 2.4 | In Progress | 45% (conf: med) | ████░░░░░░ | Fault injection scaffolding. | Profiles; RBAC; kill switch; dashboards. | Light unit. | Guardrails required. |
+|🧪 | [Canary Deployments](../docs/ideas/canary-deployments.md) | Ops | [Spec](../docs/ideas/canary-deployments.md) | [internal/canary-deployments](../internal/canary-deployments) | 5.9 | In Progress | 50% (conf: med) | █████░░░░░ | Canary logic present; guardrails TBD. | Rollback/abort endpoints; audit logging. | Minimal tests. | Add e2e. |
 
 ### Scale & Multi‑Cluster
 <!-- group-progress:scale-multi-cluster:begin -->
@@ -106,6 +123,8 @@ weight=3.53 features=3 kloc=10.2
 |🧭 | [Multi‑cluster Control](../docs/ideas/multi-cluster-control.md) | Scale | [Spec](../docs/ideas/multi-cluster-control.md) | [internal/multi-cluster-control](../internal/multi-cluster-control) | 3.6 | In Progress | 60% (conf: med) | ██████░░░░ | Manager/handlers + tests; UI pending. | TUI tabs; Admin fan‑out actions; compare/replicate ops. | Many tests; good. | Solid engine; wire UX. |
 |☸️ | [Kubernetes Operator](../docs/ideas/kubernetes-operator.md) | Platform | [Spec](../docs/ideas/kubernetes-operator.md) | [internal/kubernetes-operator](../internal/kubernetes-operator) | 3.8 | In Progress | 55% (conf: med) | █████░░░░░ | Controllers/webhooks; examples/tests. | CRDs; reconcile backoff; e2e on kind. | Unit + integration; fair. | Mind CRD validation. |
 |🏷️ | [Multi‑tenant Isolation](../docs/ideas/multi-tenant-isolation.md) | Security | [Spec](../docs/ideas/multi-tenant-isolation.md) | [internal/multi-tenant-isolation](../internal/multi-tenant-isolation) | 2.8 | In Progress | 40% (conf: med) | ████░░░░░░ | Handlers with RBAC TODOs. | Enforce quotas/keys; authz middleware; tests. | Unit present. | Needs policy decisions. |
+
+| 🧾 | Tenant | Security | — | [internal/tenant](../internal/tenant) | 0.1 | In Progress | 35% (conf: low) | ███░░░░░░░ | Early scaffolding. | Define tenant model; integrate with RBAC/multi-tenant. | Unit minimal. | Tie into isolation. |
 
 ### Observability & Analytics
 <!-- group-progress:observability-analytics:begin -->
@@ -126,3 +145,6 @@ weight=8.06 features=7 kloc=20.2
 |🧪 | [Queue Snapshot Testing](../docs/ideas/queue-snapshot-testing.md) | QA | [Spec](../docs/ideas/queue-snapshot-testing.md) | [internal/queue-snapshot-testing](../internal/queue-snapshot-testing) | 2.4 | In Progress | 50% (conf: med) | █████░░░░░ | Framework + snapshots. | Broaden differ; golden tests; docs. | Unit; fair. | Useful for regressions. |
 |📈 | [Patterned Load Generator](../docs/ideas/patterned-load-generator.md) | Testing | [Spec](../docs/ideas/patterned-load-generator.md) | [internal/patterned-load-generator](../internal/patterned-load-generator) | 2.1 | In Progress | 45% (conf: med) | ████░░░░░░ | Handlers + generator; guardrails missing. | Add sine/burst/ramp; cancel/stop; profiles; TUI overlay. | Unit present; needs e2e. | Add caps; confirmations. |
 |🧪 | Bench (Basic) | Testing | — | [internal/admin](../internal/admin), [internal/tui](../internal/tui) | 3.3 | Alpha | 60% (conf: med) | ██████░░░░ | Running; progress UI present; baseline delta pending. | Baseline from initial completed list; cancel; ETA/throughput; guardrails. | Manual + some unit. | Guardrails for high rates. |
+
+| 🧭 | [Job Genealogy Navigator](../docs/ideas/job-genealogy-navigator.md) | Analytics | [Spec](../docs/ideas/job-genealogy-navigator.md) | [internal/job-genealogy-navigator](../internal/job-genealogy-navigator) | 2.4 | In Progress | 40% (conf: med) | ████░░░░░░ | Types + traversal; integration TBD. | Admin API; TUI drill‑down; pagination. | Unit present. | Pair with tracing. |
+| 🕰️ | [Time‑Travel Debugger](../docs/ideas/time-travel-debugger.md) | Debugging | [Spec](../docs/ideas/time-travel-debugger.md) | [internal/time-travel-debugger](../internal/time-travel-debugger) | 2.6 | Alpha | 80% (conf: high) | ████████░░ | Capture/replay + simple TUI implemented. | Selective replay; export/import; docs. | Unit rich. | Powerful debugging. |

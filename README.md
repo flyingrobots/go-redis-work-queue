@@ -19,7 +19,7 @@ For full details, see the Features Ledger at [docs/features-ledger.md](docs/feat
 
 <!-- progress:begin -->
 ```text
-██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 56%
 ------------|-------------|------------|
            MVP          Alpha    v1.0.0 
 ```
