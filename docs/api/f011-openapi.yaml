@@ -1,0 +1,1694 @@
+openapi: 3.0.3
+info:
+  title: Automatic Capacity Planning API
+  description: |
+    API for the Automatic Capacity Planning system that provides predictive scaling
+    recommendations based on queueing theory and time-series forecasting.
+
+    This system helps maintain SLOs while optimizing infrastructure costs through
+    intelligent capacity planning and automated scaling decisions.
+  version: 1.0.0
+  contact:
+    name: Infrastructure Team
+    email: infra@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue.company.com/v1
+    description: Production server
+  - url: https://staging-api.queue.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /capacity/plan:
+    get:
+      summary: Generate capacity recommendation
+      description: |
+        Generates a capacity planning recommendation based on current metrics,
+        SLO targets, and forecasted demand patterns.
+      operationId: generateCapacityPlan
+      tags:
+        - Planning
+      parameters:
+        - name: queue
+          in: query
+          description: Queue name to plan for (optional, defaults to all)
+          schema:
+            type: string
+        - name: horizon
+          in: query
+          description: Planning horizon in minutes
+          schema:
+            type: integer
+            minimum: 30
+            maximum: 2880
+            default: 60
+        - name: slo_profile
+          in: query
+          description: SLO profile to use for planning
+          schema:
+            type: string
+            enum: [strict, balanced, cost_optimized]
+            default: balanced
+        - name: dry_run
+          in: query
+          description: Generate plan without storing it
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Capacity plan generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapacityPlan'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create new capacity plan
+      description: |
+        Creates a new capacity plan with custom parameters and stores it
+        for future execution or analysis.
+      operationId: createCapacityPlan
+      tags:
+        - Planning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlanRequest'
+      responses:
+        '201':
+          description: Capacity plan created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapacityPlan'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/plan/{planId}:
+    get:
+      summary: Get capacity plan
+      description: Retrieves details of a specific capacity plan by ID
+      operationId: getCapacityPlan
+      tags:
+        - Planning
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          description: Unique identifier of the capacity plan
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Capacity plan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapacityPlan'
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Apply capacity plan
+      description: |
+        Executes a capacity plan, applying the scaling actions according
+        to the plan's timeline and safety parameters.
+      operationId: applyCapacityPlan
+      tags:
+        - Planning
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          description: Unique identifier of the capacity plan
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyPlanRequest'
+      responses:
+        '202':
+          description: Plan execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanExecution'
+        '400':
+          description: Invalid execution parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Plan cannot be executed (conflicts or safety violations)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Cancel capacity plan
+      description: Cancels a pending capacity plan and stops any ongoing execution
+      operationId: cancelCapacityPlan
+      tags:
+        - Planning
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          description: Unique identifier of the capacity plan
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Plan cancelled successfully
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Plan cannot be cancelled (already executing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/simulate:
+    post:
+      summary: Run what-if simulation
+      description: |
+        Runs a simulation to predict the impact of various scaling scenarios
+        without actually applying any changes.
+      operationId: runSimulation
+      tags:
+        - Simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+      responses:
+        '200':
+          description: Simulation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+        '400':
+          description: Invalid simulation parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/simulate/{simulationId}:
+    get:
+      summary: Get simulation results
+      description: Retrieves results of a previously run simulation
+      operationId: getSimulationResults
+      tags:
+        - Simulation
+      parameters:
+        - name: simulationId
+          in: path
+          required: true
+          description: Unique identifier of the simulation
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Simulation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+        '404':
+          description: Simulation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/simulate/{simulationId}/compare:
+    post:
+      summary: Compare simulation scenarios
+      description: |
+        Compares multiple simulation scenarios to help choose the optimal
+        scaling strategy.
+      operationId: compareSimulations
+      tags:
+        - Simulation
+      parameters:
+        - name: simulationId
+          in: path
+          required: true
+          description: Base simulation to compare against
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareRequest'
+      responses:
+        '200':
+          description: Comparison completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonResult'
+
+  /capacity/policies:
+    get:
+      summary: List scaling policies
+      description: Retrieves all configured scaling policies
+      operationId: listScalingPolicies
+      tags:
+        - Policies
+      parameters:
+        - name: enabled
+          in: query
+          description: Filter by enabled status
+          schema:
+            type: boolean
+        - name: mode
+          in: query
+          description: Filter by scaling mode
+          schema:
+            type: string
+            enum: [auto, manual, advisory]
+        - name: queue
+          in: query
+          description: Filter by queue pattern
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scaling policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScalingPolicy'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  page_size:
+                    type: integer
+
+    post:
+      summary: Create scaling policy
+      description: Creates a new scaling policy for automatic capacity management
+      operationId: createScalingPolicy
+      tags:
+        - Policies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicyRequest'
+      responses:
+        '201':
+          description: Scaling policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScalingPolicy'
+        '400':
+          description: Invalid policy configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/policies/{policyId}:
+    get:
+      summary: Get scaling policy
+      description: Retrieves details of a specific scaling policy
+      operationId: getScalingPolicy
+      tags:
+        - Policies
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the scaling policy
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scaling policy details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScalingPolicy'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update scaling policy
+      description: Updates an existing scaling policy configuration
+      operationId: updateScalingPolicy
+      tags:
+        - Policies
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the scaling policy
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePolicyRequest'
+      responses:
+        '200':
+          description: Policy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScalingPolicy'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete scaling policy
+      description: Deletes a scaling policy and stops any associated automation
+      operationId: deleteScalingPolicy
+      tags:
+        - Policies
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          description: Unique identifier of the scaling policy
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Policy deleted successfully
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /capacity/metrics:
+    get:
+      summary: Get current capacity metrics
+      description: |
+        Retrieves current capacity and performance metrics for the specified
+        queues or all queues if none specified.
+      operationId: getCurrentMetrics
+      tags:
+        - Metrics
+      parameters:
+        - name: queue
+          in: query
+          description: Queue name filter (can be specified multiple times)
+          schema:
+            type: array
+            items:
+              type: string
+          explode: true
+        - name: include_forecast
+          in: query
+          description: Include demand forecast in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Current capacity metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapacityMetrics'
+
+  /capacity/metrics/history:
+    get:
+      summary: Get historical metrics
+      description: |
+        Retrieves historical capacity metrics for trend analysis and
+        forecasting validation.
+      operationId: getHistoricalMetrics
+      tags:
+        - Metrics
+      parameters:
+        - name: queue
+          in: query
+          description: Queue name filter
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          description: Start time for metrics (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          required: true
+          description: End time for metrics (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          description: Metrics aggregation granularity
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 6h, 1d]
+            default: 5m
+      responses:
+        '200':
+          description: Historical metrics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricalMetrics'
+
+  /capacity/health:
+    get:
+      summary: Get system health status
+      description: |
+        Returns health status of the capacity planning system including
+        component status and recent performance metrics.
+      operationId: getSystemHealth
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: System health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /capacity/forecast:
+    get:
+      summary: Get demand forecast
+      description: |
+        Retrieves demand forecast for the specified time horizon using
+        the configured forecasting models.
+      operationId: getDemandForecast
+      tags:
+        - Metrics
+      parameters:
+        - name: queue
+          in: query
+          description: Queue name to forecast (optional, defaults to all)
+          schema:
+            type: string
+        - name: horizon
+          in: query
+          description: Forecast horizon in minutes
+          schema:
+            type: integer
+            minimum: 30
+            maximum: 10080
+            default: 360
+        - name: model
+          in: query
+          description: Forecasting model to use
+          schema:
+            type: string
+            enum: [ewma, holt_winters, auto]
+            default: auto
+      responses:
+        '200':
+          description: Demand forecast data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandForecast'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CapacityPlan:
+      type: object
+      required:
+        - id
+        - created_at
+        - current_workers
+        - target_workers
+        - confidence
+        - slo_achievable
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the capacity plan
+        created_at:
+          type: string
+          format: date-time
+          description: Plan creation timestamp
+        policy_id:
+          type: string
+          format: uuid
+          description: Associated scaling policy ID
+        current_workers:
+          type: integer
+          minimum: 0
+          description: Current number of workers
+        target_workers:
+          type: integer
+          minimum: 0
+          description: Recommended target number of workers
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScalingStep'
+          description: Sequence of scaling actions to reach target
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Confidence score for the plan (0-1)
+        cost_impact:
+          $ref: '#/components/schemas/CostAnalysis'
+        slo_achievable:
+          type: boolean
+          description: Whether the plan achieves SLO targets
+        rationale:
+          type: string
+          description: Human-readable explanation of the plan
+        status:
+          type: string
+          enum: [pending, executing, completed, cancelled, failed]
+          description: Current status of the plan
+        simulation:
+          $ref: '#/components/schemas/SimulationSummary'
+
+    ScalingStep:
+      type: object
+      required:
+        - timestamp
+        - from_workers
+        - to_workers
+        - reason
+        - confidence
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When this step should be executed
+        from_workers:
+          type: integer
+          minimum: 0
+          description: Current worker count before this step
+        to_workers:
+          type: integer
+          minimum: 0
+          description: Target worker count after this step
+        reason:
+          type: string
+          description: Reason for this scaling action
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Confidence in this specific step
+        estimated_duration:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$'
+          description: Expected duration for this step (ISO 8601)
+        safety_checks:
+          type: array
+          items:
+            type: string
+          description: Safety validations that must pass
+
+    CostAnalysis:
+      type: object
+      required:
+        - current_cost_per_hour
+        - projected_cost_per_hour
+        - net_impact_per_hour
+      properties:
+        current_cost_per_hour:
+          type: number
+          minimum: 0
+          description: Current infrastructure cost per hour
+        projected_cost_per_hour:
+          type: number
+          minimum: 0
+          description: Projected cost per hour after scaling
+        net_impact_per_hour:
+          type: number
+          description: Net cost change per hour (positive = increase)
+        violation_cost_savings:
+          type: number
+          minimum: 0
+          description: Estimated savings from avoiding SLO violations
+        total_daily_impact:
+          type: number
+          description: Total projected daily cost impact
+        roi_hours:
+          type: number
+          minimum: 0
+          description: Hours until cost savings break even
+
+    SimulationSummary:
+      type: object
+      properties:
+        slo_achievement_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Percentage of time SLOs are met
+        max_backlog:
+          type: integer
+          minimum: 0
+          description: Maximum predicted backlog
+        p95_latency:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: 95th percentile latency (ISO 8601 duration)
+        utilization_range:
+          type: object
+          properties:
+            min:
+              type: number
+              minimum: 0
+              maximum: 1
+            max:
+              type: number
+              minimum: 0
+              maximum: 1
+            avg:
+              type: number
+              minimum: 0
+              maximum: 1
+
+    CreatePlanRequest:
+      type: object
+      required:
+        - horizon
+        - slo_target
+      properties:
+        queue:
+          type: string
+          description: Queue name to plan for (optional)
+        horizon:
+          type: integer
+          minimum: 30
+          maximum: 2880
+          description: Planning horizon in minutes
+        slo_target:
+          $ref: '#/components/schemas/SLOTarget'
+        scaling_constraints:
+          $ref: '#/components/schemas/ScalingConstraints'
+        cost_constraints:
+          $ref: '#/components/schemas/CostConstraints'
+        forecast_params:
+          $ref: '#/components/schemas/ForecastParams'
+
+    SLOTarget:
+      type: object
+      required:
+        - p95_latency
+        - max_backlog
+      properties:
+        p95_latency:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Target 95th percentile latency (ISO 8601 duration)
+        max_backlog:
+          type: integer
+          minimum: 0
+          description: Maximum allowed backlog size
+        error_budget:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.01
+          description: Allowed error rate (0-1)
+        availability:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.999
+          description: Target availability (0-1)
+        drain_time:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Maximum time to drain backlog after burst
+
+    ScalingConstraints:
+      type: object
+      properties:
+        min_workers:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Minimum number of workers
+        max_workers:
+          type: integer
+          minimum: 1
+          description: Maximum number of workers
+        max_step_size:
+          type: integer
+          minimum: 1
+          default: 15
+          description: Maximum workers to add/remove in one step
+        cooldown_period:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          default: "PT5M"
+          description: Minimum time between scaling actions
+        safety_margin:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.15
+          description: Safety buffer percentage (0-1)
+
+    CostConstraints:
+      type: object
+      properties:
+        max_hourly_increase:
+          type: number
+          minimum: 0
+          description: Maximum allowed hourly cost increase
+        max_daily_budget:
+          type: number
+          minimum: 0
+          description: Maximum total daily budget
+        cost_per_worker_hour:
+          type: number
+          minimum: 0
+          description: Cost per worker per hour
+        violation_penalty:
+          type: number
+          minimum: 0
+          description: Cost penalty for SLO violations per hour
+
+    ForecastParams:
+      type: object
+      properties:
+        model:
+          type: string
+          enum: [ewma, holt_winters, auto]
+          default: auto
+          description: Forecasting model to use
+        window:
+          type: integer
+          minimum: 60
+          maximum: 10080
+          default: 1440
+          description: Historical data window in minutes
+        seasonality:
+          type: string
+          enum: [none, hourly, daily, weekly]
+          default: daily
+          description: Seasonal pattern to consider
+        confidence_level:
+          type: number
+          minimum: 0.5
+          maximum: 0.99
+          default: 0.8
+          description: Confidence level for forecast bands
+
+    ApplyPlanRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [immediate, scheduled, manual_steps]
+          default: scheduled
+          description: Execution mode for the plan
+        confirm_cost_impact:
+          type: boolean
+          default: false
+          description: Explicit confirmation of cost impact
+        skip_safety_checks:
+          type: boolean
+          default: false
+          description: Skip safety validations (admin only)
+        notification_webhooks:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Webhooks to notify on completion
+
+    PlanExecution:
+      type: object
+      required:
+        - execution_id
+        - plan_id
+        - status
+        - started_at
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this execution
+        plan_id:
+          type: string
+          format: uuid
+          description: Associated plan ID
+        status:
+          type: string
+          enum: [starting, executing, completed, failed, cancelled]
+          description: Current execution status
+        started_at:
+          type: string
+          format: date-time
+          description: Execution start time
+        completed_at:
+          type: string
+          format: date-time
+          description: Execution completion time
+        current_step:
+          type: integer
+          minimum: 0
+          description: Current step being executed
+        total_steps:
+          type: integer
+          minimum: 0
+          description: Total number of steps in the plan
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Execution progress (0-1)
+        errors:
+          type: array
+          items:
+            type: string
+          description: Any errors encountered during execution
+
+    SimulationRequest:
+      type: object
+      required:
+        - scenario
+        - horizon
+      properties:
+        scenario:
+          $ref: '#/components/schemas/ScenarioConfig'
+        horizon:
+          type: integer
+          minimum: 30
+          maximum: 2880
+          description: Simulation horizon in minutes
+        baseline:
+          type: boolean
+          default: false
+          description: Include baseline (no scaling) comparison
+        monte_carlo_runs:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+          description: Number of Monte Carlo simulation runs
+
+    ScenarioConfig:
+      type: object
+      required:
+        - name
+        - scaling_plan
+      properties:
+        name:
+          type: string
+          description: Human-readable scenario name
+        description:
+          type: string
+          description: Scenario description
+        scaling_plan:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScalingStep'
+        traffic_pattern:
+          $ref: '#/components/schemas/TrafficPattern'
+        failure_scenarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/FailureScenario'
+
+    TrafficPattern:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [constant, linear, exponential, sinusoidal, custom]
+          description: Traffic pattern type
+        base_rate:
+          type: number
+          minimum: 0
+          description: Base arrival rate (requests/second)
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Pattern-specific parameters
+
+    FailureScenario:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [worker_failure, network_partition, redis_slowdown]
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Probability of occurrence during simulation
+        duration:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Duration of the failure
+        impact:
+          type: object
+          additionalProperties: true
+          description: Failure-specific impact parameters
+
+    SimulationResult:
+      type: object
+      required:
+        - simulation_id
+        - scenario
+        - completed_at
+        - summary
+      properties:
+        simulation_id:
+          type: string
+          format: uuid
+          description: Unique simulation identifier
+        scenario:
+          $ref: '#/components/schemas/ScenarioConfig'
+        completed_at:
+          type: string
+          format: date-time
+          description: Simulation completion time
+        summary:
+          $ref: '#/components/schemas/SimulationSummary'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelinePoint'
+        statistics:
+          $ref: '#/components/schemas/SimulationStatistics'
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Actionable recommendations based on results
+
+    TimelinePoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        workers:
+          type: integer
+        arrival_rate:
+          type: number
+        backlog:
+          type: integer
+        latency_p95:
+          type: number
+        utilization:
+          type: number
+        cost_rate:
+          type: number
+
+    SimulationStatistics:
+      type: object
+      properties:
+        slo_violations:
+          type: integer
+          description: Number of SLO violations observed
+        max_backlog:
+          type: integer
+          description: Maximum backlog reached
+        avg_utilization:
+          type: number
+          description: Average worker utilization
+        total_cost:
+          type: number
+          description: Total simulated cost
+        efficiency_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Overall efficiency score (0-1)
+
+    CompareRequest:
+      type: object
+      required:
+        - scenarios
+      properties:
+        scenarios:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of simulation IDs to compare
+        metrics:
+          type: array
+          items:
+            type: string
+            enum: [cost, slo_achievement, efficiency, stability]
+          description: Metrics to include in comparison
+
+    ComparisonResult:
+      type: object
+      properties:
+        comparison_id:
+          type: string
+          format: uuid
+        scenarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioComparison'
+        winner:
+          type: string
+          format: uuid
+          description: Scenario ID with best overall score
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    ScenarioComparison:
+      type: object
+      properties:
+        scenario_id:
+          type: string
+          format: uuid
+        scenario_name:
+          type: string
+        scores:
+          type: object
+          properties:
+            cost:
+              type: number
+              minimum: 0
+              maximum: 1
+            slo_achievement:
+              type: number
+              minimum: 0
+              maximum: 1
+            efficiency:
+              type: number
+              minimum: 0
+              maximum: 1
+            stability:
+              type: number
+              minimum: 0
+              maximum: 1
+            overall:
+              type: number
+              minimum: 0
+              maximum: 1
+        relative_performance:
+          type: object
+          additionalProperties:
+            type: number
+          description: Performance relative to baseline (1.0 = same)
+
+    ScalingPolicy:
+      type: object
+      required:
+        - id
+        - name
+        - enabled
+        - mode
+        - slo
+        - scaling
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique policy identifier
+        name:
+          type: string
+          description: Human-readable policy name
+        description:
+          type: string
+          description: Policy description
+        enabled:
+          type: boolean
+          description: Whether the policy is active
+        mode:
+          type: string
+          enum: [auto, manual, advisory]
+          description: Scaling mode
+        queue_patterns:
+          type: array
+          items:
+            type: string
+          description: Queue name patterns this policy applies to
+        slo:
+          $ref: '#/components/schemas/SLOTarget'
+        scaling:
+          $ref: '#/components/schemas/ScalingConstraints'
+        forecast:
+          $ref: '#/components/schemas/ForecastParams'
+        cost:
+          $ref: '#/components/schemas/CostConstraints'
+        schedule:
+          $ref: '#/components/schemas/PolicySchedule'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          description: User who created the policy
+
+    PolicySchedule:
+      type: object
+      properties:
+        active_hours:
+          type: array
+          items:
+            type: object
+            properties:
+              start:
+                type: string
+                pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+                description: Start time in HH:MM format
+              end:
+                type: string
+                pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+                description: End time in HH:MM format
+              timezone:
+                type: string
+                description: Timezone identifier (e.g., America/New_York)
+        active_days:
+          type: array
+          items:
+            type: string
+            enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+        exceptions:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              mode:
+                type: string
+                enum: [disabled, manual_only]
+
+    CreatePolicyRequest:
+      type: object
+      required:
+        - name
+        - mode
+        - slo
+        - scaling
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+          default: false
+        mode:
+          type: string
+          enum: [auto, manual, advisory]
+        queue_patterns:
+          type: array
+          items:
+            type: string
+        slo:
+          $ref: '#/components/schemas/SLOTarget'
+        scaling:
+          $ref: '#/components/schemas/ScalingConstraints'
+        forecast:
+          $ref: '#/components/schemas/ForecastParams'
+        cost:
+          $ref: '#/components/schemas/CostConstraints'
+        schedule:
+          $ref: '#/components/schemas/PolicySchedule'
+
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        enabled:
+          type: boolean
+        mode:
+          type: string
+          enum: [auto, manual, advisory]
+        queue_patterns:
+          type: array
+          items:
+            type: string
+        slo:
+          $ref: '#/components/schemas/SLOTarget'
+        scaling:
+          $ref: '#/components/schemas/ScalingConstraints'
+        forecast:
+          $ref: '#/components/schemas/ForecastParams'
+        cost:
+          $ref: '#/components/schemas/CostConstraints'
+        schedule:
+          $ref: '#/components/schemas/PolicySchedule'
+
+    CapacityMetrics:
+      type: object
+      required:
+        - timestamp
+        - queues
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Metrics collection timestamp
+        queues:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueMetrics'
+        global_stats:
+          $ref: '#/components/schemas/GlobalStats'
+        forecast:
+          $ref: '#/components/schemas/DemandForecast'
+
+    QueueMetrics:
+      type: object
+      required:
+        - name
+        - arrival_rate
+        - service_rate
+        - current_workers
+        - backlog
+      properties:
+        name:
+          type: string
+          description: Queue name
+        arrival_rate:
+          type: number
+          minimum: 0
+          description: Current arrival rate (jobs/second)
+        service_rate:
+          type: number
+          minimum: 0
+          description: Service rate per worker (jobs/second)
+        service_time:
+          type: object
+          properties:
+            p50:
+              type: string
+              pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+            p95:
+              type: string
+              pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+            p99:
+              type: string
+              pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        current_workers:
+          type: integer
+          minimum: 0
+          description: Current number of active workers
+        target_workers:
+          type: integer
+          minimum: 0
+          description: Target worker count from active policy
+        utilization:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Current worker utilization (0-1)
+        backlog:
+          type: integer
+          minimum: 0
+          description: Current backlog size
+        error_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Recent error rate (0-1)
+        slo_status:
+          $ref: '#/components/schemas/SLOStatus'
+
+    SLOStatus:
+      type: object
+      properties:
+        achieved:
+          type: boolean
+          description: Whether SLO is currently being met
+        p95_latency_target:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        p95_latency_actual:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        backlog_target:
+          type: integer
+        backlog_actual:
+          type: integer
+        error_budget_remaining:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Remaining error budget (0-1)
+        time_since_last_violation:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+
+    GlobalStats:
+      type: object
+      properties:
+        total_workers:
+          type: integer
+          minimum: 0
+        total_queues:
+          type: integer
+          minimum: 0
+        total_arrival_rate:
+          type: number
+          minimum: 0
+        average_utilization:
+          type: number
+          minimum: 0
+          maximum: 1
+        active_policies:
+          type: integer
+          minimum: 0
+        recent_scaling_actions:
+          type: integer
+          minimum: 0
+        cost_per_hour:
+          type: number
+          minimum: 0
+
+    HistoricalMetrics:
+      type: object
+      required:
+        - start_time
+        - end_time
+        - granularity
+        - data_points
+      properties:
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        granularity:
+          type: string
+          enum: [1m, 5m, 15m, 1h, 6h, 1d]
+        queue:
+          type: string
+          description: Queue name (if filtered)
+        data_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoricalDataPoint'
+
+    HistoricalDataPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        arrival_rate:
+          type: number
+        service_rate:
+          type: number
+        workers:
+          type: integer
+        utilization:
+          type: number
+        backlog:
+          type: integer
+        latency_p95:
+          type: number
+        cost_rate:
+          type: number
+
+    DemandForecast:
+      type: object
+      required:
+        - generated_at
+        - horizon_minutes
+        - model_used
+        - predictions
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        horizon_minutes:
+          type: integer
+          minimum: 30
+        model_used:
+          type: string
+          enum: [ewma, holt_winters, auto]
+        confidence_level:
+          type: number
+          minimum: 0
+          maximum: 1
+        queue:
+          type: string
+          description: Queue name (if specific queue)
+        predictions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForecastPoint'
+        accuracy_metrics:
+          $ref: '#/components/schemas/ForecastAccuracy'
+
+    ForecastPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        predicted_arrival_rate:
+          type: number
+          minimum: 0
+        confidence_lower:
+          type: number
+          minimum: 0
+        confidence_upper:
+          type: number
+          minimum: 0
+        seasonal_component:
+          type: number
+        trend_component:
+          type: number
+
+    ForecastAccuracy:
+      type: object
+      properties:
+        mape:
+          type: number
+          minimum: 0
+          description: Mean Absolute Percentage Error
+        rmse:
+          type: number
+          minimum: 0
+          description: Root Mean Square Error
+        mae:
+          type: number
+          minimum: 0
+          description: Mean Absolute Error
+        r_squared:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: R-squared coefficient
+        last_validated:
+          type: string
+          format: date-time
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+        - components
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall system health status
+        timestamp:
+          type: string
+          format: date-time
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentHealth'
+        performance:
+          $ref: '#/components/schemas/PerformanceMetrics'
+        recent_issues:
+          type: array
+          items:
+            type: string
+          description: Recent issues or warnings
+
+    ComponentHealth:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Component name
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        last_check:
+          type: string
+          format: date-time
+        response_time:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        error_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+        details:
+          type: string
+          description: Additional health details
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        avg_plan_generation_time:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        avg_simulation_time:
+          type: string
+          pattern: '^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        plans_generated_last_hour:
+          type: integer
+          minimum: 0
+        successful_executions_last_24h:
+          type: integer
+          minimum: 0
+        failed_executions_last_24h:
+          type: integer
+          minimum: 0
+        memory_usage_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        cpu_usage_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Request ID for support troubleshooting
+
+tags:
+  - name: Planning
+    description: Capacity planning and recommendation operations
+  - name: Simulation
+    description: What-if simulation and scenario analysis
+  - name: Policies
+    description: Scaling policy management
+  - name: Metrics
+    description: Capacity metrics and monitoring
+  - name: Monitoring
+    description: System health and performance monitoring

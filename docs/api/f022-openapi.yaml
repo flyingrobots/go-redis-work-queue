@@ -1,0 +1,1203 @@
+openapi: 3.0.3
+info:
+  title: Queue Snapshot Testing API
+  description: |
+    REST API for Queue Snapshot Testing system, providing endpoints for capturing,
+    storing, comparing, and managing queue state snapshots with deterministic
+    serialization and intelligent diffing capabilities.
+  version: 1.0.0
+  contact:
+    name: Redis Work Queue Team
+    email: team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://staging-api.example.com/api/v1
+    description: Staging environment
+  - url: https://api.example.com/api/v1
+    description: Production environment
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+paths:
+  /snapshots:
+    get:
+      summary: List snapshots
+      description: Retrieve a paginated list of snapshots with optional filtering
+      operationId: listSnapshots
+      tags:
+        - Snapshots
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of snapshots to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of snapshots to skip for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: filter
+          in: query
+          description: Filter snapshots by name, tags, or metadata
+          required: false
+          schema:
+            type: string
+            example: "tag:baseline"
+        - name: sort
+          in: query
+          description: Sort order for results
+          required: false
+          schema:
+            type: string
+            enum: [created_at, name, size]
+            default: created_at
+        - name: order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of snapshots retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SnapshotInfo'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create snapshot
+      description: Capture current queue state and create a new snapshot
+      operationId: createSnapshot
+      tags:
+        - Snapshots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSnapshotRequest'
+      responses:
+        '201':
+          description: Snapshot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Snapshot with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /snapshots/{snapshotId}:
+    get:
+      summary: Get snapshot details
+      description: Retrieve detailed information about a specific snapshot
+      operationId: getSnapshot
+      tags:
+        - Snapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: include_data
+          in: query
+          description: Include full snapshot data in response
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Snapshot details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueSnapshot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update snapshot metadata
+      description: Update metadata for an existing snapshot
+      operationId: updateSnapshot
+      tags:
+        - Snapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSnapshotRequest'
+      responses:
+        '200':
+          description: Snapshot updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete snapshot
+      description: Delete a snapshot and its associated data
+      operationId: deleteSnapshot
+      tags:
+        - Snapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+      responses:
+        '204':
+          description: Snapshot deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /snapshots/{snapshotId}/restore:
+    post:
+      summary: Restore from snapshot
+      description: Restore queue state from a snapshot
+      operationId: restoreSnapshot
+      tags:
+        - Snapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreSnapshotRequest'
+      responses:
+        '200':
+          description: Snapshot restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /snapshots/{snapshotId}/download:
+    get:
+      summary: Download snapshot
+      description: Download snapshot as a compressed file
+      operationId: downloadSnapshot
+      tags:
+        - Snapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: format
+          in: query
+          description: Download format
+          required: false
+          schema:
+            type: string
+            enum: [json, msgpack, cbor]
+            default: json
+      responses:
+        '200':
+          description: Snapshot file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /snapshots/compare:
+    post:
+      summary: Compare snapshots
+      description: Compare two snapshots and generate a detailed diff
+      operationId: compareSnapshots
+      tags:
+        - Diff Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareSnapshotsRequest'
+      responses:
+        '200':
+          description: Snapshot comparison completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotDiff'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: One or more snapshots not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /snapshots/{snapshotId}/diff:
+    get:
+      summary: Diff against current state
+      description: Compare a snapshot against the current queue state
+      operationId: diffAgainstCurrent
+      tags:
+        - Diff Operations
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: config
+          in: query
+          description: Diff configuration (JSON encoded)
+          required: false
+          schema:
+            type: string
+            example: '{"tolerance_rules":{"queue_length":{"type":"percentage","threshold":0.05}}}'
+      responses:
+        '200':
+          description: Diff completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotDiff'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /test/assert:
+    post:
+      summary: Assert snapshot matches
+      description: Assert that current queue state matches a snapshot (for testing)
+      operationId: assertSnapshot
+      tags:
+        - Test Integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssertSnapshotRequest'
+      responses:
+        '200':
+          description: Assertion passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssertionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Assertion failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssertionResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /test/capture:
+    post:
+      summary: Capture for test
+      description: Capture current state and save as test snapshot
+      operationId: captureForTest
+      tags:
+        - Test Integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureForTestRequest'
+      responses:
+        '201':
+          description: Test snapshot captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /queue/current-state:
+    get:
+      summary: Get current queue state
+      description: Retrieve current queue state without creating a snapshot
+      operationId: getCurrentState
+      tags:
+        - Queue State
+      responses:
+        '200':
+          description: Current queue state retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check API health and system status
+      operationId: healthCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    SnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      description: Unique identifier for the snapshot
+      schema:
+        type: string
+        format: uuid
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+  schemas:
+    SnapshotInfo:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+        - size_bytes
+        - checksum
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the snapshot
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          description: Human-readable name for the snapshot
+          example: "baseline-empty-state"
+        description:
+          type: string
+          description: Optional description of the snapshot
+          example: "Clean state with all queues empty"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for organizing snapshots
+          example: ["baseline", "test", "production"]
+        created_at:
+          type: string
+          format: date-time
+          description: When the snapshot was created
+          example: "2024-01-15T10:30:00Z"
+        environment:
+          type: string
+          description: Environment where snapshot was captured
+          example: "staging"
+        git_sha:
+          type: string
+          description: Git commit SHA when snapshot was captured
+          example: "abc123def456"
+        git_branch:
+          type: string
+          description: Git branch when snapshot was captured
+          example: "feature/snapshot-testing"
+        size_bytes:
+          type: integer
+          format: int64
+          description: Size of snapshot in bytes
+          example: 1048576
+        compressed_size_bytes:
+          type: integer
+          format: int64
+          description: Compressed size of snapshot
+          example: 157286
+        checksum:
+          type: string
+          description: SHA256 checksum for integrity verification
+          example: "a1b2c3d4e5f6..."
+        stats:
+          $ref: '#/components/schemas/CaptureStats'
+
+    QueueSnapshot:
+      type: object
+      required:
+        - metadata
+        - queues
+        - jobs
+        - checksum
+        - version
+      properties:
+        metadata:
+          $ref: '#/components/schemas/SnapshotMetadata'
+        queues:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/QueueState'
+          description: Map of queue name to queue state
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalizedJob'
+          description: Normalized job data
+        workers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerState'
+          description: Worker state at capture time
+        config:
+          $ref: '#/components/schemas/SystemConfig'
+        checksum:
+          type: string
+          description: SHA256 checksum for integrity verification
+        version:
+          type: string
+          description: Snapshot format version
+          example: "1.0"
+
+    SnapshotMetadata:
+      type: object
+      required:
+        - id
+        - name
+        - captured_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        captured_at:
+          type: string
+          format: date-time
+        duration:
+          type: string
+          description: Capture duration in Go format (e.g., "1.5s")
+          example: "1.234s"
+        environment:
+          type: string
+        git_sha:
+          type: string
+        git_branch:
+          type: string
+        stats:
+          $ref: '#/components/schemas/CaptureStats'
+        custom:
+          type: object
+          additionalProperties: true
+          description: Custom metadata fields
+
+    CaptureStats:
+      type: object
+      properties:
+        total_queues:
+          type: integer
+          description: Number of queues captured
+        total_jobs:
+          type: integer
+          description: Total number of jobs captured
+        jobs_by_state:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Job count by state (pending, running, failed, etc.)
+        queues_by_size:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Distribution of queue sizes
+        capture_duration_ms:
+          type: integer
+          description: Time taken to capture in milliseconds
+        compression_ratio:
+          type: number
+          format: float
+          description: Compression ratio achieved
+          example: 0.85
+
+    QueueState:
+      type: object
+      required:
+        - name
+        - length
+      properties:
+        name:
+          type: string
+          description: Queue name
+        length:
+          type: integer
+          description: Number of jobs in queue
+        max_length:
+          type: integer
+          description: Maximum queue length (if configured)
+        jobs_by_state:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Distribution of jobs by state
+        jobs_by_priority:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Distribution of jobs by priority
+        config:
+          $ref: '#/components/schemas/QueueConfig'
+
+    QueueConfig:
+      type: object
+      properties:
+        max_retry_count:
+          type: integer
+        retry_delay:
+          type: string
+          description: Retry delay in Go duration format
+        dead_letter_queue:
+          type: string
+        priority_enabled:
+          type: boolean
+
+    NormalizedJob:
+      type: object
+      required:
+        - queue
+        - payload_hash
+        - state
+        - priority
+        - retry_count
+      properties:
+        queue:
+          type: string
+          description: Queue name where job is located
+        payload_hash:
+          type: string
+          description: Deterministic hash of job payload
+        payload_size:
+          type: integer
+          description: Size of job payload in bytes
+        state:
+          type: string
+          enum: [pending, running, completed, failed, retrying]
+        priority:
+          type: integer
+          description: Job priority
+        retry_count:
+          type: integer
+          description: Number of times job has been retried
+        attempt_count:
+          type: integer
+          description: Total number of attempts
+        relative_time_ms:
+          type: integer
+          format: int64
+          description: Normalized timestamp relative to snapshot base time
+        last_error:
+          type: string
+          description: Last error message (if any)
+        failure_count:
+          type: integer
+          description: Number of failures
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Custom job metadata (filtered for determinism)
+
+    WorkerState:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [idle, busy, offline]
+        current_job:
+          type: string
+          description: ID of currently processing job
+        queues:
+          type: array
+          items:
+            type: string
+          description: Queues this worker processes
+        last_heartbeat:
+          type: string
+          format: date-time
+
+    SystemConfig:
+      type: object
+      properties:
+        redis_version:
+          type: string
+        max_memory:
+          type: string
+        memory_policy:
+          type: string
+        default_timeout:
+          type: string
+        custom_config:
+          type: object
+          additionalProperties: true
+
+    SnapshotDiff:
+      type: object
+      required:
+        - summary
+        - compared_at
+      properties:
+        summary:
+          $ref: '#/components/schemas/DiffSummary'
+        queue_diffs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/QueueDiff'
+        job_diffs:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobDiff'
+        worker_diffs:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerDiff'
+        config_diffs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigDiff'
+        ignored:
+          type: array
+          items:
+            $ref: '#/components/schemas/IgnoredChange'
+        compared_at:
+          type: string
+          format: date-time
+        rules_applied:
+          $ref: '#/components/schemas/DiffConfig'
+
+    DiffSummary:
+      type: object
+      required:
+        - has_changes
+        - significant
+        - total_changes
+      properties:
+        has_changes:
+          type: boolean
+        significant:
+          type: boolean
+        total_changes:
+          type: integer
+        ignored_changes:
+          type: integer
+        queue_changes:
+          type: integer
+        job_changes:
+          type: integer
+        config_changes:
+          type: integer
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+
+    QueueDiff:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [added, removed, length_change, config_change]
+        before:
+          type: integer
+          description: Previous value
+        after:
+          type: integer
+          description: New value
+        percentage:
+          type: number
+          format: float
+          description: Percentage change
+        significant:
+          type: boolean
+
+    JobDiff:
+      type: object
+      required:
+        - type
+        - payload_hash
+      properties:
+        type:
+          type: string
+          enum: [added, removed, moved, modified, retry_increase]
+        payload_hash:
+          type: string
+        before:
+          $ref: '#/components/schemas/JobState'
+        after:
+          $ref: '#/components/schemas/JobState'
+        before_queue:
+          type: string
+        after_queue:
+          type: string
+        significant:
+          type: boolean
+        impact:
+          type: string
+        confidence:
+          type: number
+          format: float
+
+    JobState:
+      type: object
+      properties:
+        queue:
+          type: string
+        state:
+          type: string
+        priority:
+          type: integer
+        retry_count:
+          type: integer
+
+    WorkerDiff:
+      type: object
+      properties:
+        worker_id:
+          type: string
+        type:
+          type: string
+          enum: [added, removed, status_change]
+        before_status:
+          type: string
+        after_status:
+          type: string
+
+    ConfigDiff:
+      type: object
+      properties:
+        field:
+          type: string
+        before:
+          type: string
+        after:
+          type: string
+        significant:
+          type: boolean
+
+    IgnoredChange:
+      type: object
+      properties:
+        type:
+          type: string
+        field:
+          type: string
+        queue:
+          type: string
+        reason:
+          type: string
+
+    DiffConfig:
+      type: object
+      properties:
+        tolerance_rules:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ToleranceRule'
+        ignore_patterns:
+          type: array
+          items:
+            type: string
+        semantic_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticRule'
+        report_config:
+          $ref: '#/components/schemas/ReportConfig'
+
+    ToleranceRule:
+      type: object
+      required:
+        - type
+        - threshold
+      properties:
+        type:
+          type: string
+          enum: [percentage, absolute, ignore]
+        threshold:
+          type: number
+          format: float
+        field:
+          type: string
+        condition:
+          type: string
+
+    SemanticRule:
+      type: object
+      properties:
+        name:
+          type: string
+        pattern:
+          type: string
+        action:
+          type: string
+
+    ReportConfig:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [text, html, markdown, json]
+        include_ignored:
+          type: boolean
+        max_items:
+          type: integer
+
+    CreateSnapshotRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name for the snapshot
+        description:
+          type: string
+          description: Optional description
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for organization
+        queues:
+          type: array
+          items:
+            type: string
+          description: Specific queues to capture (empty = all)
+        include_workers:
+          type: boolean
+          default: true
+        include_config:
+          type: boolean
+          default: true
+        custom_metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateSnapshotRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        custom_metadata:
+          type: object
+          additionalProperties: true
+
+    RestoreSnapshotRequest:
+      type: object
+      properties:
+        queues:
+          type: array
+          items:
+            type: string
+          description: Specific queues to restore (empty = all)
+        clear_existing:
+          type: boolean
+          default: false
+          description: Whether to clear existing jobs before restore
+        dry_run:
+          type: boolean
+          default: false
+          description: Simulate restore without applying changes
+
+    RestoreResult:
+      type: object
+      properties:
+        restored_queues:
+          type: array
+          items:
+            type: string
+        total_jobs_restored:
+          type: integer
+        duration_ms:
+          type: integer
+        warnings:
+          type: array
+          items:
+            type: string
+
+    CompareSnapshotsRequest:
+      type: object
+      required:
+        - before
+        - after
+      properties:
+        before:
+          type: string
+          description: ID or name of the before snapshot
+        after:
+          type: string
+          description: ID or name of the after snapshot
+        config:
+          $ref: '#/components/schemas/DiffConfig'
+
+    AssertSnapshotRequest:
+      type: object
+      required:
+        - snapshot
+      properties:
+        snapshot:
+          type: string
+          description: ID or name of snapshot to assert against
+        config:
+          $ref: '#/components/schemas/DiffConfig'
+        fail_on_significant:
+          type: boolean
+          default: true
+
+    AssertionResult:
+      type: object
+      required:
+        - passed
+      properties:
+        passed:
+          type: boolean
+        diff:
+          $ref: '#/components/schemas/SnapshotDiff'
+        message:
+          type: string
+
+    CaptureForTestRequest:
+      type: object
+      required:
+        - test_name
+      properties:
+        test_name:
+          type: string
+          description: Name of the test case
+        snapshot_name:
+          type: string
+          description: Name for the snapshot (defaults to test_name)
+        update_existing:
+          type: boolean
+          default: false
+          description: Whether to update if snapshot already exists
+
+    PaginationInfo:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+        has_more:
+          type: boolean
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [pass, fail]
+              message:
+                type: string
+              duration_ms:
+                type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters or request body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "INVALID_REQUEST"
+            message: "The request parameters are invalid"
+
+    Unauthorized:
+      description: Authentication required or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication required"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "NOT_FOUND"
+            message: "Snapshot not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+
+tags:
+  - name: Snapshots
+    description: Snapshot management operations
+  - name: Diff Operations
+    description: Snapshot comparison and diffing
+  - name: Test Integration
+    description: Testing framework integration endpoints
+  - name: Queue State
+    description: Queue state inspection
+  - name: System
+    description: System health and status

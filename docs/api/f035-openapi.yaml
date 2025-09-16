@@ -1,0 +1,1629 @@
+openapi: 3.0.3
+info:
+  title: JSON Payload Studio API
+  description: |
+    API for the JSON Payload Studio - an in-TUI JSON editor for creating, validating,
+    and enqueueing job payloads with templates, snippets, and scheduling capabilities.
+  version: 1.0.0
+  contact:
+    name: Redis Work Queue Team
+    email: team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /studio/templates:
+    get:
+      summary: List available templates
+      description: |
+        Retrieves a list of available payload templates with optional filtering
+        by category, search query, and pagination.
+      operationId: listTemplates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          description: Filter by template category
+          schema:
+            type: string
+            enum: [user, payment, email, batch, custom, system]
+        - name: search
+          in: query
+          description: Search templates by name or description
+          schema:
+            type: string
+            maxLength: 100
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of templates to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of templates to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create a new template
+      description: |
+        Creates a new payload template with optional schema validation
+        and variable definitions.
+      operationId: createTemplate
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: Invalid template data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/templates/{templateId}:
+    get:
+      summary: Get template details
+      description: |
+        Retrieves detailed information about a specific template including
+        payload structure, variables, and metadata.
+      operationId: getTemplate
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]+$'
+      responses:
+        '200':
+          description: Template details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update template
+      description: |
+        Updates an existing template. Requires appropriate permissions
+        for the template.
+      operationId: updateTemplate
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateRequest'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: Invalid template data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete template
+      description: |
+        Deletes a template. Only the template author or users with
+        admin permissions can delete templates.
+      operationId: deleteTemplate
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]+$'
+      responses:
+        '204':
+          description: Template deleted successfully
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/templates/{templateId}/interpolate:
+    post:
+      summary: Interpolate template with variables
+      description: |
+        Processes a template with provided variables to generate
+        the final JSON payload with all snippets evaluated.
+      operationId: interpolateTemplate
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpolateRequest'
+      responses:
+        '200':
+          description: Template interpolated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpolateResponse'
+        '400':
+          description: Invalid variables or template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/validate:
+    post:
+      summary: Validate JSON payload
+      description: |
+        Validates a JSON payload against an optional schema and
+        returns detailed validation results with error locations.
+      operationId: validatePayload
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      responses:
+        '200':
+          description: Validation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/completions:
+    post:
+      summary: Get autocomplete suggestions
+      description: |
+        Provides autocomplete suggestions for JSON editing based on
+        schema context and current cursor position.
+      operationId: getCompletions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletionRequest'
+      responses:
+        '200':
+          description: Completions generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/snippets:
+    get:
+      summary: List available snippet functions
+      description: |
+        Retrieves a list of available snippet functions with their
+        syntax, examples, and parameter information.
+      operationId: listSnippets
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          description: Filter by snippet category
+          schema:
+            type: string
+            enum: [builtin, faker, custom, environment]
+      responses:
+        '200':
+          description: Snippet functions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnippetListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create custom snippet
+      description: |
+        Creates a custom user-defined snippet function that can be
+        used in templates and payload editing.
+      operationId: createSnippet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSnippetRequest'
+      responses:
+        '201':
+          description: Snippet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnippetFunction'
+        '400':
+          description: Invalid snippet definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/snippets/evaluate:
+    post:
+      summary: Evaluate snippet expression
+      description: |
+        Evaluates a snippet expression and returns the computed value.
+        Used for testing and previewing snippet functions.
+      operationId: evaluateSnippet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluateSnippetRequest'
+      responses:
+        '200':
+          description: Snippet evaluated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluateSnippetResponse'
+        '400':
+          description: Invalid snippet expression
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/enqueue:
+    post:
+      summary: Enqueue job payload
+      description: |
+        Enqueues a job payload to the specified queue with optional
+        priority, delay, and retry settings.
+      operationId: enqueueJob
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnqueueRequest'
+      responses:
+        '201':
+          description: Job enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
+        '400':
+          description: Invalid payload or queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions for queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/batch:
+    post:
+      summary: Batch enqueue jobs
+      description: |
+        Enqueues multiple jobs with optional variable substitution
+        and staggered timing between job creation.
+      operationId: batchEnqueue
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchEnqueueRequest'
+      responses:
+        '201':
+          description: Batch jobs enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchEnqueueResponse'
+        '400':
+          description: Invalid batch request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions or batch size limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/schedule:
+    post:
+      summary: Schedule job for later execution
+      description: |
+        Schedules a job for execution at a specific time or using
+        a cron expression for recurring execution.
+      operationId: scheduleJob
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleJobRequest'
+      responses:
+        '201':
+          description: Job scheduled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleJobResponse'
+        '400':
+          description: Invalid schedule or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions for scheduling
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/history:
+    get:
+      summary: Get job history
+      description: |
+        Retrieves the user's job creation history including successful
+        and failed enqueue operations with payload details.
+      operationId: getJobHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of history entries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of entries to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: queue
+          in: query
+          description: Filter by queue name
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by job status
+          schema:
+            type: string
+            enum: [success, failed, scheduled]
+        - name: from
+          in: query
+          description: Start date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Job history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobHistoryResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/drafts:
+    get:
+      summary: List saved drafts
+      description: |
+        Retrieves a list of saved payload drafts for the current user.
+      operationId: listDrafts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of drafts to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Drafts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Save payload draft
+      description: |
+        Saves the current payload as a draft for later editing.
+      operationId: saveDraft
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDraftRequest'
+      responses:
+        '201':
+          description: Draft saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '400':
+          description: Invalid draft data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/drafts/{draftId}:
+    get:
+      summary: Get draft details
+      description: |
+        Retrieves detailed information about a specific saved draft.
+      operationId: getDraft
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          description: Unique draft identifier
+          schema:
+            type: string
+            pattern: '^draft_[a-zA-Z0-9_-]+$'
+      responses:
+        '200':
+          description: Draft details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete draft
+      description: |
+        Deletes a saved draft.
+      operationId: deleteDraft
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          description: Unique draft identifier
+          schema:
+            type: string
+            pattern: '^draft_[a-zA-Z0-9_-]+$'
+      responses:
+        '204':
+          description: Draft deleted successfully
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /studio/safety/check:
+    post:
+      summary: Run safety checks on payload
+      description: |
+        Performs safety validation on a payload including PII detection,
+        size limits, and production environment checks.
+      operationId: runSafetyCheck
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyCheckRequest'
+      responses:
+        '200':
+          description: Safety check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyCheckResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication for service-to-service communication
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication for user sessions
+
+  schemas:
+    Template:
+      type: object
+      required:
+        - templateId
+        - name
+        - category
+        - payload
+      properties:
+        templateId:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Unique template identifier
+          example: "user_signup_v2"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable template name
+          example: "User Signup Template v2"
+        category:
+          type: string
+          enum: [user, payment, email, batch, custom, system]
+          description: Template category for organization
+        description:
+          type: string
+          maxLength: 1000
+          description: Template description and usage notes
+        version:
+          type: string
+          pattern: '^\\d+\\.\\d+\\.\\d+$'
+          description: Semantic version of the template
+          example: "2.1.0"
+        author:
+          type: string
+          description: Template author identifier
+        createdAt:
+          type: string
+          format: date-time
+          description: Template creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]+$'
+          maxItems: 20
+          description: Template categorization tags
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              description: JSON Schema identifier
+            version:
+              type: string
+              description: Schema version
+          description: Associated JSON Schema for validation
+        payload:
+          type: object
+          description: Template payload with variable placeholders
+        variables:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [string, number, boolean, object, array]
+              description:
+                type: string
+              validation:
+                type: object
+                properties:
+                  required:
+                    type: boolean
+                  pattern:
+                    type: string
+                  minLength:
+                    type: integer
+                  maxLength:
+                    type: integer
+          description: Variable definitions for template interpolation
+        defaults:
+          type: object
+          description: Default job options for this template
+        safety:
+          type: object
+          properties:
+            maxBatchSize:
+              type: integer
+              minimum: 1
+              description: Maximum allowed batch size
+            requireConfirmation:
+              type: array
+              items:
+                type: string
+              description: Environments requiring confirmation
+            redactFields:
+              type: array
+              items:
+                type: string
+              description: Fields to redact in logs
+          description: Safety configuration for template
+
+    TemplateListResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Template'
+        total:
+          type: integer
+          description: Total number of templates matching criteria
+        hasMore:
+          type: boolean
+          description: Whether more templates are available
+
+    CreateTemplateRequest:
+      type: object
+      required:
+        - name
+        - category
+        - payload
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        category:
+          type: string
+          enum: [user, payment, email, batch, custom, system]
+        description:
+          type: string
+          maxLength: 1000
+        payload:
+          type: object
+        variables:
+          type: object
+        defaults:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+
+    UpdateTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        payload:
+          type: object
+        variables:
+          type: object
+        defaults:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+
+    InterpolateRequest:
+      type: object
+      required:
+        - variables
+      properties:
+        variables:
+          type: object
+          description: Variable values for template interpolation
+        environment:
+          type: object
+          description: Environment variables for snippet evaluation
+
+    InterpolateResponse:
+      type: object
+      properties:
+        payload:
+          type: object
+          description: Interpolated payload with all variables resolved
+        processedSnippets:
+          type: array
+          items:
+            type: object
+            properties:
+              snippet:
+                type: string
+              value:
+                type: string
+              position:
+                type: object
+          description: List of processed snippets and their values
+
+    ValidateRequest:
+      type: object
+      required:
+        - payload
+      properties:
+        payload:
+          type: object
+          description: JSON payload to validate
+        schemaId:
+          type: string
+          description: Optional schema ID for validation
+        queueName:
+          type: string
+          description: Target queue for queue-specific validation
+
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the payload is valid
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Validation score (0-100)
+        summary:
+          type: object
+          properties:
+            errors:
+              type: integer
+              description: Number of validation errors
+            warnings:
+              type: integer
+              description: Number of validation warnings
+            suggestions:
+              type: integer
+              description: Number of improvement suggestions
+        issues:
+          type: array
+          items:
+            type: object
+            required:
+              - severity
+              - type
+              - message
+            properties:
+              id:
+                type: string
+                description: Unique issue identifier
+              severity:
+                type: string
+                enum: [error, warning, info]
+                description: Issue severity level
+              type:
+                type: string
+                description: Issue type classification
+              path:
+                type: string
+                description: JSON path to the issue location
+              message:
+                type: string
+                description: Human-readable issue description
+              position:
+                type: object
+                properties:
+                  line:
+                    type: integer
+                    minimum: 1
+                  column:
+                    type: integer
+                    minimum: 1
+                description: Line and column position in editor
+              suggestion:
+                type: string
+                description: Suggested fix for the issue
+              fixable:
+                type: boolean
+                description: Whether the issue can be auto-fixed
+              autoFix:
+                type: object
+                properties:
+                  action:
+                    type: string
+                    enum: [insert, replace, delete]
+                  content:
+                    type: string
+                description: Auto-fix action and content
+
+    CompletionRequest:
+      type: object
+      required:
+        - content
+        - position
+      properties:
+        content:
+          type: string
+          description: Current JSON content
+        position:
+          type: object
+          required:
+            - line
+            - column
+          properties:
+            line:
+              type: integer
+              minimum: 1
+            column:
+              type: integer
+              minimum: 1
+          description: Cursor position for completions
+        schemaId:
+          type: string
+          description: Optional schema for context-aware completions
+
+    CompletionResponse:
+      type: object
+      properties:
+        completions:
+          type: array
+          items:
+            type: object
+            required:
+              - label
+              - insertText
+            properties:
+              label:
+                type: string
+                description: Display label for the completion
+              insertText:
+                type: string
+                description: Text to insert when selected
+              detail:
+                type: string
+                description: Additional detail about the completion
+              documentation:
+                type: string
+                description: Documentation for the completion
+              kind:
+                type: string
+                enum: [property, value, snippet, function]
+                description: Type of completion item
+              sortText:
+                type: string
+                description: Sort order for the completion
+
+    SnippetFunction:
+      type: object
+      required:
+        - name
+        - description
+        - syntax
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z_][a-zA-Z0-9_.]*$'
+          description: Function name
+        description:
+          type: string
+          description: Function description
+        syntax:
+          type: string
+          description: Function syntax template
+        category:
+          type: string
+          enum: [builtin, faker, custom, environment]
+          description: Function category
+        examples:
+          type: array
+          items:
+            type: string
+          description: Usage examples
+        parameters:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              type:
+                type: string
+              required:
+                type: boolean
+              description:
+                type: string
+          description: Parameter definitions
+
+    SnippetListResponse:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnippetFunction'
+        categories:
+          type: array
+          items:
+            type: string
+          description: Available function categories
+
+    CreateSnippetRequest:
+      type: object
+      required:
+        - name
+        - template
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z_][a-zA-Z0-9_]*$'
+        description:
+          type: string
+        template:
+          type: string
+          description: Snippet template with placeholders
+
+    EvaluateSnippetRequest:
+      type: object
+      required:
+        - expression
+      properties:
+        expression:
+          type: string
+          description: Snippet expression to evaluate
+        variables:
+          type: object
+          description: Variables for expression evaluation
+
+    EvaluateSnippetResponse:
+      type: object
+      properties:
+        result:
+          description: Evaluated result (any type)
+        type:
+          type: string
+          description: Result type
+        error:
+          type: string
+          description: Error message if evaluation failed
+
+    EnqueueRequest:
+      type: object
+      required:
+        - payload
+        - queueName
+      properties:
+        payload:
+          type: object
+          description: Job payload to enqueue
+        queueName:
+          type: string
+          description: Target queue name
+        options:
+          type: object
+          properties:
+            priority:
+              type: integer
+              minimum: 1
+              maximum: 10
+              default: 5
+            retryCount:
+              type: integer
+              minimum: 0
+              maximum: 10
+              default: 3
+            timeout:
+              type: string
+              pattern: '^\\d+[smh]$'
+              description: Job timeout (e.g., "30s", "5m", "1h")
+            delaySeconds:
+              type: integer
+              minimum: 0
+              description: Delay before job execution
+        confirmation:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: Environment confirmation
+            acknowledged:
+              type: boolean
+              description: User acknowledgment of operation
+
+    EnqueueResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          description: Unique job identifier
+        queueName:
+          type: string
+          description: Queue where job was enqueued
+        enqueuedAt:
+          type: string
+          format: date-time
+          description: Enqueue timestamp
+        position:
+          type: integer
+          description: Position in queue
+        estimatedDelay:
+          type: string
+          description: Estimated time until execution
+
+    BatchEnqueueRequest:
+      type: object
+      required:
+        - count
+        - queueName
+      properties:
+        templateId:
+          type: string
+          description: Template to use for batch jobs
+        payload:
+          type: object
+          description: Base payload for batch jobs
+        count:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Number of jobs to create
+        queueName:
+          type: string
+          description: Target queue name
+        delayBetween:
+          type: string
+          pattern: '^\\d+[μmn]?s$'
+          description: Delay between job creation (e.g., "100ms")
+        variables:
+          type: object
+          description: Variable patterns for batch generation
+        options:
+          type: object
+          description: Job options for all batch jobs
+
+    BatchEnqueueResponse:
+      type: object
+      properties:
+        batchId:
+          type: string
+          description: Unique batch identifier
+        jobIds:
+          type: array
+          items:
+            type: string
+          description: List of created job IDs
+        count:
+          type: integer
+          description: Number of jobs successfully created
+        failed:
+          type: integer
+          description: Number of jobs that failed to create
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              error:
+                type: string
+          description: Errors for failed job creation
+
+    ScheduleJobRequest:
+      type: object
+      required:
+        - payload
+        - queueName
+        - schedule
+      properties:
+        payload:
+          type: object
+          description: Job payload to schedule
+        queueName:
+          type: string
+          description: Target queue name
+        schedule:
+          type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+              enum: [delayed, cron]
+              description: Schedule type
+            runAt:
+              type: string
+              format: date-time
+              description: Execution time for delayed jobs
+            cronExpression:
+              type: string
+              description: Cron expression for recurring jobs
+            timezone:
+              type: string
+              default: "UTC"
+              description: Timezone for schedule
+        options:
+          type: object
+          description: Job execution options
+
+    ScheduleJobResponse:
+      type: object
+      properties:
+        scheduleId:
+          type: string
+          description: Unique schedule identifier
+        nextRun:
+          type: string
+          format: date-time
+          description: Next execution time
+        recurring:
+          type: boolean
+          description: Whether schedule is recurring
+
+    JobHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          description: History entry identifier
+        jobId:
+          type: string
+          description: Associated job ID
+        templateId:
+          type: string
+          description: Template used (if any)
+        payload:
+          type: object
+          description: Job payload
+        queueName:
+          type: string
+          description: Target queue
+        status:
+          type: string
+          enum: [success, failed, scheduled]
+          description: Enqueue status
+        enqueuedAt:
+          type: string
+          format: date-time
+          description: Enqueue timestamp
+        error:
+          type: string
+          description: Error message if failed
+
+    JobHistoryResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobHistoryEntry'
+        total:
+          type: integer
+          description: Total history entries
+        hasMore:
+          type: boolean
+          description: Whether more entries are available
+
+    Draft:
+      type: object
+      properties:
+        draftId:
+          type: string
+          description: Unique draft identifier
+        name:
+          type: string
+          description: Draft name
+        payload:
+          type: object
+          description: Saved payload content
+        templateId:
+          type: string
+          description: Associated template ID
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+
+    DraftListResponse:
+      type: object
+      properties:
+        drafts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Draft'
+        total:
+          type: integer
+          description: Total number of drafts
+
+    SaveDraftRequest:
+      type: object
+      required:
+        - name
+        - payload
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        payload:
+          type: object
+        templateId:
+          type: string
+
+    SafetyCheckRequest:
+      type: object
+      required:
+        - payload
+        - queueName
+      properties:
+        payload:
+          type: object
+          description: Payload to check for safety issues
+        queueName:
+          type: string
+          description: Target queue name
+        environment:
+          type: string
+          description: Target environment (prod, staging, dev)
+        operation:
+          type: string
+          enum: [enqueue, batch, schedule]
+          description: Type of operation being performed
+
+    SafetyCheckResponse:
+      type: object
+      properties:
+        safe:
+          type: boolean
+          description: Whether operation is considered safe
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [pii_detected, size_limit, rate_limit, production_warning]
+              severity:
+                type: string
+                enum: [info, warning, error, block]
+              message:
+                type: string
+              recommendation:
+                type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Safety recommendations
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              additionalProperties: true
+              description: Additional error context
+            timestamp:
+              type: string
+              format: date-time
+              description: Error timestamp
+
+tags:
+  - name: Templates
+    description: Template management operations
+  - name: Validation
+    description: Payload validation operations
+  - name: Snippets
+    description: Snippet function operations
+  - name: Jobs
+    description: Job enqueue and scheduling operations
+  - name: History
+    description: Job history operations
+  - name: Drafts
+    description: Draft management operations
+  - name: Safety
+    description: Safety check operations

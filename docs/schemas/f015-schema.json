@@ -1,0 +1,797 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://go-redis-work-queue.github.io/schemas/f015-deduplication.json",
+  "title": "Smart Payload Deduplication Schemas",
+  "description": "JSON Schema definitions for Smart Payload Deduplication system data models",
+  "definitions": {
+    "Chunk": {
+      "type": "object",
+      "title": "Data Chunk",
+      "description": "A variable-sized chunk of payload data identified by its hash",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the chunk data",
+          "example": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 33554432,
+          "description": "Size of the chunk in bytes (max 32MB)",
+          "example": 8192
+        },
+        "data": {
+          "type": "string",
+          "format": "base64",
+          "description": "Base64-encoded chunk data (only present in responses)",
+          "example": "SGVsbG8gV29ybGQ="
+        },
+        "compressed": {
+          "type": "boolean",
+          "description": "Whether the chunk data is compressed",
+          "default": false
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when chunk was created",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "last_accessed": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when chunk was last accessed",
+          "example": "2025-09-14T19:41:47.136110Z"
+        }
+      },
+      "required": ["hash", "size"],
+      "additionalProperties": false
+    },
+    "ChunkReference": {
+      "type": "object",
+      "title": "Chunk Reference",
+      "description": "Reference to a chunk with ordering information",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the referenced chunk",
+          "example": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte offset within the original payload",
+          "example": 0
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size of the chunk in bytes",
+          "example": 8192
+        }
+      },
+      "required": ["hash", "offset", "size"],
+      "additionalProperties": false
+    },
+    "DeduplicatedPayload": {
+      "type": "object",
+      "title": "Deduplicated Payload",
+      "description": "A payload broken down into chunk references",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Unique identifier for the job",
+          "example": "job_12345"
+        },
+        "original_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Original payload size in bytes",
+          "example": 102400
+        },
+        "deduplicated_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total size of unique chunks in bytes",
+          "example": 15360
+        },
+        "chunk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chunks in the payload",
+          "example": 5
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChunkReference"
+          },
+          "description": "Ordered list of chunk references",
+          "minItems": 0
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "compression_algorithm": {
+              "type": "string",
+              "enum": ["zstd", "gzip", "none"],
+              "description": "Compression algorithm used",
+              "default": "zstd"
+            },
+            "chunking_algorithm": {
+              "type": "string",
+              "enum": ["rabin", "fixed", "content-based"],
+              "description": "Chunking algorithm used",
+              "default": "rabin"
+            },
+            "similarity_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Similarity threshold used for deduplication",
+              "default": 0.8
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the payload was deduplicated"
+            }
+          },
+          "additionalProperties": false
+        },
+        "savings_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Storage savings ratio (0-1)",
+          "example": 0.85
+        }
+      },
+      "required": ["job_id", "original_size", "deduplicated_size", "chunk_count", "chunks"],
+      "additionalProperties": false
+    },
+    "ChunkStorageStats": {
+      "type": "object",
+      "title": "Chunk Storage Statistics",
+      "description": "Statistics about chunk storage and reference counting",
+      "properties": {
+        "total_chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of unique chunks stored",
+          "example": 15000
+        },
+        "total_storage_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total bytes used by chunk storage",
+          "example": 1073741824
+        },
+        "total_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of chunk references",
+          "example": 50000
+        },
+        "average_chunk_size": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average chunk size in bytes",
+          "example": 8192.5
+        },
+        "most_referenced_chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PopularChunk"
+          },
+          "description": "List of most frequently referenced chunks",
+          "maxItems": 10
+        },
+        "orphaned_chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chunks with zero references",
+          "example": 5
+        },
+        "compression_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Overall compression ratio",
+          "example": 0.65
+        }
+      },
+      "required": ["total_chunks", "total_storage_bytes", "total_references"],
+      "additionalProperties": false
+    },
+    "PopularChunk": {
+      "type": "object",
+      "title": "Popular Chunk",
+      "description": "Information about a frequently referenced chunk",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the chunk",
+          "example": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+        },
+        "reference_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of jobs referencing this chunk",
+          "example": 1250
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Chunk size in bytes",
+          "example": 8192
+        },
+        "total_savings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total bytes saved by this chunk's reuse",
+          "example": 10240000
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this chunk was first created",
+          "example": "2025-09-14T19:41:47.136110Z"
+        }
+      },
+      "required": ["hash", "reference_count", "size", "total_savings"],
+      "additionalProperties": false
+    },
+    "DeduplicationStats": {
+      "type": "object",
+      "title": "Deduplication Statistics",
+      "description": "Overall system deduplication performance metrics",
+      "properties": {
+        "period": {
+          "type": "string",
+          "enum": ["hour", "day", "week", "month"],
+          "description": "Time period for statistics",
+          "example": "day"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of statistics period",
+          "example": "2025-09-14T00:00:00Z"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of statistics period",
+          "example": "2025-09-14T23:59:59Z"
+        },
+        "payloads_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of payloads processed",
+          "example": 10000
+        },
+        "total_original_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total bytes of original payloads",
+          "example": 1073741824
+        },
+        "total_deduplicated_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total bytes after deduplication",
+          "example": 161061273
+        },
+        "savings_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall storage savings ratio",
+          "example": 0.85
+        },
+        "average_deduplication_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average deduplication time in milliseconds",
+          "example": 12.5
+        },
+        "average_reconstruction_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average reconstruction time in milliseconds",
+          "example": 5.2
+        },
+        "chunks_created": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "New chunks created in period",
+          "example": 2500
+        },
+        "chunks_reused": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Existing chunks reused in period",
+          "example": 37500
+        },
+        "reuse_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio of chunk reuse vs creation",
+          "example": 0.94
+        }
+      },
+      "required": ["period", "start_time", "end_time", "payloads_processed", "total_original_bytes", "total_deduplicated_bytes", "savings_ratio"],
+      "additionalProperties": false
+    },
+    "DeduplicationConfig": {
+      "type": "object",
+      "title": "Deduplication Configuration",
+      "description": "Configuration parameters for the deduplication system",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether deduplication is enabled",
+          "default": true
+        },
+        "chunking": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": ["rabin", "fixed", "content-based"],
+              "description": "Chunking algorithm to use",
+              "default": "rabin"
+            },
+            "min_chunk_size": {
+              "type": "integer",
+              "minimum": 512,
+              "maximum": 8192,
+              "description": "Minimum chunk size in bytes",
+              "default": 2048
+            },
+            "max_chunk_size": {
+              "type": "integer",
+              "minimum": 8192,
+              "maximum": 33554432,
+              "description": "Maximum chunk size in bytes",
+              "default": 32768
+            },
+            "avg_chunk_size": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 16384,
+              "description": "Target average chunk size in bytes",
+              "default": 8192
+            },
+            "window_size": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 128,
+              "description": "Rolling hash window size",
+              "default": 64
+            }
+          },
+          "required": ["algorithm"],
+          "additionalProperties": false
+        },
+        "compression": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether compression is enabled",
+              "default": true
+            },
+            "algorithm": {
+              "type": "string",
+              "enum": ["zstd", "gzip", "none"],
+              "description": "Compression algorithm to use",
+              "default": "zstd"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 19,
+              "description": "Compression level (algorithm-dependent)",
+              "default": 3
+            },
+            "dictionary_size": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 131072,
+              "description": "Compression dictionary size in bytes",
+              "default": 65536
+            }
+          },
+          "additionalProperties": false
+        },
+        "similarity": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether similarity detection is enabled",
+              "default": true
+            },
+            "threshold": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 1.0,
+              "description": "Similarity threshold for near-duplicate detection",
+              "default": 0.8
+            },
+            "lsh_bands": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 50,
+              "description": "Number of LSH bands for similarity detection",
+              "default": 20
+            },
+            "lsh_rows": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 10,
+              "description": "Number of rows per LSH band",
+              "default": 5
+            }
+          },
+          "additionalProperties": false
+        },
+        "garbage_collection": {
+          "type": "object",
+          "properties": {
+            "interval": {
+              "type": "string",
+              "pattern": "^[0-9]+[smh]$",
+              "description": "GC interval (e.g., '1h', '30m', '60s')",
+              "default": "1h"
+            },
+            "batch_size": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000,
+              "description": "Number of chunks to process per GC batch",
+              "default": 1000
+            },
+            "orphan_age": {
+              "type": "string",
+              "pattern": "^[0-9]+[smhd]$",
+              "description": "Age threshold for orphaned chunk cleanup",
+              "default": "24h"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fallback": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether fallback to non-deduped storage is enabled",
+              "default": true
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^[0-9]+[smh]$",
+              "description": "Timeout for deduplication operations",
+              "default": "5s"
+            },
+            "error_threshold": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 0.5,
+              "description": "Error rate threshold for enabling fallback",
+              "default": 0.1
+            }
+          },
+          "additionalProperties": false
+        },
+        "monitoring": {
+          "type": "object",
+          "properties": {
+            "metrics_enabled": {
+              "type": "boolean",
+              "description": "Whether metrics collection is enabled",
+              "default": true
+            },
+            "sample_rate": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 1.0,
+              "description": "Metrics sampling rate",
+              "default": 1.0
+            },
+            "stats_retention": {
+              "type": "string",
+              "pattern": "^[0-9]+[dw]$",
+              "description": "Statistics retention period",
+              "default": "30d"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "SimilarityResult": {
+      "type": "object",
+      "title": "Similarity Analysis Result",
+      "description": "Result of payload similarity analysis",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Job ID being analyzed",
+          "example": "job_12345"
+        },
+        "similar_payloads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SimilarPayload"
+          },
+          "description": "List of similar payloads found",
+          "maxItems": 100
+        },
+        "similarity_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Highest similarity score found",
+          "example": 0.92
+        },
+        "analysis_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time taken for analysis in milliseconds",
+          "example": 15.2
+        }
+      },
+      "required": ["job_id", "similar_payloads", "similarity_score"],
+      "additionalProperties": false
+    },
+    "SimilarPayload": {
+      "type": "object",
+      "title": "Similar Payload",
+      "description": "Information about a similar payload",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Job ID of similar payload",
+          "example": "job_67890"
+        },
+        "similarity_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Similarity score (0-1)",
+          "example": 0.87
+        },
+        "shared_chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of shared chunks",
+          "example": 12
+        },
+        "shared_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of shared bytes",
+          "example": 98304
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the similar payload was processed",
+          "example": "2025-09-14T19:35:22.136110Z"
+        }
+      },
+      "required": ["job_id", "similarity_score", "shared_chunks", "shared_bytes"],
+      "additionalProperties": false
+    },
+    "GarbageCollectionResult": {
+      "type": "object",
+      "title": "Garbage Collection Result",
+      "description": "Result of garbage collection operation",
+      "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When GC started",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When GC completed",
+          "example": "2025-09-14T19:43:15.447263Z"
+        },
+        "chunks_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chunks examined",
+          "example": 15000
+        },
+        "chunks_deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of orphaned chunks deleted",
+          "example": 247
+        },
+        "bytes_freed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Bytes freed by deletion",
+          "example": 2023424
+        },
+        "references_audited": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of reference counts audited",
+          "example": 15000
+        },
+        "references_repaired": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of corrupted references repaired",
+          "example": 3
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "description": "GC duration in milliseconds",
+          "example": 87735.2
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of errors encountered during GC",
+          "example": []
+        }
+      },
+      "required": ["started_at", "completed_at", "chunks_scanned", "chunks_deleted", "bytes_freed"],
+      "additionalProperties": false
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error type or category",
+          "example": "validation_error"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "example": "Invalid chunk hash format"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details",
+          "additionalProperties": true
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Unique request identifier for tracing",
+          "example": "req_abc123"
+        }
+      },
+      "required": ["error", "message"],
+      "additionalProperties": false
+    },
+    "HealthStatus": {
+      "type": "object",
+      "title": "Health Status",
+      "description": "Health status of the deduplication system",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall system health status",
+          "example": "healthy"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Health check timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "chunk_store": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "reference_manager": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "garbage_collector": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "compression": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "similarity_detector": {
+              "$ref": "#/definitions/ComponentHealth"
+            }
+          },
+          "additionalProperties": false
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "chunks_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Chunks processed per second"
+            },
+            "average_latency": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average operation latency in milliseconds"
+            },
+            "error_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Error rate (0-1)"
+            },
+            "memory_usage": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Memory usage in bytes"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "timestamp"],
+      "additionalProperties": false
+    },
+    "ComponentHealth": {
+      "type": "object",
+      "title": "Component Health",
+      "description": "Health status of an individual component",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Component health status",
+          "example": "healthy"
+        },
+        "message": {
+          "type": "string",
+          "description": "Health status message",
+          "example": "All operations normal"
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last health check timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "details": {
+          "type": "object",
+          "description": "Component-specific health details",
+          "additionalProperties": true
+        }
+      },
+      "required": ["status"],
+      "additionalProperties": false
+    }
+  }
+}

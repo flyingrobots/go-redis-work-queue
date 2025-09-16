@@ -3,9 +3,11 @@
 - Last updated: 2025-09-12
 
 ## Executive Summary
+
 The project has a working foundation: a single Go binary with producer, worker, reaper, circuit breaker, configuration, logging, metrics, optional tracing, tests, and CI. To reach a production-grade v1.0.0, we need to harden prioritization semantics, improve observability depth, finalize graceful recovery edge cases, add health endpoints, enhance documentation, and conduct performance and failure-mode testing.
 
 ## Table of Contents
+
 - [Current Implementation](#current-implementation)
 - [What’s Working](#whats-working)
 - [Gaps vs. Spec](#gaps-vs-spec)
@@ -13,6 +15,7 @@ The project has a working foundation: a single Go binary with producer, worker, 
 - [Immediate Priorities](#immediate-priorities)
 
 ## Current Implementation
+
 - Modes: `--role=producer|worker|all` with YAML config and env overrides.
 - Redis: go-redis v8 with dynamic pool, retries, timeouts.
 - Queues: priority lists (`high`, `low`), per-worker processing list, completed and dead-letter lists.
@@ -24,12 +27,14 @@ The project has a working foundation: a single Go binary with producer, worker, 
 - CI: GitHub Actions build + race tests.
 
 ## What’s Working
+
 - End-to-end enqueue → consume → complete/ retry/ DLQ → requeue on orphaned processing.
 - Graceful shutdown using contexts with signal handling.
 - Configurable backoff and retry behavior.
 - Baseline observability metrics and structured logs.
 
 ## Gaps vs. Spec
+
 - Prioritized blocking dequeue across multiple queues: current approach loops BRPOPLPUSH per-queue with small timeouts. Spec implies multi-queue blocking pop with atomic move. Redis lacks native multi-source BRPOPLPUSH; we will document and validate current approach, and optionally add a Lua-assisted non-blocking RPOPLPUSH sweep to reduce latency.
 - Queue length gauges: not yet periodically updated.
 - Health/readiness endpoint: missing.
@@ -40,15 +45,16 @@ The project has a working foundation: a single Go binary with producer, worker, 
 - Performance validation: load tests and tuning for pool sizes and timeouts remain.
 
 ## Technical Debt
+
 - Emulated priority fetch could be improved or justified formally.
 - Reaper scans by processing lists; ensure worst-case behavior with many workers is efficient (SCAN pacing and limits).
 - Simulated processing; provide pluggable processor interface.
 - Configurable metrics cardinality controls and labels.
 
 ## Immediate Priorities
+
 1. Add health/readiness probe and queue length updater.
 2. Use TraceID/SpanID to start spans and enrich logs.
 3. Strengthen rate limiter timing and jitter; document guarantees.
 4. Add config validation and error reporting.
 5. Write e2e tests with real Redis (service container) and performance benchmarks.
-

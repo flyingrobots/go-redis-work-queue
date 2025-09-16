@@ -1,0 +1,1816 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Time Travel Debugger Data Models",
+  "description": "Comprehensive data model definitions for the Time Travel Debugger system, enabling job execution recording, replay, and analysis",
+  "version": "1.0.0",
+  "definitions": {
+    "EventType": {
+      "type": "string",
+      "enum": [
+        "ENQUEUED",
+        "DEQUEUED",
+        "PROCESSING",
+        "RETRYING",
+        "FAILED",
+        "COMPLETED",
+        "MOVED_TO_DLQ",
+        "SCHEDULED",
+        "CANCELLED"
+      ],
+      "description": "Types of events that can occur during job execution"
+    },
+    "JobStatus": {
+      "type": "string",
+      "enum": [
+        "enqueued",
+        "processing",
+        "completed",
+        "failed",
+        "retrying",
+        "cancelled",
+        "dlq"
+      ],
+      "description": "Current status of a job in the system"
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the event occurred"
+        },
+        "type": {
+          "$ref": "#/definitions/EventType",
+          "description": "Type of state transition event"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "Unique identifier for the job"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Identifier for the worker processing the job"
+        },
+        "queue_name": {
+          "type": "string",
+          "description": "Name of the queue containing the job"
+        },
+        "state_change": {
+          "$ref": "#/definitions/StateDiff",
+          "description": "Changes in system state caused by this event"
+        },
+        "context": {
+          "$ref": "#/definitions/EventContext",
+          "description": "Additional context for the event"
+        },
+        "metadata": {
+          "$ref": "#/definitions/EventMetadata",
+          "description": "Event metadata for debugging and analysis"
+        }
+      },
+      "required": [
+        "timestamp",
+        "type",
+        "job_id",
+        "worker_id",
+        "queue_name"
+      ],
+      "additionalProperties": false
+    },
+    "EventContext": {
+      "type": "object",
+      "properties": {
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation ID for tracing related events"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed tracing identifier"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "Span identifier for distributed tracing"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User who initiated the job"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Original request identifier"
+        },
+        "source_ip": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "IP address of the request source"
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "User agent string if applicable"
+        }
+      },
+      "additionalProperties": true
+    },
+    "EventMetadata": {
+      "type": "object",
+      "properties": {
+        "capture_overhead_ns": {
+          "type": "integer",
+          "description": "Nanoseconds spent capturing this event"
+        },
+        "sequence_number": {
+          "type": "integer",
+          "description": "Sequence number for event ordering"
+        },
+        "compressed": {
+          "type": "boolean",
+          "description": "Whether event data is compressed"
+        },
+        "checksum": {
+          "type": "string",
+          "description": "SHA-256 checksum for integrity verification"
+        },
+        "storage_tier": {
+          "type": "string",
+          "enum": ["hot", "warm", "cold", "archive"],
+          "description": "Storage tier for this event"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StateSnapshot": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the snapshot was taken"
+        },
+        "job_state": {
+          "$ref": "#/definitions/JobState",
+          "description": "Complete job state at this moment"
+        },
+        "worker_state": {
+          "$ref": "#/definitions/WorkerState",
+          "description": "Worker state at this moment"
+        },
+        "queue_state": {
+          "$ref": "#/definitions/QueueState",
+          "description": "Queue state at this moment"
+        },
+        "redis_keys": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Relevant Redis keys and their values"
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional context information"
+        },
+        "checksum_sha": {
+          "type": "string",
+          "description": "SHA-256 checksum of the complete snapshot"
+        }
+      },
+      "required": [
+        "timestamp",
+        "job_state",
+        "checksum_sha"
+      ],
+      "additionalProperties": false
+    },
+    "JobState": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Job payload data"
+        },
+        "status": {
+          "$ref": "#/definitions/JobStatus",
+          "description": "Current job status"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of retry attempts"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Job priority level"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Job metadata key-value pairs"
+        },
+        "processing_time": {
+          "type": "number",
+          "description": "Processing time in seconds"
+        },
+        "enqueued_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job was enqueued"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When processing started"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When processing completed"
+        },
+        "failed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job failed"
+        },
+        "failure_reason": {
+          "type": "string",
+          "description": "Reason for job failure"
+        },
+        "next_retry_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the next retry is scheduled"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "retry_count",
+        "enqueued_at"
+      ],
+      "additionalProperties": false
+    },
+    "WorkerState": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique worker identifier"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "processing", "error", "shutdown"],
+          "description": "Current worker status"
+        },
+        "resource_usage": {
+          "$ref": "#/definitions/ResourceUsage",
+          "description": "Current resource consumption"
+        },
+        "last_heartbeat": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last heartbeat timestamp"
+        },
+        "current_job_id": {
+          "type": "string",
+          "description": "ID of currently processing job"
+        },
+        "processing_since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When current job processing started"
+        },
+        "total_processed": {
+          "type": "integer",
+          "description": "Total jobs processed by this worker"
+        },
+        "total_failed": {
+          "type": "integer",
+          "description": "Total jobs failed by this worker"
+        },
+        "uptime_seconds": {
+          "type": "number",
+          "description": "Worker uptime in seconds"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "last_heartbeat"
+      ],
+      "additionalProperties": false
+    },
+    "ResourceUsage": {
+      "type": "object",
+      "properties": {
+        "cpu_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage"
+        },
+        "memory_mb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Memory usage in megabytes"
+        },
+        "connections": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active connections"
+        },
+        "goroutines": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active goroutines"
+        },
+        "disk_usage_mb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Disk usage in megabytes"
+        },
+        "network_bytes_sent": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Network bytes sent"
+        },
+        "network_bytes_received": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Network bytes received"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueState": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Queue name"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs in queue"
+        },
+        "processing_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Jobs processed per second"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Error rate percentage"
+        },
+        "backpressure": {
+          "type": "boolean",
+          "description": "Whether queue is experiencing backpressure"
+        },
+        "avg_processing_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average processing time in seconds"
+        },
+        "oldest_job_age": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Age of oldest job in seconds"
+        },
+        "workers_active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active workers"
+        },
+        "workers_idle": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of idle workers"
+        }
+      },
+      "required": [
+        "name",
+        "length",
+        "processing_rate",
+        "error_rate",
+        "backpressure"
+      ],
+      "additionalProperties": false
+    },
+    "StateDiff": {
+      "type": "object",
+      "properties": {
+        "from_position": {
+          "type": "integer",
+          "description": "Source position for comparison"
+        },
+        "to_position": {
+          "type": "integer",
+          "description": "Target position for comparison"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StateChange"
+          },
+          "description": "List of individual state changes"
+        },
+        "summary": {
+          "$ref": "#/definitions/DiffSummary",
+          "description": "Summary of changes"
+        }
+      },
+      "required": [
+        "from_position",
+        "to_position",
+        "changes"
+      ],
+      "additionalProperties": false
+    },
+    "StateChange": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "JSON path to the changed field"
+        },
+        "operation": {
+          "type": "string",
+          "enum": ["added", "removed", "modified"],
+          "description": "Type of change operation"
+        },
+        "old_value": {
+          "description": "Previous value (null for added fields)"
+        },
+        "new_value": {
+          "description": "New value (null for removed fields)"
+        },
+        "data_type": {
+          "type": "string",
+          "description": "Data type of the changed value"
+        },
+        "significance": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Significance level of this change"
+        }
+      },
+      "required": [
+        "path",
+        "operation"
+      ],
+      "additionalProperties": false
+    },
+    "DiffSummary": {
+      "type": "object",
+      "properties": {
+        "total_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of changes"
+        },
+        "significant_changes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of significant changes"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categories of changes detected"
+        },
+        "has_state_transition": {
+          "type": "boolean",
+          "description": "Whether a state transition occurred"
+        },
+        "has_error": {
+          "type": "boolean",
+          "description": "Whether an error was introduced"
+        },
+        "performance_impact": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high"],
+          "description": "Performance impact of changes"
+        }
+      },
+      "required": [
+        "total_changes",
+        "significant_changes",
+        "categories"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionRecord": {
+      "type": "object",
+      "properties": {
+        "recording_id": {
+          "type": "string",
+          "description": "Unique recording identifier"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "Associated job identifier"
+        },
+        "queue_name": {
+          "type": "string",
+          "description": "Queue where job was processed"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Event"
+          },
+          "description": "Complete event timeline"
+        },
+        "snapshots": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/StateSnapshot"
+          },
+          "description": "State snapshots indexed by timestamp"
+        },
+        "metadata": {
+          "$ref": "#/definitions/RecordingMetadata",
+          "description": "Recording metadata"
+        },
+        "compressed": {
+          "type": "boolean",
+          "description": "Whether the recording is compressed"
+        },
+        "version": {
+          "type": "string",
+          "description": "Recording format version"
+        }
+      },
+      "required": [
+        "recording_id",
+        "job_id",
+        "queue_name",
+        "events",
+        "metadata",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "RecordingMetadata": {
+      "type": "object",
+      "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recording started"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recording completed"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Total recording duration in seconds"
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of events captured"
+        },
+        "snapshot_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of snapshots taken"
+        },
+        "storage_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Storage size in bytes"
+        },
+        "compression_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Compression ratio achieved"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Worker that processed the job"
+        },
+        "has_failure": {
+          "type": "boolean",
+          "description": "Whether recording contains failure events"
+        },
+        "failure_reason": {
+          "type": "string",
+          "description": "Reason for failure if applicable"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recording tags for categorization"
+        },
+        "capture_config": {
+          "$ref": "#/definitions/CaptureConfig",
+          "description": "Configuration used for capture"
+        }
+      },
+      "required": [
+        "started_at",
+        "event_count",
+        "storage_size"
+      ],
+      "additionalProperties": false
+    },
+    "CaptureConfig": {
+      "type": "object",
+      "properties": {
+        "include_payload": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to include job payload in capture"
+        },
+        "include_redis_snapshot": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to include Redis state snapshots"
+        },
+        "snapshot_interval": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Snapshot interval in seconds"
+        },
+        "max_payload_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum payload size to capture in bytes"
+        },
+        "redact_sensitive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to redact sensitive data"
+        },
+        "sensitive_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Field names to redact"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReplaySession": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "Unique session identifier"
+        },
+        "recording_id": {
+          "type": "string",
+          "description": "Associated recording identifier"
+        },
+        "config": {
+          "$ref": "#/definitions/ReplayConfig",
+          "description": "Session configuration"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "completed", "error"],
+          "description": "Current session status"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Session creation timestamp"
+        },
+        "last_active": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last activity timestamp"
+        },
+        "current_position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current position in timeline"
+        },
+        "total_events": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of events in timeline"
+        },
+        "playback_state": {
+          "$ref": "#/definitions/PlaybackState",
+          "description": "Current playback state"
+        }
+      },
+      "required": [
+        "session_id",
+        "recording_id",
+        "status",
+        "created_at",
+        "current_position",
+        "total_events"
+      ],
+      "additionalProperties": false
+    },
+    "ReplayConfig": {
+      "type": "object",
+      "properties": {
+        "session_name": {
+          "type": "string",
+          "description": "Optional session name"
+        },
+        "initial_position": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Starting position in timeline"
+        },
+        "filters": {
+          "$ref": "#/definitions/EventFilters",
+          "description": "Event filtering configuration"
+        },
+        "options": {
+          "$ref": "#/definitions/ReplayOptions",
+          "description": "Replay session options"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventFilters": {
+      "type": "object",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventType"
+          },
+          "description": "Event types to include in replay"
+        },
+        "include_system_events": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include system-generated events"
+        },
+        "min_significance": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Minimum significance level to display"
+        },
+        "custom_filter": {
+          "type": "string",
+          "description": "Custom filter expression"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReplayOptions": {
+      "type": "object",
+      "properties": {
+        "enable_breakpoints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable breakpoint functionality"
+        },
+        "max_memory_mb": {
+          "type": "integer",
+          "minimum": 10,
+          "default": 100,
+          "description": "Maximum memory usage for session"
+        },
+        "preload_snapshots": {
+          "type": "boolean",
+          "default": false,
+          "description": "Preload all snapshots for faster seeking"
+        },
+        "enable_state_caching": {
+          "type": "boolean",
+          "default": true,
+          "description": "Cache reconstructed states"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlaybackState": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["stopped", "playing", "paused"],
+          "description": "Current playback status"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0,
+          "default": 1.0,
+          "description": "Playback speed multiplier"
+        },
+        "auto_stop_condition": {
+          "type": "string",
+          "description": "Condition that will stop playback automatically"
+        },
+        "breakpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Breakpoint"
+          },
+          "description": "Active breakpoints"
+        }
+      },
+      "required": [
+        "status",
+        "speed"
+      ],
+      "additionalProperties": false
+    },
+    "Breakpoint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique breakpoint identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["event", "state", "condition", "performance"],
+          "description": "Breakpoint type"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Breakpoint condition expression"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether breakpoint is active"
+        },
+        "hit_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times breakpoint was hit"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Breakpoint creation time"
+        },
+        "last_hit_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time breakpoint was hit"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "condition",
+        "enabled",
+        "hit_count",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineEvent": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Event index in timeline"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp"
+        },
+        "type": {
+          "$ref": "#/definitions/EventType",
+          "description": "Event type"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "Associated job ID"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Worker that generated event"
+        },
+        "queue_name": {
+          "type": "string",
+          "description": "Queue name"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Event-specific data"
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Event context information"
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "Whether this is a significant event"
+        },
+        "duration_since_previous": {
+          "type": "number",
+          "description": "Duration since previous event in seconds"
+        },
+        "state_hash": {
+          "type": "string",
+          "description": "Hash of system state after this event"
+        }
+      },
+      "required": [
+        "index",
+        "timestamp",
+        "type",
+        "job_id",
+        "significant"
+      ],
+      "additionalProperties": false
+    },
+    "ComparisonResult": {
+      "type": "object",
+      "properties": {
+        "comparison_id": {
+          "type": "string",
+          "description": "Unique comparison identifier"
+        },
+        "recording_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "description": "Recordings being compared"
+        },
+        "summary": {
+          "$ref": "#/definitions/ComparisonSummary",
+          "description": "High-level comparison summary"
+        },
+        "timeline_alignment": {
+          "$ref": "#/definitions/TimelineAlignment",
+          "description": "How timelines were aligned for comparison"
+        },
+        "differences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExecutionDifference"
+          },
+          "description": "Detailed differences found"
+        },
+        "common_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExecutionPattern"
+          },
+          "description": "Common execution patterns"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recommendation"
+          },
+          "description": "Analysis-based recommendations"
+        }
+      },
+      "required": [
+        "comparison_id",
+        "recording_ids",
+        "summary",
+        "differences"
+      ],
+      "additionalProperties": false
+    },
+    "ComparisonSummary": {
+      "type": "object",
+      "properties": {
+        "total_differences": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of differences found"
+        },
+        "significant_differences": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of significant differences"
+        },
+        "common_patterns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of common patterns identified"
+        },
+        "divergence_points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DivergencePoint"
+          },
+          "description": "Points where executions diverged"
+        },
+        "outcome_comparison": {
+          "$ref": "#/definitions/OutcomeComparison",
+          "description": "Comparison of final outcomes"
+        }
+      },
+      "required": [
+        "total_differences",
+        "significant_differences",
+        "common_patterns",
+        "divergence_points",
+        "outcome_comparison"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineAlignment": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["timestamp", "event_index", "state_change", "adaptive"],
+          "description": "Method used for timeline alignment"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in alignment accuracy"
+        },
+        "sync_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "recording_positions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "Position in each recording for this sync point"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Synchronized timestamp"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of sync point"
+              }
+            }
+          },
+          "description": "Key synchronization points"
+        }
+      },
+      "required": [
+        "method",
+        "confidence",
+        "sync_points"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionDifference": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["event_sequence", "state_value", "timing", "outcome", "error"],
+          "description": "Type of difference"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Severity of the difference"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "positions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Position in each recording where difference occurs"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Detailed difference information"
+        },
+        "impact_assessment": {
+          "type": "string",
+          "description": "Assessment of difference impact"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "description",
+        "positions"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionPattern": {
+      "type": "object",
+      "properties": {
+        "pattern_id": {
+          "type": "string",
+          "description": "Unique pattern identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Pattern description"
+        },
+        "frequency": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How often this pattern occurs"
+        },
+        "event_sequence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventType"
+          },
+          "description": "Sequence of events in this pattern"
+        },
+        "duration_range": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number",
+              "description": "Minimum duration in seconds"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum duration in seconds"
+            },
+            "avg": {
+              "type": "number",
+              "description": "Average duration in seconds"
+            }
+          },
+          "description": "Duration range for this pattern"
+        },
+        "significance": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Pattern significance level"
+        }
+      },
+      "required": [
+        "pattern_id",
+        "description",
+        "frequency",
+        "event_sequence",
+        "significance"
+      ],
+      "additionalProperties": false
+    },
+    "DivergencePoint": {
+      "type": "object",
+      "properties": {
+        "event_index": {
+          "type": "integer",
+          "description": "Event index where divergence occurred"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of divergence"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the divergence"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Severity of divergence"
+        },
+        "cause": {
+          "type": "string",
+          "description": "Likely cause of divergence"
+        },
+        "recordings_affected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recording IDs affected by this divergence"
+        }
+      },
+      "required": [
+        "event_index",
+        "timestamp",
+        "description",
+        "severity",
+        "recordings_affected"
+      ],
+      "additionalProperties": false
+    },
+    "OutcomeComparison": {
+      "type": "object",
+      "properties": {
+        "final_states": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/JobStatus"
+          },
+          "description": "Final job status for each recording"
+        },
+        "processing_times": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Total processing time for each recording"
+        },
+        "retry_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Final retry count for each recording"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall success rate across recordings"
+        },
+        "common_outcome": {
+          "type": "boolean",
+          "description": "Whether all recordings had the same outcome"
+        }
+      },
+      "required": [
+        "final_states",
+        "processing_times",
+        "retry_counts",
+        "success_rate",
+        "common_outcome"
+      ],
+      "additionalProperties": false
+    },
+    "Recommendation": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["performance", "reliability", "debugging", "monitoring", "configuration"],
+          "description": "Recommendation category"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Recommendation priority"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short recommendation title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed recommendation description"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why this recommendation is being made"
+        },
+        "implementation_effort": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Estimated implementation effort"
+        },
+        "expected_impact": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Expected impact if implemented"
+        },
+        "related_differences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Difference IDs that support this recommendation"
+        }
+      },
+      "required": [
+        "category",
+        "priority",
+        "title",
+        "description",
+        "rationale",
+        "implementation_effort",
+        "expected_impact"
+      ],
+      "additionalProperties": false
+    },
+    "PatternAnalysis": {
+      "type": "object",
+      "properties": {
+        "analysis_id": {
+          "type": "string",
+          "description": "Unique analysis identifier"
+        },
+        "time_range": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Analysis start time"
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Analysis end time"
+            }
+          },
+          "required": ["start", "end"]
+        },
+        "total_recordings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total recordings analyzed"
+        },
+        "failure_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FailurePattern"
+          },
+          "description": "Common failure patterns identified"
+        },
+        "performance_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PerformancePattern"
+          },
+          "description": "Performance patterns identified"
+        },
+        "trends": {
+          "$ref": "#/definitions/TrendAnalysis",
+          "description": "Trend analysis over time"
+        },
+        "anomalies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Anomaly"
+          },
+          "description": "Anomalies detected"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "time_range",
+        "total_recordings",
+        "failure_patterns"
+      ],
+      "additionalProperties": false
+    },
+    "FailurePattern": {
+      "type": "object",
+      "properties": {
+        "pattern_id": {
+          "type": "string",
+          "description": "Unique failure pattern identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Pattern description"
+        },
+        "frequency": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How often this pattern occurs"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of failures with this pattern"
+        },
+        "common_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventType"
+          },
+          "description": "Events commonly seen in this pattern"
+        },
+        "typical_duration": {
+          "type": "number",
+          "description": "Typical duration before failure in seconds"
+        },
+        "error_messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Common error messages"
+        },
+        "affected_queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Queues commonly affected"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Pattern severity"
+        },
+        "trend": {
+          "type": "string",
+          "enum": ["increasing", "decreasing", "stable", "new"],
+          "description": "Trend for this pattern over time"
+        }
+      },
+      "required": [
+        "pattern_id",
+        "description",
+        "frequency",
+        "percentage",
+        "severity",
+        "trend"
+      ],
+      "additionalProperties": false
+    },
+    "PerformancePattern": {
+      "type": "object",
+      "properties": {
+        "pattern_id": {
+          "type": "string",
+          "description": "Unique performance pattern identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Pattern description"
+        },
+        "metric": {
+          "type": "string",
+          "enum": ["processing_time", "memory_usage", "cpu_usage", "retry_count"],
+          "description": "Performance metric affected"
+        },
+        "baseline_value": {
+          "type": "number",
+          "description": "Baseline value for the metric"
+        },
+        "pattern_value": {
+          "type": "number",
+          "description": "Value when pattern is detected"
+        },
+        "deviation_percentage": {
+          "type": "number",
+          "description": "Percentage deviation from baseline"
+        },
+        "frequency": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How often this pattern occurs"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Conditions when pattern occurs"
+        },
+        "impact": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Performance impact level"
+        }
+      },
+      "required": [
+        "pattern_id",
+        "description",
+        "metric",
+        "baseline_value",
+        "pattern_value",
+        "frequency",
+        "impact"
+      ],
+      "additionalProperties": false
+    },
+    "TrendAnalysis": {
+      "type": "object",
+      "properties": {
+        "success_rate_trend": {
+          "$ref": "#/definitions/Trend",
+          "description": "Success rate trend over time"
+        },
+        "performance_trend": {
+          "$ref": "#/definitions/Trend",
+          "description": "Performance trend over time"
+        },
+        "error_rate_trend": {
+          "$ref": "#/definitions/Trend",
+          "description": "Error rate trend over time"
+        },
+        "volume_trend": {
+          "$ref": "#/definitions/Trend",
+          "description": "Job volume trend over time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Trend": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["increasing", "decreasing", "stable", "volatile"],
+          "description": "Trend direction"
+        },
+        "slope": {
+          "type": "number",
+          "description": "Trend slope (rate of change)"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in trend analysis"
+        },
+        "data_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "value": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Time series data points"
+        }
+      },
+      "required": [
+        "direction",
+        "slope",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "Anomaly": {
+      "type": "object",
+      "properties": {
+        "anomaly_id": {
+          "type": "string",
+          "description": "Unique anomaly identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["performance", "pattern", "volume", "timing"],
+          "description": "Type of anomaly"
+        },
+        "description": {
+          "type": "string",
+          "description": "Anomaly description"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Anomaly severity"
+        },
+        "detected_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When anomaly was detected"
+        },
+        "affected_recordings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recording IDs affected by anomaly"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in anomaly detection"
+        },
+        "baseline_comparison": {
+          "type": "object",
+          "properties": {
+            "baseline_value": {
+              "type": "number"
+            },
+            "anomaly_value": {
+              "type": "number"
+            },
+            "deviation_factor": {
+              "type": "number"
+            }
+          },
+          "description": "Comparison with baseline values"
+        }
+      },
+      "required": [
+        "anomaly_id",
+        "type",
+        "description",
+        "severity",
+        "detected_at",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "TimeTravelConfig": {
+      "type": "object",
+      "properties": {
+        "recording": {
+          "$ref": "#/definitions/RecordingConfig",
+          "description": "Recording configuration"
+        },
+        "storage": {
+          "$ref": "#/definitions/StorageConfig",
+          "description": "Storage configuration"
+        },
+        "performance": {
+          "$ref": "#/definitions/PerformanceConfig",
+          "description": "Performance configuration"
+        },
+        "security": {
+          "$ref": "#/definitions/SecurityConfig",
+          "description": "Security configuration"
+        }
+      },
+      "required": [
+        "recording",
+        "storage",
+        "performance",
+        "security"
+      ],
+      "additionalProperties": false
+    },
+    "RecordingConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether recording is enabled"
+        },
+        "automatic_capture": {
+          "type": "object",
+          "properties": {
+            "failed_jobs": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically capture failed jobs"
+            },
+            "sample_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.01,
+              "description": "Sample rate for successful jobs"
+            },
+            "performance_threshold": {
+              "type": "number",
+              "default": 10,
+              "description": "Capture jobs slower than N seconds"
+            }
+          }
+        },
+        "manual_capture": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Allow manual recording requests"
+            },
+            "max_concurrent": {
+              "type": "integer",
+              "default": 10,
+              "description": "Maximum concurrent manual recordings"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StorageConfig": {
+      "type": "object",
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Days to retain recordings"
+        },
+        "compression_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable compression"
+        },
+        "archive_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable archival to cold storage"
+        },
+        "max_storage_gb": {
+          "type": "integer",
+          "default": 100,
+          "description": "Maximum storage usage in GB"
+        },
+        "hot_storage_days": {
+          "type": "integer",
+          "default": 7,
+          "description": "Days to keep in hot storage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PerformanceConfig": {
+      "type": "object",
+      "properties": {
+        "max_capture_overhead_percent": {
+          "type": "number",
+          "default": 2.0,
+          "description": "Maximum capture overhead percentage"
+        },
+        "max_memory_mb": {
+          "type": "integer",
+          "default": 500,
+          "description": "Maximum memory usage in MB"
+        },
+        "snapshot_interval_seconds": {
+          "type": "integer",
+          "default": 5,
+          "description": "Snapshot interval in seconds"
+        },
+        "async_processing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Process events asynchronously"
+        },
+        "buffer_size": {
+          "type": "integer",
+          "default": 10000,
+          "description": "Event buffer size"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityConfig": {
+      "type": "object",
+      "properties": {
+        "redact_sensitive_data": {
+          "type": "boolean",
+          "default": true,
+          "description": "Redact sensitive data in recordings"
+        },
+        "sensitive_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["password", "token", "key", "secret"],
+          "description": "Field names to redact"
+        },
+        "access_logging": {
+          "type": "boolean",
+          "default": true,
+          "description": "Log recording access"
+        },
+        "encryption_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Encrypt recordings at rest"
+        },
+        "role_based_access": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable role-based access control"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

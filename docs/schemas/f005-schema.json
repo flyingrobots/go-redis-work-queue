@@ -1,0 +1,1214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://go-redis-work-queue.github.io/schemas/f005-plugin-system.json",
+  "title": "Plugin Panel System Schemas",
+  "description": "JSON Schema definitions for Plugin Panel System data models",
+  "definitions": {
+    "PluginManifest": {
+      "type": "object",
+      "title": "Plugin Manifest",
+      "description": "Plugin manifest file (manifest.yaml) structure",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 50,
+          "description": "Plugin name (lowercase, hyphens allowed)",
+          "example": "tenant-sla-monitor"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9-]+)?(\\+[a-zA-Z0-9-]+)?$",
+          "description": "Semantic version string",
+          "example": "1.2.3"
+        },
+        "api_version": {
+          "type": "string",
+          "enum": ["v1"],
+          "description": "Plugin API version compatibility",
+          "example": "v1"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Plugin description",
+          "example": "Real-time SLA monitoring and alerting for tenant queues"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Plugin author name or organization",
+          "example": "Platform Team"
+        },
+        "license": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "License identifier (SPDX format preferred)",
+          "example": "MIT"
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Plugin homepage or repository URL",
+          "example": "https://github.com/company/tenant-sla-plugin"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "maxLength": 20
+          },
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Plugin tags for categorization",
+          "example": ["monitoring", "sla", "alerts"]
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["wasm", "starlark"],
+          "description": "Plugin runtime type",
+          "example": "wasm"
+        },
+        "entry_point": {
+          "type": "string",
+          "description": "Entry point file (main.wasm or main.star)",
+          "example": "main.wasm"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "events.subscribe",
+              "admin.queue.peek",
+              "admin.queue.enqueue",
+              "admin.queue.requeue",
+              "admin.queue.purge",
+              "admin.job.requeue",
+              "admin.stats.read",
+              "admin.system.stats",
+              "admin.alerts.send",
+              "storage.read",
+              "storage.write",
+              "ui.notifications"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Requested capabilities (user must approve)",
+          "example": ["events.subscribe", "admin.queue.peek", "admin.alerts.send"]
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourceLimits"
+        },
+        "ui": {
+          "$ref": "#/definitions/UIConfig"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventSubscriptionConfig"
+          },
+          "description": "Event subscription configurations",
+          "maxItems": 20
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PluginDependency"
+          },
+          "description": "Plugin dependencies",
+          "maxItems": 10
+        }
+      },
+      "required": ["name", "version", "api_version", "description", "runtime", "entry_point"],
+      "additionalProperties": false
+    },
+    "ResourceLimits": {
+      "type": "object",
+      "title": "Resource Limits",
+      "description": "Plugin resource consumption limits",
+      "properties": {
+        "max_memory": {
+          "type": "string",
+          "pattern": "^\\d+[KMGT]?B$",
+          "description": "Maximum memory usage (e.g., 10MB, 1GB)",
+          "example": "10MB"
+        },
+        "max_cpu": {
+          "type": "string",
+          "pattern": "^\\d+%$",
+          "description": "Maximum CPU usage percentage",
+          "example": "5%"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Execution timeout (e.g., 30s, 1m, 1h)",
+          "example": "30s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UIConfig": {
+      "type": "object",
+      "title": "UI Configuration",
+      "description": "Plugin UI panel configuration",
+      "properties": {
+        "panel_title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "description": "Panel title displayed in TUI",
+          "example": "SLA Monitor"
+        },
+        "min_width": {
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 200,
+          "description": "Minimum panel width in characters",
+          "example": 40
+        },
+        "min_height": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 100,
+          "description": "Minimum panel height in lines",
+          "example": 10
+        },
+        "resizable": {
+          "type": "boolean",
+          "description": "Whether panel can be resized by user",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventSubscriptionConfig": {
+      "type": "object",
+      "title": "Event Subscription Configuration",
+      "description": "Configuration for plugin event subscriptions",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "job.enqueued",
+            "job.started",
+            "job.completed",
+            "job.failed",
+            "job.requeued",
+            "queue.stats",
+            "worker.status",
+            "system.alert"
+          ],
+          "description": "Event type to subscribe to",
+          "example": "job.completed"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": "Queue name patterns (supports wildcards)",
+          "example": ["tenant.*"]
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Polling interval for periodic events",
+          "example": "5s"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "PluginDependency": {
+      "type": "object",
+      "title": "Plugin Dependency",
+      "description": "Dependency on another plugin",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Dependency plugin name",
+          "example": "alert-manager"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version constraint (semver format)",
+          "example": ">=1.0.0"
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether dependency is optional",
+          "default": false
+        }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "Plugin": {
+      "type": "object",
+      "title": "Plugin",
+      "description": "Installed plugin information",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique plugin identifier",
+          "example": "tenant-sla-monitor"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable plugin name",
+          "example": "Tenant SLA Monitor"
+        },
+        "version": {
+          "type": "string",
+          "description": "Plugin version",
+          "example": "1.2.3"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "error", "loading"],
+          "description": "Current plugin status",
+          "example": "active"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["wasm", "starlark"],
+          "description": "Plugin runtime type",
+          "example": "wasm"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of granted permissions",
+          "example": ["events.subscribe", "admin.queue.peek"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Plugin installation timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Plugin last update timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        }
+      },
+      "required": ["id", "name", "version", "status", "runtime"],
+      "additionalProperties": false
+    },
+    "PluginDetails": {
+      "type": "object",
+      "title": "Plugin Details",
+      "description": "Detailed plugin information",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Plugin"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "manifest": {
+              "$ref": "#/definitions/PluginManifest"
+            },
+            "resource_usage": {
+              "$ref": "#/definitions/ResourceUsage"
+            },
+            "last_active": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last activity timestamp",
+              "example": "2025-09-14T19:41:47.136110Z"
+            },
+            "error_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of errors since last restart",
+              "example": 0
+            },
+            "dependencies": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of dependency plugin IDs",
+              "example": ["alert-manager"]
+            }
+          }
+        }
+      ]
+    },
+    "ResourceUsage": {
+      "type": "object",
+      "title": "Resource Usage",
+      "description": "Current plugin resource consumption",
+      "properties": {
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current memory usage in bytes",
+          "example": 2048576
+        },
+        "cpu_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage",
+          "example": 2.5
+        },
+        "execution_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total execution time in milliseconds",
+          "example": 1250.5
+        }
+      },
+      "required": ["memory_bytes", "cpu_percent", "execution_time"],
+      "additionalProperties": false
+    },
+    "EventSubscription": {
+      "type": "object",
+      "title": "Event Subscription",
+      "description": "Event subscription request",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "job.enqueued",
+              "job.started",
+              "job.completed",
+              "job.failed",
+              "job.requeued",
+              "queue.stats",
+              "worker.status",
+              "system.alert"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Types of events to subscribe to",
+          "example": ["job.completed", "job.failed"]
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "queues": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "description": "Queue name patterns (supports wildcards)",
+              "example": ["tenant.*", "priority-queue"]
+            },
+            "priorities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "description": "Priority levels to include",
+              "example": [8, 9, 10]
+            },
+            "job_states": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["pending", "running", "completed", "failed"]
+              },
+              "description": "Job states to include",
+              "example": ["failed"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "webhook_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL for event delivery (optional)",
+          "example": "https://plugin-service.company.com/webhooks/events"
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 1,
+          "description": "Number of events to batch together",
+          "example": 5
+        }
+      },
+      "required": ["event_types"],
+      "additionalProperties": false
+    },
+    "ActiveSubscription": {
+      "type": "object",
+      "title": "Active Subscription",
+      "description": "Active event subscription with statistics",
+      "allOf": [
+        {
+          "$ref": "#/definitions/EventSubscription"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Unique subscription identifier",
+              "example": "sub_abc123"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Subscription creation timestamp",
+              "example": "2025-09-14T19:41:47.136110Z"
+            },
+            "events_delivered": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total events delivered",
+              "example": 1250
+            },
+            "last_delivery": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last event delivery timestamp",
+              "example": "2025-09-14T19:45:22.447263Z"
+            }
+          },
+          "required": ["id", "created_at", "events_delivered"]
+        }
+      ]
+    },
+    "Job": {
+      "type": "object",
+      "title": "Job",
+      "description": "Queue job information",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier",
+          "example": "job_12345"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue name",
+          "example": "tenant-queue"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Job payload data",
+          "additionalProperties": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Job priority level",
+          "example": 5
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed"],
+          "description": "Current job status",
+          "example": "completed"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Job creation timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Job start timestamp",
+          "example": "2025-09-14T19:42:15.447263Z"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Job completion timestamp",
+          "example": "2025-09-14T19:43:22.758394Z"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of execution attempts",
+          "example": 1
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if failed",
+          "example": "Connection timeout to external service"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "ID of worker processing the job",
+          "example": "worker_001"
+        }
+      },
+      "required": ["id", "queue", "payload", "priority", "status", "created_at"],
+      "additionalProperties": false
+    },
+    "JobEnqueueRequest": {
+      "type": "object",
+      "title": "Job Enqueue Request",
+      "description": "Request to enqueue a new job",
+      "properties": {
+        "payload": {
+          "type": "object",
+          "description": "Job payload data",
+          "additionalProperties": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Job priority level",
+          "example": 7
+        },
+        "delay": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Delay before processing (e.g., 5m, 1h)",
+          "example": "5m"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum retry attempts",
+          "example": 3
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Job execution timeout",
+          "example": "30m"
+        }
+      },
+      "required": ["payload"],
+      "additionalProperties": false
+    },
+    "QueueStats": {
+      "type": "object",
+      "title": "Queue Statistics",
+      "description": "Queue performance and status metrics",
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "description": "Queue name",
+          "example": "tenant-queue"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs in queue",
+          "example": 125
+        },
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "jobs_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Jobs processed per second",
+              "example": 12.5
+            },
+            "jobs_per_hour": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Jobs processed per hour",
+              "example": 45000
+            }
+          },
+          "required": ["jobs_per_second", "jobs_per_hour"]
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Error rate (0-1)",
+          "example": 0.02
+        },
+        "avg_processing_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average processing time in milliseconds",
+          "example": 2500.5
+        },
+        "oldest_job_age": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Age of oldest pending job",
+          "example": "5m"
+        }
+      },
+      "required": ["queue_name", "depth", "throughput", "error_rate"],
+      "additionalProperties": false
+    },
+    "SystemStats": {
+      "type": "object",
+      "title": "System Statistics",
+      "description": "System-wide performance metrics",
+      "properties": {
+        "total_queues": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of queues",
+          "example": 25
+        },
+        "total_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of jobs",
+          "example": 125000
+        },
+        "active_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active workers",
+          "example": 10
+        },
+        "system_load": {
+          "type": "object",
+          "properties": {
+            "cpu_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "CPU usage percentage",
+              "example": 45.2
+            },
+            "memory_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Memory usage percentage",
+              "example": 68.7
+            },
+            "disk_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Disk usage percentage",
+              "example": 32.1
+            }
+          },
+          "required": ["cpu_percent", "memory_percent", "disk_percent"]
+        },
+        "uptime": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "System uptime",
+          "example": "7d"
+        }
+      },
+      "required": ["total_queues", "total_jobs", "active_workers", "system_load", "uptime"],
+      "additionalProperties": false
+    },
+    "CapabilityGrant": {
+      "type": "object",
+      "title": "Capability Grant",
+      "description": "Permission grant for a plugin",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique grant identifier",
+          "example": "grant_abc123"
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "Plugin identifier",
+          "example": "tenant-sla-monitor"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "List of granted permissions",
+          "example": ["admin.queue.peek", "admin.alerts.send"]
+        },
+        "scope": {
+          "$ref": "#/definitions/PermissionScope"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Permission expiration timestamp",
+          "example": "2025-12-31T23:59:59Z"
+        },
+        "granted_by": {
+          "type": "string",
+          "description": "User who granted the permission",
+          "example": "admin@company.com"
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Permission grant timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        }
+      },
+      "required": ["id", "plugin_id", "permissions", "granted_by", "granted_at"],
+      "additionalProperties": false
+    },
+    "PermissionScope": {
+      "type": "object",
+      "title": "Permission Scope",
+      "description": "Scope limitations for permission grants",
+      "properties": {
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": "Specific queues or '*' for all",
+          "example": ["tenant.*", "priority-queue"]
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific operations or '*' for all",
+          "example": ["peek", "requeue"]
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Resource limitations",
+          "example": ["max_jobs:1000", "rate_limit:100/hour"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginConfig": {
+      "type": "object",
+      "title": "Plugin Configuration",
+      "description": "Plugin configuration and preferences",
+      "properties": {
+        "settings": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Plugin-specific configuration",
+          "example": {
+            "alert_threshold": 0.95,
+            "check_interval": "30s",
+            "notification_channels": ["slack", "email"]
+          }
+        },
+        "ui_preferences": {
+          "type": "object",
+          "properties": {
+            "theme": {
+              "type": "string",
+              "enum": ["light", "dark", "auto"],
+              "description": "UI theme preference",
+              "example": "dark"
+            },
+            "refresh_rate": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600,
+              "description": "UI refresh rate in seconds",
+              "example": 5
+            }
+          },
+          "additionalProperties": false
+        },
+        "notifications": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether notifications are enabled",
+              "example": true
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["ui", "webhook", "email", "slack"]
+              },
+              "description": "Notification channels",
+              "example": ["ui", "slack"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginMetrics": {
+      "type": "object",
+      "title": "Plugin Metrics",
+      "description": "Plugin performance and usage metrics",
+      "properties": {
+        "execution_time": {
+          "type": "object",
+          "properties": {
+            "avg": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Average execution time in milliseconds",
+              "example": 12.5
+            },
+            "p50": {
+              "type": "number",
+              "minimum": 0,
+              "description": "50th percentile execution time",
+              "example": 10.2
+            },
+            "p95": {
+              "type": "number",
+              "minimum": 0,
+              "description": "95th percentile execution time",
+              "example": 25.8
+            },
+            "p99": {
+              "type": "number",
+              "minimum": 0,
+              "description": "99th percentile execution time",
+              "example": 45.3
+            }
+          },
+          "required": ["avg", "p50", "p95", "p99"]
+        },
+        "memory_usage": {
+          "type": "object",
+          "properties": {
+            "current": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Current memory usage in bytes",
+              "example": 2048576
+            },
+            "peak": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Peak memory usage in bytes",
+              "example": 3145728
+            },
+            "avg": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Average memory usage in bytes",
+              "example": 2500000
+            }
+          },
+          "required": ["current", "peak", "avg"]
+        },
+        "event_processing": {
+          "type": "object",
+          "properties": {
+            "events_processed": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total events processed",
+              "example": 12500
+            },
+            "events_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Events processed per second",
+              "example": 25.5
+            },
+            "processing_errors": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of processing errors",
+              "example": 3
+            }
+          },
+          "required": ["events_processed", "events_per_second", "processing_errors"]
+        },
+        "api_calls": {
+          "type": "object",
+          "properties": {
+            "total_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total API calls made",
+              "example": 5000
+            },
+            "calls_per_second": {
+              "type": "number",
+              "minimum": 0,
+              "description": "API calls per second",
+              "example": 10.2
+            },
+            "error_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "API call error rate",
+              "example": 0.01
+            }
+          },
+          "required": ["total_calls", "calls_per_second", "error_rate"]
+        }
+      },
+      "required": ["execution_time", "memory_usage", "event_processing", "api_calls"],
+      "additionalProperties": false
+    },
+    "PluginHealthStatus": {
+      "type": "object",
+      "title": "Plugin Health Status",
+      "description": "Plugin health check results",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall health status",
+          "example": "healthy"
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last health check timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "uptime": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Plugin uptime",
+          "example": "2h"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of current errors",
+          "example": []
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of current warnings",
+          "example": ["High memory usage detected"]
+        }
+      },
+      "required": ["status", "last_check"],
+      "additionalProperties": false
+    },
+    "LogEntry": {
+      "type": "object",
+      "title": "Log Entry",
+      "description": "Plugin log entry",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Log entry timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "description": "Log level",
+          "example": "info"
+        },
+        "message": {
+          "type": "string",
+          "description": "Log message",
+          "example": "SLA check completed for tenant ABC"
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional context data",
+          "example": {
+            "tenant_id": "ABC",
+            "sla_value": 0.995,
+            "threshold": 0.99
+          }
+        }
+      },
+      "required": ["timestamp", "level", "message"],
+      "additionalProperties": false
+    },
+    "MarketplacePlugin": {
+      "type": "object",
+      "title": "Marketplace Plugin",
+      "description": "Plugin available in marketplace",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Plugin name",
+          "example": "tenant-sla-monitor"
+        },
+        "version": {
+          "type": "string",
+          "description": "Latest version",
+          "example": "1.2.3"
+        },
+        "description": {
+          "type": "string",
+          "description": "Plugin description",
+          "example": "Real-time SLA monitoring and alerting"
+        },
+        "author": {
+          "type": "string",
+          "description": "Plugin author",
+          "example": "Platform Team"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["monitoring", "analytics", "automation", "integration", "utility"],
+          "description": "Plugin category",
+          "example": "monitoring"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Plugin tags",
+          "example": ["sla", "alerts", "monitoring"]
+        },
+        "downloads": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Download count",
+          "example": 1250
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Average rating",
+          "example": 4.5
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether plugin is verified by maintainers",
+          "example": true
+        }
+      },
+      "required": ["name", "version", "description", "author", "category"],
+      "additionalProperties": false
+    },
+    "SystemHealthStatus": {
+      "type": "object",
+      "title": "System Health Status",
+      "description": "Overall plugin system health",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall system health",
+          "example": "healthy"
+        },
+        "total_plugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of plugins",
+          "example": 15
+        },
+        "active_plugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active plugins",
+          "example": 12
+        },
+        "failed_plugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failed plugins",
+          "example": 1
+        },
+        "system_load": {
+          "type": "object",
+          "properties": {
+            "cpu_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "System CPU usage",
+              "example": 45.2
+            },
+            "memory_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "System memory usage",
+              "example": 68.7
+            }
+          },
+          "required": ["cpu_percent", "memory_percent"]
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last health check timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        }
+      },
+      "required": ["status", "total_plugins", "active_plugins", "failed_plugins", "system_load", "last_check"],
+      "additionalProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error type or category",
+          "example": "validation_error"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "example": "Invalid plugin manifest format"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error details",
+          "example": {
+            "field": "permissions",
+            "code": "invalid_permission"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp",
+          "example": "2025-09-14T19:41:47.136110Z"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Unique request identifier for tracing",
+          "example": "req_abc123"
+        }
+      },
+      "required": ["error", "message"],
+      "additionalProperties": false
+    }
+  }
+}

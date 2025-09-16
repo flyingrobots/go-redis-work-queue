@@ -1,0 +1,896 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.com/f008-rbac-and-tokens.json",
+  "title": "RBAC and Tokens Schema Definitions",
+  "description": "JSON Schema definitions for the F008 RBAC and Tokens feature",
+  "type": "object",
+  "definitions": {
+    "TokenClaims": {
+      "$id": "#/definitions/TokenClaims",
+      "title": "Token Claims",
+      "description": "JWT/PASETO token payload structure with authentication and authorization data",
+      "type": "object",
+      "required": ["sub", "iat", "exp", "iss", "kid", "jti"],
+      "properties": {
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "format": "email",
+          "description": "Subject (user identifier, typically email)"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Assigned roles providing hierarchical permissions"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:-]+$",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxItems": 100,
+          "uniqueItems": true,
+          "description": "Explicit permission scopes (e.g., 'stats:read', 'dlq:purge')"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "maxProperties": 20,
+          "description": "Resource constraints (queues, clusters, environments)",
+          "properties": {
+            "queues": {
+              "type": "string",
+              "description": "Queue name patterns (e.g., 'payment-*', 'email-queue')"
+            },
+            "cluster": {
+              "type": "string",
+              "description": "Cluster constraints (e.g., 'prod-east', 'staging-*')"
+            },
+            "environment": {
+              "type": "string",
+              "description": "Environment constraints (e.g., 'staging', 'production')"
+            },
+            "schedule": {
+              "type": "string",
+              "description": "Time-based access constraints (e.g., 'business-hours')"
+            }
+          }
+        },
+        "iat": {
+          "type": "integer",
+          "minimum": 946684800,
+          "maximum": 4102444800,
+          "description": "Issued at timestamp (Unix epoch)"
+        },
+        "exp": {
+          "type": "integer",
+          "minimum": 946684800,
+          "maximum": 4102444800,
+          "description": "Expiration timestamp (Unix epoch)"
+        },
+        "nbf": {
+          "type": "integer",
+          "minimum": 946684800,
+          "maximum": 4102444800,
+          "description": "Not before timestamp (Unix epoch)"
+        },
+        "iss": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Token issuer identifier"
+        },
+        "kid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Key identifier for cryptographic verification"
+        },
+        "jti": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Unique token identifier for revocation tracking"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "User": {
+      "$id": "#/definitions/User",
+      "title": "User Account",
+      "description": "User account with roles and resource constraints",
+      "type": "object",
+      "required": ["id", "email", "name", "roles", "created_at", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Unique user identifier"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 255,
+          "description": "User email address (primary identifier)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "User full name"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Assigned roles"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "maxProperties": 20,
+          "description": "Resource access constraints",
+          "properties": {
+            "queues": {
+              "type": "string",
+              "description": "Queue name patterns this user can access"
+            },
+            "cluster": {
+              "type": "string",
+              "description": "Cluster constraints for this user"
+            }
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last account update timestamp"
+        },
+        "last_login": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last successful authentication timestamp"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "disabled", "pending"],
+          "description": "Current account status"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxProperties": 20,
+          "description": "Additional user metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Role": {
+      "$id": "#/definitions/Role",
+      "title": "Role Definition",
+      "description": "Role with permissions and inheritance hierarchy",
+      "type": "object",
+      "required": ["name", "description", "permissions", "created_at"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique role name identifier"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Human-readable role description"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Permission"
+          },
+          "maxItems": 100,
+          "description": "List of permissions granted by this role"
+        },
+        "inherits_from": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Parent roles for permission inheritance"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Role creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last role modification timestamp"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxProperties": 10,
+          "description": "Additional role metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Permission": {
+      "$id": "#/definitions/Permission",
+      "title": "Permission",
+      "description": "Individual permission with action and resource constraints",
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_:-]+$",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Permission action/scope (e.g., 'stats:read', 'dlq:purge')"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "maxItems": 50,
+          "uniqueItems": true,
+          "description": "Resource patterns this permission applies to"
+        },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": true,
+          "maxProperties": 20,
+          "description": "Additional permission conditions (time, IP, etc.)",
+          "properties": {
+            "time_range": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "end": {
+                  "type": "string",
+                  "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+                }
+              },
+              "description": "Time-based access restrictions"
+            },
+            "ip_ranges": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?$"
+              },
+              "description": "IP address restrictions"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Token": {
+      "$id": "#/definitions/Token",
+      "title": "Authentication Token",
+      "description": "Authentication token metadata and configuration",
+      "type": "object",
+      "required": ["id", "name", "user_id", "scopes", "created_at", "expires_at", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^tok_[a-zA-Z0-9_-]+$",
+          "description": "Unique token identifier with 'tok_' prefix"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable token name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional token description"
+        },
+        "user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "User ID that owns this token"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:-]+$",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxItems": 100,
+          "uniqueItems": true,
+          "description": "Permission scopes granted to this token"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "maxProperties": 20,
+          "description": "Resource constraints for this token"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token creation timestamp"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token expiration timestamp"
+        },
+        "last_used": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last token usage timestamp"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Token revocation timestamp (if revoked)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "expired", "revoked"],
+          "description": "Current token status"
+        },
+        "usage_stats": {
+          "type": "object",
+          "properties": {
+            "total_requests": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of requests made with this token"
+            },
+            "success_requests": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of successful requests"
+            },
+            "last_request_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Timestamp of last request"
+            },
+            "last_request_ip": {
+              "type": "string",
+              "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+              "description": "IP address of last request"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Token usage statistics"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxProperties": 20,
+          "description": "Additional token metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuditEvent": {
+      "$id": "#/definitions/AuditEvent",
+      "title": "Audit Event",
+      "description": "Security and administrative audit event record",
+      "type": "object",
+      "required": ["id", "timestamp", "event_type", "actor", "action", "result"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^evt_[a-zA-Z0-9_-]+$",
+          "description": "Unique event identifier with 'evt_' prefix"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event occurrence timestamp (ISO 8601)"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "TOKEN_CREATED",
+            "TOKEN_REVOKED",
+            "TOKEN_EXPIRED",
+            "TOKEN_USED",
+            "USER_CREATED",
+            "USER_UPDATED",
+            "USER_DELETED",
+            "USER_LOGIN",
+            "ROLE_ASSIGNED",
+            "ROLE_REVOKED",
+            "ROLE_CREATED",
+            "ROLE_UPDATED",
+            "ROLE_DELETED",
+            "ACCESS_GRANTED",
+            "ACCESS_DENIED",
+            "QUEUE_CREATED",
+            "QUEUE_DELETED",
+            "JOB_ENQUEUED",
+            "JOB_DEQUEUED",
+            "DLQ_PURGED",
+            "DLQ_RETRIED",
+            "SYSTEM_STARTUP",
+            "SYSTEM_SHUTDOWN",
+            "KEY_ROTATED",
+            "SECURITY_VIOLATION"
+          ],
+          "description": "Type of audit event"
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "User, service, or system that performed the action"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Specific action that was performed"
+        },
+        "resource": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Resource that was accessed or modified"
+        },
+        "result": {
+          "type": "string",
+          "enum": ["success", "denied", "error", "partial"],
+          "description": "Result of the attempted action"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "maxProperties": 50,
+          "description": "Event-specific details and context",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "maxLength": 512,
+              "description": "Reason for the event (especially for denials/errors)"
+            },
+            "ip_address": {
+              "type": "string",
+              "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+              "description": "Source IP address"
+            },
+            "user_agent": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Client user agent string"
+            },
+            "token_id": {
+              "type": "string",
+              "pattern": "^tok_[a-zA-Z0-9_-]+$",
+              "description": "Related token ID"
+            },
+            "user_id": {
+              "type": "string",
+              "maxLength": 128,
+              "description": "Related user ID"
+            },
+            "required_scope": {
+              "type": "string",
+              "maxLength": 128,
+              "description": "Required permission scope for access"
+            },
+            "user_scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "description": "User's actual permission scopes"
+            },
+            "resource_constraints": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Resource constraints that applied"
+            },
+            "error_code": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Error code for failed operations"
+            },
+            "old_value": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Previous value before modification"
+            },
+            "new_value": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "New value after modification"
+            }
+          }
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^req_[a-zA-Z0-9_-]+$",
+          "description": "Correlation ID for request tracking"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Session identifier if applicable"
+        },
+        "user_agent": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Client user agent string"
+        },
+        "remote_addr": {
+          "type": "string",
+          "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+          "description": "Source IP address"
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300000,
+          "description": "Operation duration in milliseconds"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error", "critical"],
+          "default": "info",
+          "description": "Event severity level"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:-]+$",
+            "maxLength": 64
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Event classification tags"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CryptographicKey": {
+      "$id": "#/definitions/CryptographicKey",
+      "title": "Cryptographic Key",
+      "description": "Cryptographic key for token signing and verification",
+      "type": "object",
+      "required": ["id", "algorithm", "created_at", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^key-[a-zA-Z0-9_-]+$",
+          "description": "Unique key identifier with 'key-' prefix"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PASETO-v2-local", "PASETO-v2-public"],
+          "description": "Cryptographic algorithm used by this key"
+        },
+        "public_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "Base64-encoded public key (for asymmetric algorithms)"
+        },
+        "private_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "Base64-encoded private key (only in secure issuer context)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Key creation timestamp"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Key expiration timestamp (optional)"
+        },
+        "rotated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Key rotation timestamp (if rotated)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "retired", "revoked", "compromised"],
+          "description": "Current key status"
+        },
+        "usage_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of tokens signed with this key"
+        },
+        "key_strength": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 4096,
+          "description": "Key strength in bits"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxProperties": 10,
+          "description": "Additional key metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuthenticationContext": {
+      "$id": "#/definitions/AuthenticationContext",
+      "title": "Authentication Context",
+      "description": "Current authentication context for a request",
+      "type": "object",
+      "required": ["user_id", "token_id", "authenticated_at"],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Authenticated user identifier"
+        },
+        "token_id": {
+          "type": "string",
+          "pattern": "^tok_[a-zA-Z0-9_-]+$",
+          "description": "Token used for authentication"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "uniqueItems": true,
+          "description": "User's current roles"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:-]+$"
+          },
+          "uniqueItems": true,
+          "description": "User's current permission scopes"
+        },
+        "resource_constraints": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Active resource constraints"
+        },
+        "authenticated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Authentication timestamp"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Authentication expiration timestamp"
+        },
+        "ip_address": {
+          "type": "string",
+          "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$",
+          "description": "Client IP address"
+        },
+        "user_agent": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Client user agent"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[a-zA-Z0-9_-]+$",
+          "description": "Request correlation ID"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+    "rbac_config": {
+      "type": "object",
+      "description": "RBAC system configuration",
+      "properties": {
+        "default_token_expiry": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "default": "30d",
+          "description": "Default token expiration duration"
+        },
+        "max_token_expiry": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "default": "365d",
+          "description": "Maximum allowed token expiration duration"
+        },
+        "key_rotation_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "default": "90d",
+          "description": "Automatic key rotation interval"
+        },
+        "audit_retention_period": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "default": "2y",
+          "description": "Audit log retention period"
+        },
+        "rate_limit_per_token": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 100000,
+          "default": 1000,
+          "description": "Rate limit per token per hour"
+        },
+        "deny_by_default": {
+          "type": "boolean",
+          "default": true,
+          "description": "Deny access by default unless explicitly granted"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "examples": [
+    {
+      "name": "admin_token_claims",
+      "description": "Example token claims for an admin user",
+      "data": {
+        "sub": "admin@company.com",
+        "roles": ["admin", "maintainer"],
+        "scopes": ["stats:*", "queues:*", "jobs:*", "dlq:*", "admin:*"],
+        "resources": {
+          "queues": "*",
+          "cluster": "production"
+        },
+        "iat": 1705312800,
+        "exp": 1707904800,
+        "nbf": 1705312800,
+        "iss": "queue-system-v1",
+        "kid": "key-2024-01",
+        "jti": "tok_admin_abc123def456"
+      }
+    },
+    {
+      "name": "operator_user",
+      "description": "Example operator user account",
+      "data": {
+        "id": "user_alice_123",
+        "email": "alice@company.com",
+        "name": "Alice Johnson",
+        "roles": ["operator", "queue-admin"],
+        "resources": {
+          "queues": "payment-*,email-*",
+          "cluster": "prod-east"
+        },
+        "created_at": "2024-01-15T10:30:00Z",
+        "updated_at": "2024-01-20T14:22:00Z",
+        "last_login": "2024-01-21T09:15:00Z",
+        "status": "active"
+      }
+    },
+    {
+      "name": "access_denied_audit_event",
+      "description": "Example audit event for denied access",
+      "data": {
+        "id": "evt_access_denied_789",
+        "timestamp": "2024-01-21T15:45:00Z",
+        "event_type": "ACCESS_DENIED",
+        "actor": "alice@company.com",
+        "action": "dlq:purge",
+        "resource": "restricted-queue",
+        "result": "denied",
+        "details": {
+          "reason": "insufficient_permissions",
+          "required_scope": "dlq:purge",
+          "user_scopes": ["stats:read", "jobs:enqueue"],
+          "ip_address": "192.168.1.100",
+          "user_agent": "queue-cli/1.2.0"
+        },
+        "request_id": "req_abc123def456",
+        "remote_addr": "192.168.1.100",
+        "duration": 5,
+        "severity": "warning",
+        "tags": ["security", "access_control"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,423 @@
+<svg viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .dag-bg { fill: #1a1b26; }
+      .panel-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .toolbar-bg { fill: #1f2335; }
+      .canvas-bg { fill: #16161e; stroke: #414868; stroke-width: 1; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 9px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 8px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 9px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 8px; }
+      .warning-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 8px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 8px; }
+      .node-start { fill: #9ece6a; stroke: #7dcfff; }
+      .node-process { fill: #7aa2f7; stroke: #bb9af7; }
+      .node-condition { fill: #e0af68; stroke: #f7768e; }
+      .node-end { fill: #f7768e; stroke: #ff9e64; }
+      .connection-line { stroke: #7aa2f7; stroke-width: 2; fill: none; }
+      .connection-active { stroke: #9ece6a; stroke-width: 3; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="800" class="dag-bg"/>
+
+  <!-- Left Toolbar -->
+  <rect x="0" y="0" width="200" height="800" class="panel-bg"/>
+
+  <!-- Toolbar Header -->
+  <rect x="0" y="0" width="200" height="40" class="toolbar-bg"/>
+  <text x="10" y="15" class="accent-text">🎛 DAG Builder</text>
+  <text x="10" y="30" class="secondary-text">Visual Workflow Editor</text>
+
+  <!-- Node Palette -->
+  <g transform="translate(10,50)">
+    <text x="0" y="15" class="accent-text">Node Types</text>
+
+    <!-- Start Node -->
+    <g transform="translate(0,25)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#9ece6a" rx="4"/>
+      <circle cx="20" cy="15" r="8" class="node-start" stroke-width="2"/>
+      <text x="35" y="18" class="primary-text">▶ Start / Trigger</text>
+    </g>
+
+    <!-- Process Node -->
+    <g transform="translate(0,60)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#7aa2f7" rx="4"/>
+      <rect x="12" y="7" width="16" height="16" class="node-process" stroke-width="2" rx="2"/>
+      <text x="35" y="18" class="primary-text">⚙ Process / Task</text>
+    </g>
+
+    <!-- Condition Node -->
+    <g transform="translate(0,95)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#e0af68" rx="4"/>
+      <polygon points="20,7 28,15 20,23 12,15" class="node-condition" stroke-width="2"/>
+      <text x="35" y="18" class="primary-text">◆ Decision / Branch</text>
+    </g>
+
+    <!-- End Node -->
+    <g transform="translate(0,130)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#f7768e" rx="4"/>
+      <circle cx="20" cy="15" r="8" class="node-end" stroke-width="2"/>
+      <text x="35" y="18" class="primary-text">⬛ End / Complete</text>
+    </g>
+
+    <!-- Parallel Node -->
+    <g transform="translate(0,165)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#bb9af7" rx="4"/>
+      <rect x="12" y="7" width="6" height="16" fill="#bb9af7" stroke-width="1" rx="1"/>
+      <rect x="20" y="7" width="6" height="16" fill="#bb9af7" stroke-width="1" rx="1"/>
+      <text x="35" y="18" class="primary-text">⫸ Parallel / Fan-out</text>
+    </g>
+
+    <!-- Join Node -->
+    <g transform="translate(0,200)">
+      <rect x="0" y="0" width="180" height="30" fill="#24283b" stroke="#7dcfff" rx="4"/>
+      <polygon points="12,7 28,7 28,23 12,23" fill="none" stroke="#7dcfff" stroke-width="2"/>
+      <line x1="16" y1="11" x2="24" y2="11" stroke="#7dcfff" stroke-width="2"/>
+      <line x1="16" y1="19" x2="24" y2="19" stroke="#7dcfff" stroke-width="2"/>
+      <text x="35" y="18" class="primary-text">⫷ Join / Merge</text>
+    </g>
+  </g>
+
+  <!-- Workflow Templates -->
+  <g transform="translate(10,270)">
+    <text x="0" y="15" class="accent-text">Templates</text>
+
+    <rect x="0" y="25" width="180" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="10" y="40" class="secondary-text">📧 Email Pipeline</text>
+
+    <rect x="0" y="55" width="180" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="10" y="70" class="secondary-text">📊 Report Generation</text>
+
+    <rect x="0" y="85" width="180" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="10" y="100" class="secondary-text">🔄 ETL Pipeline</text>
+
+    <rect x="0" y="115" width="180" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+    <text x="10" y="130" class="secondary-text">🧪 ML Training</text>
+  </g>
+
+  <!-- Workflow Actions -->
+  <g transform="translate(10,440)">
+    <text x="0" y="15" class="accent-text">Actions</text>
+
+    <rect x="0" y="25" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="40" y="40" text-anchor="middle" class="success-text" font-size="8">▶ Run</text>
+
+    <rect x="90" y="25" width="80" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="130" y="40" text-anchor="middle" class="secondary-text" font-size="8">💾 Save</text>
+
+    <rect x="0" y="55" width="80" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="40" y="70" text-anchor="middle" class="accent-text" font-size="8">📋 Copy</text>
+
+    <rect x="90" y="55" width="80" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+    <text x="130" y="70" text-anchor="middle" class="warning-text" font-size="8">🗂 Export</text>
+  </g>
+
+  <!-- Version Control -->
+  <g transform="translate(10,520)">
+    <text x="0" y="15" class="accent-text">Version Control</text>
+
+    <rect x="0" y="25" width="180" height="60" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="10" y="40" class="secondary-text" font-size="8">Current: v1.3.2</text>
+    <text x="10" y="52" class="primary-text" font-size="8">📝 "Added error handling"</text>
+    <text x="10" y="64" class="secondary-text" font-size="8">Modified: 2m ago</text>
+
+    <rect x="10" y="70" width="70" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+    <text x="45" y="80" text-anchor="middle" class="secondary-text" font-size="7">History</text>
+
+    <rect x="90" y="70" width="70" height="15" class="panel-bg" stroke="#9ece6a" rx="2"/>
+    <text x="125" y="80" text-anchor="middle" class="success-text" font-size="7">Commit</text>
+  </g>
+
+  <!-- Main Canvas Area -->
+  <rect x="200" y="0" width="900" height="800" class="canvas-bg"/>
+
+  <!-- Canvas Header -->
+  <rect x="200" y="0" width="900" height="40" class="toolbar-bg"/>
+  <text x="220" y="15" class="accent-text">Order Processing Pipeline v1.3.2</text>
+  <text x="220" y="30" class="secondary-text">Status: RUNNING • Last execution: 2m ago • Success rate: 98.7%</text>
+
+  <!-- Canvas Controls -->
+  <g transform="translate(900,5)">
+    <rect x="0" y="0" width="30" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="15" y="16" text-anchor="middle" class="secondary-text" font-size="8">+</text>
+
+    <rect x="35" y="0" width="30" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="50" y="16" text-anchor="middle" class="secondary-text" font-size="8">-</text>
+
+    <rect x="70" y="0" width="50" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="95" y="16" text-anchor="middle" class="success-text" font-size="8">100%</text>
+
+    <rect x="125" y="0" width="40" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="145" y="16" text-anchor="middle" class="accent-text" font-size="8">Grid</text>
+
+    <rect x="170" y="0" width="50" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+    <text x="195" y="16" text-anchor="middle" class="warning-text" font-size="8">Debug</text>
+  </g>
+
+  <!-- DAG Workflow -->
+  <g transform="translate(220,60)">
+
+    <!-- Start Node -->
+    <g id="start-node">
+      <circle cx="50" cy="50" r="20" class="node-start" stroke-width="3"/>
+      <text x="50" y="55" text-anchor="middle" class="primary-text" font-size="8">START</text>
+      <text x="50" y="80" text-anchor="middle" class="secondary-text" font-size="7">Order Received</text>
+
+      <!-- Execution indicator -->
+      <circle cx="65" cy="35" r="4" fill="#9ece6a"/>
+      <text x="65" y="25" text-anchor="middle" class="success-text" font-size="6">✓</text>
+    </g>
+
+    <!-- Connection from Start to Validate -->
+    <path d="M 70 50 Q 120 50 150 50" class="connection-active" marker-end="url(#arrowhead)"/>
+
+    <!-- Validate Order Node -->
+    <g id="validate-node" transform="translate(150,25)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="8">VALIDATE</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="8">ORDER</text>
+      <text x="40" y="65" text-anchor="middle" class="secondary-text" font-size="7">Check inventory</text>
+
+      <!-- Execution indicator -->
+      <circle cx="70" cy="10" r="4" fill="#9ece6a"/>
+      <text x="70" y="6" text-anchor="middle" class="success-text" font-size="6">✓</text>
+    </g>
+
+    <!-- Connection from Validate to Decision -->
+    <path d="M 230 50 Q 280 50 320 50" class="connection-active" marker-end="url(#arrowhead)"/>
+
+    <!-- Decision Node -->
+    <g id="decision-node" transform="translate(320,25)">
+      <polygon points="40,0 80,25 40,50 0,25" class="node-condition" stroke-width="3"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="7">Valid?</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="7">Stock?</text>
+      <text x="40" y="70" text-anchor="middle" class="secondary-text" font-size="7">Business rules</text>
+
+      <!-- Execution indicator -->
+      <circle cx="60" cy="5" r="4" fill="#e0af68"/>
+      <text x="60" y="1" text-anchor="middle" class="warning-text" font-size="6">⚡</text>
+    </g>
+
+    <!-- YES path - to Process Payment -->
+    <path d="M 400 40 Q 450 40 480 40" class="connection-line" marker-end="url(#arrowhead)"/>
+    <text x="440" y="35" text-anchor="middle" class="success-text" font-size="7">YES</text>
+
+    <!-- NO path - to Reject -->
+    <path d="M 400 60 Q 450 100 480 140" class="connection-line" marker-end="url(#arrowhead)"/>
+    <text x="440" y="110" text-anchor="middle" class="danger-text" font-size="7">NO</text>
+
+    <!-- Process Payment Node -->
+    <g id="payment-node" transform="translate(480,15)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="8">PROCESS</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="8">PAYMENT</text>
+      <text x="40" y="75" text-anchor="middle" class="secondary-text" font-size="7">Stripe integration</text>
+    </g>
+
+    <!-- Reject Order Node -->
+    <g id="reject-node" transform="translate(480,115)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="danger-text" font-size="8">REJECT</text>
+      <text x="40" y="32" text-anchor="middle" class="danger-text" font-size="8">ORDER</text>
+      <text x="40" y="75" text-anchor="middle" class="secondary-text" font-size="7">Send notification</text>
+    </g>
+
+    <!-- Connection from Payment to Parallel -->
+    <path d="M 560 40 Q 610 40 640 40" class="connection-line" marker-end="url(#arrowhead)"/>
+
+    <!-- Parallel Node (Fan-out) -->
+    <g id="parallel-node" transform="translate(640,25)">
+      <rect x="0" y="0" width="50" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <rect x="15" y="10" width="6" height="30" fill="#bb9af7"/>
+      <rect x="25" y="10" width="6" height="30" fill="#bb9af7"/>
+      <text x="25" y="85" text-anchor="middle" class="secondary-text" font-size="7">Parallel tasks</text>
+    </g>
+
+    <!-- Parallel branches -->
+    <!-- Branch 1: Update Inventory -->
+    <path d="M 690 30 Q 740 0 780 0" class="connection-line" marker-end="url(#arrowhead)"/>
+    <g id="inventory-node" transform="translate(780,-25)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="8">UPDATE</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="8">INVENTORY</text>
+      <text x="40" y="65" text-anchor="middle" class="secondary-text" font-size="7">Reduce stock</text>
+    </g>
+
+    <!-- Branch 2: Send Confirmation -->
+    <path d="M 690 50 Q 740 50 780 50" class="connection-line" marker-end="url(#arrowhead)"/>
+    <g id="email-node" transform="translate(780,25)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="8">SEND</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="8">EMAIL</text>
+      <text x="40" y="75" text-anchor="middle" class="secondary-text" font-size="7">Confirmation</text>
+    </g>
+
+    <!-- Branch 3: Generate Invoice -->
+    <path d="M 690 70 Q 740 100 780 100" class="connection-line" marker-end="url(#arrowhead)"/>
+    <g id="invoice-node" transform="translate(780,75)">
+      <rect x="0" y="0" width="80" height="50" class="node-process" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="primary-text" font-size="8">GENERATE</text>
+      <text x="40" y="32" text-anchor="middle" class="primary-text" font-size="8">INVOICE</text>
+      <text x="40" y="65" text-anchor="middle" class="secondary-text" font-size="7">PDF creation</text>
+    </g>
+
+    <!-- Join Node -->
+    <g id="join-node" transform="translate(920,25)">
+      <rect x="0" y="0" width="50" height="50" fill="none" class="node-process" stroke-width="3" rx="8"/>
+      <line x1="15" y1="15" x2="35" y2="15" stroke="#7dcfff" stroke-width="3"/>
+      <line x1="15" y1="35" x2="35" y2="35" stroke="#7dcfff" stroke-width="3"/>
+      <text x="25" y="85" text-anchor="middle" class="secondary-text" font-size="7">Wait for all</text>
+    </g>
+
+    <!-- Connections to Join -->
+    <path d="M 860 0 Q 890 0 920 25" class="connection-line" marker-end="url(#arrowhead)"/>
+    <path d="M 860 50 Q 890 50 920 50" class="connection-line" marker-end="url(#arrowhead)"/>
+    <path d="M 860 100 Q 890 75 920 75" class="connection-line" marker-end="url(#arrowhead)"/>
+
+    <!-- Connection from Join to End -->
+    <path d="M 970 50 Q 1020 50 1050 50" class="connection-line" marker-end="url(#arrowhead)"/>
+
+    <!-- End Node -->
+    <g id="end-node" transform="translate(1050,25)">
+      <circle cx="25" cy="25" r="20" class="node-end" stroke-width="3"/>
+      <text x="25" y="30" text-anchor="middle" class="primary-text" font-size="8">END</text>
+      <text x="25" y="60" text-anchor="middle" class="secondary-text" font-size="7">Order Complete</text>
+    </g>
+
+    <!-- Connection from Reject to End -->
+    <path d="M 560 140 Q 800 140 1050 70" class="connection-line" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+
+    <!-- Error handling branch -->
+    <g id="error-node" transform="translate(480,200)">
+      <rect x="0" y="0" width="80" height="50" class="node-end" stroke-width="3" rx="8"/>
+      <text x="40" y="20" text-anchor="middle" class="danger-text" font-size="8">ERROR</text>
+      <text x="40" y="32" text-anchor="middle" class="danger-text" font-size="8">HANDLER</text>
+      <text x="40" y="75" text-anchor="middle" class="secondary-text" font-size="7">Rollback & Alert</text>
+    </g>
+
+    <!-- Error connections (dotted) -->
+    <path d="M 230 75 Q 350 225 480 225" stroke="#f7768e" stroke-width="2" fill="none" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+    <path d="M 560 65 Q 570 150 560 200" stroke="#f7768e" stroke-width="2" fill="none" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  </g>
+
+  <!-- Right Panel: Properties -->
+  <rect x="1100" y="0" width="300" height="800" class="panel-bg"/>
+
+  <!-- Properties Header -->
+  <rect x="1100" y="0" width="300" height="40" class="toolbar-bg"/>
+  <text x="1110" y="15" class="accent-text">📝 Node Properties</text>
+  <text x="1110" y="30" class="secondary-text">Validate Order (Selected)</text>
+
+  <!-- Properties Form -->
+  <g transform="translate(1110,50)">
+    <text x="0" y="15" class="accent-text">Configuration</text>
+
+    <!-- Name -->
+    <text x="0" y="35" class="secondary-text" font-size="8">Name:</text>
+    <rect x="0" y="40" width="280" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="53" class="primary-text" font-size="8">Validate Order</text>
+
+    <!-- Queue -->
+    <text x="0" y="75" class="secondary-text" font-size="8">Queue:</text>
+    <rect x="0" y="80" width="280" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="93" class="primary-text" font-size="8">validation-queue</text>
+
+    <!-- Retry Policy -->
+    <text x="0" y="115" class="secondary-text" font-size="8">Retry Policy:</text>
+    <rect x="0" y="120" width="280" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="133" class="primary-text" font-size="8">Exponential backoff (3 max)</text>
+
+    <!-- Timeout -->
+    <text x="0" y="155" class="secondary-text" font-size="8">Timeout:</text>
+    <rect x="0" y="160" width="280" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="173" class="primary-text" font-size="8">30s</text>
+
+    <!-- Priority -->
+    <text x="0" y="195" class="secondary-text" font-size="8">Priority:</text>
+    <rect x="0" y="200" width="280" height="20" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="213" class="primary-text" font-size="8">High (8)</text>
+
+    <!-- Input Schema -->
+    <text x="0" y="235" class="accent-text">Input Schema</text>
+    <rect x="0" y="245" width="280" height="80" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="260" class="primary-text" font-size="7">{</text>
+    <text x="5" y="275" class="primary-text" font-size="7">  "order_id": "string",</text>
+    <text x="5" y="290" class="primary-text" font-size="7">  "items": "array",</text>
+    <text x="5" y="305" class="primary-text" font-size="7">  "customer_id": "string"</text>
+    <text x="5" y="320" class="primary-text" font-size="7">}</text>
+
+    <!-- Output Schema -->
+    <text x="0" y="345" class="accent-text">Output Schema</text>
+    <rect x="0" y="355" width="280" height="60" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="5" y="370" class="primary-text" font-size="7">{</text>
+    <text x="5" y="385" class="primary-text" font-size="7">  "valid": "boolean",</text>
+    <text x="5" y="400" class="primary-text" font-size="7">  "errors": "array"</text>
+    <text x="5" y="415" class="primary-text" font-size="7">}</text>
+  </g>
+
+  <!-- Execution Stats -->
+  <g transform="translate(1110,470)">
+    <text x="0" y="15" class="accent-text">Execution Stats</text>
+
+    <rect x="0" y="25" width="280" height="120" fill="#1f2335" stroke="#414868" rx="3"/>
+
+    <g transform="translate(10,40)">
+      <text x="0" y="0" class="secondary-text" font-size="8">Last 24 hours:</text>
+      <text x="0" y="15" class="success-text" font-size="8">✓ Success: 1,247 (98.7%)</text>
+      <text x="0" y="30" class="danger-text" font-size="8">✗ Failed: 16 (1.3%)</text>
+      <text x="0" y="45" class="secondary-text" font-size="8">Avg Duration: 1.2s</text>
+      <text x="0" y="60" class="secondary-text" font-size="8">P95 Duration: 2.8s</text>
+      <text x="0" y="75" class="warning-text" font-size="8">Max Duration: 15.3s</text>
+      <text x="0" y="90" class="secondary-text" font-size="8">Throughput: 52 jobs/min</text>
+    </g>
+  </g>
+
+  <!-- Testing Panel -->
+  <g transform="translate(1110,610)">
+    <text x="0" y="15" class="accent-text">Testing</text>
+
+    <rect x="0" y="25" width="135" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="67" y="40" text-anchor="middle" class="secondary-text" font-size="8">🧪 Test Node</text>
+
+    <rect x="145" y="25" width="135" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="212" y="40" text-anchor="middle" class="success-text" font-size="8">▶ Test Flow</text>
+
+    <!-- Test Results -->
+    <rect x="0" y="60" width="280" height="80" fill="#1f2335" stroke="#414868" rx="3"/>
+    <text x="10" y="80" class="success-text" font-size="8">✓ Last test passed (2m ago)</text>
+    <text x="10" y="95" class="secondary-text" font-size="8">Input: {order_id: "TEST123"}</text>
+    <text x="10" y="110" class="secondary-text" font-size="8">Output: {valid: true, errors: []}</text>
+    <text x="10" y="125" class="secondary-text" font-size="8">Duration: 0.8s</text>
+  </g>
+
+  <!-- Mini-map -->
+  <g transform="translate(1110,720)">
+    <text x="0" y="15" class="accent-text">Mini-map</text>
+    <rect x="0" y="20" width="280" height="60" fill="#16161e" stroke="#414868" rx="3"/>
+
+    <!-- Miniature workflow representation -->
+    <g transform="translate(20,35)" opacity="0.7">
+      <circle cx="10" cy="15" r="3" fill="#9ece6a"/>
+      <rect x="25" y="12" width="8" height="6" fill="#7aa2f7"/>
+      <polygon points="40,12 44,15 40,18 36,15" fill="#e0af68"/>
+      <rect x="50" y="12" width="8" height="6" fill="#7aa2f7"/>
+      <rect x="65" y="10" width="4" height="10" fill="#bb9af7"/>
+      <rect x="75" y="12" width="8" height="6" fill="#7aa2f7"/>
+      <circle cx="90" cy="15" r="3" fill="#f7768e"/>
+
+      <!-- Viewport indicator -->
+      <rect x="20" y="5" width="40" height="20" fill="none" stroke="#7aa2f7" stroke-width="1"/>
+    </g>
+  </g>
+
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7"
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7aa2f7" />
+    </marker>
+  </defs>
+</svg>

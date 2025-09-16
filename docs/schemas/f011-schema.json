@@ -1,0 +1,1486 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.queue.company.com/capacity-planning/v1.0.0/",
+  "title": "Automatic Capacity Planning Schema Definitions",
+  "description": "JSON Schema definitions for the Automatic Capacity Planning system",
+  "type": "object",
+  "definitions": {
+    "CapacityPlan": {
+      "$id": "#/definitions/CapacityPlan",
+      "type": "object",
+      "title": "Capacity Plan",
+      "description": "A comprehensive capacity planning recommendation with scaling steps and analysis",
+      "required": [
+        "id",
+        "created_at",
+        "current_workers",
+        "target_workers",
+        "confidence",
+        "slo_achievable"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the capacity plan"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Plan creation timestamp"
+        },
+        "policy_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Associated scaling policy ID"
+        },
+        "queue": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Target queue name"
+        },
+        "current_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Current number of workers"
+        },
+        "target_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Recommended target number of workers"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScalingStep"
+          },
+          "minItems": 0,
+          "maxItems": 100,
+          "description": "Sequence of scaling actions to reach target"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score for the plan (0-1)"
+        },
+        "cost_impact": {
+          "$ref": "#/definitions/CostAnalysis"
+        },
+        "slo_achievable": {
+          "type": "boolean",
+          "description": "Whether the plan achieves SLO targets"
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Human-readable explanation of the plan"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "executing", "completed", "cancelled", "failed"],
+          "description": "Current status of the plan"
+        },
+        "simulation": {
+          "$ref": "#/definitions/SimulationSummary"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional plan metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScalingStep": {
+      "$id": "#/definitions/ScalingStep",
+      "type": "object",
+      "title": "Scaling Step",
+      "description": "Individual scaling action within a capacity plan",
+      "required": [
+        "timestamp",
+        "from_workers",
+        "to_workers",
+        "reason",
+        "confidence"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this step should be executed"
+        },
+        "from_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Current worker count before this step"
+        },
+        "to_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Target worker count after this step"
+        },
+        "delta": {
+          "type": "integer",
+          "minimum": -1000,
+          "maximum": 1000,
+          "description": "Worker count change (computed field)"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "traffic_spike_predicted",
+            "backlog_reduction_needed",
+            "slo_violation_imminent",
+            "cost_optimization",
+            "utilization_low",
+            "forecast_adjustment",
+            "safety_margin_application",
+            "cooldown_completion",
+            "manual_override"
+          ],
+          "description": "Reason for this scaling action"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in this specific step"
+        },
+        "estimated_duration": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Expected duration for this step (ISO 8601)"
+        },
+        "safety_checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "cooldown_period_met",
+              "step_size_within_limits",
+              "cost_budget_available",
+              "anomaly_detector_clear",
+              "circuit_breaker_closed",
+              "resource_availability_confirmed"
+            ]
+          },
+          "description": "Safety validations that must pass"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Conditions that must be met before execution"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CostAnalysis": {
+      "$id": "#/definitions/CostAnalysis",
+      "type": "object",
+      "title": "Cost Analysis",
+      "description": "Economic impact analysis of a capacity plan",
+      "required": [
+        "current_cost_per_hour",
+        "projected_cost_per_hour",
+        "net_impact_per_hour"
+      ],
+      "properties": {
+        "current_cost_per_hour": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Current infrastructure cost per hour in USD"
+        },
+        "projected_cost_per_hour": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Projected cost per hour after scaling in USD"
+        },
+        "net_impact_per_hour": {
+          "type": "number",
+          "multipleOf": 0.01,
+          "description": "Net cost change per hour (positive = increase) in USD"
+        },
+        "violation_cost_savings": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Estimated savings from avoiding SLO violations in USD"
+        },
+        "total_daily_impact": {
+          "type": "number",
+          "multipleOf": 0.01,
+          "description": "Total projected daily cost impact in USD"
+        },
+        "roi_hours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Hours until cost savings break even"
+        },
+        "cost_breakdown": {
+          "type": "object",
+          "properties": {
+            "compute_cost": {
+              "type": "number",
+              "minimum": 0
+            },
+            "storage_cost": {
+              "type": "number",
+              "minimum": 0
+            },
+            "network_cost": {
+              "type": "number",
+              "minimum": 0
+            },
+            "license_cost": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SimulationSummary": {
+      "$id": "#/definitions/SimulationSummary",
+      "type": "object",
+      "title": "Simulation Summary",
+      "description": "Summary of plan simulation results",
+      "properties": {
+        "slo_achievement_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of time SLOs are met"
+        },
+        "max_backlog": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum predicted backlog"
+        },
+        "p95_latency": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "95th percentile latency (ISO 8601 duration)"
+        },
+        "utilization_range": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "max": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "avg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": ["min", "max", "avg"],
+          "additionalProperties": false
+        },
+        "simulation_duration": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Duration of the simulation"
+        },
+        "confidence_interval": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 0.99
+            },
+            "lower_bound": {
+              "type": "number"
+            },
+            "upper_bound": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SLOTarget": {
+      "$id": "#/definitions/SLOTarget",
+      "type": "object",
+      "title": "SLO Target",
+      "description": "Service Level Objective targets for capacity planning",
+      "required": [
+        "p95_latency",
+        "max_backlog"
+      ],
+      "properties": {
+        "p95_latency": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Target 95th percentile latency (ISO 8601 duration)"
+        },
+        "max_backlog": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Maximum allowed backlog size"
+        },
+        "error_budget": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.01,
+          "description": "Allowed error rate (0-1)"
+        },
+        "availability": {
+          "type": "number",
+          "minimum": 0.9,
+          "maximum": 1,
+          "default": 0.999,
+          "description": "Target availability (0-1)"
+        },
+        "drain_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Maximum time to drain backlog after burst"
+        },
+        "response_time_targets": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p90": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p99": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScalingConstraints": {
+      "$id": "#/definitions/ScalingConstraints",
+      "type": "object",
+      "title": "Scaling Constraints",
+      "description": "Constraints for scaling operations",
+      "properties": {
+        "min_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 1,
+          "description": "Minimum number of workers"
+        },
+        "max_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of workers"
+        },
+        "max_step_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 15,
+          "description": "Maximum workers to add/remove in one step"
+        },
+        "cooldown_period": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "default": "PT5M",
+          "description": "Minimum time between scaling actions"
+        },
+        "safety_margin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.15,
+          "description": "Safety buffer percentage (0-1)"
+        },
+        "scale_up_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.8,
+          "description": "Utilization threshold for scaling up"
+        },
+        "scale_down_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.6,
+          "description": "Utilization threshold for scaling down"
+        },
+        "hysteresis_band": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5,
+          "default": 0.1,
+          "description": "Hysteresis band to prevent oscillation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ForecastParams": {
+      "$id": "#/definitions/ForecastParams",
+      "type": "object",
+      "title": "Forecast Parameters",
+      "description": "Parameters for demand forecasting",
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["ewma", "holt_winters", "auto"],
+          "default": "auto",
+          "description": "Forecasting model to use"
+        },
+        "window": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 10080,
+          "default": 1440,
+          "description": "Historical data window in minutes"
+        },
+        "seasonality": {
+          "type": "string",
+          "enum": ["none", "hourly", "daily", "weekly"],
+          "default": "daily",
+          "description": "Seasonal pattern to consider"
+        },
+        "confidence_level": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "default": 0.8,
+          "description": "Confidence level for forecast bands"
+        },
+        "alpha": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "default": 0.3,
+          "description": "EWMA smoothing parameter"
+        },
+        "beta": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "default": 0.1,
+          "description": "Trend smoothing parameter (Holt-Winters)"
+        },
+        "gamma": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "default": 0.1,
+          "description": "Seasonal smoothing parameter (Holt-Winters)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CostConstraints": {
+      "$id": "#/definitions/CostConstraints",
+      "type": "object",
+      "title": "Cost Constraints",
+      "description": "Cost-related constraints for scaling decisions",
+      "properties": {
+        "max_hourly_increase": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Maximum allowed hourly cost increase in USD"
+        },
+        "max_daily_budget": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Maximum total daily budget in USD"
+        },
+        "cost_per_worker_hour": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Cost per worker per hour in USD"
+        },
+        "violation_penalty": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "description": "Cost penalty for SLO violations per hour in USD"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP", "JPY"],
+          "default": "USD",
+          "description": "Currency for cost calculations"
+        },
+        "cost_optimization_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.3,
+          "description": "Weight given to cost optimization vs performance"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScalingPolicy": {
+      "$id": "#/definitions/ScalingPolicy",
+      "type": "object",
+      "title": "Scaling Policy",
+      "description": "Automated scaling policy configuration",
+      "required": [
+        "id",
+        "name",
+        "enabled",
+        "mode",
+        "slo",
+        "scaling"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique policy identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_-][a-zA-Z0-9_\\- ]*$",
+          "description": "Human-readable policy name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Policy description"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the policy is active"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "manual", "advisory"],
+          "description": "Scaling mode"
+        },
+        "queue_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_*?-]+$",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Queue name patterns this policy applies to"
+        },
+        "slo": {
+          "$ref": "#/definitions/SLOTarget"
+        },
+        "scaling": {
+          "$ref": "#/definitions/ScalingConstraints"
+        },
+        "forecast": {
+          "$ref": "#/definitions/ForecastParams"
+        },
+        "cost": {
+          "$ref": "#/definitions/CostConstraints"
+        },
+        "schedule": {
+          "$ref": "#/definitions/PolicySchedule"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_@.-]+$",
+          "maxLength": 100,
+          "description": "User who created the policy"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "maxLength": 50
+          },
+          "maxItems": 10,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolicySchedule": {
+      "$id": "#/definitions/PolicySchedule",
+      "type": "object",
+      "title": "Policy Schedule",
+      "description": "Time-based scheduling for scaling policies",
+      "properties": {
+        "active_hours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+                "description": "Start time in HH:MM format"
+              },
+              "end": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+                "description": "End time in HH:MM format"
+              },
+              "timezone": {
+                "type": "string",
+                "pattern": "^[A-Za-z]+/[A-Za-z_]+$",
+                "description": "Timezone identifier (e.g., America/New_York)"
+              }
+            },
+            "required": ["start", "end", "timezone"],
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "active_days": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 7
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "mode": {
+                "type": "string",
+                "enum": ["disabled", "manual_only"]
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "required": ["date", "mode"],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapacityMetrics": {
+      "$id": "#/definitions/CapacityMetrics",
+      "type": "object",
+      "title": "Capacity Metrics",
+      "description": "Current capacity and performance metrics",
+      "required": [
+        "timestamp",
+        "queues"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics collection timestamp"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QueueMetrics"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "global_stats": {
+          "$ref": "#/definitions/GlobalStats"
+        },
+        "forecast": {
+          "$ref": "#/definitions/DemandForecast"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueMetrics": {
+      "$id": "#/definitions/QueueMetrics",
+      "type": "object",
+      "title": "Queue Metrics",
+      "description": "Metrics for a specific queue",
+      "required": [
+        "name",
+        "arrival_rate",
+        "service_rate",
+        "current_workers",
+        "backlog"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Queue name"
+        },
+        "arrival_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Current arrival rate (jobs/second)"
+        },
+        "service_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Service rate per worker (jobs/second)"
+        },
+        "service_time": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p95": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p99": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "mean": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "stddev": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "current_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Current number of active workers"
+        },
+        "target_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Target worker count from active policy"
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Current worker utilization (0-1)"
+        },
+        "backlog": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000,
+          "description": "Current backlog size"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Recent error rate (0-1)"
+        },
+        "slo_status": {
+          "$ref": "#/definitions/SLOStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SLOStatus": {
+      "$id": "#/definitions/SLOStatus",
+      "type": "object",
+      "title": "SLO Status",
+      "description": "Current SLO achievement status",
+      "properties": {
+        "achieved": {
+          "type": "boolean",
+          "description": "Whether SLO is currently being met"
+        },
+        "p95_latency_target": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "p95_latency_actual": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "backlog_target": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backlog_actual": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_budget_remaining": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Remaining error budget (0-1)"
+        },
+        "time_since_last_violation": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "violations_last_24h": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "GlobalStats": {
+      "$id": "#/definitions/GlobalStats",
+      "type": "object",
+      "title": "Global Statistics",
+      "description": "System-wide capacity statistics",
+      "properties": {
+        "total_workers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_queues": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_arrival_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "average_utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "active_policies": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recent_scaling_actions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_per_hour": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01
+        }
+      },
+      "additionalProperties": false
+    },
+    "DemandForecast": {
+      "$id": "#/definitions/DemandForecast",
+      "type": "object",
+      "title": "Demand Forecast",
+      "description": "Predicted demand patterns and arrival rates",
+      "required": [
+        "generated_at",
+        "horizon_minutes",
+        "model_used",
+        "predictions"
+      ],
+      "properties": {
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "horizon_minutes": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 10080
+        },
+        "model_used": {
+          "type": "string",
+          "enum": ["ewma", "holt_winters", "auto"]
+        },
+        "confidence_level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "queue": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Queue name (if specific queue)"
+        },
+        "predictions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ForecastPoint"
+          },
+          "minItems": 1,
+          "maxItems": 2016
+        },
+        "accuracy_metrics": {
+          "$ref": "#/definitions/ForecastAccuracy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ForecastPoint": {
+      "$id": "#/definitions/ForecastPoint",
+      "type": "object",
+      "title": "Forecast Point",
+      "description": "Single point in time forecast",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "predicted_arrival_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confidence_lower": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confidence_upper": {
+          "type": "number",
+          "minimum": 0
+        },
+        "seasonal_component": {
+          "type": "number"
+        },
+        "trend_component": {
+          "type": "number"
+        },
+        "noise_component": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ForecastAccuracy": {
+      "$id": "#/definitions/ForecastAccuracy",
+      "type": "object",
+      "title": "Forecast Accuracy",
+      "description": "Accuracy metrics for forecasting models",
+      "properties": {
+        "mape": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Mean Absolute Percentage Error"
+        },
+        "rmse": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Root Mean Square Error"
+        },
+        "mae": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Mean Absolute Error"
+        },
+        "r_squared": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "R-squared coefficient"
+        },
+        "last_validated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "validation_period": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SimulationResult": {
+      "$id": "#/definitions/SimulationResult",
+      "type": "object",
+      "title": "Simulation Result",
+      "description": "Complete simulation results and analysis",
+      "required": [
+        "simulation_id",
+        "scenario",
+        "completed_at",
+        "summary"
+      ],
+      "properties": {
+        "simulation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "scenario": {
+          "$ref": "#/definitions/ScenarioConfig"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "summary": {
+          "$ref": "#/definitions/SimulationSummary"
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TimelinePoint"
+          },
+          "maxItems": 10000
+        },
+        "statistics": {
+          "$ref": "#/definitions/SimulationStatistics"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScenarioConfig": {
+      "$id": "#/definitions/ScenarioConfig",
+      "type": "object",
+      "title": "Scenario Configuration",
+      "description": "Configuration for simulation scenarios",
+      "required": [
+        "name",
+        "scaling_plan"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "scaling_plan": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScalingStep"
+          },
+          "maxItems": 100
+        },
+        "traffic_pattern": {
+          "$ref": "#/definitions/TrafficPattern"
+        },
+        "failure_scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FailureScenario"
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrafficPattern": {
+      "$id": "#/definitions/TrafficPattern",
+      "type": "object",
+      "title": "Traffic Pattern",
+      "description": "Traffic pattern definition for simulations",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["constant", "linear", "exponential", "sinusoidal", "custom"]
+        },
+        "base_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "amplitude": {
+              "type": "number",
+              "minimum": 0
+            },
+            "frequency": {
+              "type": "number",
+              "minimum": 0
+            },
+            "phase": {
+              "type": "number"
+            },
+            "growth_rate": {
+              "type": "number"
+            },
+            "spike_probability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "spike_magnitude": {
+              "type": "number",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "FailureScenario": {
+      "$id": "#/definitions/FailureScenario",
+      "type": "object",
+      "title": "Failure Scenario",
+      "description": "Failure injection for simulation testing",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["worker_failure", "network_partition", "redis_slowdown", "memory_pressure", "cpu_throttling"]
+        },
+        "probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "impact": {
+          "type": "object",
+          "properties": {
+            "service_rate_reduction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "error_rate_increase": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "affected_workers": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimelinePoint": {
+      "$id": "#/definitions/TimelinePoint",
+      "type": "object",
+      "title": "Timeline Point",
+      "description": "Single point in simulation timeline",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "workers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "arrival_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "backlog": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latency_p95": {
+          "type": "number",
+          "minimum": 0
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cost_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "slo_achieved": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SimulationStatistics": {
+      "$id": "#/definitions/SimulationStatistics",
+      "type": "object",
+      "title": "Simulation Statistics",
+      "description": "Statistical analysis of simulation results",
+      "properties": {
+        "slo_violations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_backlog": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "avg_utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "total_cost": {
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.01
+        },
+        "efficiency_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stability_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "percentiles": {
+          "type": "object",
+          "properties": {
+            "latency_p50": {
+              "type": "number",
+              "minimum": 0
+            },
+            "latency_p95": {
+              "type": "number",
+              "minimum": 0
+            },
+            "latency_p99": {
+              "type": "number",
+              "minimum": 0
+            },
+            "utilization_p50": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "utilization_p95": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "HealthStatus": {
+      "$id": "#/definitions/HealthStatus",
+      "type": "object",
+      "title": "Health Status",
+      "description": "System health status and diagnostics",
+      "required": [
+        "status",
+        "timestamp",
+        "components"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ComponentHealth"
+          }
+        },
+        "performance": {
+          "$ref": "#/definitions/PerformanceMetrics"
+        },
+        "recent_issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "ComponentHealth": {
+      "$id": "#/definitions/ComponentHealth",
+      "type": "object",
+      "title": "Component Health",
+      "description": "Health status of individual system components",
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["redis", "forecaster", "planner", "executor", "api", "metrics_collector"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"]
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "response_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "additionalProperties": false
+    },
+    "PerformanceMetrics": {
+      "$id": "#/definitions/PerformanceMetrics",
+      "type": "object",
+      "title": "Performance Metrics",
+      "description": "System performance metrics",
+      "properties": {
+        "avg_plan_generation_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "avg_simulation_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "plans_generated_last_hour": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "successful_executions_last_24h": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_executions_last_24h": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_usage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "cpu_usage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "Error": {
+      "$id": "#/definitions/Error",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_REQUEST",
+            "VALIDATION_ERROR",
+            "RESOURCE_NOT_FOUND",
+            "INSUFFICIENT_PERMISSIONS",
+            "RATE_LIMIT_EXCEEDED",
+            "SERVICE_UNAVAILABLE",
+            "INTERNAL_ERROR",
+            "COST_LIMIT_EXCEEDED",
+            "SAFETY_VIOLATION",
+            "CONCURRENT_MODIFICATION"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "help_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

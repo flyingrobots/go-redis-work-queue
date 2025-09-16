@@ -1,0 +1,12 @@
+<svg width="960" height="540" xmlns="http://www.w3.org/2000/svg">
+  <style>.label{font-family: monospace; font-size: 14px; fill: #ddd}</style>
+  <rect x="0" y="0" width="960" height="540" fill="#1e1e1e"/>
+  <!-- scrim -->
+  <rect x="0" y="0" width="960" height="540" fill="#000" opacity="0.4"/>
+  <!-- help panel -->
+  <rect x="180" y="120" width="600" height="300" fill="#2a2a2a" stroke="#999"/>
+  <text x="200" y="150" class="label">Help</text>
+  <text x="200" y="180" class="label">q: quit | tab/shift+tab: focus | esc: help</text>
+  <text x="200" y="205" class="label">j/k: nav | p/enter: peek | b: bench | f: filter</text>
+  <text x="200" y="230" class="label">D/A: purge DLQ/ALL</text>
+</svg>

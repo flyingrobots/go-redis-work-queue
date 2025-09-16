@@ -1,0 +1,732 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://go-redis-work-queue.example.com/schemas/f018-long-term-archives.json",
+  "title": "Long Term Archives Schema Definitions",
+  "description": "JSON Schema definitions for Long Term Archives feature data models and API contracts",
+  "definitions": {
+    "ArchiveConfig": {
+      "type": "object",
+      "title": "Archive Configuration",
+      "description": "Global configuration for archive system",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether archiving is enabled globally"
+        },
+        "backends": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/StorageBackend"},
+          "minItems": 1,
+          "description": "List of configured storage backends"
+        },
+        "default_retention": {
+          "$ref": "#/definitions/RetentionPolicy",
+          "description": "Default retention policy for all archives"
+        },
+        "batch_config": {
+          "$ref": "#/definitions/BatchConfig",
+          "description": "Batch processing configuration"
+        },
+        "encryption": {
+          "$ref": "#/definitions/EncryptionConfig",
+          "description": "Encryption configuration for archived data"
+        }
+      },
+      "required": ["enabled", "backends", "default_retention", "batch_config"],
+      "additionalProperties": false
+    },
+    "StorageBackend": {
+      "type": "object",
+      "title": "Storage Backend Configuration",
+      "description": "Configuration for a specific storage backend",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique identifier for the backend"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["clickhouse", "s3", "postgres"],
+          "description": "Type of storage backend"
+        },
+        "connection": {
+          "$ref": "#/definitions/ConnectionConfig",
+          "description": "Connection configuration"
+        },
+        "schema": {
+          "$ref": "#/definitions/SchemaConfig",
+          "description": "Schema configuration"
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["hot", "warm", "cold"],
+          "description": "Storage tier for cost optimization"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this backend is enabled"
+        }
+      },
+      "required": ["id", "type", "connection", "tier"],
+      "additionalProperties": false
+    },
+    "ConnectionConfig": {
+      "type": "object",
+      "title": "Backend Connection Configuration",
+      "description": "Connection parameters for storage backend",
+      "oneOf": [
+        {"$ref": "#/definitions/ClickHouseConnection"},
+        {"$ref": "#/definitions/S3Connection"},
+        {"$ref": "#/definitions/PostgresConnection"}
+      ]
+    },
+    "ClickHouseConnection": {
+      "type": "object",
+      "properties": {
+        "host": {"type": "string"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "database": {"type": "string"},
+        "username": {"type": "string"},
+        "password": {"type": "string"},
+        "secure": {"type": "boolean", "default": false},
+        "compression": {"type": "string", "enum": ["none", "lz4", "zstd"], "default": "lz4"},
+        "max_connections": {"type": "integer", "minimum": 1, "default": 10}
+      },
+      "required": ["host", "port", "database"],
+      "additionalProperties": false
+    },
+    "S3Connection": {
+      "type": "object",
+      "properties": {
+        "region": {"type": "string"},
+        "bucket": {"type": "string"},
+        "prefix": {"type": "string", "default": "archives/"},
+        "access_key_id": {"type": "string"},
+        "secret_access_key": {"type": "string"},
+        "endpoint": {"type": "string"},
+        "force_path_style": {"type": "boolean", "default": false},
+        "storage_class": {"type": "string", "enum": ["STANDARD", "IA", "GLACIER", "DEEP_ARCHIVE"], "default": "STANDARD"}
+      },
+      "required": ["region", "bucket"],
+      "additionalProperties": false
+    },
+    "PostgresConnection": {
+      "type": "object",
+      "properties": {
+        "host": {"type": "string"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535, "default": 5432},
+        "database": {"type": "string"},
+        "username": {"type": "string"},
+        "password": {"type": "string"},
+        "ssl_mode": {"type": "string", "enum": ["disable", "require", "verify-ca", "verify-full"], "default": "require"},
+        "max_connections": {"type": "integer", "minimum": 1, "default": 10}
+      },
+      "required": ["host", "database", "username"],
+      "additionalProperties": false
+    },
+    "SchemaConfig": {
+      "type": "object",
+      "title": "Schema Configuration",
+      "description": "Schema versioning and evolution configuration",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^v\\d+\\.\\d+\\.\\d+$",
+          "description": "Current schema version (semver format)"
+        },
+        "auto_migrate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to automatically apply schema migrations"
+        },
+        "backward_compatible": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to maintain backward compatibility"
+        },
+        "fields": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/FieldDefinition"},
+          "description": "Custom field definitions"
+        }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    },
+    "FieldDefinition": {
+      "type": "object",
+      "title": "Field Definition",
+      "description": "Custom field definition for schema",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "description": "Field name (snake_case)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "float", "boolean", "timestamp", "json"],
+          "description": "Field data type"
+        },
+        "nullable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether field can be null"
+        },
+        "indexed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether field should be indexed"
+        },
+        "description": {
+          "type": "string",
+          "description": "Field description"
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+    "BatchConfig": {
+      "type": "object",
+      "title": "Batch Processing Configuration",
+      "description": "Configuration for batch processing of archive records",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50000,
+          "default": 1000,
+          "description": "Number of records per batch"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "30s",
+          "description": "Maximum time to wait before flushing batch"
+        },
+        "memory_limit": {
+          "type": "string",
+          "pattern": "^\\d+[KMGT]?B$",
+          "default": "100MB",
+          "description": "Memory limit before forcing batch flush"
+        },
+        "retry_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of retry attempts for failed batches"
+        },
+        "retry_delay": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "5s",
+          "description": "Delay between retry attempts"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EncryptionConfig": {
+      "type": "object",
+      "title": "Encryption Configuration",
+      "description": "Configuration for data encryption in archives",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether encryption is enabled"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["aes-256-gcm", "chacha20-poly1305"],
+          "default": "aes-256-gcm",
+          "description": "Encryption algorithm"
+        },
+        "key_source": {
+          "type": "string",
+          "enum": ["env", "file", "kms"],
+          "default": "env",
+          "description": "Source of encryption keys"
+        },
+        "key_rotation_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 90,
+          "description": "Days between key rotation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetentionPolicy": {
+      "type": "object",
+      "title": "Retention Policy",
+      "description": "Data retention policy configuration",
+      "properties": {
+        "redis_ttl": {
+          "type": "string",
+          "pattern": "^\\d+[dhm]$",
+          "default": "7d",
+          "description": "TTL for data in Redis (hot tier)"
+        },
+        "warm_retention": {
+          "type": "string",
+          "pattern": "^\\d+[dhmy]$",
+          "default": "90d",
+          "description": "Retention period in warm storage"
+        },
+        "cold_retention": {
+          "type": "string",
+          "pattern": "^\\d+[dhmy]$",
+          "default": "7y",
+          "description": "Retention period in cold storage"
+        },
+        "auto_cleanup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to automatically clean up expired data"
+        },
+        "compliance_mode": {
+          "type": "string",
+          "enum": ["none", "gdpr", "ccpa", "custom"],
+          "default": "none",
+          "description": "Compliance framework for retention"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JobRecord": {
+      "type": "object",
+      "title": "Archived Job Record",
+      "description": "Structure of an archived job record",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue name where job was processed"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Job priority (0-255)"
+        },
+        "enqueue_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When job was enqueued (ISO 8601)"
+        },
+        "start_time": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When job processing started (ISO 8601)"
+        },
+        "end_time": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When job processing ended (ISO 8601)"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": ["success", "failed", "timeout", "cancelled"],
+          "description": "Job processing outcome"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of retry attempts"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "ID of worker that processed the job"
+        },
+        "payload_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of job payload in bytes"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed tracing trace ID"
+        },
+        "payload_hash": {
+          "type": "string",
+          "description": "SHA-256 hash of job payload"
+        },
+        "payload_sample": {
+          "type": ["string", "null"],
+          "description": "Optional redacted payload sample"
+        },
+        "tenant_id": {
+          "type": ["string", "null"],
+          "description": "Tenant ID for multi-tenant deployments"
+        },
+        "error_message": {
+          "type": ["string", "null"],
+          "description": "Error message if job failed"
+        },
+        "error_code": {
+          "type": ["string", "null"],
+          "description": "Error code if job failed"
+        },
+        "duration_ms": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Job processing duration in milliseconds"
+        },
+        "memory_usage_mb": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Peak memory usage in MB"
+        },
+        "cpu_usage_percent": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Average CPU usage percentage"
+        }
+      },
+      "required": [
+        "job_id",
+        "queue",
+        "priority",
+        "enqueue_time",
+        "outcome",
+        "retries",
+        "worker_id",
+        "payload_size",
+        "trace_id",
+        "payload_hash"
+      ],
+      "additionalProperties": false
+    },
+    "QueryRequest": {
+      "type": "object",
+      "title": "Archive Query Request",
+      "description": "Request structure for querying archived data",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "SQL query string"
+        },
+        "backend": {
+          "type": "string",
+          "description": "Target storage backend ID"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "csv", "parquet"],
+          "default": "json",
+          "description": "Response format"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "default": 1000,
+          "description": "Maximum number of results"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "30s",
+          "description": "Query timeout"
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    },
+    "QueryResponse": {
+      "type": "object",
+      "title": "Archive Query Response",
+      "description": "Response structure for archive queries",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {"type": "object"},
+          "description": "Query result data"
+        },
+        "metadata": {
+          "$ref": "#/definitions/QueryMetadata",
+          "description": "Query execution metadata"
+        },
+        "schema": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/ColumnInfo"},
+          "description": "Result schema information"
+        }
+      },
+      "required": ["data", "metadata"],
+      "additionalProperties": false
+    },
+    "QueryMetadata": {
+      "type": "object",
+      "title": "Query Execution Metadata",
+      "description": "Metadata about query execution",
+      "properties": {
+        "query_id": {
+          "type": "string",
+          "description": "Unique query execution ID"
+        },
+        "backend": {
+          "type": "string",
+          "description": "Backend that executed the query"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Query execution time in milliseconds"
+        },
+        "rows_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of rows processed"
+        },
+        "rows_returned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of rows returned"
+        },
+        "bytes_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Bytes scanned during query"
+        },
+        "cache_hit": {
+          "type": "boolean",
+          "description": "Whether query result was cached"
+        }
+      },
+      "required": ["query_id", "backend", "duration_ms", "rows_processed", "rows_returned"],
+      "additionalProperties": false
+    },
+    "ColumnInfo": {
+      "type": "object",
+      "title": "Column Information",
+      "description": "Information about a result column",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Column data type"
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Whether column can contain null values"
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+    "SchemaInfo": {
+      "type": "object",
+      "title": "Schema Information",
+      "description": "Information about archive schema",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "description": "Storage backend ID"
+        },
+        "version": {
+          "type": "string",
+          "description": "Current schema version"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Schema creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last schema update timestamp"
+        },
+        "fields": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/FieldDefinition"},
+          "description": "Schema field definitions"
+        },
+        "indexes": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/IndexInfo"},
+          "description": "Schema indexes"
+        }
+      },
+      "required": ["backend", "version", "created_at", "fields"],
+      "additionalProperties": false
+    },
+    "IndexInfo": {
+      "type": "object",
+      "title": "Index Information",
+      "description": "Information about a database index",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Index name"
+        },
+        "columns": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Indexed columns"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["btree", "hash", "bloom", "sparse"],
+          "description": "Index type"
+        },
+        "unique": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether index enforces uniqueness"
+        }
+      },
+      "required": ["name", "columns", "type"],
+      "additionalProperties": false
+    },
+    "SamplingConfig": {
+      "type": "object",
+      "title": "Sampling Configuration",
+      "description": "Configuration for job sampling before archival",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether sampling is enabled"
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0,
+          "description": "Sampling rate (0.0 to 1.0)"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["random", "deterministic", "priority_weighted"],
+          "default": "random",
+          "description": "Sampling strategy"
+        },
+        "priority_weights": {
+          "type": "object",
+          "patternProperties": {
+            "^\\d+$": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "description": "Sampling weights by priority level"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GDPRConfig": {
+      "type": "object",
+      "title": "GDPR Configuration",
+      "description": "Configuration for GDPR compliance features",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether GDPR features are enabled"
+        },
+        "retention_notice_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Days before retention expiry to send notice"
+        },
+        "deletion_grace_period": {
+          "type": "string",
+          "pattern": "^\\d+[dhm]$",
+          "default": "7d",
+          "description": "Grace period before permanent deletion"
+        },
+        "audit_trail": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to maintain deletion audit trail"
+        },
+        "data_subject_fields": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Fields that identify data subjects"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExportStatus": {
+      "type": "object",
+      "title": "Export Status",
+      "description": "Status of archive export operations",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "description": "Storage backend ID"
+        },
+        "last_export": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Timestamp of last successful export"
+        },
+        "records_exported": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total records exported"
+        },
+        "bytes_exported": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total bytes exported"
+        },
+        "lag_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Export lag in seconds"
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of export errors in last 24h"
+        },
+        "health": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "failed"],
+          "description": "Overall export health status"
+        }
+      },
+      "required": ["backend", "records_exported", "bytes_exported", "lag_seconds", "error_count", "health"],
+      "additionalProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp"
+        }
+      },
+      "required": ["error", "code", "timestamp"],
+      "additionalProperties": false
+    }
+  }
+}

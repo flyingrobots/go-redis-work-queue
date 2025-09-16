@@ -1,0 +1,502 @@
+{
+  "meta": {
+    "generated_at": "2025-09-14T16:20:16.398126",
+    "max_wave_size": 15,
+    "total_waves": 20,
+    "artifact_hash": "cb269e2bd6e2f856047037f3a56588341d38765779c10f3d4685368e81295166"
+  },
+  "waves": [
+    {
+      "wave_number": 1,
+      "tasks": [
+        "P1.T001",
+        "P2.T004",
+        "P2.T007",
+        "P1.T010",
+        "P3.T013",
+        "P3.T015",
+        "P1.T017",
+        "P1.T020",
+        "P3.T023",
+        "P3.T025",
+        "P3.T029",
+        "P3.T031",
+        "P1.T033",
+        "P2.T036",
+        "P2.T039"
+      ],
+      "task_count": 15,
+      "estimated_duration": {
+        "p50": 4,
+        "p80": 4.8,
+        "p95": 8
+      },
+      "sync_point": {
+        "criteria": "All 15 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 2,
+      "tasks": [
+        "P1.T002",
+        "P2.T005",
+        "P2.T008",
+        "P3.T042",
+        "P2.T044",
+        "P3.T047",
+        "P2.T049",
+        "P2.T052",
+        "P3.T055",
+        "P2.T057",
+        "P2.T060",
+        "P4.T063",
+        "P4.T065",
+        "P3.T067",
+        "P2.T069"
+      ],
+      "task_count": 15,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 15 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 3,
+      "tasks": [
+        "P1.T003",
+        "P2.T006",
+        "P2.T009",
+        "P2.T072",
+        "P3.T075",
+        "P3.T077",
+        "P2.T079",
+        "P4.T082",
+        "P4.T084",
+        "P3.T086",
+        "P2.T088",
+        "P4.T091"
+      ],
+      "task_count": 12,
+      "estimated_duration": {
+        "p50": 8,
+        "p80": 9.6,
+        "p95": 16
+      },
+      "sync_point": {
+        "criteria": "All 12 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 4,
+      "tasks": [
+        "P1.T011",
+        "P3.T014",
+        "P3.T016"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 5,
+      "tasks": [
+        "P1.T012",
+        "P1.T018",
+        "P3.T024"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 6,
+      "tasks": [
+        "P1.T019",
+        "P1.T021",
+        "P3.T026"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 7,
+      "tasks": [
+        "P1.T022",
+        "P3.T030",
+        "P3.T032"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 8,
+      "tasks": [
+        "P1.T034",
+        "P2.T037",
+        "P2.T040"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 9,
+      "tasks": [
+        "P1.T035",
+        "P2.T038",
+        "P2.T041"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 8,
+        "p80": 9.6,
+        "p95": 16
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 10,
+      "tasks": [
+        "P3.T043",
+        "P2.T045",
+        "P3.T048"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 11,
+      "tasks": [
+        "P3.T027",
+        "P2.T046",
+        "P2.T050",
+        "P2.T053"
+      ],
+      "task_count": 4,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 4 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 12,
+      "tasks": [
+        "P3.T028",
+        "P2.T051",
+        "P2.T054"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 13,
+      "tasks": [
+        "P3.T056",
+        "P2.T058",
+        "P2.T061"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 14,
+      "tasks": [
+        "P2.T059",
+        "P2.T062",
+        "P4.T064"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 15,
+      "tasks": [
+        "P4.T066",
+        "P3.T068",
+        "P2.T070"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 16,
+      "tasks": [
+        "P2.T071",
+        "P2.T073",
+        "P3.T076"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 17,
+      "tasks": [
+        "P2.T074",
+        "P3.T078",
+        "P2.T080"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 18,
+      "tasks": [
+        "P2.T081",
+        "P4.T083",
+        "P4.T085"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 19,
+      "tasks": [
+        "P3.T087",
+        "P2.T089",
+        "P4.T092"
+      ],
+      "task_count": 3,
+      "estimated_duration": {
+        "p50": 16,
+        "p80": 19.2,
+        "p95": 32
+      },
+      "sync_point": {
+        "criteria": "All 3 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    },
+    {
+      "wave_number": 20,
+      "tasks": [
+        "P2.T090"
+      ],
+      "task_count": 1,
+      "estimated_duration": {
+        "p50": 8,
+        "p80": 9.6,
+        "p95": 16
+      },
+      "sync_point": {
+        "criteria": "All 1 tasks complete",
+        "required_completion": 0.95,
+        "quality_gates": [
+          "All tests passing",
+          "Code review complete",
+          "Documentation updated"
+        ]
+      }
+    }
+  ]
+}

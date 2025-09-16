@@ -1,0 +1,748 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://queue.example.com/schemas/multi-tenant.json",
+  "title": "Multi-Tenant Isolation Data Models",
+  "description": "JSON Schema definitions for multi-tenant isolation in Redis Work Queue",
+  "definitions": {
+    "TenantID": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 32,
+      "description": "Unique tenant identifier",
+      "examples": ["acme-corp", "tenant-123", "test-org"]
+    },
+    "TenantStatus": {
+      "type": "string",
+      "enum": ["active", "suspended", "pending", "archived"],
+      "description": "Current status of the tenant"
+    },
+    "IsolationLevel": {
+      "type": "string",
+      "enum": ["strict", "standard", "relaxed"],
+      "default": "standard",
+      "description": "Level of isolation between tenants"
+    },
+    "Tenant": {
+      "type": "object",
+      "required": ["id", "name", "status", "config", "created_at"],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable tenant name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional tenant description"
+        },
+        "status": {
+          "$ref": "#/definitions/TenantStatus"
+        },
+        "config": {
+          "$ref": "#/definitions/TenantConfig"
+        },
+        "quotas": {
+          "$ref": "#/definitions/TenantQuotas"
+        },
+        "encryption": {
+          "$ref": "#/definitions/EncryptionConfig"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Custom metadata for the tenant",
+          "additionalProperties": true
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "suspended_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "TenantConfig": {
+      "type": "object",
+      "properties": {
+        "isolation_level": {
+          "$ref": "#/definitions/IsolationLevel"
+        },
+        "enable_audit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable audit logging for this tenant"
+        },
+        "enable_metrics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable metrics collection for this tenant"
+        },
+        "enable_encryption": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable payload encryption for this tenant"
+        },
+        "default_queue_ttl": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2592000,
+          "description": "Default TTL for jobs in seconds (max 30 days)"
+        },
+        "max_job_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum retry attempts for failed jobs"
+        },
+        "dlq_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable dead letter queue for failed jobs"
+        },
+        "namespace_prefix": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Custom namespace prefix for Redis keys"
+        }
+      }
+    },
+    "TenantQuotas": {
+      "type": "object",
+      "properties": {
+        "max_jobs_per_hour": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Maximum jobs allowed per hour"
+        },
+        "max_jobs_per_day": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000,
+          "description": "Maximum jobs allowed per day"
+        },
+        "max_backlog_size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Maximum number of pending jobs"
+        },
+        "max_job_size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760,
+          "default": 1048576,
+          "description": "Maximum size of job payload in bytes (default 1MB, max 10MB)"
+        },
+        "max_queues_per_tenant": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Maximum number of queues per tenant"
+        },
+        "max_workers_per_queue": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50,
+          "description": "Maximum concurrent workers per queue"
+        },
+        "max_storage_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776,
+          "description": "Maximum storage in bytes (max 1TB)"
+        },
+        "enqueue_rate_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum enqueue operations per second"
+        },
+        "dequeue_rate_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum dequeue operations per second"
+        },
+        "soft_limit_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.8,
+          "description": "Threshold for soft limit warnings (0.8 = 80%)"
+        }
+      }
+    },
+    "QuotaUsage": {
+      "type": "object",
+      "required": ["tenant_id", "period", "metrics"],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "period": {
+          "type": "string",
+          "enum": ["hour", "day", "month"],
+          "description": "Time period for usage metrics"
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "jobs_processed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jobs_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jobs_retried": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "current_backlog": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "storage_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "active_queues": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "active_workers": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "quota_percentages": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Percentage of quota used for each limit"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QuotaWarning"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "QuotaWarning": {
+      "type": "object",
+      "required": ["type", "threshold", "current", "limit"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["jobs_per_hour", "jobs_per_day", "backlog_size", "storage"],
+          "description": "Type of quota approaching limit"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Warning threshold percentage"
+        },
+        "current": {
+          "type": "number",
+          "description": "Current usage value"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Configured limit"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable warning message"
+        }
+      }
+    },
+    "EncryptionConfig": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable encryption for job payloads"
+        },
+        "kek_provider": {
+          "type": "string",
+          "enum": ["aws-kms", "gcp-kms", "azure-kv", "hashicorp-vault", "local"],
+          "description": "Key Encryption Key provider"
+        },
+        "kek_key_id": {
+          "type": "string",
+          "description": "Identifier for the KEK in the KMS"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["AES-256-GCM", "AES-128-GCM", "ChaCha20-Poly1305"],
+          "default": "AES-256-GCM",
+          "description": "Encryption algorithm"
+        },
+        "dek_rotation_period": {
+          "type": "string",
+          "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?$",
+          "default": "P30D",
+          "description": "ISO 8601 duration for DEK rotation"
+        },
+        "auto_rotate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically rotate keys"
+        },
+        "last_rotation": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last key rotation"
+        },
+        "next_rotation": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Scheduled next rotation time"
+        }
+      }
+    },
+    "EncryptedPayload": {
+      "type": "object",
+      "required": ["version", "encrypted_dek", "encrypted_payload", "nonce", "created_at"],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Encryption format version"
+        },
+        "encrypted_dek": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Data Encryption Key encrypted by KEK"
+        },
+        "encrypted_payload": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Encrypted job payload"
+        },
+        "nonce": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Encryption nonce/IV"
+        },
+        "auth_tag": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Authentication tag for AEAD ciphers"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "Unix timestamp of encryption"
+        },
+        "key_id": {
+          "type": "string",
+          "description": "Reference to KEK used"
+        }
+      }
+    },
+    "UserAccess": {
+      "type": "object",
+      "required": ["user_id", "tenant_id", "permissions", "granted_at"],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "User or service account identifier"
+        },
+        "tenant_id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Permission"
+          },
+          "minItems": 1
+        },
+        "granted_by": {
+          "type": "string",
+          "description": "User who granted the access"
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Optional expiration time"
+        },
+        "last_accessed": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time access was used"
+        }
+      }
+    },
+    "Permission": {
+      "type": "object",
+      "required": ["resource", "actions"],
+      "properties": {
+        "resource": {
+          "type": "string",
+          "enum": ["queues", "workers", "jobs", "metrics", "config", "audit", "encryption", "*"],
+          "description": "Resource type"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["read", "write", "delete", "admin", "*"]
+          },
+          "minItems": 1,
+          "description": "Allowed actions on the resource"
+        },
+        "queue_filter": {
+          "type": "string",
+          "pattern": "^[a-z0-9*-]+$",
+          "description": "Optional queue name pattern (supports wildcards)"
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "ip_whitelist": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "ipv4"
+              }
+            },
+            "time_restrictions": {
+              "$ref": "#/definitions/TimeRestrictions"
+            }
+          }
+        }
+      }
+    },
+    "TimeRestrictions": {
+      "type": "object",
+      "properties": {
+        "days_of_week": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+          }
+        },
+        "hours": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Start time in HH:MM format"
+            },
+            "end": {
+              "type": "string",
+              "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "End time in HH:MM format"
+            }
+          }
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone identifier"
+        }
+      }
+    },
+    "AuditEvent": {
+      "type": "object",
+      "required": ["event_id", "timestamp", "tenant_id", "action", "resource", "result"],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique event identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenant_id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User or service account"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "CREATE", "UPDATE", "DELETE",
+            "ENQUEUE", "DEQUEUE", "COMPLETE", "FAIL",
+            "ACCESS_GRANTED", "ACCESS_DENIED", "ACCESS_REVOKED",
+            "KEY_ROTATION", "CONFIG_CHANGE", "QUOTA_EXCEEDED"
+          ]
+        },
+        "resource": {
+          "type": "string",
+          "description": "Resource identifier (e.g., t:tenant:queue)"
+        },
+        "resource_type": {
+          "type": "string",
+          "enum": ["tenant", "queue", "job", "worker", "config", "key"]
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Action-specific details"
+        },
+        "remote_ip": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string",
+          "enum": ["SUCCESS", "DENIED", "ERROR", "PARTIAL"]
+        },
+        "error_code": {
+          "type": "string",
+          "description": "Error code if result is ERROR"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if result is ERROR"
+        }
+      }
+    },
+    "TenantQueue": {
+      "type": "object",
+      "required": ["tenant_id", "queue_name", "created_at"],
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "queue_name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "priority": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 5
+            },
+            "job_ttl": {
+              "type": "integer",
+              "description": "Job TTL in seconds"
+            },
+            "max_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "retry_delay": {
+              "type": "integer",
+              "description": "Retry delay in seconds"
+            },
+            "encryption_required": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "jobs_pending": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jobs_processing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jobs_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jobs_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "workers_active": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "TenantJob": {
+      "type": "object",
+      "required": ["id", "tenant_id", "queue_name", "payload", "created_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "tenant_id": {
+          "$ref": "#/definitions/TenantID"
+        },
+        "queue_name": {
+          "type": "string"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "description": "Unencrypted payload"
+            },
+            {
+              "$ref": "#/definitions/EncryptedPayload"
+            }
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "correlation_id": {
+              "type": "string"
+            },
+            "user_id": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "priority": {
+              "type": "integer"
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "processing", "completed", "failed", "retrying"]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_retry_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "tenant": {
+      "$ref": "#/definitions/Tenant"
+    },
+    "tenant_config": {
+      "$ref": "#/definitions/TenantConfig"
+    },
+    "tenant_quotas": {
+      "$ref": "#/definitions/TenantQuotas"
+    },
+    "quota_usage": {
+      "$ref": "#/definitions/QuotaUsage"
+    },
+    "encryption_config": {
+      "$ref": "#/definitions/EncryptionConfig"
+    },
+    "encrypted_payload": {
+      "$ref": "#/definitions/EncryptedPayload"
+    },
+    "user_access": {
+      "$ref": "#/definitions/UserAccess"
+    },
+    "permission": {
+      "$ref": "#/definitions/Permission"
+    },
+    "audit_event": {
+      "$ref": "#/definitions/AuditEvent"
+    },
+    "tenant_queue": {
+      "$ref": "#/definitions/TenantQueue"
+    },
+    "tenant_job": {
+      "$ref": "#/definitions/TenantJob"
+    }
+  }
+}

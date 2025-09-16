@@ -1,0 +1,28 @@
+name: tenant-sla
+version: 1.0.0
+author: Redis Work Queue Team
+description: Shows tenant SLA metrics in a read-only dashboard panel
+runtime: starlark
+entry_point: main.star
+capabilities:
+  - read_stats
+  - read_keys
+  - read_timers
+  - render_panel
+  - key_events
+resources:
+  max_memory_mb: 32
+  max_cpu_percent: 10
+  max_execution_ms: 1000
+  max_goroutines: 5
+  timeout: 30s
+  idle_timeout: 5m
+  heartbeat_period: 30s
+dependencies: {}
+assets: []
+schema: "1.0"
+metadata:
+  category: monitoring
+  keywords: [sla, metrics, tenant, dashboard]
+  homepage: https://example.com/plugins/tenant-sla
+  issues: https://github.com/flyingrobots/plugins/issues

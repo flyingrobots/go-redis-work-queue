@@ -1,0 +1,535 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.example.com/schemas/admin-api/v1",
+  "title": "Admin API Data Models",
+  "description": "JSON Schema definitions for the go-redis-work-queue Admin API",
+  "definitions": {
+    "JobPayload": {
+      "type": "object",
+      "title": "Job Payload",
+      "description": "Standard job payload structure",
+      "required": [
+        "id",
+        "filepath",
+        "filesize",
+        "priority",
+        "retries",
+        "creation_time"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier",
+          "pattern": "^[a-zA-Z0-9-_]+$",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "filepath": {
+          "type": "string",
+          "description": "File path to process",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "filesize": {
+          "type": "integer",
+          "description": "File size in bytes",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "priority": {
+          "type": "string",
+          "description": "Job priority level",
+          "enum": ["high", "low"]
+        },
+        "retries": {
+          "type": "integer",
+          "description": "Number of retry attempts",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "creation_time": {
+          "type": "string",
+          "description": "Job creation timestamp",
+          "format": "date-time"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed trace identifier",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "span_id": {
+          "type": "string",
+          "description": "Trace span identifier",
+          "pattern": "^[a-f0-9]{16}$"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional job metadata",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueStatistics": {
+      "type": "object",
+      "title": "Queue Statistics",
+      "description": "Statistics for a single queue",
+      "required": ["length", "key"],
+      "properties": {
+        "length": {
+          "type": "integer",
+          "description": "Number of items in the queue",
+          "minimum": 0
+        },
+        "key": {
+          "type": "string",
+          "description": "Redis key name for the queue",
+          "pattern": "^jobqueue:"
+        },
+        "oldest_item_age_seconds": {
+          "type": "number",
+          "description": "Age of the oldest item in seconds",
+          "minimum": 0
+        },
+        "newest_item_age_seconds": {
+          "type": "number",
+          "description": "Age of the newest item in seconds",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProcessingStatistics": {
+      "type": "object",
+      "title": "Processing Statistics",
+      "description": "Statistics for items being processed",
+      "required": ["lists", "items"],
+      "properties": {
+        "lists": {
+          "type": "integer",
+          "description": "Number of processing lists",
+          "minimum": 0
+        },
+        "items": {
+          "type": "integer",
+          "description": "Total items being processed",
+          "minimum": 0
+        },
+        "stale_lists": {
+          "type": "integer",
+          "description": "Number of stale processing lists (no heartbeat)",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkerStatistics": {
+      "type": "object",
+      "title": "Worker Statistics",
+      "description": "Statistics for active workers",
+      "required": ["active", "heartbeats"],
+      "properties": {
+        "active": {
+          "type": "integer",
+          "description": "Number of active workers",
+          "minimum": 0
+        },
+        "heartbeats": {
+          "type": "integer",
+          "description": "Number of worker heartbeats",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "description": "Number of stale workers (missed heartbeat)",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "AuthToken": {
+      "type": "object",
+      "title": "Authentication Token",
+      "description": "JWT authentication token structure",
+      "required": ["sub", "exp", "iat", "roles"],
+      "properties": {
+        "sub": {
+          "type": "string",
+          "description": "Subject (user ID)"
+        },
+        "exp": {
+          "type": "integer",
+          "description": "Expiration time (Unix timestamp)"
+        },
+        "iat": {
+          "type": "integer",
+          "description": "Issued at time (Unix timestamp)"
+        },
+        "nbf": {
+          "type": "integer",
+          "description": "Not before time (Unix timestamp)"
+        },
+        "jti": {
+          "type": "string",
+          "description": "JWT ID (unique identifier)"
+        },
+        "roles": {
+          "type": "array",
+          "description": "User roles",
+          "items": {
+            "type": "string",
+            "enum": ["read", "write", "admin"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "scopes": {
+          "type": "array",
+          "description": "Granted scopes",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+:[a-z]+$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AuditLogEntry": {
+      "type": "object",
+      "title": "Audit Log Entry",
+      "description": "Audit log entry for tracking admin operations",
+      "required": [
+        "timestamp",
+        "request_id",
+        "user_id",
+        "action",
+        "resource",
+        "method",
+        "ip_address",
+        "status"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Operation timestamp"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique request identifier"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User who performed the action"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action performed",
+          "enum": [
+            "STATS",
+            "STATS_KEYS",
+            "PEEK",
+            "BENCH",
+            "PURGE_DLQ",
+            "PURGE_ALL"
+          ]
+        },
+        "resource": {
+          "type": "string",
+          "description": "API resource path",
+          "pattern": "^/api/v[0-9]+/"
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTP method",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        },
+        "ip_address": {
+          "type": "string",
+          "description": "Client IP address",
+          "oneOf": [
+            {
+              "format": "ipv4"
+            },
+            {
+              "format": "ipv6"
+            }
+          ]
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "Client user agent string"
+        },
+        "status": {
+          "type": "string",
+          "description": "Operation status",
+          "enum": ["SUCCESS", "FAILURE", "PARTIAL"]
+        },
+        "status_code": {
+          "type": "integer",
+          "description": "HTTP status code",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "duration_ms": {
+          "type": "integer",
+          "description": "Operation duration in milliseconds",
+          "minimum": 0
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if operation failed"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional operation-specific metadata",
+          "properties": {
+            "items_affected": {
+              "type": "integer",
+              "description": "Number of items affected by the operation"
+            },
+            "confirmation_token": {
+              "type": "string",
+              "description": "Confirmation token for destructive operations"
+            },
+            "queue": {
+              "type": "string",
+              "description": "Queue affected by the operation"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RateLimitInfo": {
+      "type": "object",
+      "title": "Rate Limit Information",
+      "description": "Rate limiting information for API responses",
+      "required": ["limit", "remaining", "reset"],
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "description": "Maximum requests allowed in window",
+          "minimum": 1
+        },
+        "remaining": {
+          "type": "integer",
+          "description": "Remaining requests in current window",
+          "minimum": 0
+        },
+        "reset": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time when the rate limit window resets"
+        },
+        "retry_after": {
+          "type": "integer",
+          "description": "Seconds to wait before retrying (only present when rate limited)",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "BenchmarkConfiguration": {
+      "type": "object",
+      "title": "Benchmark Configuration",
+      "description": "Configuration for benchmark tests",
+      "required": ["priority", "count"],
+      "properties": {
+        "priority": {
+          "type": "string",
+          "description": "Queue priority to test",
+          "enum": ["high", "low"]
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of jobs to enqueue",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "rate": {
+          "type": "integer",
+          "description": "Jobs per second to enqueue",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Maximum seconds to wait for completion",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 60
+        },
+        "payload_size": {
+          "type": "integer",
+          "description": "Size of test payload in bytes",
+          "minimum": 1,
+          "maximum": 1048576,
+          "default": 1024
+        }
+      },
+      "additionalProperties": false
+    },
+    "BenchmarkResult": {
+      "type": "object",
+      "title": "Benchmark Result",
+      "description": "Results from a benchmark test",
+      "required": [
+        "count",
+        "duration_ms",
+        "throughput_jobs_per_sec"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Number of jobs processed",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "description": "Total duration in milliseconds",
+          "minimum": 0
+        },
+        "throughput_jobs_per_sec": {
+          "type": "number",
+          "description": "Jobs processed per second",
+          "minimum": 0
+        },
+        "p50_latency_ms": {
+          "type": "integer",
+          "description": "50th percentile latency in milliseconds",
+          "minimum": 0
+        },
+        "p95_latency_ms": {
+          "type": "integer",
+          "description": "95th percentile latency in milliseconds",
+          "minimum": 0
+        },
+        "p99_latency_ms": {
+          "type": "integer",
+          "description": "99th percentile latency in milliseconds",
+          "minimum": 0
+        },
+        "min_latency_ms": {
+          "type": "integer",
+          "description": "Minimum latency in milliseconds",
+          "minimum": 0
+        },
+        "max_latency_ms": {
+          "type": "integer",
+          "description": "Maximum latency in milliseconds",
+          "minimum": 0
+        },
+        "errors": {
+          "type": "integer",
+          "description": "Number of errors encountered",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ErrorCode": {
+      "type": "string",
+      "title": "Error Code",
+      "description": "Machine-readable error codes",
+      "enum": [
+        "AUTH_REQUIRED",
+        "AUTH_INVALID",
+        "AUTH_EXPIRED",
+        "PERMISSION_DENIED",
+        "RATE_LIMIT_EXCEEDED",
+        "QUEUE_NOT_FOUND",
+        "INVALID_REQUEST",
+        "VALIDATION_FAILED",
+        "CONFIRMATION_REQUIRED",
+        "INTERNAL_ERROR",
+        "SERVICE_UNAVAILABLE",
+        "TIMEOUT",
+        "CONFLICT"
+      ]
+    },
+    "UserRole": {
+      "type": "string",
+      "title": "User Role",
+      "description": "User authorization roles",
+      "enum": ["read", "write", "admin"]
+    },
+    "QueueIdentifier": {
+      "type": "string",
+      "title": "Queue Identifier",
+      "description": "Queue identifier (alias or full key)",
+      "oneOf": [
+        {
+          "enum": ["high", "low", "completed", "dead_letter", "dlq"]
+        },
+        {
+          "pattern": "^jobqueue:[a-zA-Z0-9:_-]+$"
+        }
+      ]
+    },
+    "ConfirmationToken": {
+      "type": "string",
+      "title": "Confirmation Token",
+      "description": "Token required for destructive operations",
+      "pattern": "^[A-Za-z0-9]{32}$",
+      "minLength": 32,
+      "maxLength": 32
+    },
+    "HealthStatus": {
+      "type": "object",
+      "title": "Health Status",
+      "description": "System health status",
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"]
+        },
+        "checks": {
+          "type": "object",
+          "properties": {
+            "redis": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["healthy", "unhealthy"]
+                },
+                "latency_ms": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            "workers": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["healthy", "degraded", "unhealthy"]
+                },
+                "active": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expected": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

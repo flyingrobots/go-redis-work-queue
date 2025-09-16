@@ -1,0 +1,1854 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.company.com/schemas/worker-fleet-controls/v1.0.0",
+  "title": "Worker Fleet Controls Data Models",
+  "description": "JSON Schema definitions for Worker Fleet Controls data structures",
+  "type": "object",
+  "definitions": {
+    "Worker": {
+      "$id": "#/definitions/Worker",
+      "type": "object",
+      "title": "Worker Instance",
+      "description": "A single worker instance in the distributed fleet",
+      "required": [
+        "id",
+        "host_id",
+        "state",
+        "last_heartbeat",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Unique identifier for the worker instance",
+          "examples": ["worker-prod-01-abc123", "worker-dev-02-xyz789"]
+        },
+        "host_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Identifier of the host machine running this worker",
+          "examples": ["i-0abcd1234efgh5678", "hostname-prod-01", "docker-container-abc123"]
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647,
+          "description": "Process ID of the worker on the host system",
+          "examples": [12345, 67890]
+        },
+        "state": {
+          "$ref": "#/definitions/WorkerState"
+        },
+        "last_heartbeat": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the most recent heartbeat from this worker",
+          "examples": ["2025-09-14T15:30:45Z"]
+        },
+        "current_job": {
+          "$ref": "#/definitions/JobReference"
+        },
+        "metadata": {
+          "$ref": "#/definitions/WorkerMetadata"
+        },
+        "configuration": {
+          "$ref": "#/definitions/WorkerConfiguration"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the worker was first registered with the fleet",
+          "examples": ["2025-09-14T10:00:00Z"]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the worker information was last updated",
+          "examples": ["2025-09-14T15:30:45Z"]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "description": "Tags for categorizing and filtering workers",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "examples": [
+            ["production", "us-east-1", "high-memory"],
+            ["development", "eu-west-1", "gpu-enabled"]
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$",
+          "description": "Semantic version of the worker software",
+          "examples": ["2.1.0", "1.5.3-beta.1"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerState": {
+      "$id": "#/definitions/WorkerState",
+      "type": "string",
+      "enum": ["starting", "running", "paused", "draining", "stopped", "failed", "unknown"],
+      "description": "Current operational state of the worker",
+      "examples": ["running", "paused", "draining"]
+    },
+
+    "JobReference": {
+      "$id": "#/definitions/JobReference",
+      "type": "object",
+      "title": "Job Reference",
+      "description": "Reference to a job currently being executed by the worker",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier of the job",
+          "examples": ["job_12345", "550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the queue the job originated from",
+          "examples": ["user-actions", "email-delivery", "data-processing"]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job execution started",
+          "examples": ["2025-09-14T15:25:00Z"]
+        },
+        "estimated_completion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Estimated completion time based on job progress",
+          "examples": ["2025-09-14T15:35:00Z"]
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Job progress as a decimal between 0.0 and 1.0",
+          "examples": [0.0, 0.25, 0.75, 1.0]
+        },
+        "job_type": {
+          "type": "string",
+          "description": "Type or category of the job being processed",
+          "examples": ["image_processing", "email_send", "report_generation"]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Job priority level (1=lowest, 10=highest)",
+          "examples": [1, 5, 10]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerMetadata": {
+      "$id": "#/definitions/WorkerMetadata",
+      "type": "object",
+      "title": "Worker Metadata",
+      "description": "Comprehensive metadata about the worker instance and its environment",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253,
+          "description": "Hostname of the machine running the worker",
+          "examples": ["worker-01.us-east-1.compute.internal", "prod-worker-01"]
+        },
+        "ip_address": {
+          "type": "string",
+          "oneOf": [
+            {"format": "ipv4"},
+            {"format": "ipv6"}
+          ],
+          "description": "IP address of the worker machine",
+          "examples": ["10.0.1.100", "192.168.1.50", "2001:db8::1"]
+        },
+        "region": {
+          "type": "string",
+          "description": "Geographic region where the worker is deployed",
+          "examples": ["us-east-1", "eu-west-1", "ap-southeast-1"]
+        },
+        "availability_zone": {
+          "type": "string",
+          "description": "Specific availability zone within the region",
+          "examples": ["us-east-1a", "eu-west-1b", "ap-southeast-1c"]
+        },
+        "instance_type": {
+          "type": "string",
+          "description": "Instance type or size classification",
+          "examples": ["m5.large", "c5.xlarge", "r5.2xlarge", "t3.medium"]
+        },
+        "cpu_cores": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024,
+          "description": "Number of CPU cores available to the worker",
+          "examples": [2, 4, 8, 16]
+        },
+        "memory_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total memory available in megabytes",
+          "examples": [2048, 8192, 16384, 32768]
+        },
+        "queue_types": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Types of queues this worker can process",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "examples": [
+            ["user-actions", "email-delivery"],
+            ["data-processing", "image-resize", "pdf-generation"]
+          ]
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "description": "Special capabilities and features supported by this worker",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "examples": [
+            ["gpu-acceleration", "large-memory"],
+            ["file-processing", "image-manipulation", "ml-inference"]
+          ]
+        },
+        "environment": {
+          "type": "object",
+          "maxProperties": 100,
+          "description": "Environment variables and configuration settings",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "examples": [
+            {
+              "NODE_ENV": "production",
+              "LOG_LEVEL": "info",
+              "MAX_CONCURRENT_JOBS": "5"
+            }
+          ]
+        },
+        "resource_limits": {
+          "$ref": "#/definitions/ResourceLimits"
+        },
+        "health_status": {
+          "$ref": "#/definitions/WorkerHealthStatus"
+        },
+        "deployment_info": {
+          "type": "object",
+          "description": "Information about how the worker was deployed",
+          "properties": {
+            "deployment_id": {
+              "type": "string",
+              "description": "Unique identifier for the deployment"
+            },
+            "deployment_timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the worker was deployed"
+            },
+            "deployment_method": {
+              "type": "string",
+              "enum": ["docker", "kubernetes", "systemd", "manual"],
+              "description": "Method used to deploy the worker"
+            },
+            "image_version": {
+              "type": "string",
+              "description": "Version of the container image or binary"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceLimits": {
+      "$id": "#/definitions/ResourceLimits",
+      "type": "object",
+      "title": "Resource Limits",
+      "description": "Resource limits and constraints for the worker",
+      "properties": {
+        "max_memory_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum memory usage allowed in megabytes",
+          "examples": [512, 1024, 2048, 4096]
+        },
+        "max_cpu_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum CPU usage allowed as a percentage",
+          "examples": [50, 80, 90, 100]
+        },
+        "max_concurrent_jobs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum number of jobs that can run concurrently",
+          "examples": [1, 3, 5, 10]
+        },
+        "max_job_duration_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "description": "Maximum duration for a single job in seconds",
+          "examples": [300, 1800, 3600, 7200]
+        },
+        "max_disk_usage_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum disk usage allowed in megabytes",
+          "examples": [1024, 5120, 10240]
+        },
+        "max_network_bandwidth_mbps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum network bandwidth in megabits per second",
+          "examples": [10, 100, 1000]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerHealthStatus": {
+      "$id": "#/definitions/WorkerHealthStatus",
+      "type": "object",
+      "title": "Worker Health Status",
+      "description": "Current health and performance metrics for the worker",
+      "required": ["healthy", "last_health_check"],
+      "properties": {
+        "healthy": {
+          "type": "boolean",
+          "description": "Overall health status of the worker",
+          "examples": [true, false]
+        },
+        "last_health_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the most recent health check",
+          "examples": ["2025-09-14T15:30:00Z"]
+        },
+        "cpu_usage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Current CPU usage as a decimal (0.0 to 1.0)",
+          "examples": [0.25, 0.50, 0.85]
+        },
+        "memory_usage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Current memory usage as a decimal (0.0 to 1.0)",
+          "examples": [0.30, 0.65, 0.90]
+        },
+        "disk_usage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Current disk usage as a decimal (0.0 to 1.0)",
+          "examples": [0.40, 0.70, 0.95]
+        },
+        "active_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs currently being processed",
+          "examples": [0, 1, 3, 5]
+        },
+        "jobs_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of jobs processed since startup",
+          "examples": [0, 150, 1000, 5000]
+        },
+        "jobs_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of jobs that failed since startup",
+          "examples": [0, 5, 25, 100]
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Recent error rate as a decimal (0.0 to 1.0)",
+          "examples": [0.0, 0.02, 0.05, 0.10]
+        },
+        "uptime_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Worker uptime in seconds since last restart",
+          "examples": [3600, 86400, 604800]
+        },
+        "last_error": {
+          "type": "object",
+          "description": "Information about the most recent error",
+          "properties": {
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the error occurred"
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Error message"
+            },
+            "job_id": {
+              "type": "string",
+              "description": "ID of the job that caused the error"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "description": "Severity level of the error"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkerConfiguration": {
+      "$id": "#/definitions/WorkerConfiguration",
+      "type": "object",
+      "title": "Worker Configuration",
+      "description": "Configuration settings that control worker behavior",
+      "properties": {
+        "max_concurrent_jobs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 1,
+          "description": "Maximum number of jobs to process concurrently",
+          "examples": [1, 3, 5, 10]
+        },
+        "poll_interval_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 5,
+          "description": "How often to poll for new jobs in seconds",
+          "examples": [1, 5, 10, 30]
+        },
+        "heartbeat_interval_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 300,
+          "default": 30,
+          "description": "How often to send heartbeats in seconds",
+          "examples": [10, 30, 60, 120]
+        },
+        "job_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 3600,
+          "description": "Default timeout for job execution in seconds",
+          "examples": [300, 1800, 3600, 7200]
+        },
+        "graceful_shutdown_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300,
+          "description": "Time to wait for graceful shutdown in seconds",
+          "examples": [30, 60, 300, 600]
+        },
+        "retry_policy": {
+          "type": "object",
+          "description": "Policy for retrying failed jobs",
+          "properties": {
+            "max_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "default": 3,
+              "description": "Maximum number of retry attempts"
+            },
+            "backoff_multiplier": {
+              "type": "number",
+              "minimum": 1.0,
+              "maximum": 10.0,
+              "default": 2.0,
+              "description": "Exponential backoff multiplier"
+            },
+            "initial_delay_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300,
+              "default": 10,
+              "description": "Initial delay before first retry"
+            },
+            "max_delay_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600,
+              "default": 300,
+              "description": "Maximum delay between retries"
+            }
+          },
+          "additionalProperties": false
+        },
+        "health_check": {
+          "type": "object",
+          "description": "Health check configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether health checks are enabled"
+            },
+            "interval_seconds": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 300,
+              "default": 60,
+              "description": "Health check interval in seconds"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 10,
+              "description": "Health check timeout in seconds"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FleetCommand": {
+      "$id": "#/definitions/FleetCommand",
+      "type": "object",
+      "title": "Fleet Command",
+      "description": "A command to be executed on one or more workers in the fleet",
+      "required": [
+        "id",
+        "type",
+        "status",
+        "created_by",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the command",
+          "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["pause", "resume", "drain", "stop", "rolling_restart", "batch"],
+          "description": "Type of command to execute",
+          "examples": ["pause", "drain", "rolling_restart"]
+        },
+        "target_ids": {
+          "type": "array",
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "description": "List of worker IDs targeted by this command",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [
+            ["worker-1", "worker-2"],
+            ["worker-prod-01", "worker-prod-02", "worker-prod-03"]
+          ]
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 50,
+          "description": "Command-specific parameters and configuration",
+          "additionalProperties": true,
+          "examples": [
+            {"timeout_seconds": 300, "reason": "Maintenance"},
+            {"drain_timeout": 600, "force_after_timeout": true}
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "cancelled"],
+          "description": "Current execution status of the command",
+          "examples": ["pending", "running", "completed"]
+        },
+        "progress": {
+          "$ref": "#/definitions/CommandProgress"
+        },
+        "created_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "User or system that created the command",
+          "examples": ["john.doe@company.com", "automated-deployment-system"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the command was created",
+          "examples": ["2025-09-14T15:00:00Z"]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the command started executing",
+          "examples": ["2025-09-14T15:00:05Z"]
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the command completed execution",
+          "examples": ["2025-09-14T15:05:30Z"]
+        },
+        "error_message": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Error message if the command failed",
+          "examples": ["Worker timeout during drain operation"]
+        },
+        "audit_trail": {
+          "type": "array",
+          "maxItems": 1000,
+          "description": "Detailed audit trail of command execution",
+          "items": {
+            "$ref": "#/definitions/AuditEntry"
+          }
+        },
+        "estimated_duration": {
+          "type": "string",
+          "pattern": "^(\\d+[smh])+$",
+          "description": "Estimated duration for command completion",
+          "examples": ["5m", "30s", "1h30m"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CommandProgress": {
+      "$id": "#/definitions/CommandProgress",
+      "type": "object",
+      "title": "Command Progress",
+      "description": "Progress tracking information for a fleet command",
+      "properties": {
+        "total_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of workers affected by this command",
+          "examples": [5, 10, 100]
+        },
+        "completed_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of workers where the command completed successfully",
+          "examples": [3, 8, 95]
+        },
+        "failed_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of workers where the command failed",
+          "examples": [0, 1, 2]
+        },
+        "in_progress_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of workers currently being processed",
+          "examples": [2, 1, 3]
+        },
+        "percentage_complete": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Percentage of command completion",
+          "examples": [0.0, 35.5, 100.0]
+        },
+        "estimated_time_remaining": {
+          "type": "string",
+          "pattern": "^(\\d+[smh])+$",
+          "description": "Estimated time remaining for completion",
+          "examples": ["2m30s", "45s", "1h15m"]
+        },
+        "current_batch": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Current batch number (for batched operations)",
+          "examples": [1, 3, 5]
+        },
+        "total_batches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of batches in the operation",
+          "examples": [5, 10, 20]
+        },
+        "phase": {
+          "type": "string",
+          "description": "Current phase of the operation",
+          "examples": ["validation", "execution", "cleanup", "rollback"]
+        },
+        "details": {
+          "type": "object",
+          "description": "Phase-specific progress details",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BatchWorkerRequest": {
+      "$id": "#/definitions/BatchWorkerRequest",
+      "type": "object",
+      "title": "Batch Worker Request",
+      "description": "Request to perform an operation on multiple workers",
+      "required": ["operation"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["pause", "resume", "drain", "stop"],
+          "description": "Operation to perform on the selected workers",
+          "examples": ["pause", "drain"]
+        },
+        "worker_ids": {
+          "type": "array",
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "description": "Specific worker IDs to operate on",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [
+            ["worker-1", "worker-2", "worker-3"],
+            ["worker-prod-01", "worker-prod-02"]
+          ]
+        },
+        "selector": {
+          "$ref": "#/definitions/WorkerSelector"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Reason for performing this batch operation",
+          "examples": ["Scheduled maintenance", "Emergency response to memory leak"]
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 20,
+          "description": "Operation-specific parameters",
+          "additionalProperties": true,
+          "examples": [
+            {"timeout_seconds": 300},
+            {"drain_timeout": 600, "force_after_timeout": true}
+          ]
+        },
+        "safety_checks": {
+          "$ref": "#/definitions/BatchSafetyChecks"
+        },
+        "confirmation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Confirmation phrase for destructive operations",
+          "examples": ["CONFIRM BATCH OPERATION", "EMERGENCY OVERRIDE"]
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to simulate the operation without executing it"
+        }
+      },
+      "oneOf": [
+        {"required": ["worker_ids"]},
+        {"required": ["selector"]}
+      ],
+      "additionalProperties": false
+    },
+
+    "WorkerSelector": {
+      "$id": "#/definitions/WorkerSelector",
+      "type": "object",
+      "title": "Worker Selector",
+      "description": "Criteria for selecting workers based on attributes",
+      "properties": {
+        "all": {
+          "type": "boolean",
+          "description": "Select all workers (use with extreme caution)",
+          "examples": [false, true]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "Select workers with all of these tags",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "examples": [["production", "us-east-1"], ["maintenance-window"]]
+        },
+        "any_tags": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "Select workers with any of these tags",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "examples": [["old-version", "deprecated"], ["urgent", "critical"]]
+        },
+        "state": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "description": "Select workers in specific states",
+          "items": {
+            "$ref": "#/definitions/WorkerState"
+          },
+          "examples": [["running"], ["paused", "stopped"]]
+        },
+        "healthy": {
+          "type": "boolean",
+          "description": "Filter by health status (true=healthy, false=unhealthy)",
+          "examples": [true, false]
+        },
+        "region": {
+          "type": "string",
+          "description": "Select workers in a specific region",
+          "examples": ["us-east-1", "eu-west-1"]
+        },
+        "availability_zone": {
+          "type": "string",
+          "description": "Select workers in a specific availability zone",
+          "examples": ["us-east-1a", "eu-west-1b"]
+        },
+        "host_pattern": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Regular expression pattern for matching host IDs",
+          "examples": ["^prod-.*", ".*-staging-.*", "worker-[0-9]+-.*"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Select workers with a specific software version",
+          "examples": ["2.1.0", "1.5.3-beta.1"]
+        },
+        "version_pattern": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Regular expression pattern for matching versions",
+          "examples": ["^1\\..*", ".*-beta.*"]
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "Select workers with all of these capabilities",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "examples": [["gpu-acceleration"], ["large-memory", "file-processing"]]
+        },
+        "uptime_min_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Select workers with minimum uptime in seconds",
+          "examples": [3600, 86400]
+        },
+        "uptime_max_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Select workers with maximum uptime in seconds",
+          "examples": [604800, 2592000]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BatchSafetyChecks": {
+      "$id": "#/definitions/BatchSafetyChecks",
+      "type": "object",
+      "title": "Batch Safety Checks",
+      "description": "Safety constraints for batch operations",
+      "properties": {
+        "max_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum absolute number of workers to affect",
+          "examples": [5, 10, 100]
+        },
+        "max_percentage": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100.0,
+          "description": "Maximum percentage of fleet to affect",
+          "examples": [10.0, 25.0, 50.0]
+        },
+        "require_confirmation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to require explicit confirmation phrase"
+        },
+        "min_healthy_after": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum healthy workers that must remain after operation",
+          "examples": [5, 10, 50]
+        },
+        "min_healthy_percentage_after": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100.0,
+          "description": "Minimum percentage of healthy workers after operation",
+          "examples": [50.0, 75.0, 90.0]
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only simulate the operation without executing it"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7200,
+          "description": "Maximum time to wait for batch operation completion",
+          "examples": [300, 600, 1800]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RollingRestartRequest": {
+      "$id": "#/definitions/RollingRestartRequest",
+      "type": "object",
+      "title": "Rolling Restart Request",
+      "description": "Request to perform a rolling restart of workers",
+      "required": ["selector", "config", "reason", "confirmation"],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/WorkerSelector"
+        },
+        "config": {
+          "$ref": "#/definitions/RollingRestartConfig"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Reason for performing the rolling restart",
+          "examples": [
+            "Application deployment - version 2.1.0",
+            "Security patch deployment",
+            "Configuration update rollout"
+          ]
+        },
+        "confirmation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Confirmation phrase to prevent accidental execution",
+          "examples": ["ROLLING RESTART CONFIRMED", "DEPLOY VERSION 2.1.0"]
+        },
+        "emergency": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mark as emergency restart (may bypass some safety checks)"
+        },
+        "notify": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "List of users/systems to notify about the restart",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "examples": [["ops-team@company.com", "john.doe@company.com"]]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RollingRestartConfig": {
+      "$id": "#/definitions/RollingRestartConfig",
+      "type": "object",
+      "title": "Rolling Restart Configuration",
+      "description": "Configuration parameters for rolling restart operations",
+      "required": ["max_unavailable", "batch_size", "drain_timeout_seconds"],
+      "properties": {
+        "max_unavailable": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum workers that can be unavailable simultaneously",
+          "examples": [2, 5, 10]
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Number of workers to restart in each batch",
+          "examples": [1, 2, 5]
+        },
+        "drain_timeout_seconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 7200,
+          "description": "Maximum time to wait for each worker to drain",
+          "examples": [300, 600, 1800]
+        },
+        "restart_delay_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300,
+          "default": 30,
+          "description": "Delay between restarting batches",
+          "examples": [10, 30, 60]
+        },
+        "health_check": {
+          "$ref": "#/definitions/HealthCheckConfig"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["recreate", "rolling_update", "blue_green"],
+          "default": "rolling_update",
+          "description": "Strategy to use for the restart operation"
+        },
+        "rollback": {
+          "$ref": "#/definitions/RollbackConfig"
+        },
+        "parallel_batches": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to process multiple batches in parallel"
+        },
+        "continue_on_failure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to continue if some workers fail to restart"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "HealthCheckConfig": {
+      "$id": "#/definitions/HealthCheckConfig",
+      "type": "object",
+      "title": "Health Check Configuration",
+      "description": "Configuration for health checks during operations",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether health checks are enabled"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 300,
+          "default": 60,
+          "description": "Timeout for individual health checks"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of health check retries on failure"
+        },
+        "interval_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 60,
+          "default": 10,
+          "description": "Interval between health check attempts"
+        },
+        "success_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 1,
+          "description": "Number of consecutive successful checks required"
+        },
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of consecutive failures before marking unhealthy"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RollbackConfig": {
+      "$id": "#/definitions/RollbackConfig",
+      "type": "object",
+      "title": "Rollback Configuration",
+      "description": "Configuration for automatic rollback on operation failures",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether automatic rollback is enabled"
+        },
+        "trigger_conditions": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Conditions that trigger automatic rollback",
+          "items": {
+            "type": "string",
+            "enum": [
+              "health_check_failed",
+              "timeout_exceeded",
+              "error_threshold_reached",
+              "manual_trigger",
+              "safety_violation"
+            ]
+          },
+          "examples": [["health_check_failed", "timeout_exceeded"]]
+        },
+        "max_rollback_time_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 3600,
+          "default": 600,
+          "description": "Maximum time to spend on rollback operations"
+        },
+        "failure_threshold_percentage": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 100.0,
+          "default": 20.0,
+          "description": "Percentage of failures that triggers rollback"
+        },
+        "notification": {
+          "type": "object",
+          "description": "Notification settings for rollback events",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["email", "slack", "pagerduty", "webhook"]
+              }
+            },
+            "recipients": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuditLogEntry": {
+      "$id": "#/definitions/AuditLogEntry",
+      "type": "object",
+      "title": "Audit Log Entry",
+      "description": "Single entry in the fleet control audit log",
+      "required": ["id", "action_type", "success", "performed_by", "performed_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this audit entry"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "ID of the worker affected by this action"
+        },
+        "command_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the fleet command that triggered this action"
+        },
+        "action_type": {
+          "type": "string",
+          "enum": ["pause", "resume", "drain", "stop", "restart", "heartbeat", "status_change"],
+          "description": "Type of action that was performed"
+        },
+        "old_state": {
+          "$ref": "#/definitions/WorkerState"
+        },
+        "new_state": {
+          "$ref": "#/definitions/WorkerState"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the action completed successfully"
+        },
+        "error_message": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Error message if the action failed"
+        },
+        "performed_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "User or system that performed the action"
+        },
+        "performed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the action was performed"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How long the action took to complete in milliseconds"
+        },
+        "metadata": {
+          "type": "object",
+          "maxProperties": 50,
+          "description": "Additional context and metadata for the action",
+          "additionalProperties": true
+        },
+        "ip_address": {
+          "type": "string",
+          "oneOf": [
+            {"format": "ipv4"},
+            {"format": "ipv6"}
+          ],
+          "description": "IP address of the request origin"
+        },
+        "user_agent": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "User agent string of the request"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Session ID associated with the action"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed tracing ID for correlation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuditEntry": {
+      "$id": "#/definitions/AuditEntry",
+      "type": "object",
+      "title": "Audit Entry",
+      "description": "Single audit entry within a command execution",
+      "required": ["timestamp", "action", "success"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this audit entry was recorded"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Description of the action taken"
+        },
+        "details": {
+          "type": "object",
+          "maxProperties": 20,
+          "description": "Additional details about the action",
+          "additionalProperties": true
+        },
+        "user": {
+          "type": "string",
+          "description": "User associated with this action"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the action was successful"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Error message if the action failed"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Worker ID if this action was worker-specific"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FleetMetrics": {
+      "$id": "#/definitions/FleetMetrics",
+      "type": "object",
+      "title": "Fleet Metrics",
+      "description": "Performance and health metrics for the worker fleet",
+      "required": ["timestamp", "time_range"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When these metrics were collected"
+        },
+        "time_range": {
+          "type": "string",
+          "enum": ["5m", "15m", "1h", "6h", "24h", "7d"],
+          "description": "Time range covered by these metrics"
+        },
+        "worker_count": {
+          "type": "array",
+          "description": "Worker count over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "health_ratio": {
+          "type": "array",
+          "description": "Fleet health ratio over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "command_rate": {
+          "type": "array",
+          "description": "Fleet command execution rate over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "heartbeat_latency": {
+          "type": "array",
+          "description": "Heartbeat latency percentiles over time",
+          "items": {
+            "$ref": "#/definitions/LatencyPoint"
+          }
+        },
+        "resource_usage": {
+          "$ref": "#/definitions/ResourceUsageMetrics"
+        },
+        "state_distribution": {
+          "type": "array",
+          "description": "Distribution of worker states over time",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "running": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "paused": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "draining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "stopped": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimeSeriesPoint": {
+      "$id": "#/definitions/TimeSeriesPoint",
+      "type": "object",
+      "title": "Time Series Point",
+      "description": "A single data point in a time series",
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this data point"
+        },
+        "value": {
+          "type": "number",
+          "description": "Numeric value for this data point"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LatencyPoint": {
+      "$id": "#/definitions/LatencyPoint",
+      "type": "object",
+      "title": "Latency Point",
+      "description": "Latency measurement with percentiles",
+      "required": ["timestamp", "p50", "p95", "p99"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this measurement"
+        },
+        "p50": {
+          "type": "number",
+          "minimum": 0,
+          "description": "50th percentile latency in milliseconds"
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0,
+          "description": "95th percentile latency in milliseconds"
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99th percentile latency in milliseconds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceUsageMetrics": {
+      "$id": "#/definitions/ResourceUsageMetrics",
+      "type": "object",
+      "title": "Resource Usage Metrics",
+      "description": "Resource utilization metrics for the fleet",
+      "properties": {
+        "cpu_usage": {
+          "type": "array",
+          "description": "CPU usage over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "memory_usage": {
+          "type": "array",
+          "description": "Memory usage over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "disk_usage": {
+          "type": "array",
+          "description": "Disk usage over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "network_io": {
+          "type": "array",
+          "description": "Network I/O over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        },
+        "job_throughput": {
+          "type": "array",
+          "description": "Job processing throughput over time",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FleetStatus": {
+      "$id": "#/definitions/FleetStatus",
+      "type": "object",
+      "title": "Fleet Status",
+      "description": "Overall status and health of the worker fleet",
+      "required": ["total_workers", "healthy_workers", "fleet_health_ratio", "last_updated"],
+      "properties": {
+        "total_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of workers in the fleet"
+        },
+        "healthy_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of workers currently healthy"
+        },
+        "worker_states": {
+          "type": "object",
+          "description": "Count of workers by current state",
+          "properties": {
+            "starting": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "running": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "paused": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "draining": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "stopped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unknown": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "fleet_health_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Ratio of healthy workers to total workers"
+        },
+        "active_commands": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of fleet commands currently executing"
+        },
+        "regions": {
+          "type": "array",
+          "description": "Worker distribution by region",
+          "items": {
+            "type": "object",
+            "required": ["name", "worker_count", "healthy_count"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Region name"
+              },
+              "worker_count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Total workers in this region"
+              },
+              "healthy_count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Healthy workers in this region"
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "worker_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "capacity": {
+          "type": "object",
+          "description": "Fleet capacity and utilization information",
+          "properties": {
+            "total_cpu_cores": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total CPU cores across all workers"
+            },
+            "total_memory_mb": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total memory in MB across all workers"
+            },
+            "available_cpu_cores": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Available CPU cores for new jobs"
+            },
+            "available_memory_mb": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Available memory in MB for new jobs"
+            },
+            "utilization_percentage": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "description": "Overall fleet utilization percentage"
+            },
+            "job_capacity": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total job processing capacity"
+            },
+            "active_jobs": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Currently active jobs across fleet"
+            }
+          }
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this status information was last updated"
+        },
+        "update_frequency": {
+          "type": "string",
+          "description": "How often this status is updated",
+          "examples": ["5s", "30s", "1m"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SafetyConfiguration": {
+      "$id": "#/definitions/SafetyConfiguration",
+      "type": "object",
+      "title": "Safety Configuration",
+      "description": "Configuration for fleet safety mechanisms and limits",
+      "properties": {
+        "global_limits": {
+          "type": "object",
+          "description": "Global safety limits for fleet operations",
+          "properties": {
+            "max_simultaneous_drains": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Maximum workers that can be draining simultaneously"
+            },
+            "min_healthy_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum number of healthy workers to maintain"
+            },
+            "min_healthy_percentage": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "description": "Minimum percentage of workers that must remain healthy"
+            },
+            "max_commands_per_minute": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "Maximum fleet commands per minute"
+            }
+          }
+        },
+        "confirmation_requirements": {
+          "type": "object",
+          "description": "Requirements for command confirmation",
+          "properties": {
+            "destructive_operations": {
+              "type": "boolean",
+              "description": "Require confirmation for destructive operations"
+            },
+            "batch_operations": {
+              "type": "boolean",
+              "description": "Require confirmation for batch operations"
+            },
+            "emergency_override": {
+              "type": "boolean",
+              "description": "Allow emergency override of safety checks"
+            },
+            "production_environment": {
+              "type": "boolean",
+              "description": "Enhanced confirmation requirements for production"
+            }
+          }
+        },
+        "rate_limits": {
+          "type": "object",
+          "description": "Rate limiting configuration",
+          "properties": {
+            "commands_per_minute": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum commands per minute per user"
+            },
+            "commands_per_hour": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum commands per hour per user"
+            },
+            "batch_size_limit": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum workers per batch operation"
+            }
+          }
+        },
+        "circuit_breakers": {
+          "type": "object",
+          "description": "Circuit breaker configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether circuit breakers are enabled"
+            },
+            "failure_threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Number of failures before opening circuit"
+            },
+            "recovery_timeout_seconds": {
+              "type": "integer",
+              "minimum": 30,
+              "maximum": 3600,
+              "description": "Time before attempting to close circuit"
+            }
+          }
+        },
+        "emergency_procedures": {
+          "type": "object",
+          "description": "Emergency procedure configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether emergency procedures are enabled"
+            },
+            "contacts": {
+              "type": "array",
+              "maxItems": 20,
+              "description": "Emergency contact list",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "escalation_timeout_minutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "description": "Time before escalating emergency"
+            },
+            "auto_rollback_enabled": {
+              "type": "boolean",
+              "description": "Whether automatic rollback is enabled in emergencies"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Error": {
+      "$id": "#/definitions/Error",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Machine-readable error code for programmatic handling",
+          "examples": [
+            "WORKER_NOT_FOUND",
+            "INVALID_STATE_TRANSITION",
+            "SAFETY_CHECK_FAILED",
+            "INSUFFICIENT_PERMISSIONS"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Human-readable error message",
+          "examples": [
+            "The specified worker was not found",
+            "Cannot pause worker in draining state",
+            "Operation would exceed safety limits"
+          ]
+        },
+        "details": {
+          "type": "object",
+          "maxProperties": 20,
+          "description": "Additional error context and details",
+          "additionalProperties": true,
+          "examples": [
+            {
+              "worker_id": "worker-not-exist-123",
+              "valid_states": ["running", "paused"]
+            }
+          ]
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Request trace ID for debugging and correlation",
+          "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred",
+          "examples": ["2025-09-14T15:30:45Z"]
+        },
+        "path": {
+          "type": "string",
+          "description": "API endpoint path where the error occurred",
+          "examples": ["/api/v1/workers/worker-123/pause"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "description": "HTTP method used in the request"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,45 @@
+version: 2
+
+project_name: job-queue-system
+
+builds:
+  - id: job-queue-system
+    main: ./cmd/job-queue-system
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: binaries
+    builds: [job-queue-system]
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums_{{ .Version }}.txt"
+
+changelog:
+  sort: desc
+  use: github
+
+dockers:
+  - image_templates:
+      - ghcr.io/{{ .RepoOwner }}/{{ .RepoName }}:{{ .Version }}
+      - ghcr.io/{{ .RepoOwner }}/{{ .RepoName }}:latest
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+
+release:
+  github:
+    owner: {{ .Env.GITHUB_REPOSITORY_OWNER }}
+    name: {{ .Env.GITHUB_REPOSITORY_NAME }}
+  draft: false
+  prerelease: auto
+
+snapshot:
+  name_template: SNAPSHOT-{{ .ShortCommit }}
+

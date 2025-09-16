@@ -1,0 +1,1100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://go-redis-work-queue.example.com/schemas/f010-anomaly-radar-slo-budget.json",
+  "title": "Anomaly Radar + SLO Budget Schema Definitions",
+  "description": "JSON Schema definitions for SLO monitoring, error budget tracking, and anomaly detection data models",
+  "definitions": {
+    "SLOConfig": {
+      "type": "object",
+      "title": "SLO Configuration",
+      "description": "Complete configuration for Service Level Objective monitoring",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique SLO name identifier (kebab-case)"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Human-readable SLO description"
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1.0,
+          "description": "SLO target as decimal (0.999 = 99.9%)"
+        },
+        "window": {
+          "type": "string",
+          "enum": ["1h", "6h", "24h", "7d", "30d"],
+          "description": "Time window for SLO calculation"
+        },
+        "budget_reset": {
+          "type": "string",
+          "enum": ["hourly", "daily", "weekly", "monthly"],
+          "default": "monthly",
+          "description": "Error budget reset frequency"
+        },
+        "success_threshold": {
+          "$ref": "#/definitions/SuccessThreshold",
+          "description": "Criteria for determining successful requests"
+        },
+        "burn_rate_thresholds": {
+          "$ref": "#/definitions/BurnRateConfig",
+          "description": "Burn rate alert thresholds"
+        },
+        "sampling_rate": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1.0,
+          "default": 0.1,
+          "description": "Sampling rate for metrics collection (0.1 = 10%)"
+        },
+        "update_interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "1s",
+          "description": "Metrics update interval (e.g., '1s', '5s')"
+        },
+        "display_format": {
+          "type": "string",
+          "enum": ["compact", "detailed", "minimal"],
+          "default": "compact",
+          "description": "TUI display format preference"
+        },
+        "color_thresholds": {
+          "$ref": "#/definitions/ColorConfig",
+          "description": "Color coding configuration for TUI"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether SLO monitoring is enabled"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration last update timestamp"
+        }
+      },
+      "required": ["name", "target", "window", "burn_rate_thresholds"],
+      "additionalProperties": false
+    },
+    "SuccessThreshold": {
+      "type": "object",
+      "title": "Success Criteria",
+      "description": "Criteria for determining successful job execution",
+      "properties": {
+        "latency_threshold": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+          "default": "500ms",
+          "description": "Maximum latency for successful request"
+        },
+        "error_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Error codes that count as failures"
+        },
+        "include_timeouts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether timeouts count as failures"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BurnRateConfig": {
+      "type": "object",
+      "title": "Burn Rate Configuration",
+      "description": "Configuration for burn rate alerting thresholds",
+      "properties": {
+        "warning": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 50.0,
+          "default": 2.0,
+          "description": "Burn rate multiplier for warning alerts"
+        },
+        "critical": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 100.0,
+          "default": 6.0,
+          "description": "Burn rate multiplier for critical alerts"
+        },
+        "page_on_critical": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to send page alerts on critical burn rate"
+        },
+        "alert_window": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "5m",
+          "description": "Time window for burn rate calculation"
+        },
+        "recovery_threshold": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "default": 0.8,
+          "description": "Burn rate below which alerts recover"
+        }
+      },
+      "required": ["warning", "critical"],
+      "additionalProperties": false
+    },
+    "ColorConfig": {
+      "type": "object",
+      "title": "Color Configuration",
+      "description": "Color coding configuration for TUI display",
+      "properties": {
+        "healthy": {
+          "type": "string",
+          "enum": ["green", "blue", "cyan"],
+          "default": "green",
+          "description": "Color for healthy status"
+        },
+        "warning": {
+          "type": "string",
+          "enum": ["yellow", "orange"],
+          "default": "yellow",
+          "description": "Color for warning status"
+        },
+        "critical": {
+          "type": "string",
+          "enum": ["red", "magenta"],
+          "default": "red",
+          "description": "Color for critical status"
+        },
+        "info": {
+          "type": "string",
+          "enum": ["blue", "cyan", "white"],
+          "default": "blue",
+          "description": "Color for informational displays"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SLOMetrics": {
+      "type": "object",
+      "title": "SLO Metrics",
+      "description": "Real-time SLO metrics and measurements",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics timestamp (ISO 8601)"
+        },
+        "window_start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of measurement window"
+        },
+        "window_end": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of measurement window"
+        },
+        "total_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of requests in window"
+        },
+        "successful_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of successful jobs"
+        },
+        "failed_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failed jobs"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Success rate as decimal (0.999 = 99.9%)"
+        },
+        "p50_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+          "description": "50th percentile latency"
+        },
+        "p95_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+          "description": "95th percentile latency"
+        },
+        "p99_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+          "description": "99th percentile latency"
+        },
+        "avg_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+          "description": "Average latency"
+        },
+        "backlog_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current queue backlog size"
+        },
+        "backlog_growth": {
+          "type": "number",
+          "description": "Backlog growth rate (jobs/second)"
+        },
+        "processing_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Job processing rate (jobs/second)"
+        },
+        "error_budget": {
+          "$ref": "#/definitions/ErrorBudget",
+          "description": "Current error budget status"
+        },
+        "burn_rate": {
+          "$ref": "#/definitions/BurnRate",
+          "description": "Current burn rate metrics"
+        },
+        "trends": {
+          "$ref": "#/definitions/TrendMetrics",
+          "description": "Trend analysis data"
+        },
+        "health_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall health score (0-100)"
+        }
+      },
+      "required": [
+        "timestamp",
+        "window_start",
+        "window_end",
+        "total_requests",
+        "successful_jobs",
+        "failed_jobs",
+        "success_rate"
+      ],
+      "additionalProperties": false
+    },
+    "ErrorBudget": {
+      "type": "object",
+      "title": "Error Budget",
+      "description": "Error budget tracking and consumption metrics",
+      "properties": {
+        "total": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Total error budget for window"
+        },
+        "consumed": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Error budget consumed so far"
+        },
+        "remaining": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Error budget remaining"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2.0,
+          "description": "Percentage of budget consumed (0.87 = 87%)"
+        },
+        "time_left": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Time until budget exhausted at current rate"
+        },
+        "reset_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the budget will next reset"
+        },
+        "last_reset": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the budget was last reset"
+        }
+      },
+      "required": ["total", "consumed", "remaining", "percentage"],
+      "additionalProperties": false
+    },
+    "BurnRate": {
+      "type": "object",
+      "title": "Burn Rate Metrics",
+      "description": "Error budget burn rate tracking and analysis",
+      "properties": {
+        "current": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current burn rate multiplier"
+        },
+        "average": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average burn rate over window"
+        },
+        "peak": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak burn rate in window"
+        },
+        "trend": {
+          "type": "string",
+          "enum": ["increasing", "decreasing", "stable", "unknown"],
+          "description": "Burn rate trend direction"
+        },
+        "alert_level": {
+          "type": "string",
+          "enum": ["ok", "warning", "critical"],
+          "description": "Current alert level based on thresholds"
+        },
+        "acceleration": {
+          "type": "number",
+          "description": "Rate of change in burn rate (per minute)"
+        },
+        "time_to_threshold": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Time until next alert threshold"
+        }
+      },
+      "required": ["current", "alert_level"],
+      "additionalProperties": false
+    },
+    "TrendMetrics": {
+      "type": "object",
+      "title": "Trend Analysis",
+      "description": "Statistical trend analysis of SLO metrics",
+      "properties": {
+        "success_rate_change": {
+          "type": "number",
+          "description": "Percentage change in success rate over last hour"
+        },
+        "latency_change": {
+          "type": "number",
+          "description": "Percentage change in P95 latency over last hour"
+        },
+        "backlog_growth_trend": {
+          "type": "string",
+          "enum": ["growing", "shrinking", "stable", "unknown"],
+          "description": "Backlog growth trend"
+        },
+        "error_rate_spike": {
+          "type": "boolean",
+          "description": "Whether an error rate spike was detected"
+        },
+        "seasonal_adjustment": {
+          "type": "number",
+          "description": "Seasonal adjustment factor applied"
+        },
+        "confidence_level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence level of trend analysis"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SLOAlert": {
+      "type": "object",
+      "title": "SLO Alert",
+      "description": "SLO monitoring alert with complete context",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^alert_[a-z0-9_]+$",
+          "description": "Unique alert identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Alert creation timestamp"
+        },
+        "slo_name": {
+          "type": "string",
+          "description": "Name of the SLO that triggered the alert"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "critical"],
+          "description": "Alert severity level"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["burn_rate", "slo_breach", "latency", "backlog", "anomaly"],
+          "description": "Type of alert condition"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable alert message"
+        },
+        "cause": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Detailed cause of the alert"
+        },
+        "current_value": {
+          "type": "number",
+          "description": "Current metric value that triggered alert"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Threshold value that was exceeded"
+        },
+        "burn_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current burn rate (for burn rate alerts)"
+        },
+        "time_to_exhaustion": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Time until budget exhaustion (for burn rate alerts)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "acknowledged", "resolved", "suppressed"],
+          "default": "active",
+          "description": "Current alert status"
+        },
+        "acked_by": {
+          "type": "string",
+          "description": "User who acknowledged the alert"
+        },
+        "acked_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the alert was acknowledged"
+        },
+        "ack_comment": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Comment provided during acknowledgment"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the alert was resolved"
+        },
+        "resolution": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Resolution details"
+        },
+        "suppressed_until": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Alert suppression end time"
+        },
+        "runbook_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to relevant runbook or documentation"
+        },
+        "labels": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_][a-z0-9_]*$": {
+              "type": "string"
+            }
+          },
+          "description": "Additional alert labels"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "slo_name",
+        "severity",
+        "type",
+        "message",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "ThresholdConfig": {
+      "type": "object",
+      "title": "Alert Threshold Configuration",
+      "description": "Configuration for all alerting thresholds",
+      "properties": {
+        "success_rate": {
+          "type": "object",
+          "properties": {
+            "warning": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Success rate warning threshold"
+            },
+            "critical": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Success rate critical threshold"
+            }
+          },
+          "additionalProperties": false
+        },
+        "burn_rate": {
+          "$ref": "#/definitions/BurnRateConfig",
+          "description": "Burn rate thresholds"
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "p95_warning": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "P95 latency warning threshold"
+            },
+            "p95_critical": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "P95 latency critical threshold"
+            },
+            "p99_warning": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "P99 latency warning threshold"
+            },
+            "p99_critical": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "P99 latency critical threshold"
+            }
+          },
+          "additionalProperties": false
+        },
+        "backlog": {
+          "type": "object",
+          "properties": {
+            "growth_warning": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Backlog growth rate warning threshold (jobs/sec)"
+            },
+            "growth_critical": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Backlog growth rate critical threshold (jobs/sec)"
+            },
+            "size_warning": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Backlog size warning threshold"
+            },
+            "size_critical": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Backlog size critical threshold"
+            }
+          },
+          "additionalProperties": false
+        },
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "low_warning": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Low throughput warning threshold (jobs/sec)"
+            },
+            "low_critical": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Low throughput critical threshold (jobs/sec)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Anomaly": {
+      "type": "object",
+      "title": "Detected Anomaly",
+      "description": "Statistical anomaly detected in SLO metrics",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^anomaly_[a-z0-9_]+$",
+          "description": "Unique anomaly identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the anomaly was detected"
+        },
+        "metric": {
+          "type": "string",
+          "enum": ["success_rate", "latency", "backlog", "throughput", "error_rate"],
+          "description": "Metric where anomaly was detected"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence level of anomaly detection"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable anomaly description"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Estimated severity of the anomaly"
+        },
+        "current_value": {
+          "type": "number",
+          "description": "Current metric value"
+        },
+        "expected_value": {
+          "type": "number",
+          "description": "Expected metric value based on historical data"
+        },
+        "deviation": {
+          "type": "number",
+          "description": "Standard deviations from expected value"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smhd]$",
+          "description": "Duration of the anomalous behavior"
+        },
+        "affected_components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "System components affected by the anomaly"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "ID linking related anomalies"
+        },
+        "resolved": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the anomaly has been resolved"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the anomaly was resolved"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "metric",
+        "confidence",
+        "description",
+        "severity",
+        "current_value",
+        "expected_value"
+      ],
+      "additionalProperties": false
+    },
+    "AnomalyDetectionMetadata": {
+      "type": "object",
+      "title": "Anomaly Detection Metadata",
+      "description": "Metadata about the anomaly detection process",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["statistical", "isolation_forest", "autoencoder", "ensemble"],
+          "description": "Anomaly detection algorithm used"
+        },
+        "model_version": {
+          "type": "string",
+          "pattern": "^v\\d+\\.\\d+\\.\\d+$",
+          "description": "Version of the detection model"
+        },
+        "training_period": {
+          "type": "string",
+          "pattern": "^\\d+[dhm]$",
+          "description": "Period used for model training"
+        },
+        "last_trained": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the model was last trained"
+        },
+        "sensitivity": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "description": "Detection sensitivity setting"
+        },
+        "false_positive_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Estimated false positive rate"
+        },
+        "data_quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Quality score of training data"
+        }
+      },
+      "required": ["algorithm", "model_version", "last_trained"],
+      "additionalProperties": false
+    },
+    "HealthStatus": {
+      "type": "object",
+      "title": "System Health Status",
+      "description": "Health status of the SLO monitoring system",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall health status"
+        },
+        "uptime": {
+          "type": "string",
+          "pattern": "^\\d+[dhms]+$",
+          "description": "System uptime"
+        },
+        "metrics_lag": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[smh]$",
+          "description": "Current metrics processing lag"
+        },
+        "last_update": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last successful metrics update"
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "calculator": {
+              "type": "string",
+              "enum": ["healthy", "degraded", "unhealthy"],
+              "description": "SLO calculator component status"
+            },
+            "storage": {
+              "type": "string",
+              "enum": ["healthy", "degraded", "unhealthy"],
+              "description": "Storage component status"
+            },
+            "alerting": {
+              "type": "string",
+              "enum": ["healthy", "degraded", "unhealthy"],
+              "description": "Alerting component status"
+            },
+            "api": {
+              "type": "string",
+              "enum": ["healthy", "degraded", "unhealthy"],
+              "description": "API component status"
+            },
+            "tui": {
+              "type": "string",
+              "enum": ["healthy", "degraded", "unhealthy"],
+              "description": "TUI component status"
+            }
+          },
+          "additionalProperties": false
+        },
+        "performance_metrics": {
+          "type": "object",
+          "properties": {
+            "cpu_usage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Current CPU usage percentage"
+            },
+            "memory_usage": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Current memory usage in MB"
+            },
+            "update_frequency": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Actual update frequency (Hz)"
+            },
+            "alert_latency": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "Alert generation latency"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["status", "last_update"],
+      "additionalProperties": false
+    },
+    "MetricsMetadata": {
+      "type": "object",
+      "title": "Metrics Metadata",
+      "description": "Metadata about metrics collection and processing",
+      "properties": {
+        "total_points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of data points"
+        },
+        "resolution": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Data resolution used"
+        },
+        "aggregation": {
+          "type": "string",
+          "enum": ["avg", "max", "min", "sum", "count", "percentile"],
+          "description": "Aggregation method applied"
+        },
+        "sampling_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Sampling rate used for data collection"
+        },
+        "data_completeness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of expected data points received"
+        },
+        "oldest_point": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of oldest data point"
+        },
+        "newest_point": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of newest data point"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PaginationInfo": {
+      "type": "object",
+      "title": "Pagination Information",
+      "description": "Pagination metadata for paginated responses",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items per page"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of items skipped"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of items"
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "Whether more items are available"
+        },
+        "next_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset for next page"
+        },
+        "prev_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset for previous page"
+        }
+      },
+      "required": ["limit", "offset", "total", "has_more"],
+      "additionalProperties": false
+    },
+    "RollingWindowConfig": {
+      "type": "object",
+      "title": "Rolling Window Configuration",
+      "description": "Configuration for rolling window calculations",
+      "properties": {
+        "window_size": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Size of the rolling window"
+        },
+        "bucket_size": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Size of individual buckets"
+        },
+        "max_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of buckets to retain"
+        },
+        "aggregation_method": {
+          "type": "string",
+          "enum": ["avg", "sum", "max", "min", "count"],
+          "default": "avg",
+          "description": "Method for aggregating bucket data"
+        },
+        "retention_policy": {
+          "type": "string",
+          "enum": ["fifo", "lru", "time_based"],
+          "default": "time_based",
+          "description": "Policy for bucket retention"
+        }
+      },
+      "required": ["window_size", "bucket_size"],
+      "additionalProperties": false
+    },
+    "ExportConfig": {
+      "type": "object",
+      "title": "Export Configuration",
+      "description": "Configuration for data export functionality",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["json", "csv", "prometheus", "influxdb"],
+          "description": "Export format"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "gzip", "zstd"],
+          "default": "none",
+          "description": "Compression method"
+        },
+        "include_metadata": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include metadata in export"
+        },
+        "time_format": {
+          "type": "string",
+          "enum": ["iso8601", "unix", "unix_nano"],
+          "default": "iso8601",
+          "description": "Timestamp format in export"
+        },
+        "field_mapping": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_][a-z0-9_]*$": {
+              "type": "string"
+            }
+          },
+          "description": "Field name mappings for export"
+        }
+      },
+      "required": ["format"],
+      "additionalProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z_]+$",
+          "description": "Error code"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Request identifier for tracing"
+        },
+        "path": {
+          "type": "string",
+          "description": "API path where error occurred"
+        }
+      },
+      "required": ["error", "code", "timestamp"],
+      "additionalProperties": false
+    },
+    "ValidationError": {
+      "type": "object",
+      "title": "Validation Error Response",
+      "description": "Validation error with field-specific details",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z_]+$",
+          "description": "Error code"
+        },
+        "validation_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Field name with validation error"
+              },
+              "message": {
+                "type": "string",
+                "description": "Validation error message"
+              },
+              "value": {
+                "description": "Invalid value provided"
+              },
+              "constraint": {
+                "type": "string",
+                "description": "Violated constraint"
+              }
+            },
+            "required": ["field", "message"],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp"
+        }
+      },
+      "required": ["error", "code", "validation_errors", "timestamp"],
+      "additionalProperties": false
+    }
+  }
+}

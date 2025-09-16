@@ -1,0 +1,883 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.example.com/schemas/canary-deployments/v1",
+  "title": "Canary Deployments Schema Definitions",
+  "description": "JSON Schema definitions for canary deployment data models",
+  "type": "object",
+  "definitions": {
+    "CanaryDeployment": {
+      "$id": "#CanaryDeployment",
+      "type": "object",
+      "title": "Canary Deployment",
+      "description": "Complete canary deployment configuration and state",
+      "required": [
+        "id",
+        "queue_name",
+        "stable_version",
+        "canary_version",
+        "current_percent",
+        "status",
+        "start_time",
+        "config"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique deployment identifier",
+          "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "queue_name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Target queue name for deployment",
+          "examples": ["payment-processor", "email-sender", "image-optimizer"]
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "minLength": 3,
+          "maxLength": 32,
+          "description": "Tenant identifier for multi-tenant deployments",
+          "examples": ["acme-corp", "tenant-123"]
+        },
+        "stable_version": {
+          "type": "string",
+          "pattern": "^v?\\d+\\.\\d+\\.\\d+([+-].*)?$",
+          "description": "Current stable version using semantic versioning",
+          "examples": ["v1.2.3", "1.0.0", "2.1.0-beta.1"]
+        },
+        "canary_version": {
+          "type": "string",
+          "pattern": "^v?\\d+\\.\\d+\\.\\d+([+-].*)?$",
+          "description": "New canary version being tested",
+          "examples": ["v1.3.0", "1.1.0", "2.2.0-rc.1"]
+        },
+        "current_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Current percentage of traffic going to canary",
+          "examples": [10, 25, 50, 100]
+        },
+        "target_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Target percentage for this deployment stage",
+          "examples": [20, 50, 100]
+        },
+        "strategy": {
+          "$ref": "#/definitions/RoutingStrategy"
+        },
+        "status": {
+          "$ref": "#/definitions/DeploymentStatus"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when deployment started",
+          "examples": ["2024-01-15T10:30:00Z"]
+        },
+        "last_update": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of last update",
+          "examples": ["2024-01-15T11:15:00Z"]
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when deployment completed",
+          "examples": ["2024-01-15T12:00:00Z"]
+        },
+        "config": {
+          "$ref": "#/definitions/CanaryConfig"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PromotionRule"
+          },
+          "description": "Promotion rules for this deployment"
+        },
+        "stable_metrics": {
+          "$ref": "#/definitions/MetricsSnapshot"
+        },
+        "canary_metrics": {
+          "$ref": "#/definitions/MetricsSnapshot"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DeploymentEvent"
+          },
+          "description": "Audit trail of deployment events"
+        },
+        "created_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who created the deployment",
+          "examples": ["user@example.com", "service-account"]
+        },
+        "last_modified_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who last modified the deployment"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DeploymentStatus": {
+      "$id": "#DeploymentStatus",
+      "type": "string",
+      "enum": [
+        "planning",
+        "active",
+        "ramping",
+        "manual_review",
+        "promoting",
+        "rolling_back",
+        "completed",
+        "failed",
+        "paused"
+      ],
+      "description": "Current status of the canary deployment",
+      "examples": ["active", "promoting", "completed"]
+    },
+
+    "RoutingStrategy": {
+      "$id": "#RoutingStrategy",
+      "type": "string",
+      "enum": [
+        "queue_split",
+        "stream_group",
+        "consistent_hash"
+      ],
+      "description": "Traffic routing strategy for canary deployment",
+      "examples": ["queue_split", "consistent_hash"]
+    },
+
+    "CanaryConfig": {
+      "$id": "#CanaryConfig",
+      "type": "object",
+      "title": "Canary Configuration",
+      "description": "Configuration parameters for canary deployment behavior",
+      "required": [
+        "initial_percent",
+        "max_percent",
+        "step_size",
+        "step_duration"
+      ],
+      "properties": {
+        "initial_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Initial traffic percentage for canary",
+          "default": 5,
+          "examples": [5, 10, 15]
+        },
+        "max_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum traffic percentage allowed",
+          "default": 100,
+          "examples": [50, 75, 100]
+        },
+        "step_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Percentage increase per promotion step",
+          "default": 10,
+          "examples": [5, 10, 25]
+        },
+        "step_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Duration between automatic promotions (e.g., 10m, 1h)",
+          "default": "10m",
+          "examples": ["5m", "10m", "30m", "1h"]
+        },
+        "sticky_routing": {
+          "type": "boolean",
+          "description": "Use job ID hash for consistent routing",
+          "default": false
+        },
+        "routing_strategy": {
+          "$ref": "#/definitions/RoutingStrategy"
+        },
+        "max_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smhd]$",
+          "description": "Maximum deployment duration (e.g., 2h, 1d)",
+          "default": "2h",
+          "examples": ["1h", "2h", "4h", "1d"]
+        },
+        "min_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Minimum deployment duration (e.g., 10m)",
+          "default": "10m",
+          "examples": ["5m", "10m", "15m"]
+        },
+        "require_approval": {
+          "type": "boolean",
+          "description": "Require manual approval for final promotion",
+          "default": false
+        },
+        "auto_promote": {
+          "type": "boolean",
+          "description": "Enable automatic promotion based on rules",
+          "default": true
+        },
+        "error_rate_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum allowed error rate increase (percentage points)",
+          "default": 2.0,
+          "examples": [1.0, 2.0, 5.0]
+        },
+        "latency_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum allowed latency increase (percentage)",
+          "default": 15.0,
+          "examples": [10.0, 15.0, 20.0]
+        },
+        "throughput_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum allowed throughput decrease (percentage)",
+          "default": 10.0,
+          "examples": [5.0, 10.0, 15.0]
+        },
+        "drain_timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Timeout for draining canary jobs during rollback",
+          "default": "5m",
+          "examples": ["2m", "5m", "10m"]
+        },
+        "monitoring_interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Interval for metrics collection",
+          "default": "30s",
+          "examples": ["15s", "30s", "1m", "2m"]
+        },
+        "alert_channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "description": "Alert channels for notifications",
+          "examples": [["slack://alerts", "email://ops@example.com"]]
+        },
+        "enable_metrics": {
+          "type": "boolean",
+          "description": "Enable metrics collection",
+          "default": true
+        },
+        "enable_alerting": {
+          "type": "boolean",
+          "description": "Enable alerting",
+          "default": true
+        },
+        "enable_auto_rollback": {
+          "type": "boolean",
+          "description": "Enable automatic rollback on SLO violations",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MetricsSnapshot": {
+      "$id": "#MetricsSnapshot",
+      "type": "object",
+      "title": "Metrics Snapshot",
+      "description": "Performance and health metrics for a specific time window",
+      "required": [
+        "timestamp",
+        "time_window"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics collection timestamp",
+          "examples": ["2024-01-15T10:30:00Z"]
+        },
+        "time_window": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time window for metrics aggregation",
+          "examples": ["5m", "10m", "1h"]
+        },
+        "jobs_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total jobs processed in this window",
+          "examples": [1000, 5000, 10000]
+        },
+        "jobs_succeeded": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successfully processed jobs",
+          "examples": [980, 4950, 9900]
+        },
+        "jobs_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed jobs",
+          "examples": [20, 50, 100]
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Error rate percentage",
+          "examples": [0.5, 1.0, 2.0]
+        },
+        "avg_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mµn]?s$",
+          "description": "Average processing latency",
+          "examples": ["50ms", "100ms", "1.5s"]
+        },
+        "p50_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mµn]?s$",
+          "description": "50th percentile latency",
+          "examples": ["40ms", "80ms", "1s"]
+        },
+        "p95_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mµn]?s$",
+          "description": "95th percentile latency",
+          "examples": ["150ms", "300ms", "3s"]
+        },
+        "p99_latency": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?[mµn]?s$",
+          "description": "99th percentile latency",
+          "examples": ["500ms", "1s", "5s"]
+        },
+        "jobs_per_second": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Processing rate (jobs per second)",
+          "examples": [10.5, 100.0, 1000.0]
+        },
+        "active_workers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active workers",
+          "examples": [5, 10, 50]
+        },
+        "queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current queue depth",
+          "examples": [0, 100, 5000]
+        },
+        "memory_usage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Memory usage in bytes",
+          "examples": [536870912, 1073741824, 2147483648]
+        },
+        "cpu_usage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage",
+          "examples": [25.5, 50.0, 75.0]
+        },
+        "custom_metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {"type": "number"},
+              {"type": "string"},
+              {"type": "boolean"}
+            ]
+          },
+          "description": "Custom business metrics",
+          "examples": [
+            {"payment_success_rate": 98.5, "avg_transaction_amount": 150.75}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PromotionRule": {
+      "$id": "#PromotionRule",
+      "type": "object",
+      "title": "Promotion Rule",
+      "description": "Rule for automated promotion decisions",
+      "required": [
+        "name",
+        "type",
+        "enabled",
+        "conditions",
+        "actions"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable rule name",
+          "examples": ["Low Error Rate", "Latency Check", "Duration Gate"]
+        },
+        "type": {
+          "$ref": "#/definitions/RuleType"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the rule is active",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Rule evaluation priority (higher = first)",
+          "default": 50,
+          "examples": [10, 50, 90]
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/RuleCondition"
+          },
+          "description": "Conditions that must be met for rule to trigger"
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/RuleAction"
+          },
+          "description": "Actions to take when rule conditions are met"
+        },
+        "evaluation_interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "How often to evaluate the rule",
+          "default": "30s",
+          "examples": ["15s", "30s", "1m", "5m"]
+        },
+        "cooldown_period": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Minimum time between rule actions",
+          "default": "5m",
+          "examples": ["1m", "5m", "10m"]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Detailed rule description"
+        },
+        "created_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who created the rule"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Rule creation timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RuleType": {
+      "$id": "#RuleType",
+      "type": "string",
+      "enum": [
+        "error_rate",
+        "latency",
+        "throughput",
+        "duration",
+        "custom"
+      ],
+      "description": "Type of promotion rule",
+      "examples": ["error_rate", "latency", "duration"]
+    },
+
+    "RuleCondition": {
+      "$id": "#RuleCondition",
+      "type": "object",
+      "title": "Rule Condition",
+      "description": "Condition for rule evaluation",
+      "required": [
+        "metric",
+        "operator",
+        "value"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Metric to evaluate",
+          "examples": ["error_rate", "p95_latency", "jobs_per_second", "custom.payment_success_rate"]
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["lt", "lte", "gt", "gte", "eq", "ne"],
+          "description": "Comparison operator",
+          "examples": ["lt", "gte", "eq"]
+        },
+        "value": {
+          "anyOf": [
+            {"type": "number"},
+            {"type": "string"},
+            {"type": "boolean"}
+          ],
+          "description": "Threshold value for comparison",
+          "examples": [2.0, "100ms", true, 50]
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Duration condition must be met continuously",
+          "examples": ["30s", "2m", "5m"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RuleAction": {
+      "$id": "#RuleAction",
+      "type": "object",
+      "title": "Rule Action",
+      "description": "Action to take when rule conditions are met",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ActionType"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Action-specific parameters",
+          "examples": [
+            {"percentage": 25},
+            {"reason": "SLO violation"},
+            {"channel": "slack://alerts"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ActionType": {
+      "$id": "#ActionType",
+      "type": "string",
+      "enum": [
+        "promote",
+        "rollback",
+        "pause",
+        "alert",
+        "custom"
+      ],
+      "description": "Type of action to take",
+      "examples": ["promote", "rollback", "alert"]
+    },
+
+    "DeploymentEvent": {
+      "$id": "#DeploymentEvent",
+      "type": "object",
+      "title": "Deployment Event",
+      "description": "Audit trail event for deployment",
+      "required": [
+        "id",
+        "timestamp",
+        "type",
+        "message"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Event identifier",
+          "examples": ["123e4567-e89b-12d3-a456-426614174000"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event timestamp",
+          "examples": ["2024-01-15T10:30:00Z"]
+        },
+        "type": {
+          "$ref": "#/definitions/EventType"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Event description",
+          "examples": [
+            "Deployment created",
+            "Traffic updated to 25%",
+            "Automatic promotion triggered"
+          ]
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional event details",
+          "examples": [
+            {"old_percentage": 10, "new_percentage": 25},
+            {"rule_name": "Low Error Rate", "metric_value": 0.5}
+          ]
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User associated with the event",
+          "examples": ["user@example.com", "system"]
+        },
+        "automated": {
+          "type": "boolean",
+          "description": "Whether the event was automated",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EventType": {
+      "$id": "#EventType",
+      "type": "string",
+      "enum": [
+        "deployment_created",
+        "traffic_updated",
+        "promotion_triggered",
+        "rollback_triggered",
+        "rule_evaluated",
+        "metrics_collected",
+        "worker_registered",
+        "alert_triggered",
+        "deployment_completed",
+        "deployment_failed"
+      ],
+      "description": "Type of deployment event",
+      "examples": ["deployment_created", "promotion_triggered", "rollback_triggered"]
+    },
+
+    "WorkerInfo": {
+      "$id": "#WorkerInfo",
+      "type": "object",
+      "title": "Worker Information",
+      "description": "Information about a registered worker",
+      "required": [
+        "id",
+        "version",
+        "lane",
+        "queues",
+        "status",
+        "last_seen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Worker identifier",
+          "examples": ["worker-001", "payment-processor-123"]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?\\d+\\.\\d+\\.\\d+([+-].*)?$",
+          "description": "Worker version",
+          "examples": ["v1.2.3", "1.0.0", "2.1.0-beta.1"]
+        },
+        "lane": {
+          "type": "string",
+          "enum": ["stable", "canary"],
+          "description": "Worker lane assignment",
+          "examples": ["stable", "canary"]
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$"
+          },
+          "minItems": 1,
+          "description": "Queues this worker processes",
+          "examples": [["payment-processor"], ["email-sender", "notification-queue"]]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "unhealthy", "unknown"],
+          "description": "Worker health status",
+          "examples": ["healthy", "unhealthy"]
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last heartbeat timestamp",
+          "examples": ["2024-01-15T10:30:00Z"]
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {"type": "number"},
+              {"type": "string"},
+              {"type": "boolean"}
+            ]
+          },
+          "description": "Worker-specific metrics",
+          "examples": [
+            {"cpu_usage": 45.5, "memory_mb": 512, "jobs_processed": 1000}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateDeploymentRequest": {
+      "$id": "#CreateDeploymentRequest",
+      "type": "object",
+      "title": "Create Deployment Request",
+      "description": "Request payload for creating a new canary deployment",
+      "required": [
+        "queue_name",
+        "canary_version"
+      ],
+      "properties": {
+        "queue_name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Target queue for deployment",
+          "examples": ["payment-processor", "email-sender"]
+        },
+        "tenant_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "minLength": 3,
+          "maxLength": 32,
+          "description": "Tenant identifier",
+          "examples": ["acme-corp", "tenant-123"]
+        },
+        "canary_version": {
+          "type": "string",
+          "pattern": "^v?\\d+\\.\\d+\\.\\d+([+-].*)?$",
+          "description": "Version to deploy as canary",
+          "examples": ["v1.3.0", "1.1.0", "2.2.0-rc.1"]
+        },
+        "config": {
+          "$ref": "#/definitions/CanaryConfig"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PromotionRule"
+          },
+          "description": "Custom promotion rules for this deployment"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateDeploymentRequest": {
+      "$id": "#UpdateDeploymentRequest",
+      "type": "object",
+      "title": "Update Deployment Request",
+      "description": "Request payload for updating a canary deployment",
+      "properties": {
+        "current_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Update traffic percentage",
+          "examples": [25, 50, 75]
+        },
+        "target_percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Update target percentage",
+          "examples": [50, 75, 100]
+        },
+        "config": {
+          "$ref": "#/definitions/CanaryConfig"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PromotionRule"
+          },
+          "description": "Updated promotion rules"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+
+    "Error": {
+      "$id": "#Error",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Error code",
+          "examples": ["VALIDATION_ERROR", "DEPLOYMENT_NOT_FOUND", "UNAUTHORIZED"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "examples": [
+            "Queue name is required",
+            "Deployment not found",
+            "Insufficient permissions"
+          ]
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error details",
+          "examples": [
+            {"field": "queue_name", "code": "REQUIRED"},
+            {"deployment_id": "123e4567-e89b-12d3-a456-426614174000"}
+          ]
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request identifier for debugging",
+          "examples": ["req_123e4567-e89b-12d3-a456-426614174000"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,1496 @@
+openapi: 3.0.3
+info:
+  title: DLQ Remediation API
+  description: |
+    Comprehensive API for Dead Letter Queue (DLQ) management and remediation.
+
+    This API provides intelligent pattern analysis, bulk operations, and advanced
+    filtering capabilities for managing failed jobs in the go-redis-work-queue system.
+
+    ## Key Features
+    - **Pattern Analysis**: Automatic clustering and categorization of failures
+    - **Bulk Operations**: Safe, auditable bulk retry and purge operations
+    - **Advanced Filtering**: Multi-dimensional filtering with saved presets
+    - **Payload Surgery**: JSON transformation with schema validation
+    - **Historical Analysis**: Trend analysis and incident correlation
+
+    ## Authentication
+    All endpoints require authentication via JWT or PASETO tokens in the Authorization header:
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    ## Rate Limiting
+    - Standard operations: 1000 requests per minute
+    - Bulk operations: 10 requests per minute
+    - Export operations: 5 requests per hour
+  version: 1.0.0
+  contact:
+    name: DLQ API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+paths:
+  /dlq/list:
+    get:
+      summary: List DLQ items
+      description: |
+        Retrieve a paginated list of dead letter queue items with optional filtering
+        and pattern analysis. Supports complex filtering, sorting, and real-time
+        pattern detection.
+      operationId: listDLQItems
+      tags:
+        - DLQ Operations
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: sort
+          in: query
+          description: Sort field and direction
+          required: false
+          schema:
+            type: string
+            enum: [failed_at_desc, failed_at_asc, retry_count_desc, retry_count_asc, job_type_asc, error_type_asc]
+            default: failed_at_desc
+        - name: filter
+          in: query
+          description: JSON-encoded filter criteria
+          required: false
+          schema:
+            type: string
+            example: '{"error_type":"timeout","job_type":"payment_*","failed_after":"2024-01-15T14:00:00Z"}'
+        - name: include_patterns
+          in: query
+          description: Include pattern analysis in response
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: include_payload
+          in: query
+          description: Include job payload in response
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successfully retrieved DLQ items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQListResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dlq/items/{itemId}:
+    get:
+      summary: Get DLQ item details
+      description: Retrieve detailed information about a specific DLQ item including full payload and metadata
+      operationId: getDLQItem
+      tags:
+        - DLQ Operations
+      parameters:
+        - name: itemId
+          in: path
+          description: DLQ item identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DLQ item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQEntry'
+        '404':
+          description: DLQ item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dlq/patterns:
+    get:
+      summary: Get detected patterns
+      description: |
+        Retrieve automatically detected error patterns with statistics and suggested actions.
+        Patterns are updated in real-time and cached for performance.
+      operationId: getDLQPatterns
+      tags:
+        - Pattern Analysis
+      parameters:
+        - name: time_window
+          in: query
+          description: Time window for pattern analysis
+          required: false
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+        - name: min_occurrences
+          in: query
+          description: Minimum occurrences to consider a pattern
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 5
+        - name: confidence_threshold
+          in: query
+          description: Minimum confidence score (0-1)
+          required: false
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+            default: 0.7
+      responses:
+        '200':
+          description: Detected patterns
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternAnalysisResponse'
+
+  /dlq/bulk-retry:
+    post:
+      summary: Bulk retry operation
+      description: |
+        Retry multiple DLQ items with optional payload transformation and advanced options.
+        Supports dry-run mode and progress tracking via WebSocket.
+      operationId: bulkRetryDLQItems
+      tags:
+        - Bulk Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkRetryRequest'
+      responses:
+        '202':
+          description: Bulk retry operation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions for bulk operations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dlq/bulk-purge:
+    post:
+      summary: Bulk purge operation
+      description: |
+        Permanently delete multiple DLQ items. This operation is irreversible and
+        requires explicit confirmation. Includes comprehensive audit logging.
+      operationId: bulkPurgeDLQItems
+      tags:
+        - Bulk Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkPurgeRequest'
+      responses:
+        '202':
+          description: Bulk purge operation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid request or missing confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dlq/transform-payload:
+    post:
+      summary: Transform job payload
+      description: |
+        Apply JSON transformation to job payload with schema validation.
+        Supports JSON Patch operations and custom transformation templates.
+      operationId: transformPayload
+      tags:
+        - Payload Surgery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayloadTransformRequest'
+      responses:
+        '200':
+          description: Payload transformation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayloadTransformResponse'
+
+  /dlq/operations/{operationId}:
+    get:
+      summary: Get bulk operation status
+      description: Retrieve status and progress of a bulk operation
+      operationId: getBulkOperationStatus
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: operationId
+          in: path
+          description: Bulk operation identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operation status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationStatus'
+        '404':
+          description: Operation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel bulk operation
+      description: Cancel a running bulk operation
+      operationId: cancelBulkOperation
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: operationId
+          in: path
+          description: Bulk operation identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operation cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Operation cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dlq/export:
+    post:
+      summary: Export DLQ data
+      description: |
+        Export DLQ data in various formats (CSV, JSON, Parquet) with filtering.
+        Large exports are processed asynchronously with progress tracking.
+      operationId: exportDLQData
+      tags:
+        - Data Export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+
+  /dlq/analytics/timeline:
+    get:
+      summary: Get DLQ analytics timeline
+      description: |
+        Retrieve time-series analytics for DLQ items including trends,
+        patterns, and correlations with external events.
+      operationId: getDLQAnalytics
+      tags:
+        - Analytics
+      parameters:
+        - name: start_time
+          in: query
+          description: Analysis start time (ISO 8601)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Analysis end time (ISO 8601)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: resolution
+          in: query
+          description: Time bucket resolution
+          required: false
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 6h, 1d]
+            default: 1h
+        - name: group_by
+          in: query
+          description: Grouping dimension
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [error_type, job_type, worker_id, queue_name]
+      responses:
+        '200':
+          description: Analytics timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsResponse'
+
+  /dlq/filters:
+    get:
+      summary: Get saved filters
+      description: Retrieve user's saved filter presets
+      operationId: getSavedFilters
+      tags:
+        - Filters
+      responses:
+        '200':
+          description: Saved filters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedFiltersResponse'
+
+    post:
+      summary: Save filter preset
+      description: Save a filter configuration as a named preset
+      operationId: saveFilterPreset
+      tags:
+        - Filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveFilterRequest'
+      responses:
+        '201':
+          description: Filter saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedFilter'
+
+  /dlq/health:
+    get:
+      summary: DLQ system health
+      description: Get health status of DLQ subsystem
+      operationId: getDLQHealth
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    DLQEntry:
+      type: object
+      required:
+        - id
+        - job_id
+        - queue_name
+        - job_type
+        - error_message
+        - error_type
+        - retry_count
+        - failed_at
+      properties:
+        id:
+          type: string
+          description: Unique DLQ entry identifier
+          example: "dlq_12345"
+        job_id:
+          type: string
+          description: Original job identifier
+          example: "job_67890"
+        queue_name:
+          type: string
+          description: Source queue name
+          example: "payment_processing"
+        job_type:
+          type: string
+          description: Job type or class name
+          example: "payment_charge"
+        payload:
+          type: object
+          description: Original job payload (optional)
+          additionalProperties: true
+        error_message:
+          type: string
+          description: Error message from failed execution
+          example: "Connection timeout after 30s"
+        error_type:
+          type: string
+          description: Categorized error type
+          example: "timeout"
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+          minimum: 0
+          example: 3
+        failed_at:
+          type: string
+          format: date-time
+          description: Timestamp when job failed
+          example: "2024-01-15T14:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          description: When entry was added to DLQ
+          example: "2024-01-15T14:30:05Z"
+        metadata:
+          $ref: '#/components/schemas/JobMetadata'
+
+    JobMetadata:
+      type: object
+      properties:
+        worker_id:
+          type: string
+          description: Worker that processed the job
+          example: "worker_001"
+        trace_id:
+          type: string
+          description: Distributed trace identifier
+          example: "trace_abc123"
+        span_id:
+          type: string
+          description: Span identifier within trace
+          example: "span_def456"
+        execution_time_ms:
+          type: integer
+          description: Job execution time before failure
+          example: 5500
+        memory_usage_mb:
+          type: number
+          format: float
+          description: Peak memory usage during execution
+          example: 45.7
+        environment:
+          type: string
+          description: Execution environment
+          example: "production"
+        version:
+          type: string
+          description: Application version
+          example: "v1.2.3"
+
+    DLQListResponse:
+      type: object
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DLQEntry'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+        patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorPattern'
+        summary:
+          $ref: '#/components/schemas/DLQSummary'
+
+    PaginationInfo:
+      type: object
+      required:
+        - page
+        - limit
+        - total_items
+        - total_pages
+        - has_next
+        - has_prev
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        limit:
+          type: integer
+          minimum: 1
+          example: 50
+        total_items:
+          type: integer
+          minimum: 0
+          example: 1247
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 25
+        has_next:
+          type: boolean
+          example: true
+        has_prev:
+          type: boolean
+          example: false
+
+    ErrorPattern:
+      type: object
+      required:
+        - pattern_id
+        - name
+        - affected_count
+        - percentage
+        - confidence
+      properties:
+        pattern_id:
+          type: string
+          description: Unique pattern identifier
+          example: "timeout_cluster_1"
+        name:
+          type: string
+          description: Human-readable pattern name
+          example: "Payment Timeout Cluster"
+        description:
+          type: string
+          description: Detailed pattern description
+          example: "Database connection timeouts during high load periods"
+        affected_count:
+          type: integer
+          description: Number of items matching this pattern
+          minimum: 1
+          example: 847
+        percentage:
+          type: number
+          format: float
+          description: Percentage of total DLQ items
+          minimum: 0
+          maximum: 100
+          example: 68.0
+        confidence:
+          type: number
+          format: float
+          description: Pattern confidence score (0-1)
+          minimum: 0
+          maximum: 1
+          example: 0.95
+        first_seen:
+          type: string
+          format: date-time
+          description: When pattern first appeared
+          example: "2024-01-15T14:00:00Z"
+        last_seen:
+          type: string
+          format: date-time
+          description: Most recent occurrence
+          example: "2024-01-15T14:45:00Z"
+        suggested_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedAction'
+        affected_job_types:
+          type: array
+          items:
+            type: string
+          example: ["payment_charge", "order_update"]
+
+    SuggestedAction:
+      type: object
+      required:
+        - type
+        - description
+        - confidence
+      properties:
+        type:
+          type: string
+          enum: [retry_with_backoff, retry_with_timeout_increase, purge, modify_payload, investigate]
+          example: "retry_with_backoff"
+        description:
+          type: string
+          description: Human-readable action description
+          example: "Retry with exponential backoff starting at 30s"
+        confidence:
+          type: number
+          format: float
+          description: Action confidence score (0-1)
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        estimated_success_rate:
+          type: number
+          format: float
+          description: Estimated success rate of this action
+          minimum: 0
+          maximum: 1
+          example: 0.92
+        parameters:
+          type: object
+          description: Action-specific parameters
+          additionalProperties: true
+
+    BulkRetryRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          $ref: '#/components/schemas/BulkTarget'
+        options:
+          $ref: '#/components/schemas/RetryOptions'
+        dry_run:
+          type: boolean
+          description: Perform validation without executing
+          default: false
+
+    BulkPurgeRequest:
+      type: object
+      required:
+        - target
+        - confirmation
+      properties:
+        target:
+          $ref: '#/components/schemas/BulkTarget'
+        confirmation:
+          type: string
+          description: Must be "PURGE" to confirm destructive operation
+          example: "PURGE"
+        reason:
+          type: string
+          description: Reason for purging (for audit trail)
+          example: "Obsolete jobs after system migration"
+
+    BulkTarget:
+      type: object
+      properties:
+        job_ids:
+          type: array
+          items:
+            type: string
+          description: Specific job IDs to target
+          example: ["job_1", "job_2", "job_3"]
+        filter:
+          $ref: '#/components/schemas/FilterCriteria'
+        max_items:
+          type: integer
+          description: Maximum number of items to process
+          minimum: 1
+          maximum: 10000
+          example: 1000
+
+    FilterCriteria:
+      type: object
+      properties:
+        error_type:
+          type: string
+          description: Filter by error type
+          example: "timeout"
+        job_type:
+          type: string
+          description: Filter by job type (supports wildcards)
+          example: "payment_*"
+        queue_name:
+          type: string
+          description: Filter by queue name
+          example: "high_priority"
+        failed_after:
+          type: string
+          format: date-time
+          description: Filter by failure time (after)
+          example: "2024-01-15T14:00:00Z"
+        failed_before:
+          type: string
+          format: date-time
+          description: Filter by failure time (before)
+          example: "2024-01-15T16:00:00Z"
+        retry_count_min:
+          type: integer
+          description: Minimum retry count
+          minimum: 0
+          example: 3
+        retry_count_max:
+          type: integer
+          description: Maximum retry count
+          minimum: 0
+          example: 5
+        worker_id:
+          type: string
+          description: Filter by worker ID
+          example: "worker_001"
+        has_trace:
+          type: boolean
+          description: Filter by presence of trace ID
+
+    RetryOptions:
+      type: object
+      properties:
+        reset_retry_count:
+          type: boolean
+          description: Reset retry counter to 0
+          default: false
+        add_backoff:
+          type: string
+          enum: [none, linear, exponential, custom]
+          description: Backoff strategy to apply
+          default: none
+        backoff_config:
+          $ref: '#/components/schemas/BackoffConfig'
+        modify_payload:
+          $ref: '#/components/schemas/PayloadModification'
+        target_queue:
+          type: string
+          description: Override target queue for retry
+        priority_override:
+          type: integer
+          description: Override job priority
+          minimum: 1
+          maximum: 10
+        delay_seconds:
+          type: integer
+          description: Initial delay before retry
+          minimum: 0
+          maximum: 86400
+
+    BackoffConfig:
+      type: object
+      properties:
+        initial_delay_ms:
+          type: integer
+          description: Initial delay in milliseconds
+          minimum: 0
+          default: 1000
+        max_delay_ms:
+          type: integer
+          description: Maximum delay in milliseconds
+          minimum: 0
+          default: 300000
+        multiplier:
+          type: number
+          format: float
+          description: Backoff multiplier
+          minimum: 1.0
+          default: 2.0
+        jitter:
+          type: boolean
+          description: Add random jitter
+          default: true
+
+    PayloadModification:
+      type: object
+      properties:
+        set:
+          type: object
+          description: Fields to set/update
+          additionalProperties: true
+          example:
+            timeout: 60000
+            retry_config:
+              max_attempts: 5
+        remove:
+          type: array
+          items:
+            type: string
+          description: Fields to remove
+          example: ["debug_flag", "temp_data"]
+        add_if_missing:
+          type: object
+          description: Fields to add only if not present
+          additionalProperties: true
+
+    PayloadTransformRequest:
+      type: object
+      required:
+        - job_id
+        - transformation
+      properties:
+        job_id:
+          type: string
+          description: DLQ item ID to transform
+          example: "dlq_12345"
+        transformation:
+          $ref: '#/components/schemas/PayloadTransformation'
+        validate_schema:
+          type: boolean
+          description: Validate against job schema after transformation
+          default: true
+        dry_run:
+          type: boolean
+          description: Show transformation result without applying
+          default: false
+
+    PayloadTransformation:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [json_patch, template, custom]
+          description: Transformation type
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/JSONPatchOperation'
+          description: JSON Patch operations (when type=json_patch)
+        template_id:
+          type: string
+          description: Template identifier (when type=template)
+        custom_script:
+          type: string
+          description: Custom transformation script (when type=custom)
+
+    JSONPatchOperation:
+      type: object
+      required:
+        - op
+        - path
+      properties:
+        op:
+          type: string
+          enum: [add, remove, replace, move, copy, test]
+          description: JSON Patch operation type
+        path:
+          type: string
+          description: JSON Pointer path
+          example: "/timeout"
+        value:
+          description: Value for add/replace operations
+          example: 60000
+        from:
+          type: string
+          description: Source path for move/copy operations
+
+    BulkOperationResponse:
+      type: object
+      required:
+        - operation_id
+        - status
+        - created_at
+      properties:
+        operation_id:
+          type: string
+          description: Unique operation identifier
+          example: "op_abc123"
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+          example: "running"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        estimated_completion:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:40:00Z"
+        progress_url:
+          type: string
+          description: WebSocket URL for real-time progress
+          example: "wss://api.example.com/v1/dlq/operations/op_abc123/progress"
+
+    BulkOperationStatus:
+      type: object
+      required:
+        - operation_id
+        - status
+        - created_at
+        - total_items
+        - processed_items
+      properties:
+        operation_id:
+          type: string
+          example: "op_abc123"
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+          example: "running"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        started_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:05Z"
+        completed_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:39:42Z"
+        total_items:
+          type: integer
+          description: Total items to process
+          example: 847
+        processed_items:
+          type: integer
+          description: Items processed so far
+          example: 623
+        successful_items:
+          type: integer
+          description: Successfully processed items
+          example: 598
+        failed_items:
+          type: integer
+          description: Failed processing items
+          example: 25
+        progress_percentage:
+          type: number
+          format: float
+          description: Completion percentage (0-100)
+          example: 73.5
+        estimated_time_remaining:
+          type: string
+          description: Estimated time to completion
+          example: "2m30s"
+        error_summary:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationError'
+
+    OperationError:
+      type: object
+      properties:
+        job_id:
+          type: string
+          example: "job_12345"
+        error_code:
+          type: string
+          example: "VALIDATION_FAILED"
+        error_message:
+          type: string
+          example: "Payload transformation failed schema validation"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:37:15Z"
+
+    PayloadTransformResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          example: true
+        original_payload:
+          type: object
+          description: Original payload before transformation
+          additionalProperties: true
+        transformed_payload:
+          type: object
+          description: Payload after transformation
+          additionalProperties: true
+        validation_errors:
+          type: array
+          items:
+            type: string
+          description: Schema validation errors (if any)
+        preview_url:
+          type: string
+          description: URL to preview transformation result
+
+    PatternAnalysisResponse:
+      type: object
+      required:
+        - patterns
+        - analysis_timestamp
+      properties:
+        patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorPattern'
+        analysis_timestamp:
+          type: string
+          format: date-time
+          description: When analysis was performed
+          example: "2024-01-15T14:35:00Z"
+        cache_expires_at:
+          type: string
+          format: date-time
+          description: When cached analysis expires
+          example: "2024-01-15T14:40:00Z"
+        total_items_analyzed:
+          type: integer
+          description: Total DLQ items included in analysis
+          example: 1247
+        analysis_window:
+          type: string
+          description: Time window for analysis
+          example: "24h"
+
+    DLQSummary:
+      type: object
+      properties:
+        total_items:
+          type: integer
+          example: 1247
+        error_type_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            timeout: 847
+            connection_error: 235
+            validation_error: 165
+        job_type_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            payment_charge: 623
+            order_update: 412
+            notification_send: 212
+        growth_rate:
+          $ref: '#/components/schemas/GrowthRate'
+
+    GrowthRate:
+      type: object
+      properties:
+        items_per_hour:
+          type: number
+          format: float
+          description: Average items added per hour
+          example: 45.2
+        trend:
+          type: string
+          enum: [increasing, decreasing, stable]
+          example: "increasing"
+        change_percentage:
+          type: number
+          format: float
+          description: Percentage change from previous period
+          example: 15.7
+
+    ExportRequest:
+      type: object
+      required:
+        - format
+        - filter
+      properties:
+        format:
+          type: string
+          enum: [csv, json, parquet, xlsx]
+          description: Export format
+        filter:
+          $ref: '#/components/schemas/FilterCriteria'
+        include_payload:
+          type: boolean
+          description: Include job payload in export
+          default: false
+        compression:
+          type: string
+          enum: [none, gzip, bzip2]
+          description: Compression algorithm
+          default: gzip
+        max_items:
+          type: integer
+          description: Maximum items to export
+          minimum: 1
+          maximum: 100000
+          default: 10000
+
+    ExportResponse:
+      type: object
+      required:
+        - export_id
+        - status
+        - created_at
+      properties:
+        export_id:
+          type: string
+          description: Unique export identifier
+          example: "exp_def456"
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+          example: "processing"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        estimated_completion:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:37:00Z"
+        download_url:
+          type: string
+          description: Download URL (available when completed)
+          example: "https://exports.example.com/exp_def456.csv.gz"
+        expires_at:
+          type: string
+          format: date-time
+          description: When download URL expires
+          example: "2024-01-16T14:35:00Z"
+
+    AnalyticsResponse:
+      type: object
+      required:
+        - timeline
+        - summary
+      properties:
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineBucket'
+        summary:
+          $ref: '#/components/schemas/AnalyticsSummary'
+        correlations:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventCorrelation'
+
+    TimelineBucket:
+      type: object
+      required:
+        - timestamp
+        - count
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:00:00Z"
+        count:
+          type: integer
+          description: Total items in this bucket
+          example: 45
+        error_types:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count by error type
+          example:
+            timeout: 30
+            connection_error: 15
+        job_types:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count by job type
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        total_failures:
+          type: integer
+          example: 1247
+        peak_hour:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:00:00Z"
+        peak_count:
+          type: integer
+          example: 156
+        average_per_hour:
+          type: number
+          format: float
+          example: 52.1
+        most_common_error:
+          type: string
+          example: "timeout"
+        most_affected_job_type:
+          type: string
+          example: "payment_charge"
+
+    EventCorrelation:
+      type: object
+      properties:
+        event_type:
+          type: string
+          enum: [deployment, config_change, external_outage, traffic_spike]
+          example: "deployment"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T13:45:00Z"
+        correlation_score:
+          type: number
+          format: float
+          description: Correlation strength (0-1)
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        description:
+          type: string
+          example: "Payment service deployment v2.1.4"
+        impact_assessment:
+          type: string
+          example: "Likely caused 68% of payment timeout errors"
+
+    SavedFilter:
+      type: object
+      required:
+        - id
+        - name
+        - filter
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Unique filter identifier
+          example: "filter_123"
+        name:
+          type: string
+          description: User-defined filter name
+          example: "Payment Timeouts Last Hour"
+        description:
+          type: string
+          description: Optional filter description
+          example: "All payment-related timeout errors from the last hour"
+        filter:
+          $ref: '#/components/schemas/FilterCriteria'
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        created_by:
+          type: string
+          description: User who created the filter
+          example: "alice@example.com"
+        usage_count:
+          type: integer
+          description: How many times filter has been used
+          example: 27
+        is_shared:
+          type: boolean
+          description: Whether filter is shared with team
+          default: false
+
+    SavedFiltersResponse:
+      type: object
+      required:
+        - filters
+      properties:
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SavedFilter'
+        total_count:
+          type: integer
+          example: 15
+
+    SaveFilterRequest:
+      type: object
+      required:
+        - name
+        - filter
+      properties:
+        name:
+          type: string
+          description: Filter name
+          example: "High Priority Payment Errors"
+        description:
+          type: string
+          description: Optional description
+        filter:
+          $ref: '#/components/schemas/FilterCriteria'
+        is_shared:
+          type: boolean
+          description: Share with team
+          default: false
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        components:
+          type: object
+          properties:
+            redis:
+              $ref: '#/components/schemas/ComponentHealth'
+            pattern_analyzer:
+              $ref: '#/components/schemas/ComponentHealth'
+            export_service:
+              $ref: '#/components/schemas/ComponentHealth'
+        metrics:
+          $ref: '#/components/schemas/HealthMetrics'
+
+    ComponentHealth:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [up, down, degraded]
+          example: "up"
+        response_time_ms:
+          type: integer
+          description: Component response time
+          example: 15
+        error_rate:
+          type: number
+          format: float
+          description: Error rate percentage
+          example: 0.1
+        last_check:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+
+    HealthMetrics:
+      type: object
+      properties:
+        total_dlq_items:
+          type: integer
+          example: 1247
+        items_processed_last_hour:
+          type: integer
+          example: 156
+        active_operations:
+          type: integer
+          example: 3
+        cache_hit_rate:
+          type: number
+          format: float
+          example: 0.94
+        average_response_time_ms:
+          type: integer
+          example: 45
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - status
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid filter criteria"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:35:00Z"
+        details:
+          type: string
+          description: Additional error details
+          example: "Field 'error_type' must be one of: timeout, connection_error, validation_error"
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+          example: "req_xyz789"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT or PASETO token authentication
+
+    pasetAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: PASETO
+      description: PASETO token authentication
+
+security:
+  - bearerAuth: []
+  - pasetAuth: []
+
+tags:
+  - name: DLQ Operations
+    description: Core DLQ management operations
+  - name: Pattern Analysis
+    description: Automatic pattern detection and analysis
+  - name: Bulk Operations
+    description: Bulk retry and purge operations
+  - name: Payload Surgery
+    description: Advanced payload transformation
+  - name: Data Export
+    description: DLQ data export functionality
+  - name: Analytics
+    description: Historical analysis and trends
+  - name: Filters
+    description: Filter management and presets
+  - name: Monitoring
+    description: Health checks and system monitoring

@@ -1,0 +1,1355 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.queue.company.com/voice-commands/v1.0.0/",
+  "title": "Terminal Voice Commands Schema Definitions",
+  "description": "JSON Schema definitions for the Terminal Voice Commands system",
+  "type": "object",
+  "definitions": {
+    "VoiceSession": {
+      "$id": "#/definitions/VoiceSession",
+      "type": "object",
+      "title": "Voice Session",
+      "description": "Active voice recognition session with configuration and statistics",
+      "required": [
+        "session_id",
+        "status",
+        "started_at",
+        "backend_used"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique session identifier"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "stopped", "error"],
+          "description": "Current session status"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Session start timestamp"
+        },
+        "last_activity": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last command processed timestamp"
+        },
+        "backend_used": {
+          "type": "string",
+          "enum": ["whisper_local", "whisper_cloud", "google_cloud", "azure_speech"],
+          "description": "Recognition backend in use"
+        },
+        "commands_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Total commands processed in session"
+        },
+        "average_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Average recognition confidence"
+        },
+        "average_latency": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Average processing latency (ISO 8601)"
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of recognition errors"
+        },
+        "wake_word_triggers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of wake word activations"
+        },
+        "configuration": {
+          "$ref": "#/definitions/SessionConfiguration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionConfiguration": {
+      "$id": "#/definitions/SessionConfiguration",
+      "type": "object",
+      "title": "Session Configuration",
+      "description": "Configuration settings for a voice session",
+      "properties": {
+        "wake_word": {
+          "type": "string",
+          "pattern": "^[a-zA-Z ]{2,50}$",
+          "default": "hey queue",
+          "description": "Wake word phrase for activation"
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}-[A-Z]{2}$",
+          "default": "en-US",
+          "description": "Language code for recognition"
+        },
+        "confidence_threshold": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "default": 0.7,
+          "description": "Minimum confidence for command acceptance"
+        },
+        "audio_config": {
+          "$ref": "#/definitions/AudioConfig"
+        },
+        "privacy_settings": {
+          "$ref": "#/definitions/PrivacySettings"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VoiceCommand": {
+      "$id": "#/definitions/VoiceCommand",
+      "type": "object",
+      "title": "Voice Command",
+      "description": "Processed voice command with recognition and execution results",
+      "required": [
+        "command_id",
+        "recognition",
+        "processing_time",
+        "status"
+      ],
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique command identifier"
+        },
+        "session_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Associated session identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Command processing timestamp"
+        },
+        "recognition": {
+          "$ref": "#/definitions/Recognition"
+        },
+        "parsed_command": {
+          "$ref": "#/definitions/ParsedCommand"
+        },
+        "execution_result": {
+          "$ref": "#/definitions/ExecutionResult"
+        },
+        "processing_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Total processing time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "recognition_failed", "parsing_failed", "execution_failed", "permission_denied"],
+          "description": "Overall command processing status"
+        },
+        "user_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_@.-]+$",
+          "maxLength": 100,
+          "description": "User who issued the command"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Recognition": {
+      "$id": "#/definitions/Recognition",
+      "type": "object",
+      "title": "Speech Recognition Result",
+      "description": "Result of speech-to-text recognition",
+      "required": [
+        "text",
+        "confidence",
+        "backend_used"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Recognized speech text"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Recognition confidence score"
+        },
+        "backend_used": {
+          "type": "string",
+          "enum": ["whisper_local", "whisper_cloud", "google_cloud", "azure_speech"],
+          "description": "Recognition backend that processed the audio"
+        },
+        "processing_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Recognition processing time"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": ["text", "confidence"],
+            "additionalProperties": false
+          },
+          "maxItems": 5,
+          "description": "Alternative recognition results"
+        },
+        "language_detected": {
+          "type": "string",
+          "pattern": "^[a-z]{2}-[A-Z]{2}$",
+          "description": "Detected language code"
+        },
+        "audio_quality": {
+          "$ref": "#/definitions/AudioQuality"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ParsedCommand": {
+      "$id": "#/definitions/ParsedCommand",
+      "type": "object",
+      "title": "Parsed Command",
+      "description": "Natural language command parsed into structured intent and entities",
+      "required": [
+        "intent",
+        "confidence"
+      ],
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "status_query",
+            "worker_control",
+            "queue_management",
+            "navigation",
+            "confirmation",
+            "cancel",
+            "help",
+            "unknown"
+          ],
+          "description": "Recognized command intent"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Intent classification confidence"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Entity"
+          },
+          "maxItems": 20,
+          "description": "Extracted entities from command"
+        },
+        "normalized_text": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Normalized command text"
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "previous_command": {
+              "type": "string"
+            },
+            "session_state": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "user_preferences": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true,
+          "description": "Command context and state"
+        },
+        "requires_confirmation": {
+          "type": "boolean",
+          "description": "Whether command requires user confirmation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Entity": {
+      "$id": "#/definitions/Entity",
+      "type": "object",
+      "title": "Named Entity",
+      "description": "Extracted entity from voice command",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "worker_id",
+            "queue_name",
+            "priority_level",
+            "action",
+            "target",
+            "count",
+            "timeframe",
+            "confirmation",
+            "navigation_target"
+          ],
+          "description": "Entity type"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Entity value as recognized"
+        },
+        "normalized_value": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Normalized entity value"
+        },
+        "start_position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Start character position in text"
+        },
+        "end_position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "End character position in text"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Entity extraction confidence"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 5,
+          "description": "Alternative entity values"
+        },
+        "validation_status": {
+          "type": "string",
+          "enum": ["valid", "invalid", "ambiguous", "not_validated"],
+          "description": "Entity validation result"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExecutionResult": {
+      "$id": "#/definitions/ExecutionResult",
+      "type": "object",
+      "title": "Command Execution Result",
+      "description": "Result of executing a parsed voice command",
+      "required": [
+        "status",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "success",
+            "error",
+            "permission_denied",
+            "invalid_target",
+            "confirmation_required",
+            "partial_success"
+          ],
+          "description": "Execution status"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Human-readable result message"
+        },
+        "execution_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Command execution time"
+        },
+        "actions_performed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10,
+          "description": "List of actions that were executed"
+        },
+        "side_effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10,
+          "description": "Side effects of the command execution"
+        },
+        "requires_confirmation": {
+          "type": "boolean",
+          "description": "Whether command requires user confirmation"
+        },
+        "confirmation_prompt": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Confirmation prompt for user"
+        },
+        "audio_feedback": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Audio response to be spoken"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional execution result data"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AudioConfig": {
+      "$id": "#/definitions/AudioConfig",
+      "type": "object",
+      "title": "Audio Configuration",
+      "description": "Configuration for audio input and processing",
+      "properties": {
+        "input_device": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Audio input device identifier"
+        },
+        "sample_rate": {
+          "type": "integer",
+          "enum": [8000, 16000, 22050, 44100, 48000],
+          "default": 16000,
+          "description": "Audio sample rate in Hz"
+        },
+        "channels": {
+          "type": "integer",
+          "enum": [1, 2],
+          "default": 1,
+          "description": "Number of audio channels"
+        },
+        "buffer_size": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 8192,
+          "default": 1024,
+          "description": "Audio buffer size in samples"
+        },
+        "noise_reduction": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable noise reduction preprocessing"
+        },
+        "automatic_gain_control": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic gain control"
+        },
+        "echo_cancellation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable echo cancellation"
+        },
+        "voice_activity_detection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable voice activity detection"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PrivacySettings": {
+      "$id": "#/definitions/PrivacySettings",
+      "type": "object",
+      "title": "Privacy Settings",
+      "description": "Privacy and data protection settings for voice processing",
+      "properties": {
+        "local_only": {
+          "type": "boolean",
+          "default": true,
+          "description": "Process audio locally only"
+        },
+        "record_audio": {
+          "type": "boolean",
+          "default": false,
+          "description": "Save audio recordings for analysis"
+        },
+        "log_commands": {
+          "type": "boolean",
+          "default": true,
+          "description": "Log processed commands"
+        },
+        "sanitize_logs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remove sensitive data from logs"
+        },
+        "cloud_consent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Consent for cloud processing"
+        },
+        "data_retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 30,
+          "description": "Days to retain voice data"
+        },
+        "anonymize_data": {
+          "type": "boolean",
+          "default": true,
+          "description": "Anonymize stored voice data"
+        },
+        "share_analytics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Share anonymized analytics data"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AudioQuality": {
+      "$id": "#/definitions/AudioQuality",
+      "type": "object",
+      "title": "Audio Quality Assessment",
+      "description": "Quality metrics for audio input",
+      "properties": {
+        "signal_to_noise_ratio": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 60,
+          "description": "SNR in decibels"
+        },
+        "clarity_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Audio clarity assessment"
+        },
+        "background_noise_level": {
+          "type": "string",
+          "enum": ["very_low", "low", "moderate", "high", "very_high"],
+          "description": "Background noise assessment"
+        },
+        "volume_level": {
+          "type": "string",
+          "enum": ["too_low", "low", "optimal", "high", "too_high"],
+          "description": "Volume level assessment"
+        },
+        "clipping_detected": {
+          "type": "boolean",
+          "description": "Whether audio clipping was detected"
+        },
+        "frequency_response": {
+          "type": "object",
+          "properties": {
+            "low_frequency": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "mid_frequency": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "high_frequency": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "speech_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probability that audio contains speech"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WakeWordConfig": {
+      "$id": "#/definitions/WakeWordConfig",
+      "type": "object",
+      "title": "Wake Word Configuration",
+      "description": "Configuration for wake word detection",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable wake word detection"
+        },
+        "phrase": {
+          "type": "string",
+          "pattern": "^[a-zA-Z ]{2,50}$",
+          "default": "hey queue",
+          "description": "Wake word phrase"
+        },
+        "model_path": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Path to wake word model file"
+        },
+        "sensitivity": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "default": 0.8,
+          "description": "Wake word detection sensitivity"
+        },
+        "custom_phrases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z ]{2,50}$"
+          },
+          "maxItems": 5,
+          "uniqueItems": true,
+          "description": "Additional custom wake phrases"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "default": "PT5S",
+          "description": "Timeout after wake word detection"
+        },
+        "false_positive_threshold": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.1,
+          "default": 0.01,
+          "description": "Acceptable false positive rate"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FeedbackConfig": {
+      "$id": "#/definitions/FeedbackConfig",
+      "type": "object",
+      "title": "Audio Feedback Configuration",
+      "description": "Configuration for text-to-speech and audio feedback",
+      "properties": {
+        "tts_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable text-to-speech responses"
+        },
+        "voice": {
+          "type": "string",
+          "enum": ["default", "male", "female", "robotic", "custom"],
+          "default": "default",
+          "description": "Voice type for TTS"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2.0,
+          "default": 1.0,
+          "description": "Speech speed multiplier"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8,
+          "description": "Audio volume level"
+        },
+        "confirmation_sounds": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play confirmation sounds"
+        },
+        "error_sounds": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play error notification sounds"
+        },
+        "voice_personality": {
+          "type": "string",
+          "enum": ["professional", "friendly", "concise", "detailed"],
+          "default": "professional",
+          "description": "Voice response personality"
+        },
+        "response_delay": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "default": "PT0.2S",
+          "description": "Delay before audio response"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VoiceMetrics": {
+      "$id": "#/definitions/VoiceMetrics",
+      "type": "object",
+      "title": "Voice System Metrics",
+      "description": "Performance and usage metrics for voice system",
+      "properties": {
+        "period": {
+          "type": "string",
+          "enum": ["1h", "6h", "24h", "7d", "30d"],
+          "description": "Metrics aggregation period"
+        },
+        "total_commands": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total commands processed"
+        },
+        "successful_commands": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successfully executed commands"
+        },
+        "failed_commands": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed command executions"
+        },
+        "average_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Average recognition confidence"
+        },
+        "average_latency": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Average processing latency"
+        },
+        "accuracy_by_intent": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false,
+          "description": "Recognition accuracy by command intent"
+        },
+        "latency_distribution": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p95": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "p99": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "error_breakdown": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Error counts by type"
+        },
+        "wake_word_stats": {
+          "type": "object",
+          "properties": {
+            "total_triggers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "false_positives": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "average_confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "backend_usage": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "average_latency": {
+                  "type": "string",
+                  "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+                },
+                "error_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandGrammar": {
+      "$id": "#/definitions/CommandGrammar",
+      "type": "object",
+      "title": "Command Grammar Definition",
+      "description": "Grammar patterns for natural language command recognition",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "status_query",
+            "worker_control",
+            "queue_management",
+            "navigation",
+            "confirmation",
+            "cancel",
+            "help"
+          ]
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "minItems": 1,
+          "maxItems": 20,
+          "description": "Regular expression patterns for intent matching"
+        },
+        "required_entities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "worker_id",
+              "queue_name",
+              "priority_level",
+              "action",
+              "target",
+              "count",
+              "timeframe"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Entities required for this intent"
+        },
+        "optional_entities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "worker_id",
+              "queue_name",
+              "priority_level",
+              "action",
+              "target",
+              "count",
+              "timeframe",
+              "confirmation"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Optional entities for this intent"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "minItems": 1,
+          "maxItems": 10,
+          "description": "Example phrases for this intent"
+        },
+        "response_templates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "description": "Response templates for successful execution"
+        }
+      },
+      "required": ["intent", "patterns", "examples"],
+      "additionalProperties": false
+    },
+    "RecognitionBackend": {
+      "$id": "#/definitions/RecognitionBackend",
+      "type": "object",
+      "title": "Recognition Backend Configuration",
+      "description": "Configuration for speech recognition backends",
+      "required": [
+        "name",
+        "type",
+        "enabled"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["whisper_local", "whisper_cloud", "google_cloud", "azure_speech"],
+          "description": "Backend identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["local", "cloud", "hybrid"],
+          "description": "Backend type"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether backend is enabled"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Backend priority (1=highest)"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "model_path": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Path to model file (local backends)"
+            },
+            "api_key": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "API key (cloud backends)"
+            },
+            "endpoint": {
+              "type": "string",
+              "format": "uri",
+              "description": "API endpoint (cloud backends)"
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+              "default": "PT10S",
+              "description": "Request timeout"
+            },
+            "max_audio_length": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+              "default": "PT30S",
+              "description": "Maximum audio length"
+            }
+          },
+          "additionalProperties": true
+        },
+        "fallback_backend": {
+          "type": "string",
+          "enum": ["whisper_local", "whisper_cloud", "google_cloud", "azure_speech"],
+          "description": "Fallback backend if this one fails"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VoiceSystemStatus": {
+      "$id": "#/definitions/VoiceSystemStatus",
+      "type": "object",
+      "title": "Voice System Status",
+      "description": "Current status and health of voice system components",
+      "required": [
+        "system_status",
+        "active_sessions",
+        "components"
+      ],
+      "properties": {
+        "system_status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy"],
+          "description": "Overall system health status"
+        },
+        "active_sessions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Number of active voice sessions"
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "whisper_model": {
+              "$ref": "#/definitions/ComponentStatus"
+            },
+            "wake_word_detector": {
+              "$ref": "#/definitions/ComponentStatus"
+            },
+            "audio_input": {
+              "$ref": "#/definitions/ComponentStatus"
+            },
+            "command_processor": {
+              "$ref": "#/definitions/ComponentStatus"
+            },
+            "tts_engine": {
+              "$ref": "#/definitions/ComponentStatus"
+            },
+            "privacy_manager": {
+              "$ref": "#/definitions/ComponentStatus"
+            }
+          },
+          "additionalProperties": false
+        },
+        "performance": {
+          "type": "object",
+          "properties": {
+            "average_recognition_latency": {
+              "type": "string",
+              "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+            },
+            "recognition_accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "commands_per_minute": {
+              "type": "number",
+              "minimum": 0
+            },
+            "error_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "resource_usage": {
+          "type": "object",
+          "properties": {
+            "cpu_usage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "CPU usage percentage"
+            },
+            "memory_usage": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Memory usage in MB"
+            },
+            "model_memory": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Model memory usage in MB"
+            },
+            "audio_buffer_usage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Audio buffer usage percentage"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ComponentStatus": {
+      "$id": "#/definitions/ComponentStatus",
+      "type": "object",
+      "title": "Component Status",
+      "description": "Health status of individual voice system components",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unhealthy", "disabled"],
+          "description": "Component health status"
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last health check timestamp"
+        },
+        "response_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Component response time"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Component error rate"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Additional status details"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Component version"
+        },
+        "uptime": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$",
+          "description": "Component uptime"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandHistory": {
+      "$id": "#/definitions/CommandHistory",
+      "type": "object",
+      "title": "Command History",
+      "description": "Historical record of processed voice commands",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HistoricalCommand"
+          },
+          "maxItems": 1000,
+          "description": "List of historical commands"
+        },
+        "total_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of commands available"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Current page number"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of commands per page"
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "Whether more commands are available"
+        },
+        "filters_applied": {
+          "type": "object",
+          "properties": {
+            "session_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "start_time": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "end_time": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "user_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "HistoricalCommand": {
+      "$id": "#/definitions/HistoricalCommand",
+      "type": "object",
+      "title": "Historical Command",
+      "description": "Simplified historical record of a voice command",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "status_query",
+            "worker_control",
+            "queue_management",
+            "navigation",
+            "confirmation",
+            "cancel",
+            "help",
+            "unknown"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "execution_status": {
+          "type": "string",
+          "enum": ["success", "failed", "partial"]
+        },
+        "processing_time": {
+          "type": "string",
+          "pattern": "^PT?(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?$"
+        },
+        "backend_used": {
+          "type": "string",
+          "enum": ["whisper_local", "whisper_cloud", "google_cloud", "azure_speech"]
+        },
+        "user_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_@.-]+$",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "Error": {
+      "$id": "#/definitions/Error",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format for voice commands",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_REQUEST",
+            "VALIDATION_ERROR",
+            "SESSION_NOT_FOUND",
+            "SESSION_ALREADY_EXISTS",
+            "RECOGNITION_BACKEND_ERROR",
+            "AUDIO_PROCESSING_ERROR",
+            "INSUFFICIENT_PERMISSIONS",
+            "RATE_LIMIT_EXCEEDED",
+            "SERVICE_UNAVAILABLE",
+            "INTERNAL_ERROR",
+            "MODEL_NOT_LOADED",
+            "AUDIO_DEVICE_ERROR",
+            "WAKE_WORD_TRAINING_ERROR",
+            "CONFIDENCE_TOO_LOW",
+            "COMMAND_PARSING_FAILED",
+            "PRIVACY_VIOLATION",
+            "CLOUD_SERVICE_ERROR"
+          ],
+          "description": "Error code for programmatic handling"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "recognition_confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "audio_quality": {
+              "$ref": "#/definitions/AudioQuality"
+            },
+            "backend_errors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "suggestion": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "additionalProperties": true,
+          "description": "Additional error context"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "help_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to troubleshooting documentation"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

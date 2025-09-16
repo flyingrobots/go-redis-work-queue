@@ -1,0 +1,1290 @@
+openapi: 3.0.3
+info:
+  title: Event Hooks API
+  description: |
+    API for managing event hooks in the go-redis-work-queue system.
+
+    This API provides endpoints for subscribing to job lifecycle events through webhooks
+    or NATS messaging, with reliable delivery, retry logic, and comprehensive monitoring.
+
+    ## Features
+    - **Real-time Events**: Subscribe to job lifecycle changes (enqueued, started, succeeded, failed, DLQ, retried)
+    - **Reliable Delivery**: HMAC-signed webhooks with exponential backoff retry
+    - **Fine-grained Filtering**: Subscribe to specific events, queues, or priority levels
+    - **Dead Letter Hooks**: Failed deliveries stored for manual replay
+    - **Deep Integration**: TUI deep links in webhook payloads for investigation
+
+    ## Authentication
+    All endpoints require valid authentication via Bearer token or API key.
+    Webhook deliveries are authenticated via HMAC-SHA256 signatures.
+  version: 1.0.0
+  contact:
+    name: Go Redis Work Queue Team
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /webhooks/subscriptions:
+    get:
+      summary: List webhook subscriptions
+      description: Retrieve a paginated list of webhook subscriptions with optional filtering
+      operationId: listWebhookSubscriptions
+      tags:
+        - Webhook Subscriptions
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of subscriptions to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of subscriptions to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: disabled
+          in: query
+          description: Filter by subscription status
+          required: false
+          schema:
+            type: boolean
+        - name: queue
+          in: query
+          description: Filter by queue name
+          required: false
+          schema:
+            type: string
+        - name: event
+          in: query
+          description: Filter by event type
+          required: false
+          schema:
+            $ref: '#/components/schemas/EventType'
+      responses:
+        '200':
+          description: Webhook subscriptions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create webhook subscription
+      description: Create a new webhook subscription for job events
+      operationId: createWebhookSubscription
+      tags:
+        - Webhook Subscriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '201':
+          description: Webhook subscription created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Subscription name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/subscriptions/{id}:
+    get:
+      summary: Get webhook subscription
+      description: Retrieve details of a specific webhook subscription
+      operationId: getWebhookSubscription
+      tags:
+        - Webhook Subscriptions
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Webhook subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update webhook subscription
+      description: Update an existing webhook subscription
+      operationId: updateWebhookSubscription
+      tags:
+        - Webhook Subscriptions
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+      responses:
+        '200':
+          description: Webhook subscription updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete webhook subscription
+      description: Delete a webhook subscription
+      operationId: deleteWebhookSubscription
+      tags:
+        - Webhook Subscriptions
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Subscription deleted successfully
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/subscriptions/{id}/test:
+    post:
+      summary: Test webhook delivery
+      description: Send a test webhook to verify subscription configuration
+      operationId: testWebhookDelivery
+      tags:
+        - Webhook Testing
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestWebhookRequest'
+      responses:
+        '200':
+          description: Test webhook delivered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestWebhookResponse'
+        '400':
+          description: Test delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestWebhookResponse'
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/subscriptions/{id}/toggle:
+    post:
+      summary: Enable/disable subscription
+      description: Toggle a webhook subscription enabled/disabled state
+      operationId: toggleWebhookSubscription
+      tags:
+        - Webhook Subscriptions
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - disabled
+              properties:
+                disabled:
+                  type: boolean
+                  description: Whether to disable the subscription
+      responses:
+        '200':
+          description: Subscription toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/subscriptions/{id}/metrics:
+    get:
+      summary: Get subscription metrics
+      description: Retrieve delivery metrics for a specific subscription
+      operationId: getSubscriptionMetrics
+      tags:
+        - Webhook Metrics
+      parameters:
+        - name: id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          description: Metrics time period
+          required: false
+          schema:
+            type: string
+            enum: ["1h", "24h", "7d", "30d"]
+            default: "24h"
+      responses:
+        '200':
+          description: Subscription metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionMetrics'
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/dlh:
+    get:
+      summary: List dead letter hooks
+      description: Retrieve failed webhook deliveries from the Dead Letter Hook queue
+      operationId: listDeadLetterHooks
+      tags:
+        - Dead Letter Hooks
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of DLH entries to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of DLH entries to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: subscription_id
+          in: query
+          description: Filter by subscription ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: event_type
+          in: query
+          description: Filter by event type
+          required: false
+          schema:
+            $ref: '#/components/schemas/EventType'
+        - name: status
+          in: query
+          description: Filter by DLH entry status
+          required: false
+          schema:
+            type: string
+            enum: ["pending", "replayed", "failed"]
+      responses:
+        '200':
+          description: Dead letter hooks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetterHookList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/dlh/{id}:
+    get:
+      summary: Get dead letter hook details
+      description: Retrieve details of a specific dead letter hook entry
+      operationId: getDeadLetterHook
+      tags:
+        - Dead Letter Hooks
+      parameters:
+        - name: id
+          in: path
+          description: DLH entry ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dead letter hook details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetterHook'
+        '404':
+          description: DLH entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete dead letter hook
+      description: Remove a dead letter hook entry from the queue
+      operationId: deleteDeadLetterHook
+      tags:
+        - Dead Letter Hooks
+      parameters:
+        - name: id
+          in: path
+          description: DLH entry ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: DLH entry deleted successfully
+        '404':
+          description: DLH entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/dlh/{id}/replay:
+    post:
+      summary: Replay dead letter hook
+      description: Retry delivery of a failed webhook from the DLH queue
+      operationId: replayDeadLetterHook
+      tags:
+        - Dead Letter Hooks
+      parameters:
+        - name: id
+          in: path
+          description: DLH entry ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: DLH replay initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayResponse'
+        '404':
+          description: DLH entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: DLH entry cannot be replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/dlh/bulk-replay:
+    post:
+      summary: Bulk replay dead letter hooks
+      description: Replay multiple failed webhooks from the DLH queue
+      operationId: bulkReplayDeadLetterHooks
+      tags:
+        - Dead Letter Hooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReplayRequest'
+      responses:
+        '202':
+          description: Bulk replay initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReplayResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/metrics:
+    get:
+      summary: Get global webhook metrics
+      description: Retrieve system-wide webhook delivery metrics
+      operationId: getGlobalWebhookMetrics
+      tags:
+        - Webhook Metrics
+      parameters:
+        - name: period
+          in: query
+          description: Metrics time period
+          required: false
+          schema:
+            type: string
+            enum: ["1h", "24h", "7d", "30d"]
+            default: "24h"
+      responses:
+        '200':
+          description: Global metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalWebhookMetrics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks/events/schema:
+    get:
+      summary: Get event schema
+      description: Retrieve the JSON schema for webhook event payloads
+      operationId: getEventSchema
+      tags:
+        - Event Schema
+      parameters:
+        - name: event_type
+          in: query
+          description: Get schema for specific event type
+          required: false
+          schema:
+            $ref: '#/components/schemas/EventType'
+      responses:
+        '200':
+          description: Event schema retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: JSON Schema for webhook events
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    EventType:
+      type: string
+      enum:
+        - job_enqueued
+        - job_started
+        - job_succeeded
+        - job_failed
+        - job_dlq
+        - job_retried
+      description: Job lifecycle event types
+
+    WebhookSubscription:
+      type: object
+      required:
+        - id
+        - name
+        - url
+        - events
+        - queues
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique subscription identifier
+        name:
+          type: string
+          description: Human-readable subscription name
+          example: "Payment Notifications"
+        url:
+          type: string
+          format: uri
+          description: Webhook endpoint URL
+          example: "https://api.example.com/webhooks/payments"
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+          description: Event types to subscribe to
+          example: ["job_succeeded", "job_failed"]
+        queues:
+          type: array
+          items:
+            type: string
+          description: Queue name patterns to filter by
+          example: ["payments", "orders-*"]
+        min_priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Minimum job priority to include
+          example: 5
+        timeout:
+          type: string
+          pattern: '^\d+[smh]$'
+          description: Request timeout duration
+          example: "30s"
+        max_retries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Maximum retry attempts
+          example: 5
+        rate_limit:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Requests per minute limit
+          example: 100
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers
+          example:
+            X-Service: "payment-service"
+            X-Version: "v1"
+        include_payload:
+          type: boolean
+          description: Include job payload in webhook
+          default: false
+        payload_fields:
+          type: array
+          items:
+            type: string
+          description: Whitelist of payload fields to include
+          example: ["id", "amount", "currency"]
+        redact_fields:
+          type: array
+          items:
+            type: string
+          description: Fields to redact for privacy
+          example: ["ssn", "credit_card"]
+        created_at:
+          type: string
+          format: date-time
+          description: Subscription creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        last_success:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last successful delivery timestamp
+        last_failure:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last failed delivery timestamp
+        failure_count:
+          type: integer
+          minimum: 0
+          description: Consecutive failure count
+        disabled:
+          type: boolean
+          description: Whether subscription is disabled
+          default: false
+
+    CreateSubscriptionRequest:
+      type: object
+      required:
+        - name
+        - url
+        - events
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable subscription name
+        url:
+          type: string
+          format: uri
+          description: Webhook endpoint URL
+        secret:
+          type: string
+          minLength: 32
+          description: HMAC secret for signature verification
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+          minItems: 1
+          description: Event types to subscribe to
+        queues:
+          type: array
+          items:
+            type: string
+          description: Queue name patterns (default: ["*"])
+          default: ["*"]
+        min_priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Minimum job priority to include
+        timeout:
+          type: string
+          pattern: '^\d+[smh]$'
+          description: Request timeout duration
+          default: "30s"
+        max_retries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Maximum retry attempts
+          default: 5
+        rate_limit:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Requests per minute limit
+          default: 60
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers
+        include_payload:
+          type: boolean
+          description: Include job payload in webhook
+          default: false
+        payload_fields:
+          type: array
+          items:
+            type: string
+          description: Whitelist of payload fields to include
+        redact_fields:
+          type: array
+          items:
+            type: string
+          description: Fields to redact for privacy
+
+    UpdateSubscriptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable subscription name
+        url:
+          type: string
+          format: uri
+          description: Webhook endpoint URL
+        secret:
+          type: string
+          minLength: 32
+          description: HMAC secret for signature verification
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+          minItems: 1
+          description: Event types to subscribe to
+        queues:
+          type: array
+          items:
+            type: string
+          description: Queue name patterns
+        min_priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Minimum job priority to include
+        timeout:
+          type: string
+          pattern: '^\d+[smh]$'
+          description: Request timeout duration
+        max_retries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Maximum retry attempts
+        rate_limit:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Requests per minute limit
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers
+        include_payload:
+          type: boolean
+          description: Include job payload in webhook
+        payload_fields:
+          type: array
+          items:
+            type: string
+          description: Whitelist of payload fields to include
+        redact_fields:
+          type: array
+          items:
+            type: string
+          description: Fields to redact for privacy
+
+    SubscriptionList:
+      type: object
+      required:
+        - subscriptions
+        - pagination
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookSubscription'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    TestWebhookRequest:
+      type: object
+      properties:
+        event_type:
+          $ref: '#/components/schemas/EventType'
+          description: Event type to simulate
+          default: "job_succeeded"
+        sample_data:
+          type: object
+          description: Custom event data for testing
+          additionalProperties: true
+
+    TestWebhookResponse:
+      type: object
+      required:
+        - success
+        - status_code
+        - latency_ms
+      properties:
+        success:
+          type: boolean
+          description: Whether the test delivery succeeded
+        status_code:
+          type: integer
+          description: HTTP status code from webhook endpoint
+        latency_ms:
+          type: integer
+          description: Request latency in milliseconds
+        response_body:
+          type: string
+          description: Response body from webhook endpoint
+        error_message:
+          type: string
+          description: Error message if delivery failed
+
+    SubscriptionMetrics:
+      type: object
+      required:
+        - subscription_id
+        - success_rate
+        - total_deliveries
+        - successful_deliveries
+        - failed_deliveries
+      properties:
+        subscription_id:
+          type: string
+          format: uuid
+        success_rate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Success rate (0.0 to 1.0)
+        total_deliveries:
+          type: integer
+          minimum: 0
+          description: Total delivery attempts
+        successful_deliveries:
+          type: integer
+          minimum: 0
+          description: Successful deliveries
+        failed_deliveries:
+          type: integer
+          minimum: 0
+          description: Failed deliveries
+        average_latency_ms:
+          type: number
+          format: float
+          minimum: 0
+          description: Average response time in milliseconds
+        last_24h:
+          type: object
+          properties:
+            hourly_counts:
+              type: array
+              items:
+                type: integer
+              minItems: 24
+              maxItems: 24
+              description: Delivery counts per hour
+            error_breakdown:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Error counts by type
+
+    DeadLetterHook:
+      type: object
+      required:
+        - id
+        - subscription_id
+        - event_data
+        - webhook_url
+        - failure_reason
+        - retry_count
+        - created_at
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: DLH entry identifier
+        subscription_id:
+          type: string
+          format: uuid
+          description: Source subscription ID
+        event_data:
+          type: object
+          description: Original event payload
+          additionalProperties: true
+        webhook_url:
+          type: string
+          format: uri
+          description: Target webhook URL
+        request_headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Request headers used
+        failure_reason:
+          type: string
+          description: Reason for delivery failure
+        http_status_code:
+          type: integer
+          description: Last HTTP response code
+        response_body:
+          type: string
+          description: Response body from failed request
+        retry_count:
+          type: integer
+          minimum: 0
+          description: Number of retry attempts made
+        created_at:
+          type: string
+          format: date-time
+          description: When delivery first failed
+        replayed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When entry was replayed
+        status:
+          type: string
+          enum: ["pending", "replayed", "failed"]
+          description: Current DLH entry status
+
+    DeadLetterHookList:
+      type: object
+      required:
+        - hooks
+        - pagination
+      properties:
+        hooks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeadLetterHook'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ReplayResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether replay was successful
+        message:
+          type: string
+          description: Human-readable result message
+        status_code:
+          type: integer
+          description: HTTP status code from replay attempt
+        latency_ms:
+          type: integer
+          description: Replay request latency
+
+    BulkReplayRequest:
+      type: object
+      properties:
+        dlh_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 1000
+          description: Specific DLH entry IDs to replay
+        filter:
+          type: object
+          properties:
+            subscription_id:
+              type: string
+              format: uuid
+              description: Filter by subscription
+            event_type:
+              $ref: '#/components/schemas/EventType'
+              description: Filter by event type
+            failed_after:
+              type: string
+              format: date-time
+              description: Filter by failure date
+            failure_reason_pattern:
+              type: string
+              description: Regex pattern for failure reason
+          description: Filter criteria for bulk replay
+        max_entries:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+          description: Maximum entries to replay
+
+    BulkReplayResponse:
+      type: object
+      required:
+        - job_id
+        - total_entries
+        - message
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Background job ID for tracking
+        total_entries:
+          type: integer
+          description: Number of entries queued for replay
+        message:
+          type: string
+          description: Human-readable confirmation message
+
+    GlobalWebhookMetrics:
+      type: object
+      required:
+        - total_subscriptions
+        - active_subscriptions
+        - total_deliveries
+        - success_rate
+        - dlh_size
+      properties:
+        total_subscriptions:
+          type: integer
+          minimum: 0
+          description: Total number of subscriptions
+        active_subscriptions:
+          type: integer
+          minimum: 0
+          description: Number of enabled subscriptions
+        total_deliveries:
+          type: integer
+          minimum: 0
+          description: Total delivery attempts
+        success_rate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Overall success rate
+        dlh_size:
+          type: integer
+          minimum: 0
+          description: Current DLH queue size
+        events_by_type:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Event counts by type
+        subscriptions_by_queue:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Subscription counts by queue
+        top_failing_subscriptions:
+          type: array
+          items:
+            type: object
+            properties:
+              subscription_id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              failure_rate:
+                type: number
+                format: float
+              recent_failures:
+                type: integer
+
+    Pagination:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+        - has_next
+      properties:
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of items
+        limit:
+          type: integer
+          minimum: 1
+          description: Items per page
+        offset:
+          type: integer
+          minimum: 0
+          description: Number of items skipped
+        has_next:
+          type: boolean
+          description: Whether there are more items
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Invalid webhook URL format"
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "UNAUTHORIZED"
+            message: "Valid authentication credentials are required"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INTERNAL_ERROR"
+            message: "An internal server error occurred"
+
+  examples:
+    WebhookEvent:
+      summary: Job Failed Event
+      value:
+        event: "job_failed"
+        timestamp: "2025-01-15T10:30:00Z"
+        job_id: "job_abc123"
+        queue: "payments"
+        priority: 8
+        attempt: 2
+        error: "Connection timeout to payment gateway"
+        duration: "30s"
+        worker: "worker-001"
+        trace_id: "trace-xyz789"
+        request_id: "req-456def"
+        user_id: "user-123"
+        _links:
+          job_details: "queue://localhost:8080/jobs/job_abc123"
+          queue_dashboard: "queue://localhost:8080/queues/payments"
+          retry_job: "queue://localhost:8080/jobs/job_abc123/retry"
+
+    WebhookHeaders:
+      summary: Webhook Request Headers
+      value:
+        Content-Type: "application/json"
+        X-Webhook-Signature: "sha256=a8b7c9d0e1f2..."
+        X-Webhook-Timestamp: "1705312800"
+        X-Webhook-Event: "job_failed"
+        X-Webhook-Delivery: "delivery-uuid-123"
+        User-Agent: "go-redis-work-queue/1.0"
+
+tags:
+  - name: Webhook Subscriptions
+    description: Manage webhook subscriptions for job events
+  - name: Webhook Testing
+    description: Test webhook delivery and configuration
+  - name: Dead Letter Hooks
+    description: Manage failed webhook deliveries
+  - name: Webhook Metrics
+    description: Webhook delivery performance and statistics
+  - name: Event Schema
+    description: Event payload schema and documentation

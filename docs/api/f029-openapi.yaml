@@ -1,0 +1,1938 @@
+openapi: 3.0.3
+info:
+  title: DLQ Remediation Pipeline API
+  description: |
+    REST API for managing Dead Letter Queue remediation rules and monitoring pipeline operations.
+
+    The DLQ Remediation Pipeline automatically classifies failed jobs and applies configurable
+    remediation actions to restore service reliability. This API provides comprehensive
+    management capabilities for rules, monitoring, and safety controls.
+
+    ## Key Features
+    - **Rule Management**: Create, update, and manage remediation rules
+    - **Dry-Run Simulation**: Test rules safely before deployment
+    - **Real-time Monitoring**: Live pipeline metrics and status
+    - **Comprehensive Auditing**: Complete audit trail of all actions
+    - **Safety Controls**: Rate limiting and circuit breaker management
+
+    ## Authentication
+    All endpoints require JWT Bearer token authentication. API keys are supported
+    for service-to-service communication.
+
+    ## Rate Limiting
+    - **User Endpoints**: 100 requests per minute per user
+    - **Monitoring Endpoints**: 1000 requests per minute per user
+    - **Control Endpoints**: 10 requests per minute per user (admin only)
+  version: "1.0.0"
+  contact:
+    name: DLQ Remediation Pipeline Team
+    email: sre-team@company.com
+    url: https://docs.company.com/dlq-remediation
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.company.com/v1
+    description: Production API Server
+  - url: https://staging-api.company.com/v1
+    description: Staging API Server
+  - url: http://localhost:8080/v1
+    description: Local Development Server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Rules
+    description: Remediation rule management operations
+  - name: Pipeline
+    description: Pipeline control and monitoring operations
+  - name: Simulation
+    description: Dry-run testing and validation operations
+  - name: Audit
+    description: Audit log and history operations
+  - name: Metrics
+    description: Performance metrics and monitoring data
+
+paths:
+  /remediation/rules:
+    get:
+      tags: [Rules]
+      summary: List remediation rules
+      description: |
+        Retrieve a paginated list of remediation rules with optional filtering.
+        Results are ordered by priority (descending) and creation time.
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: enabled
+          in: query
+          description: Filter by enabled status
+          required: false
+          schema:
+            type: boolean
+        - name: priority_min
+          in: query
+          description: Minimum priority filter
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 1000
+        - name: priority_max
+          in: query
+          description: Maximum priority filter
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 1000
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          required: false
+          schema:
+            type: string
+            example: "validation,auth,payment"
+        - name: search
+          in: query
+          description: Search in rule names and descriptions
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+      responses:
+        '200':
+          description: Successfully retrieved rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RemediationRule'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+                  metadata:
+                    type: object
+                    properties:
+                      total_enabled:
+                        type: integer
+                      total_disabled:
+                        type: integer
+                      last_updated:
+                        type: string
+                        format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Rules]
+      summary: Create remediation rule
+      description: |
+        Create a new remediation rule with validation and dry-run testing.
+        The rule will be created in disabled state by default for safety.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRemediationRuleRequest'
+            examples:
+              validation_error_rule:
+                summary: Validation Error Remediation
+                description: Rule to handle validation errors by redacting PII and retrying
+                value:
+                  name: "validation_errors_pii_redaction"
+                  description: "Handle validation errors by redacting PII fields and retrying"
+                  priority: 100
+                  matcher:
+                    error_pattern: "validation.*required|invalid.*format"
+                    retry_count_max: 3
+                    source_queue_pattern: "user.*"
+                  actions:
+                    - type: "redact"
+                      config:
+                        fields: ["ssn", "email", "phone", "address"]
+                        replacement: "[REDACTED]"
+                    - type: "requeue"
+                      config:
+                        target_queue: "user.validation.retry"
+                        priority: 5
+                        delay_seconds: 300
+                  safety:
+                    max_per_minute: 10
+                    max_total_per_run: 100
+                    error_rate_threshold: 0.05
+                  tags: ["validation", "pii", "user-data"]
+              payment_timeout_rule:
+                summary: Payment Timeout Handling
+                description: Rule for payment gateway timeouts with exponential backoff
+                value:
+                  name: "payment_gateway_timeouts"
+                  description: "Handle payment gateway timeouts with exponential backoff"
+                  priority: 200
+                  matcher:
+                    error_pattern: "payment.*timeout|gateway.*unavailable"
+                    source_queue_pattern: "payment.*"
+                    retry_count_max: 5
+                  actions:
+                    - type: "transform"
+                      config:
+                        script: |
+                          if (!payload.retry_count) payload.retry_count = 0;
+                          payload.retry_count++;
+                          payload.backoff_seconds = Math.min(300, Math.pow(2, payload.retry_count) * 5);
+                    - type: "requeue"
+                      config:
+                        target_queue: "payment.retry"
+                        delay_seconds: "{{payload.backoff_seconds}}"
+                  safety:
+                    max_per_minute: 50
+                    max_total_per_run: 500
+                    circuit_breaker:
+                      enabled: true
+                      failure_threshold: 5
+                      recovery_timeout_seconds: 300
+                  tags: ["payment", "timeout", "retry"]
+      responses:
+        '201':
+          description: Rule created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RemediationRule'
+                  validation_results:
+                    $ref: '#/components/schemas/RuleValidationResults'
+          headers:
+            Location:
+              description: URL of the created rule
+              schema:
+                type: string
+                format: uri
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Rule with same name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Rule validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    $ref: '#/components/schemas/Error'
+                  validation_errors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/rules/{rule_id}:
+    get:
+      tags: [Rules]
+      summary: Get remediation rule
+      description: Retrieve detailed information about a specific remediation rule
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          description: Unique identifier of the remediation rule
+          schema:
+            type: string
+            format: uuid
+        - name: include_stats
+          in: query
+          description: Include rule execution statistics
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RemediationRule'
+                  statistics:
+                    $ref: '#/components/schemas/RuleStatistics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Rules]
+      summary: Update remediation rule
+      description: |
+        Update an existing remediation rule. The rule will be automatically
+        disabled during update and must be manually re-enabled for safety.
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          description: Unique identifier of the remediation rule
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRemediationRuleRequest'
+      responses:
+        '200':
+          description: Rule updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RemediationRule'
+                  validation_results:
+                    $ref: '#/components/schemas/RuleValidationResults'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Rule name conflict or concurrent modification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Rule validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    $ref: '#/components/schemas/Error'
+                  validation_errors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Rules]
+      summary: Delete remediation rule
+      description: |
+        Permanently delete a remediation rule. This action cannot be undone.
+        The rule must be disabled before deletion for safety.
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          description: Unique identifier of the remediation rule
+          schema:
+            type: string
+            format: uuid
+        - name: force
+          in: query
+          description: Force deletion even if rule is enabled (admin only)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Rule deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Rule is enabled and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/rules/{rule_id}/enable:
+    post:
+      tags: [Rules]
+      summary: Enable remediation rule
+      description: Enable a remediation rule for active processing
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule enabled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemediationRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/rules/{rule_id}/disable:
+    post:
+      tags: [Rules]
+      summary: Disable remediation rule
+      description: Disable a remediation rule to stop processing
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule disabled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemediationRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/simulate:
+    post:
+      tags: [Simulation]
+      summary: Simulate remediation pipeline
+      description: |
+        Run a dry-run simulation of the remediation pipeline on a batch of DLQ jobs.
+        This allows safe testing of rules before enabling them for live processing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+            examples:
+              single_rule_test:
+                summary: Test Single Rule
+                description: Test a specific rule against sample DLQ jobs
+                value:
+                  rule_ids: ["550e8400-e29b-41d4-a716-446655440000"]
+                  job_limit: 50
+                  filters:
+                    queue_pattern: "user.*"
+                    error_pattern: "validation"
+                    max_age_hours: 24
+              all_rules_test:
+                summary: Test All Active Rules
+                description: Test all enabled rules against recent DLQ jobs
+                value:
+                  job_limit: 100
+                  filters:
+                    max_age_hours: 6
+                  include_statistics: true
+      responses:
+        '200':
+          description: Simulation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Simulation parameters invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/pipeline/status:
+    get:
+      tags: [Pipeline]
+      summary: Get pipeline status
+      description: Retrieve current status and configuration of the remediation pipeline
+      responses:
+        '200':
+          description: Pipeline status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/pipeline/control:
+    post:
+      tags: [Pipeline]
+      summary: Control pipeline operation
+      description: |
+        Start, stop, pause, or resume the remediation pipeline.
+        These operations require admin privileges and are logged for audit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineControlRequest'
+            examples:
+              start_pipeline:
+                summary: Start Pipeline
+                value:
+                  action: "start"
+                  reason: "Beginning daily DLQ processing"
+              emergency_stop:
+                summary: Emergency Stop
+                value:
+                  action: "stop"
+                  reason: "Emergency stop due to high error rate"
+                  force: true
+      responses:
+        '200':
+          description: Pipeline control action successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [running, stopped, paused]
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Pipeline state conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/metrics:
+    get:
+      tags: [Metrics]
+      summary: Get pipeline metrics
+      description: |
+        Retrieve comprehensive performance metrics for the remediation pipeline.
+        Includes throughput, latency, success rates, and safety system status.
+      parameters:
+        - name: time_range
+          in: query
+          description: Time range for metrics
+          required: false
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: "24h"
+        - name: granularity
+          in: query
+          description: Metrics granularity
+          required: false
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 6h]
+            default: "5m"
+        - name: metrics
+          in: query
+          description: Specific metrics to retrieve (comma-separated)
+          required: false
+          schema:
+            type: string
+            example: "throughput,latency,success_rate"
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineMetrics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /remediation/audit:
+    get:
+      tags: [Audit]
+      summary: Get audit log
+      description: |
+        Retrieve audit log entries with comprehensive filtering and pagination.
+        All remediation actions are logged for compliance and debugging.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: start_time
+          in: query
+          description: Start time filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time filter (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: rule_id
+          in: query
+          description: Filter by rule ID
+          schema:
+            type: string
+            format: uuid
+        - name: job_id
+          in: query
+          description: Filter by job ID
+          schema:
+            type: string
+        - name: action_type
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+            enum: [requeue, transform, redact, drop, route]
+        - name: success
+          in: query
+          description: Filter by success status
+          schema:
+            type: boolean
+        - name: dry_run
+          in: query
+          description: Filter by dry-run mode
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Audit log retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+                  summary:
+                    type: object
+                    properties:
+                      total_actions:
+                        type: integer
+                      success_count:
+                        type: integer
+                      failure_count:
+                        type: integer
+                      dry_run_count:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token authentication. Include the token in the Authorization header:
+        `Authorization: Bearer <token>`
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for service-to-service authentication. Include in X-API-Key header:
+        `X-API-Key: <api-key>`
+
+  schemas:
+    RemediationRule:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - priority
+        - enabled
+        - matcher
+        - actions
+        - safety
+        - created_at
+        - updated_at
+        - created_by
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the rule
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable name for the rule
+          example: "validation_errors_pii_redaction"
+        description:
+          type: string
+          maxLength: 1000
+          description: Detailed description of the rule's purpose
+          example: "Handle validation errors by redacting PII fields and retrying"
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          description: Rule execution priority (higher numbers execute first)
+          example: 100
+        enabled:
+          type: boolean
+          description: Whether the rule is active for processing
+          example: true
+        matcher:
+          $ref: '#/components/schemas/MatcherConfig'
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ActionConfig'
+        safety:
+          $ref: '#/components/schemas/SafetyConfig'
+        created_at:
+          type: string
+          format: date-time
+          description: Rule creation timestamp
+          example: "2025-09-14T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2025-09-14T15:45:30Z"
+        created_by:
+          type: string
+          description: User who created the rule
+          example: "john.doe@company.com"
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+          description: Tags for rule categorization
+          example: ["validation", "pii", "user-data"]
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional rule metadata
+          example:
+            team: "platform"
+            environment: "production"
+            jira_ticket: "PLAT-1234"
+
+    MatcherConfig:
+      type: object
+      description: Configuration for job classification patterns
+      properties:
+        error_pattern:
+          type: string
+          description: Regex pattern to match error messages
+          example: "validation.*required|invalid.*format"
+        error_pattern_flags:
+          type: string
+          description: Regex flags (i=case insensitive, m=multiline, s=dotall)
+          example: "i"
+        field_matchers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldMatcher'
+        source_queue_pattern:
+          type: string
+          description: Regex pattern to match source queue names
+          example: "user.*|account.*"
+        retry_count_min:
+          type: integer
+          minimum: 0
+          description: Minimum retry count to match
+          example: 1
+        retry_count_max:
+          type: integer
+          minimum: 0
+          description: Maximum retry count to match
+          example: 5
+        age_min_seconds:
+          type: integer
+          minimum: 0
+          description: Minimum job age in seconds
+          example: 300
+        age_max_seconds:
+          type: integer
+          minimum: 0
+          description: Maximum job age in seconds
+          example: 86400
+        payload_size_min:
+          type: integer
+          minimum: 0
+          description: Minimum payload size in bytes
+        payload_size_max:
+          type: integer
+          minimum: 0
+          description: Maximum payload size in bytes
+        time_of_day_start:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          description: Start time for time-based matching (HH:MM)
+          example: "09:00"
+        time_of_day_end:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          description: End time for time-based matching (HH:MM)
+          example: "17:00"
+        external_classifier:
+          $ref: '#/components/schemas/ExternalClassifierConfig'
+
+    FieldMatcher:
+      type: object
+      required:
+        - json_path
+        - operator
+        - value
+      properties:
+        json_path:
+          type: string
+          description: JSON path to the field
+          example: "$.payload.user.email"
+        operator:
+          type: string
+          enum: [equals, not_equals, contains, not_contains, regex, exists, not_exists, greater_than, less_than]
+          description: Comparison operator
+          example: "regex"
+        value:
+          description: Value to compare against
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+          example: ".*@example\\.com$"
+        case_sensitive:
+          type: boolean
+          default: true
+          description: Whether string comparisons are case sensitive
+
+    ExternalClassifierConfig:
+      type: object
+      required:
+        - endpoint
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          description: HTTP endpoint for external classification
+          example: "https://ml-classifier.company.com/classify"
+        method:
+          type: string
+          enum: [POST, PUT]
+          default: "POST"
+          description: HTTP method to use
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 5
+          description: Request timeout in seconds
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional HTTP headers
+          example:
+            "Content-Type": "application/json"
+            "X-API-Key": "classifier-key-123"
+        auth:
+          $ref: '#/components/schemas/ExternalAuthConfig'
+
+    ExternalAuthConfig:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [none, basic, bearer, api_key]
+          default: "none"
+        username:
+          type: string
+          description: Username for basic auth
+        password:
+          type: string
+          description: Password for basic auth
+        token:
+          type: string
+          description: Bearer token or API key
+        header_name:
+          type: string
+          description: Header name for API key auth
+          example: "X-API-Key"
+
+    ActionConfig:
+      type: object
+      required:
+        - type
+        - config
+      properties:
+        type:
+          type: string
+          enum: [requeue, transform, redact, drop, route]
+          description: Type of remediation action
+        config:
+          type: object
+          description: Action-specific configuration
+          additionalProperties: true
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 30
+          description: Action execution timeout
+        retries:
+          type: integer
+          minimum: 0
+          maximum: 5
+          default: 2
+          description: Number of retry attempts
+        idempotent:
+          type: boolean
+          default: true
+          description: Whether the action is idempotent
+
+    SafetyConfig:
+      type: object
+      required:
+        - max_per_minute
+        - max_total_per_run
+        - error_rate_threshold
+      properties:
+        max_per_minute:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Maximum jobs processed per minute
+          example: 100
+        max_total_per_run:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          description: Maximum total jobs per pipeline run
+          example: 1000
+        error_rate_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Error rate threshold for circuit breaker
+          example: 0.05
+        backoff_on_failure:
+          type: boolean
+          default: true
+          description: Whether to apply exponential backoff on failures
+        circuit_breaker:
+          $ref: '#/components/schemas/CircuitBreakerConfig'
+
+    CircuitBreakerConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+          description: Whether circuit breaker is enabled
+        failure_threshold:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 5
+          description: Number of failures before opening circuit
+        recovery_timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 300
+          description: Time before attempting circuit recovery
+        min_requests:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 10
+          description: Minimum requests before calculating error rate
+
+    CreateRemediationRuleRequest:
+      type: object
+      required:
+        - name
+        - description
+        - matcher
+        - actions
+        - safety
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable name for the rule
+        description:
+          type: string
+          maxLength: 1000
+          description: Detailed description of the rule's purpose
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          default: 100
+          description: Rule execution priority
+        matcher:
+          $ref: '#/components/schemas/MatcherConfig'
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ActionConfig'
+        safety:
+          $ref: '#/components/schemas/SafetyConfig'
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+          description: Tags for rule categorization
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional rule metadata
+        enabled:
+          type: boolean
+          default: false
+          description: Whether to enable the rule immediately (default: false for safety)
+
+    UpdateRemediationRuleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        matcher:
+          $ref: '#/components/schemas/MatcherConfig'
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ActionConfig'
+        safety:
+          $ref: '#/components/schemas/SafetyConfig'
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+        metadata:
+          type: object
+          additionalProperties: true
+
+    RuleValidationResults:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the rule passed all validation checks
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationWarning'
+        syntax_check:
+          type: object
+          properties:
+            regex_patterns:
+              type: array
+              items:
+                type: object
+                properties:
+                  pattern:
+                    type: string
+                  valid:
+                    type: boolean
+                  error:
+                    type: string
+            json_paths:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  valid:
+                    type: boolean
+                  error:
+                    type: string
+            transform_scripts:
+              type: array
+              items:
+                type: object
+                properties:
+                  script:
+                    type: string
+                  valid:
+                    type: boolean
+                  error:
+                    type: string
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: Field that failed validation
+          example: "matcher.error_pattern"
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: "INVALID_REGEX"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid regular expression: unclosed group"
+        suggested_fix:
+          type: string
+          description: Suggested fix for the error
+          example: "Add closing parenthesis ')' to complete regex group"
+
+    ValidationWarning:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: Field that generated warning
+        code:
+          type: string
+          description: Warning code
+        message:
+          type: string
+          description: Warning message
+        recommendation:
+          type: string
+          description: Recommended action
+
+    SimulationRequest:
+      type: object
+      properties:
+        rule_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific rules to test (empty = all enabled rules)
+        job_limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 50
+          description: Maximum number of DLQ jobs to test
+        filters:
+          type: object
+          properties:
+            queue_pattern:
+              type: string
+              description: Filter jobs by queue pattern
+            error_pattern:
+              type: string
+              description: Filter jobs by error pattern
+            max_age_hours:
+              type: integer
+              minimum: 1
+              maximum: 168
+              description: Only include jobs newer than this
+            min_retry_count:
+              type: integer
+              minimum: 0
+              description: Minimum retry count filter
+            max_retry_count:
+              type: integer
+              minimum: 0
+              description: Maximum retry count filter
+        include_statistics:
+          type: boolean
+          default: false
+          description: Include detailed statistics in response
+        include_transformations:
+          type: boolean
+          default: false
+          description: Include before/after transformations in response
+
+    SimulationResult:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            total_jobs_tested:
+              type: integer
+            jobs_matched:
+              type: integer
+            jobs_processed:
+              type: integer
+            success_rate:
+              type: number
+              minimum: 0
+              maximum: 1
+            average_processing_time_ms:
+              type: number
+        rule_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleSimulationResult'
+        job_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobSimulationResult'
+        statistics:
+          $ref: '#/components/schemas/SimulationStatistics'
+        warnings:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    RuleSimulationResult:
+      type: object
+      properties:
+        rule_id:
+          type: string
+          format: uuid
+        rule_name:
+          type: string
+        jobs_matched:
+          type: integer
+        jobs_processed:
+          type: integer
+        success_count:
+          type: integer
+        failure_count:
+          type: integer
+        average_processing_time_ms:
+          type: number
+        errors:
+          type: array
+          items:
+            type: string
+
+    JobSimulationResult:
+      type: object
+      properties:
+        job_id:
+          type: string
+        matched_rules:
+          type: array
+          items:
+            type: string
+        selected_rule:
+          type: string
+        actions_planned:
+          type: array
+          items:
+            type: string
+        processing_successful:
+          type: boolean
+        error_message:
+          type: string
+        processing_time_ms:
+          type: number
+        transformations:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransformationPreview'
+
+    TransformationPreview:
+      type: object
+      properties:
+        action_type:
+          type: string
+        before:
+          type: object
+          description: Job state before transformation
+        after:
+          type: object
+          description: Job state after transformation
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              old_value:
+                description: Previous value
+              new_value:
+                description: New value
+
+    SimulationStatistics:
+      type: object
+      properties:
+        action_type_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        error_pattern_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        queue_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        retry_count_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        processing_time_percentiles:
+          type: object
+          properties:
+            p50:
+              type: number
+            p95:
+              type: number
+            p99:
+              type: number
+
+    PipelineStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, stopped, paused, starting, stopping]
+          description: Current pipeline state
+        uptime_seconds:
+          type: integer
+          description: Pipeline uptime in seconds
+        last_started_at:
+          type: string
+          format: date-time
+          description: When pipeline was last started
+        last_stopped_at:
+          type: string
+          format: date-time
+          description: When pipeline was last stopped
+        configuration:
+          type: object
+          properties:
+            batch_size:
+              type: integer
+            poll_interval_seconds:
+              type: integer
+            worker_count:
+              type: integer
+            dry_run_mode:
+              type: boolean
+            safety_mode:
+              type: boolean
+        health:
+          type: object
+          properties:
+            redis_connected:
+              type: boolean
+            external_classifier_available:
+              type: boolean
+            disk_space_available_mb:
+              type: integer
+            memory_usage_mb:
+              type: integer
+            cpu_usage_percent:
+              type: number
+        statistics:
+          type: object
+          properties:
+            total_jobs_processed:
+              type: integer
+            jobs_processed_last_hour:
+              type: integer
+            success_rate_last_hour:
+              type: number
+            active_rules_count:
+              type: integer
+            circuit_breakers_open:
+              type: integer
+        current_batch:
+          type: object
+          properties:
+            jobs_in_progress:
+              type: integer
+            batch_started_at:
+              type: string
+              format: date-time
+            estimated_completion_at:
+              type: string
+              format: date-time
+
+    PipelineControlRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [start, stop, pause, resume]
+          description: Control action to perform
+        reason:
+          type: string
+          maxLength: 500
+          description: Reason for the control action
+        force:
+          type: boolean
+          default: false
+          description: Force the action even if unsafe (admin only)
+        parameters:
+          type: object
+          description: Action-specific parameters
+          properties:
+            graceful_shutdown_timeout_seconds:
+              type: integer
+              minimum: 1
+              maximum: 300
+              description: Timeout for graceful shutdown
+
+    PipelineMetrics:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        time_range:
+          type: string
+          description: Time range covered by metrics
+        granularity:
+          type: string
+          description: Metrics granularity
+        throughput:
+          $ref: '#/components/schemas/ThroughputMetrics'
+        latency:
+          $ref: '#/components/schemas/LatencyMetrics'
+        success_rates:
+          $ref: '#/components/schemas/SuccessRateMetrics'
+        safety_metrics:
+          $ref: '#/components/schemas/SafetyMetrics'
+        resource_usage:
+          $ref: '#/components/schemas/ResourceUsageMetrics'
+
+    ThroughputMetrics:
+      type: object
+      properties:
+        jobs_classified_per_minute:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        jobs_remediated_per_minute:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        actions_executed_per_minute:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+
+    LatencyMetrics:
+      type: object
+      properties:
+        classification_latency_ms:
+          type: array
+          items:
+            $ref: '#/components/schemas/LatencyPoint'
+        remediation_latency_ms:
+          type: array
+          items:
+            $ref: '#/components/schemas/LatencyPoint'
+        end_to_end_latency_ms:
+          type: array
+          items:
+            $ref: '#/components/schemas/LatencyPoint'
+
+    SuccessRateMetrics:
+      type: object
+      properties:
+        classification_success_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        remediation_success_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        rule_effectiveness:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleEffectivenessPoint'
+
+    SafetyMetrics:
+      type: object
+      properties:
+        rate_limit_hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/RateLimitHitPoint'
+        circuit_breaker_trips:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitBreakerTripPoint'
+        safety_overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+
+    ResourceUsageMetrics:
+      type: object
+      properties:
+        cpu_usage_percent:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        memory_usage_mb:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        disk_usage_mb:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        network_io_mbps:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+
+    TimeSeriesPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+
+    LatencyPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        p50:
+          type: number
+        p95:
+          type: number
+        p99:
+          type: number
+
+    RuleEffectivenessPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        rule_id:
+          type: string
+          format: uuid
+        rule_name:
+          type: string
+        effectiveness_rate:
+          type: number
+
+    RateLimitHitPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        rule_id:
+          type: string
+          format: uuid
+        rule_name:
+          type: string
+        limit_type:
+          type: string
+          enum: [per_minute, total_per_run]
+        hits:
+          type: integer
+
+    CircuitBreakerTripPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        rule_id:
+          type: string
+          format: uuid
+        rule_name:
+          type: string
+        failure_count:
+          type: integer
+        error_rate:
+          type: number
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique audit entry identifier
+        job_id:
+          type: string
+          description: ID of the job that was processed
+        rule_id:
+          type: string
+          format: uuid
+          description: ID of the rule that was applied
+        rule_name:
+          type: string
+          description: Name of the rule that was applied
+        action_type:
+          type: string
+          enum: [requeue, transform, redact, drop, route]
+          description: Type of action that was executed
+        classification:
+          type: object
+          description: Classification result that triggered the rule
+          properties:
+            category:
+              type: string
+            confidence:
+              type: number
+            reason:
+              type: string
+            source:
+              type: string
+        action_details:
+          type: object
+          description: Detailed information about the action executed
+          additionalProperties: true
+        success:
+          type: boolean
+          description: Whether the action was successful
+        error_message:
+          type: string
+          description: Error message if action failed
+        execution_time_ms:
+          type: number
+          description: Time taken to execute the action
+        dry_run:
+          type: boolean
+          description: Whether this was a dry-run execution
+        timestamp:
+          type: string
+          format: date-time
+          description: When the action was executed
+        user_id:
+          type: string
+          description: User who triggered the action (for manual triggers)
+        metadata:
+          type: object
+          description: Additional context and metadata
+          additionalProperties: true
+
+    RuleStatistics:
+      type: object
+      properties:
+        rule_id:
+          type: string
+          format: uuid
+        total_executions:
+          type: integer
+        successful_executions:
+          type: integer
+        failed_executions:
+          type: integer
+        success_rate:
+          type: number
+        average_execution_time_ms:
+          type: number
+        last_executed_at:
+          type: string
+          format: date-time
+        jobs_processed_last_24h:
+          type: integer
+        jobs_processed_last_7d:
+          type: integer
+        effectiveness_score:
+          type: number
+          description: Overall effectiveness score (0-1)
+        most_common_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              error:
+                type: string
+              count:
+                type: integer
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+        size:
+          type: integer
+          minimum: 1
+          description: Items per page
+        total_items:
+          type: integer
+          description: Total number of items
+        total_pages:
+          type: integer
+          description: Total number of pages
+        has_next:
+          type: boolean
+          description: Whether there is a next page
+        has_previous:
+          type: boolean
+          description: Whether there is a previous page
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: "RULE_NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The specified remediation rule was not found"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid_parameter:
+              summary: Invalid Parameter
+              value:
+                code: "INVALID_PARAMETER"
+                message: "The 'priority' parameter must be between 0 and 1000"
+                details:
+                  parameter: "priority"
+                  value: 1500
+                  allowed_range: "0-1000"
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing_token:
+              summary: Missing Authentication Token
+              value:
+                code: "MISSING_AUTH_TOKEN"
+                message: "Authentication token is required"
+            invalid_token:
+              summary: Invalid Authentication Token
+              value:
+                code: "INVALID_AUTH_TOKEN"
+                message: "The provided authentication token is invalid or expired"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficient_permissions:
+              summary: Insufficient Permissions
+              value:
+                code: "INSUFFICIENT_PERMISSIONS"
+                message: "You do not have permission to perform this action"
+                details:
+                  required_permission: "rules:create"
+                  user_permissions: ["rules:view", "metrics:view"]
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rule_not_found:
+              summary: Rule Not Found
+              value:
+                code: "RULE_NOT_FOUND"
+                message: "The specified remediation rule was not found"
+                details:
+                  rule_id: "550e8400-e29b-41d4-a716-446655440000"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            database_error:
+              summary: Database Connection Error
+              value:
+                code: "DATABASE_ERROR"
+                message: "Unable to connect to the database"
+                details:
+                  retry_after_seconds: 30

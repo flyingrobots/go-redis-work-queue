@@ -1,0 +1,896 @@
+openapi: 3.0.3
+info:
+  title: Forecasting API
+  description: |
+    Predictive analytics API for queue management system. Provides time-series
+    forecasting, capacity planning recommendations, and model management capabilities.
+  version: 1.0.0
+  contact:
+    name: Queue System API Support
+    email: api-support@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue-system.com/v1
+    description: Production server
+  - url: https://staging-api.queue-system.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /forecasting/queues/{queueName}/forecast:
+    get:
+      summary: Get forecast for a specific queue
+      description: |
+        Returns time-series forecast for queue metrics including point predictions,
+        confidence bounds, and model accuracy metrics.
+      operationId: getQueueForecast
+      tags:
+        - Forecasting
+      parameters:
+        - name: queueName
+          in: path
+          required: true
+          description: Unique identifier for the queue
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
+            example: "high-priority"
+        - name: horizon
+          in: query
+          description: Forecast horizon in minutes
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 1440
+            default: 120
+            example: 120
+        - name: model
+          in: query
+          description: Specific model to use for forecasting
+          schema:
+            type: string
+            enum: [ewma, holt-winters, arima, auto]
+            default: auto
+            example: "holt-winters"
+        - name: confidence
+          in: query
+          description: Confidence level for prediction bounds
+          schema:
+            type: number
+            minimum: 0.5
+            maximum: 0.99
+            default: 0.95
+            example: 0.95
+        - name: metric
+          in: query
+          description: Specific metric to forecast
+          schema:
+            type: string
+            enum: [backlog, throughput, error_rate, processing_time]
+            default: backlog
+            example: "backlog"
+      responses:
+        '200':
+          description: Forecast data successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastResponse'
+              examples:
+                successful_forecast:
+                  summary: Successful backlog forecast
+                  value:
+                    queue_name: "high-priority"
+                    metric: "backlog"
+                    forecast:
+                      model_used: "holt-winters"
+                      generated_at: "2025-09-14T18:47:37Z"
+                      horizon_minutes: 120
+                      confidence_level: 0.95
+                      timestamps: ["2025-09-14T19:00:00Z", "2025-09-14T19:30:00Z"]
+                      points: [150, 165]
+                      upper_bounds: [180, 200]
+                      lower_bounds: [120, 130]
+                      accuracy:
+                        mae: 12.5
+                        rmse: 18.3
+                        mape: 8.7
+                        r2_score: 0.89
+                        last_updated: "2025-09-14T18:45:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/QueueNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /forecasting/recommendations:
+    get:
+      summary: Get capacity and scaling recommendations
+      description: |
+        Returns actionable recommendations based on forecast analysis,
+        including scaling suggestions, maintenance windows, and SLO alerts.
+      operationId: getRecommendations
+      tags:
+        - Recommendations
+      parameters:
+        - name: priority
+          in: query
+          description: Filter recommendations by priority level
+          schema:
+            type: string
+            enum: [critical, high, medium, low, info]
+            example: "critical"
+        - name: category
+          in: query
+          description: Filter recommendations by category
+          schema:
+            type: string
+            enum: [capacity_scaling, slo_management, maintenance_scheduling, cost_optimization]
+            example: "capacity_scaling"
+        - name: time_horizon
+          in: query
+          description: Get recommendations for next N minutes
+          schema:
+            type: integer
+            minimum: 15
+            maximum: 1440
+            default: 240
+            example: 240
+        - name: queue_name
+          in: query
+          description: Filter recommendations for specific queue
+          schema:
+            type: string
+            example: "high-priority"
+      responses:
+        '200':
+          description: Recommendations successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationsResponse'
+              examples:
+                scaling_recommendations:
+                  summary: Critical scaling recommendations
+                  value:
+                    recommendations:
+                      - id: "rec_001"
+                        priority: "critical"
+                        category: "capacity_scaling"
+                        title: "SCALE WORKERS"
+                        description: "Scale workers +3 in next 25 minutes"
+                        action: "kubectl scale deployment workers --replicas=8"
+                        timing_minutes: 25
+                        confidence: 0.87
+                        forecast_basis:
+                          predicted_peak: 450
+                          current_capacity: 300
+                          utilization_threshold: 0.8
+                      - id: "rec_002"
+                        priority: "high"
+                        category: "slo_management"
+                        title: "SLO BUDGET"
+                        description: "85% budget consumed this week"
+                        action: "Review error rate trends and scaling policies"
+                        timing_minutes: 60
+                        confidence: 0.92
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /forecasting/models:
+    get:
+      summary: List all available forecasting models
+      description: |
+        Returns a list of all forecasting models with their current status,
+        configuration, and performance metrics.
+      operationId: listModels
+      tags:
+        - Models
+      parameters:
+        - name: status
+          in: query
+          description: Filter models by status
+          schema:
+            type: string
+            enum: [active, disabled, training, failed]
+            example: "active"
+      responses:
+        '200':
+          description: List of forecasting models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /forecasting/models/{modelName}:
+    get:
+      summary: Get detailed model information
+      description: |
+        Returns detailed information about a specific forecasting model including
+        configuration, performance metrics, and recent accuracy statistics.
+      operationId: getModel
+      tags:
+        - Models
+      parameters:
+        - name: modelName
+          in: path
+          required: true
+          description: Name of the forecasting model
+          schema:
+            type: string
+            enum: [ewma, holt-winters, arima]
+            example: "holt-winters"
+      responses:
+        '200':
+          description: Model information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ModelNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update model configuration
+      description: |
+        Updates the configuration parameters for a specific forecasting model.
+        Changes take effect on the next model update cycle.
+      operationId: updateModelConfig
+      tags:
+        - Models
+      parameters:
+        - name: modelName
+          in: path
+          required: true
+          description: Name of the forecasting model
+          schema:
+            type: string
+            enum: [ewma, holt-winters, arima]
+            example: "holt-winters"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelConfigUpdate'
+            examples:
+              holt_winters_config:
+                summary: Holt-Winters configuration update
+                value:
+                  parameters:
+                    alpha: 0.3
+                    beta: 0.1
+                    gamma: 0.05
+                    season_length: 24
+                  enabled: true
+                  auto_tune: false
+                  update_interval_seconds: 300
+      responses:
+        '200':
+          description: Model configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ModelNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /forecasting/models/{modelName}/reset:
+    post:
+      summary: Reset model state
+      description: |
+        Resets the model to its initial state, clearing all learned parameters
+        and historical state. Use with caution as this will degrade forecast
+        accuracy until the model retrains.
+      operationId: resetModel
+      tags:
+        - Models
+      parameters:
+        - name: modelName
+          in: path
+          required: true
+          description: Name of the forecasting model
+          schema:
+            type: string
+            enum: [ewma, holt-winters, arima]
+            example: "holt-winters"
+      responses:
+        '200':
+          description: Model reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Model holt-winters reset successfully"
+                  reset_at:
+                    type: string
+                    format: date-time
+                    example: "2025-09-14T18:47:37Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ModelNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /forecasting/health:
+    get:
+      summary: Get forecasting system health status
+      description: |
+        Returns the overall health status of the forecasting system including
+        model performance, data pipeline status, and resource utilization.
+      operationId: getSystemHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: System health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for API authentication
+
+  schemas:
+    ForecastResponse:
+      type: object
+      required:
+        - queue_name
+        - metric
+        - forecast
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue being forecasted
+          example: "high-priority"
+        metric:
+          type: string
+          description: The metric being forecasted
+          enum: [backlog, throughput, error_rate, processing_time]
+          example: "backlog"
+        forecast:
+          $ref: '#/components/schemas/ForecastData'
+
+    ForecastData:
+      type: object
+      required:
+        - model_used
+        - generated_at
+        - horizon_minutes
+        - points
+      properties:
+        model_used:
+          type: string
+          description: The forecasting model that generated this prediction
+          enum: [ewma, holt-winters, arima]
+          example: "holt-winters"
+        generated_at:
+          type: string
+          format: date-time
+          description: When this forecast was generated
+          example: "2025-09-14T18:47:37Z"
+        horizon_minutes:
+          type: integer
+          description: Forecast horizon in minutes
+          minimum: 1
+          maximum: 1440
+          example: 120
+        confidence_level:
+          type: number
+          description: Confidence level for prediction bounds
+          minimum: 0.5
+          maximum: 0.99
+          example: 0.95
+        timestamps:
+          type: array
+          description: Timestamps for each forecast point
+          items:
+            type: string
+            format: date-time
+          example: ["2025-09-14T19:00:00Z", "2025-09-14T19:30:00Z"]
+        points:
+          type: array
+          description: Point forecasts
+          items:
+            type: number
+          example: [150, 165, 180, 175, 160]
+        upper_bounds:
+          type: array
+          description: Upper confidence bounds
+          items:
+            type: number
+          example: [180, 200, 220, 210, 190]
+        lower_bounds:
+          type: array
+          description: Lower confidence bounds
+          items:
+            type: number
+          example: [120, 130, 140, 140, 130]
+        accuracy:
+          $ref: '#/components/schemas/AccuracyMetrics'
+
+    AccuracyMetrics:
+      type: object
+      description: Model accuracy and performance metrics
+      properties:
+        mae:
+          type: number
+          description: Mean Absolute Error
+          minimum: 0
+          example: 12.5
+        rmse:
+          type: number
+          description: Root Mean Square Error
+          minimum: 0
+          example: 18.3
+        mape:
+          type: number
+          description: Mean Absolute Percentage Error
+          minimum: 0
+          example: 8.7
+        prediction_bias:
+          type: number
+          description: Average prediction bias (positive = over-prediction)
+          example: -2.1
+        r2_score:
+          type: number
+          description: Coefficient of determination (R²)
+          minimum: -1
+          maximum: 1
+          example: 0.89
+        last_updated:
+          type: string
+          format: date-time
+          description: When accuracy metrics were last calculated
+          example: "2025-09-14T18:45:00Z"
+
+    RecommendationsResponse:
+      type: object
+      required:
+        - recommendations
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+        generated_at:
+          type: string
+          format: date-time
+          description: When recommendations were generated
+          example: "2025-09-14T18:47:37Z"
+        total_count:
+          type: integer
+          description: Total number of recommendations
+          minimum: 0
+          example: 5
+
+    Recommendation:
+      type: object
+      required:
+        - id
+        - priority
+        - category
+        - title
+        - description
+        - confidence
+      properties:
+        id:
+          type: string
+          description: Unique recommendation identifier
+          example: "rec_001"
+        priority:
+          type: string
+          description: Recommendation priority level
+          enum: [critical, high, medium, low, info]
+          example: "critical"
+        category:
+          type: string
+          description: Recommendation category
+          enum: [capacity_scaling, slo_management, maintenance_scheduling, cost_optimization]
+          example: "capacity_scaling"
+        title:
+          type: string
+          description: Short recommendation title
+          example: "SCALE WORKERS"
+        description:
+          type: string
+          description: Detailed recommendation description
+          example: "Scale workers +3 in next 25 minutes"
+        action:
+          type: string
+          description: Specific action to take
+          example: "kubectl scale deployment workers --replicas=8"
+        timing_minutes:
+          type: integer
+          description: How soon to take action (minutes from now)
+          minimum: 0
+          example: 25
+        confidence:
+          type: number
+          description: Confidence in this recommendation (0-1)
+          minimum: 0
+          maximum: 1
+          example: 0.87
+        forecast_basis:
+          $ref: '#/components/schemas/ForecastBasis'
+
+    ForecastBasis:
+      type: object
+      description: The forecast data that led to this recommendation
+      properties:
+        predicted_peak:
+          type: number
+          description: Predicted peak value
+          example: 450
+        current_capacity:
+          type: number
+          description: Current system capacity
+          example: 300
+        utilization_threshold:
+          type: number
+          description: Utilization threshold that triggered recommendation
+          minimum: 0
+          maximum: 1
+          example: 0.8
+        time_to_peak:
+          type: integer
+          description: Minutes until predicted peak
+          minimum: 0
+          example: 35
+
+    ModelsListResponse:
+      type: object
+      required:
+        - models
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelSummary'
+
+    ModelSummary:
+      type: object
+      required:
+        - name
+        - type
+        - status
+        - enabled
+      properties:
+        name:
+          type: string
+          description: Model name
+          example: "holt-winters"
+        type:
+          type: string
+          description: Model type
+          enum: [ewma, holt-winters, arima]
+          example: "holt-winters"
+        status:
+          type: string
+          description: Current model status
+          enum: [active, disabled, training, failed]
+          example: "active"
+        enabled:
+          type: boolean
+          description: Whether model is enabled for forecasting
+          example: true
+        last_updated:
+          type: string
+          format: date-time
+          description: When model was last updated
+          example: "2025-09-14T18:45:00Z"
+        accuracy:
+          $ref: '#/components/schemas/AccuracyMetrics'
+
+    ModelDetailResponse:
+      type: object
+      required:
+        - name
+        - type
+        - status
+        - configuration
+      properties:
+        name:
+          type: string
+          description: Model name
+          example: "holt-winters"
+        type:
+          type: string
+          description: Model type
+          enum: [ewma, holt-winters, arima]
+          example: "holt-winters"
+        status:
+          type: string
+          description: Current model status
+          enum: [active, disabled, training, failed]
+          example: "active"
+        configuration:
+          $ref: '#/components/schemas/ModelConfiguration'
+        accuracy:
+          $ref: '#/components/schemas/AccuracyMetrics'
+        performance:
+          $ref: '#/components/schemas/PerformanceMetrics'
+
+    ModelConfiguration:
+      type: object
+      required:
+        - model_type
+        - enabled
+      properties:
+        model_type:
+          type: string
+          description: Type of forecasting model
+          enum: [ewma, holt-winters, arima]
+          example: "holt-winters"
+        parameters:
+          type: object
+          description: Model-specific parameters
+          additionalProperties: true
+          example:
+            alpha: 0.3
+            beta: 0.1
+            gamma: 0.05
+            season_length: 24
+        enabled:
+          type: boolean
+          description: Whether model is enabled
+          example: true
+        auto_tune:
+          type: boolean
+          description: Whether to automatically tune parameters
+          example: false
+        update_interval_seconds:
+          type: integer
+          description: How often to update model (seconds)
+          minimum: 30
+          maximum: 3600
+          example: 300
+
+    ModelConfigUpdate:
+      type: object
+      properties:
+        parameters:
+          type: object
+          description: Updated model parameters
+          additionalProperties: true
+        enabled:
+          type: boolean
+          description: Enable/disable the model
+        auto_tune:
+          type: boolean
+          description: Enable/disable automatic parameter tuning
+        update_interval_seconds:
+          type: integer
+          description: Update interval in seconds
+          minimum: 30
+          maximum: 3600
+
+    ModelConfigResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Model configuration updated successfully"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-09-14T18:47:37Z"
+        configuration:
+          $ref: '#/components/schemas/ModelConfiguration'
+
+    PerformanceMetrics:
+      type: object
+      description: Model performance and resource usage metrics
+      properties:
+        avg_prediction_time_ms:
+          type: number
+          description: Average time to generate predictions (milliseconds)
+          minimum: 0
+          example: 45.2
+        memory_usage_mb:
+          type: number
+          description: Memory usage in megabytes
+          minimum: 0
+          example: 2.8
+        predictions_generated:
+          type: integer
+          description: Total predictions generated
+          minimum: 0
+          example: 1542
+        last_training_time:
+          type: string
+          format: date-time
+          description: When model was last trained
+          example: "2025-09-14T18:30:00Z"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Overall system health status
+          enum: [healthy, degraded, unhealthy]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: When health check was performed
+          example: "2025-09-14T18:47:37Z"
+        models:
+          type: object
+          description: Health status of each model
+          additionalProperties:
+            type: string
+            enum: [healthy, degraded, failed]
+          example:
+            ewma: "healthy"
+            holt-winters: "healthy"
+            arima: "degraded"
+        data_pipeline:
+          type: object
+          description: Data pipeline health metrics
+          properties:
+            status:
+              type: string
+              enum: [healthy, degraded, failed]
+              example: "healthy"
+            last_update:
+              type: string
+              format: date-time
+              example: "2025-09-14T18:46:30Z"
+            metrics_processed:
+              type: integer
+              example: 15420
+        resource_usage:
+          type: object
+          description: System resource utilization
+          properties:
+            memory_usage_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+              example: 45.2
+            cpu_usage_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+              example: 32.1
+            cache_hit_rate:
+              type: number
+              minimum: 0
+              maximum: 1
+              example: 0.87
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "INVALID_PARAMETER"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Forecast horizon must be between 5 and 1440 minutes"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+          example: "req_123456789"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INVALID_PARAMETER"
+            message: "Forecast horizon must be between 5 and 1440 minutes"
+            request_id: "req_123456789"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "UNAUTHORIZED"
+            message: "Valid authentication token required"
+            request_id: "req_123456789"
+
+    QueueNotFound:
+      description: Queue not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "QUEUE_NOT_FOUND"
+            message: "Queue 'high-priority' not found"
+            request_id: "req_123456789"
+
+    ModelNotFound:
+      description: Model not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "MODEL_NOT_FOUND"
+            message: "Model 'invalid-model' not found"
+            request_id: "req_123456789"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+            request_id: "req_123456789"
+
+tags:
+  - name: Forecasting
+    description: Time-series forecasting operations
+  - name: Recommendations
+    description: Capacity and scaling recommendations
+  - name: Models
+    description: Forecasting model management
+  - name: System
+    description: System health and monitoring

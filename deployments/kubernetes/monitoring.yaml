@@ -1,0 +1,220 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: admin-api
+  namespace: work-queue
+  labels:
+    app: admin-api
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: admin-api
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: admin-api-alerts
+  namespace: work-queue
+  labels:
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: admin-api.rules
+    interval: 30s
+    rules:
+    # High Error Rate
+    - alert: AdminAPIHighErrorRate
+      expr: |
+        (
+          sum(rate(http_requests_total{app="admin-api",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{app="admin-api"}[5m]))
+        ) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        component: admin-api
+      annotations:
+        summary: "High error rate on Admin API"
+        description: "Admin API error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+    # API Down
+    - alert: AdminAPIDown
+      expr: up{app="admin-api"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: admin-api
+      annotations:
+        summary: "Admin API is down"
+        description: "Admin API instance {{ $labels.instance }} has been down for more than 2 minutes"
+
+    # High Latency
+    - alert: AdminAPIHighLatency
+      expr: |
+        histogram_quantile(0.95,
+          sum(rate(http_request_duration_seconds_bucket{app="admin-api"}[5m])) by (le)
+        ) > 1
+      for: 5m
+      labels:
+        severity: warning
+        component: admin-api
+      annotations:
+        summary: "High latency on Admin API"
+        description: "95th percentile latency is {{ $value }}s (threshold: 1s)"
+
+    # High Memory Usage
+    - alert: AdminAPIHighMemory
+      expr: |
+        container_memory_usage_bytes{pod=~"admin-api-.*"}
+        / container_spec_memory_limit_bytes{pod=~"admin-api-.*"} > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: admin-api
+      annotations:
+        summary: "High memory usage on Admin API"
+        description: "Admin API pod {{ $labels.pod }} memory usage is {{ $value | humanizePercentage }}"
+
+    # Pod Restart
+    - alert: AdminAPIPodRestart
+      expr: |
+        increase(kube_pod_container_status_restarts_total{pod=~"admin-api-.*"}[1h]) > 3
+      labels:
+        severity: warning
+        component: admin-api
+      annotations:
+        summary: "Admin API pod restarting frequently"
+        description: "Admin API pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+    # Certificate Expiry
+    - alert: AdminAPICertificateExpiry
+      expr: |
+        certmanager_certificate_expiration_timestamp_seconds{name="admin-api-tls"}
+        - time() < 7 * 24 * 3600
+      labels:
+        severity: warning
+        component: admin-api
+      annotations:
+        summary: "Admin API TLS certificate expiring soon"
+        description: "TLS certificate for Admin API will expire in {{ $value | humanizeDuration }}"
+
+    # Rate Limit Exceeded
+    - alert: AdminAPIRateLimitExceeded
+      expr: |
+        sum(rate(http_requests_rate_limited_total{app="admin-api"}[5m])) > 10
+      for: 5m
+      labels:
+        severity: info
+        component: admin-api
+      annotations:
+        summary: "High rate of rate-limited requests"
+        description: "{{ $value }} requests per second are being rate limited"
+
+    # Audit Log Failures
+    - alert: AdminAPIAuditLogFailure
+      expr: |
+        increase(audit_log_write_failures_total{app="admin-api"}[5m]) > 0
+      labels:
+        severity: critical
+        component: admin-api
+      annotations:
+        summary: "Audit log write failures"
+        description: "Admin API failed to write {{ $value }} audit log entries in the last 5 minutes"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: admin-api-grafana-dashboard
+  namespace: work-queue
+  labels:
+    grafana_dashboard: "1"
+data:
+  admin-api-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Admin API Dashboard",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{app=\"admin-api\"}[5m])) by (status)"
+              }
+            ]
+          },
+          {
+            "title": "Response Time (p50, p95, p99)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{app=\"admin-api\"}[5m])) by (le))",
+                "legendFormat": "p50"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"admin-api\"}[5m])) by (le))",
+                "legendFormat": "p95"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"admin-api\"}[5m])) by (le))",
+                "legendFormat": "p99"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{app=\"admin-api\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"admin-api\"}[5m]))"
+              }
+            ]
+          },
+          {
+            "title": "Active Connections",
+            "targets": [
+              {
+                "expr": "http_active_connections{app=\"admin-api\"}"
+              }
+            ]
+          },
+          {
+            "title": "CPU Usage",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"admin-api-.*\"}[5m])) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{pod=~\"admin-api-.*\"}"
+              }
+            ]
+          },
+          {
+            "title": "Rate Limited Requests",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_rate_limited_total{app=\"admin-api\"}[5m]))"
+              }
+            ]
+          },
+          {
+            "title": "Audit Log Writes",
+            "targets": [
+              {
+                "expr": "sum(rate(audit_log_writes_total{app=\"admin-api\"}[5m])) by (action)"
+              }
+            ]
+          }
+        ]
+      }
+    }

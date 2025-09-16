@@ -3,9 +3,11 @@
 - Last updated: 2025-09-12
 
 ## Executive Summary
+
 Single Go binary operates as producer, worker, or both. Redis provides prioritized lists, per-worker processing lists, and heartbeats. A reaper rescues orphaned jobs. Circuit breaker protects Redis during failure spikes. Observability includes Prometheus metrics and optional OTEL tracing.
 
 ## Table of Contents
+
 - [System Diagram](#system-diagram)
 - [Components](#components)
 - [Data Flows](#data-flows)
@@ -52,6 +54,7 @@ flowchart LR
 ```
 
 ## Components
+
 - Producer: scans directories, prioritizes files, rate-limits enqueue.
 - Worker: prioritized fetch via short-timeout BRPOPLPUSH per queue; heartbeat and cleanup.
 - Reaper: rescues jobs from processing lists when heartbeats expire.
@@ -59,6 +62,7 @@ flowchart LR
 - Observability: metrics server, structured logging, optional OTEL tracing.
 
 ## Data Flows
+
 1) Produce: file -> Job JSON -> LPUSH to `high` or `low`.
 2) Consume: BRPOPLPUSH from `high` then `low` (short timeout) -> processing list.
 3) Heartbeat: SET `processing:worker:<id>` with EX=ttl, value=payload.
@@ -67,6 +71,7 @@ flowchart LR
 6) Reap: if heartbeat missing, RPOP processing list items back to originating priority queue.
 
 ## Technology Stack
+
 - Language: Go 1.21+
 - Redis Client: go-redis v8
 - Metrics: Prometheus client_golang
@@ -76,12 +81,13 @@ flowchart LR
 - Container: Distroless base image
 
 ## Scaling Strategy
+
 - Horizontal scale workers across nodes; each worker uses `PoolSize=10*NumCPU`.
 - Tune `MinIdleConns`, timeouts, and backoff per environment.
 - Shard queues by prefix if needed: e.g., `jobqueue:high:0..N` with consistent hashing.
 
 ## Performance Targets
+
 - Throughput: ≥ 1k jobs/min per 4 vCPU worker node (small files <1MB)
 - Latency: p95 < 2s for small files end-to-end under normal load
 - Recovery: < 10s to drain orphaned processing lists after crash of a single worker node
-

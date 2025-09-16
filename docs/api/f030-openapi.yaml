@@ -1,0 +1,2342 @@
+openapi: 3.0.3
+info:
+  title: Patterned Load Generator API
+  description: |
+    API for managing sophisticated load testing patterns including sine waves, bursts, and ramps.
+
+    This API provides comprehensive load testing capabilities with:
+    - Advanced pattern generation (sine, burst, ramp, custom)
+    - Built-in safety guardrails to prevent system overload
+    - Real-time visualization and monitoring
+    - Profile management for repeatable tests
+    - Integration with existing bench tooling
+
+    The system is designed with safety-first principles, ensuring that load tests cannot accidentally overwhelm production systems.
+  version: 1.0.0
+  contact:
+    name: Load Testing Team
+    email: loadtest@go-redis-wq.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.go-redis-wq.com/v1
+    description: Production server
+  - url: https://staging-api.go-redis-wq.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /load-test/patterns/start:
+    post:
+      summary: Start a patterned load test
+      description: |
+        Initiate a new load test with the specified pattern configuration.
+        The system will validate the pattern against guardrails before starting.
+      operationId: startPatternTest
+      tags:
+        - Pattern Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartPatternRequest'
+      responses:
+        '200':
+          description: Load test started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTestResponse'
+        '400':
+          description: Invalid pattern configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Pattern exceeds guardrails or permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardrailViolationResponse'
+        '429':
+          description: Rate limit exceeded or system overloaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/patterns/{testId}/status:
+    get:
+      summary: Get pattern test status
+      description: Retrieve current status and basic metrics for a running or completed load test
+      operationId: getPatternTestStatus
+      tags:
+        - Pattern Execution
+      parameters:
+        - name: testId
+          in: path
+          description: Load test identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^test_[a-zA-Z0-9]+$'
+      responses:
+        '200':
+          description: Test status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTestStatus'
+        '404':
+          description: Test not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/patterns/{testId}/stop:
+    post:
+      summary: Stop a running pattern test
+      description: |
+        Gracefully stop a running load test. This will complete any in-flight jobs
+        and generate a final test report.
+      operationId: stopPatternTest
+      tags:
+        - Pattern Execution
+      parameters:
+        - name: testId
+          in: path
+          description: Load test identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^test_[a-zA-Z0-9]+$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  default: false
+                  description: Force immediate stop without waiting for in-flight jobs
+                save_results:
+                  type: boolean
+                  default: true
+                  description: Save test results for later analysis
+      responses:
+        '200':
+          description: Test stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTestStopResponse'
+        '404':
+          description: Test not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Test already stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/patterns/{testId}/metrics:
+    get:
+      summary: Get detailed test metrics
+      description: |
+        Retrieve comprehensive metrics and visualization data for a load test.
+        Includes rate data, system metrics, and performance statistics.
+      operationId: getPatternTestMetrics
+      tags:
+        - Pattern Execution
+      parameters:
+        - name: testId
+          in: path
+          description: Load test identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^test_[a-zA-Z0-9]+$'
+        - name: include_timeseries
+          in: query
+          description: Include time-series data for charts
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: resolution
+          in: query
+          description: Time resolution for data points
+          required: false
+          schema:
+            type: string
+            enum: [1s, 5s, 10s, 30s, 1m]
+            default: 5s
+        - name: start_time
+          in: query
+          description: Start time for metrics window
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for metrics window
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTestMetrics'
+        '404':
+          description: Test not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/patterns/{testId}/export:
+    get:
+      summary: Export test results
+      description: Export test results in various formats for external analysis
+      operationId: exportPatternTestResults
+      tags:
+        - Pattern Execution
+      parameters:
+        - name: testId
+          in: path
+          description: Load test identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^test_[a-zA-Z0-9]+$'
+        - name: format
+          in: query
+          description: Export format
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, xlsx]
+            default: json
+        - name: include_raw_data
+          in: query
+          description: Include raw time-series data
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Test results exported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+            text/csv:
+              schema:
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /load-test/patterns/active:
+    get:
+      summary: List active pattern tests
+      description: Get a list of all currently running pattern tests
+      operationId: getActivePatternTests
+      tags:
+        - Pattern Execution
+      parameters:
+        - name: user
+          in: query
+          description: Filter by user who started the test
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of tests to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Active tests retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveTestsResponse'
+
+  /load-test/profiles:
+    get:
+      summary: List load test profiles
+      description: |
+        Retrieve a list of saved load test profiles with optional filtering and sorting.
+      operationId: listLoadTestProfiles
+      tags:
+        - Profile Management
+      parameters:
+        - name: search
+          in: query
+          description: Search profiles by name or description
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          required: false
+          schema:
+            type: string
+        - name: environment
+          in: query
+          description: Filter by environment
+          required: false
+          schema:
+            type: string
+            enum: [development, staging, production]
+        - name: created_by
+          in: query
+          description: Filter by profile creator
+          required: false
+          schema:
+            type: string
+        - name: pattern_type
+          in: query
+          description: Filter by pattern type
+          required: false
+          schema:
+            $ref: '#/components/schemas/PatternType'
+        - name: sort
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, usage_count]
+            default: updated_at
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: limit
+          in: query
+          description: Number of profiles to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of profiles to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Profiles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListResponse'
+
+    post:
+      summary: Create a new load test profile
+      description: |
+        Create a new load test profile that can be reused for consistent testing.
+        Profiles include pattern configuration, guardrails, and job settings.
+      operationId: createLoadTestProfile
+      tags:
+        - Profile Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileRequest'
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestProfile'
+        '400':
+          description: Invalid profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '409':
+          description: Profile name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/profiles/{profileId}:
+    get:
+      summary: Get profile details
+      description: Retrieve complete details for a specific load test profile
+      operationId: getLoadTestProfile
+      tags:
+        - Profile Management
+      parameters:
+        - name: profileId
+          in: path
+          description: Profile identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^profile_[a-zA-Z0-9]+$'
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestProfile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update a load test profile
+      description: |
+        Update an existing load test profile. Only the profile owner or administrators
+        can modify profiles.
+      operationId: updateLoadTestProfile
+      tags:
+        - Profile Management
+      parameters:
+        - name: profileId
+          in: path
+          description: Profile identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^profile_[a-zA-Z0-9]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestProfile'
+        '400':
+          description: Invalid profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '403':
+          description: Not authorized to modify this profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a load test profile
+      description: |
+        Delete a load test profile. Only the profile owner or administrators
+        can delete profiles.
+      operationId: deleteLoadTestProfile
+      tags:
+        - Profile Management
+      parameters:
+        - name: profileId
+          in: path
+          description: Profile identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^profile_[a-zA-Z0-9]+$'
+      responses:
+        '204':
+          description: Profile deleted successfully
+        '403':
+          description: Not authorized to delete this profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cannot delete profile that is currently in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/profiles/{profileId}/run:
+    post:
+      summary: Run a load test from a saved profile
+      description: |
+        Execute a load test using a saved profile configuration.
+        Optionally override specific parameters for this execution.
+      operationId: runProfileLoadTest
+      tags:
+        - Profile Management
+      parameters:
+        - name: profileId
+          in: path
+          description: Profile identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^profile_[a-zA-Z0-9]+$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunProfileRequest'
+      responses:
+        '200':
+          description: Load test started from profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTestResponse'
+        '400':
+          description: Invalid override parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/profiles/{profileId}/export:
+    get:
+      summary: Export profile configuration
+      description: Export a profile configuration for sharing or backup
+      operationId: exportLoadTestProfile
+      tags:
+        - Profile Management
+      parameters:
+        - name: profileId
+          in: path
+          description: Profile identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^profile_[a-zA-Z0-9]+$'
+        - name: format
+          in: query
+          description: Export format
+          required: false
+          schema:
+            type: string
+            enum: [json, yaml]
+            default: json
+        - name: include_metadata
+          in: query
+          description: Include profile metadata
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Profile exported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestProfile'
+            application/yaml:
+              schema:
+                type: string
+
+  /load-test/profiles/import:
+    post:
+      summary: Import profile configuration
+      description: Import a profile configuration from external source
+      operationId: importLoadTestProfile
+      tags:
+        - Profile Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportProfileRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Profile configuration file
+                name:
+                  type: string
+                  description: Name for imported profile
+                validate:
+                  type: boolean
+                  default: true
+                  description: Validate profile before importing
+      responses:
+        '201':
+          description: Profile imported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestProfile'
+        '400':
+          description: Invalid profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /load-test/guardrails:
+    get:
+      summary: Get guardrail configuration
+      description: |
+        Retrieve current guardrail limits and policies.
+        Shows environment-specific limits and user restrictions.
+      operationId: getGuardrailConfiguration
+      tags:
+        - Guardrails
+      parameters:
+        - name: environment
+          in: query
+          description: Environment to get guardrails for
+          required: false
+          schema:
+            type: string
+            enum: [development, staging, production]
+      responses:
+        '200':
+          description: Guardrail configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardrailConfigurationResponse'
+
+  /load-test/guardrails/validate:
+    post:
+      summary: Validate pattern against guardrails
+      description: |
+        Validate a pattern configuration against current guardrail policies
+        without actually starting a test.
+      operationId: validatePatternGuardrails
+      tags:
+        - Guardrails
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateGuardrailsRequest'
+      responses:
+        '200':
+          description: Validation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardrailValidationResponse'
+
+  /load-test/stream/{testId}:
+    get:
+      summary: WebSocket stream for real-time test updates
+      description: |
+        WebSocket endpoint for real-time updates during pattern test execution.
+        Provides live metrics, rate updates, and violation notifications.
+      operationId: streamPatternTestUpdates
+      tags:
+        - Real-time Streaming
+      parameters:
+        - name: testId
+          in: path
+          description: Load test identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^test_[a-zA-Z0-9]+$'
+        - name: include_metrics
+          in: query
+          description: Include system metrics in stream
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: update_frequency
+          in: query
+          description: Update frequency in milliseconds
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 5000
+            default: 1000
+      responses:
+        '101':
+          description: WebSocket connection established
+        '404':
+          description: Test not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /load-test/patterns/templates:
+    get:
+      summary: Get pattern templates
+      description: |
+        Retrieve predefined pattern templates for common load testing scenarios.
+      operationId: getPatternTemplates
+      tags:
+        - Templates
+      parameters:
+        - name: category
+          in: query
+          description: Filter templates by category
+          required: false
+          schema:
+            type: string
+            enum: [basic, advanced, stress, spike, endurance]
+        - name: environment
+          in: query
+          description: Templates suitable for environment
+          required: false
+          schema:
+            type: string
+            enum: [development, staging, production]
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternTemplatesResponse'
+
+  /load-test/history:
+    get:
+      summary: Get load test history
+      description: |
+        Retrieve historical load test executions with filtering and pagination.
+      operationId: getLoadTestHistory
+      tags:
+        - History
+      parameters:
+        - name: user
+          in: query
+          description: Filter by user who ran the test
+          required: false
+          schema:
+            type: string
+        - name: profile_id
+          in: query
+          description: Filter by profile used
+          required: false
+          schema:
+            type: string
+        - name: pattern_type
+          in: query
+          description: Filter by pattern type
+          required: false
+          schema:
+            $ref: '#/components/schemas/PatternType'
+        - name: status
+          in: query
+          description: Filter by test status
+          required: false
+          schema:
+            type: string
+            enum: [completed, failed, stopped, running]
+        - name: start_date
+          in: query
+          description: Filter tests after this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter tests before this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          description: Number of tests to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of tests to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Test history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestHistoryResponse'
+
+  /load-test/analytics:
+    get:
+      summary: Get load testing analytics
+      description: |
+        Retrieve analytics and insights from historical load test data.
+        Requires admin privileges.
+      operationId: getLoadTestAnalytics
+      tags:
+        - Analytics
+      security:
+        - BearerAuth: [admin]
+      parameters:
+        - name: period
+          in: query
+          description: Analytics time period
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, quarter, year]
+            default: month
+        - name: metric_type
+          in: query
+          description: Type of analytics to retrieve
+          required: false
+          schema:
+            type: string
+            enum: [usage, performance, patterns, violations]
+      responses:
+        '200':
+          description: Analytics data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadTestAnalyticsResponse'
+        '403':
+          description: Admin privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    # Core Pattern Schemas
+    PatternType:
+      type: string
+      enum:
+        - sine
+        - burst
+        - ramp
+        - staircase
+        - custom
+        - chaos
+      description: Type of load pattern to generate
+
+    PatternConfig:
+      type: object
+      required:
+        - type
+        - duration
+        - base_rate
+      properties:
+        type:
+          $ref: '#/components/schemas/PatternType'
+        duration:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Pattern duration (e.g., 5m, 1h)
+          example: "5m"
+        base_rate:
+          type: number
+          minimum: 0
+          maximum: 10000
+          description: Base rate in jobs per second
+          example: 10.0
+        max_rate:
+          type: number
+          minimum: 0
+          maximum: 10000
+          description: Maximum rate in jobs per second
+          example: 100.0
+        amplitude:
+          type: number
+          minimum: 0
+          description: Pattern amplitude for sine waves
+          example: 50.0
+        period:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Pattern period for repeating patterns
+          example: "1m"
+        start_rate:
+          type: number
+          minimum: 0
+          description: Starting rate for ramp patterns
+          example: 5.0
+        end_rate:
+          type: number
+          minimum: 0
+          description: Ending rate for ramp patterns
+          example: 95.0
+        burst_rate:
+          type: number
+          minimum: 0
+          description: Peak rate during bursts
+          example: 200.0
+        burst_duration:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Duration of each burst
+          example: "30s"
+        burst_interval:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Interval between bursts
+          example: "5m"
+        ramp_type:
+          type: string
+          enum: [linear, exponential, logarithmic]
+          default: linear
+          description: Type of ramp curve
+        phases:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternPhase'
+          description: Custom pattern phases for complex patterns
+        random_variance:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Random variance factor (0-1) for chaos patterns
+
+    PatternPhase:
+      type: object
+      required:
+        - duration
+        - rate
+      properties:
+        duration:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Phase duration
+        rate:
+          type: number
+          minimum: 0
+          description: Target rate for this phase
+        transition:
+          type: string
+          enum: [immediate, linear, smooth]
+          default: linear
+          description: Transition type to this phase
+
+    GuardrailConfig:
+      type: object
+      properties:
+        max_rate:
+          type: number
+          minimum: 0
+          maximum: 10000
+          description: Maximum allowed rate (jobs/sec)
+          example: 100.0
+        max_total_jobs:
+          type: integer
+          minimum: 0
+          description: Maximum total jobs to enqueue
+          example: 10000
+        max_duration:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Maximum test duration
+          example: "1h"
+        max_memory_mb:
+          type: integer
+          minimum: 0
+          description: Maximum memory usage in MB
+          example: 1024
+        max_cpu_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum CPU usage percentage
+          example: 80.0
+        max_queue_depth:
+          type: integer
+          minimum: 0
+          description: Maximum queue depth allowed
+          example: 1000
+        rate_limit_window:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Rate limiting window
+          example: "1m"
+        emergency_stop:
+          type: boolean
+          default: true
+          description: Enable emergency stop on violations
+        warn_thresholds:
+          $ref: '#/components/schemas/WarnThresholds'
+
+    WarnThresholds:
+      type: object
+      properties:
+        rate_warning:
+          type: number
+          minimum: 0
+          description: Rate warning threshold (% of max)
+          example: 80.0
+        memory_warning:
+          type: number
+          minimum: 0
+          description: Memory warning threshold (% of max)
+          example: 80.0
+        cpu_warning:
+          type: number
+          minimum: 0
+          description: CPU warning threshold (% of max)
+          example: 70.0
+        queue_depth_warn:
+          type: integer
+          minimum: 0
+          description: Queue depth warning threshold
+          example: 500
+
+    JobConfiguration:
+      type: object
+      required:
+        - queue
+      properties:
+        queue:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Target queue name
+          example: "test-queue"
+        payload:
+          type: object
+          description: Job payload data
+          example: {"action": "process", "data": "test"}
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 5
+          description: Job priority
+        delay:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Job delay
+          example: "0s"
+        retry:
+          $ref: '#/components/schemas/RetryConfig'
+        timeout:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Job timeout
+          example: "30s"
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom job headers
+
+    RetryConfig:
+      type: object
+      properties:
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+          description: Maximum retry attempts
+        backoff_strategy:
+          type: string
+          enum: [fixed, exponential, linear]
+          default: exponential
+          description: Backoff strategy for retries
+        initial_delay:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Initial retry delay
+          example: "1s"
+        max_delay:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Maximum retry delay
+          example: "30s"
+
+    LoadTestProfile:
+      type: object
+      required:
+        - id
+        - name
+        - pattern
+        - job_config
+      properties:
+        id:
+          type: string
+          pattern: '^profile_[a-zA-Z0-9]+$'
+          description: Unique profile identifier
+          example: "profile_12345"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Profile display name
+          example: "Daily Traffic Simulation"
+        description:
+          type: string
+          maxLength: 500
+          description: Profile description
+          example: "Simulates typical daily traffic pattern"
+        version:
+          type: string
+          pattern: '^\\d+\\.\\d+\\.\\d+$'
+          description: Profile version
+          example: "1.0.0"
+        created_at:
+          type: string
+          format: date-time
+          description: Profile creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        created_by:
+          type: string
+          description: Profile creator username
+          example: "john.doe"
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 20
+          description: Profile tags
+          example: ["daily", "production", "baseline"]
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        job_config:
+          $ref: '#/components/schemas/JobConfiguration'
+        metadata:
+          $ref: '#/components/schemas/ProfileMetadata'
+        usage_count:
+          type: integer
+          minimum: 0
+          description: Number of times profile has been used
+          example: 15
+        last_used:
+          type: string
+          format: date-time
+          description: Last usage timestamp
+
+    ProfileMetadata:
+      type: object
+      properties:
+        environment:
+          type: string
+          enum: [development, staging, production]
+          description: Target environment
+        purpose:
+          type: string
+          maxLength: 200
+          description: Profile purpose or use case
+        expected_load:
+          type: string
+          maxLength: 100
+          description: Expected load description
+        dependencies:
+          type: array
+          items:
+            type: string
+          description: Required dependencies
+        compatibility:
+          type: array
+          items:
+            type: string
+          description: Compatible system versions
+        custom_fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom metadata fields
+
+    # Request/Response Schemas
+    StartPatternRequest:
+      type: object
+      required:
+        - pattern
+        - job_config
+      properties:
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        job_config:
+          $ref: '#/components/schemas/JobConfiguration'
+        save_profile:
+          type: boolean
+          default: false
+          description: Save configuration as a profile
+        profile_name:
+          type: string
+          maxLength: 100
+          description: Name for saved profile
+        dry_run:
+          type: boolean
+          default: false
+          description: Validate configuration without starting test
+        notifications:
+          $ref: '#/components/schemas/NotificationConfig'
+
+    NotificationConfig:
+      type: object
+      properties:
+        webhook_url:
+          type: string
+          format: uri
+          description: Webhook URL for notifications
+        email:
+          type: string
+          format: email
+          description: Email address for notifications
+        slack_channel:
+          type: string
+          description: Slack channel for notifications
+        notify_on_start:
+          type: boolean
+          default: false
+        notify_on_complete:
+          type: boolean
+          default: true
+        notify_on_violation:
+          type: boolean
+          default: true
+
+    PatternTestResponse:
+      type: object
+      required:
+        - test_id
+        - status
+        - pattern_summary
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+          description: Unique test identifier
+          example: "test_abc123"
+        status:
+          type: string
+          enum: [starting, running, stopping, completed, failed]
+          description: Current test status
+        pattern_summary:
+          $ref: '#/components/schemas/PatternSummary'
+        estimated_completion:
+          type: string
+          format: date-time
+          description: Estimated completion time
+        websocket_url:
+          type: string
+          format: uri
+          description: WebSocket URL for real-time updates
+        profile_id:
+          type: string
+          description: Profile ID if saved as profile
+
+    PatternSummary:
+      type: object
+      required:
+        - type
+        - duration
+        - estimated_jobs
+      properties:
+        type:
+          $ref: '#/components/schemas/PatternType'
+        duration:
+          type: string
+          description: Pattern duration
+        estimated_jobs:
+          type: integer
+          minimum: 0
+          description: Estimated total jobs to be enqueued
+        peak_rate:
+          type: number
+          minimum: 0
+          description: Peak rate expected
+        average_rate:
+          type: number
+          minimum: 0
+          description: Average rate expected
+
+    PatternTestStatus:
+      type: object
+      required:
+        - test_id
+        - status
+        - progress
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+        status:
+          type: string
+          enum: [starting, running, stopping, completed, failed, cancelled]
+        progress:
+          $ref: '#/components/schemas/TestProgress'
+        current_metrics:
+          $ref: '#/components/schemas/CurrentMetrics'
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardrailViolation'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestError'
+
+    TestProgress:
+      type: object
+      required:
+        - elapsed_time
+        - percent_complete
+      properties:
+        elapsed_time:
+          type: string
+          description: Time elapsed since test start
+        percent_complete:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Test completion percentage
+        remaining_time:
+          type: string
+          description: Estimated remaining time
+        jobs_enqueued:
+          type: integer
+          minimum: 0
+          description: Jobs enqueued so far
+        jobs_completed:
+          type: integer
+          minimum: 0
+          description: Jobs completed so far
+        jobs_failed:
+          type: integer
+          minimum: 0
+          description: Jobs failed so far
+
+    CurrentMetrics:
+      type: object
+      properties:
+        target_rate:
+          type: number
+          minimum: 0
+          description: Current target rate (jobs/sec)
+        actual_rate:
+          type: number
+          minimum: 0
+          description: Current actual rate (jobs/sec)
+        queue_depth:
+          type: integer
+          minimum: 0
+          description: Current queue depth
+        error_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Current error rate (0-1)
+        avg_latency:
+          type: number
+          minimum: 0
+          description: Average job latency in milliseconds
+        cpu_usage:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Current CPU usage percentage
+        memory_usage:
+          type: number
+          minimum: 0
+          description: Current memory usage in MB
+        timestamp:
+          type: string
+          format: date-time
+          description: Metrics timestamp
+
+    PatternTestMetrics:
+      type: object
+      required:
+        - test_id
+        - summary
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+        summary:
+          $ref: '#/components/schemas/TestSummary'
+        timeseries:
+          $ref: '#/components/schemas/TimeSeriesData'
+        performance_stats:
+          $ref: '#/components/schemas/PerformanceStats'
+        quality_metrics:
+          $ref: '#/components/schemas/QualityMetrics'
+
+    TestSummary:
+      type: object
+      properties:
+        duration:
+          type: string
+          description: Total test duration
+        total_jobs:
+          type: integer
+          minimum: 0
+          description: Total jobs enqueued
+        successful_jobs:
+          type: integer
+          minimum: 0
+          description: Successfully completed jobs
+        failed_jobs:
+          type: integer
+          minimum: 0
+          description: Failed jobs
+        avg_rate:
+          type: number
+          minimum: 0
+          description: Average enqueue rate
+        peak_rate:
+          type: number
+          minimum: 0
+          description: Peak enqueue rate
+        rate_accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Rate accuracy (actual vs target)
+
+    TimeSeriesData:
+      type: object
+      properties:
+        rates:
+          $ref: '#/components/schemas/RateTimeSeries'
+        queue_metrics:
+          $ref: '#/components/schemas/QueueTimeSeries'
+        system_metrics:
+          $ref: '#/components/schemas/SystemTimeSeries'
+        resolution:
+          type: string
+          enum: [1s, 5s, 10s, 30s, 1m]
+          description: Data point resolution
+
+    RateTimeSeries:
+      type: object
+      properties:
+        target_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        actual_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        deviation:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    QueueTimeSeries:
+      type: object
+      properties:
+        depth:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        processing_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        error_rate:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    SystemTimeSeries:
+      type: object
+      properties:
+        cpu_usage:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        memory_usage:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+        network_io:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataPoint'
+
+    DataPoint:
+      type: object
+      required:
+        - timestamp
+        - value
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+
+    PerformanceStats:
+      type: object
+      properties:
+        latency_percentiles:
+          $ref: '#/components/schemas/LatencyPercentiles'
+        throughput_stats:
+          $ref: '#/components/schemas/ThroughputStats'
+        resource_utilization:
+          $ref: '#/components/schemas/ResourceUtilization'
+
+    LatencyPercentiles:
+      type: object
+      properties:
+        p50:
+          type: number
+          description: 50th percentile latency (ms)
+        p95:
+          type: number
+          description: 95th percentile latency (ms)
+        p99:
+          type: number
+          description: 99th percentile latency (ms)
+        max:
+          type: number
+          description: Maximum latency (ms)
+
+    ThroughputStats:
+      type: object
+      properties:
+        peak_throughput:
+          type: number
+          description: Peak throughput (jobs/sec)
+        avg_throughput:
+          type: number
+          description: Average throughput (jobs/sec)
+        sustained_throughput:
+          type: number
+          description: Sustained throughput (jobs/sec)
+
+    ResourceUtilization:
+      type: object
+      properties:
+        peak_cpu:
+          type: number
+          description: Peak CPU usage (%)
+        avg_cpu:
+          type: number
+          description: Average CPU usage (%)
+        peak_memory:
+          type: number
+          description: Peak memory usage (MB)
+        avg_memory:
+          type: number
+          description: Average memory usage (MB)
+
+    QualityMetrics:
+      type: object
+      properties:
+        rate_accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: How closely actual matched target rates
+        pattern_fidelity:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: How well the pattern was followed
+        stability_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Overall system stability during test
+        error_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Error rate quality score
+
+    GuardrailViolation:
+      type: object
+      required:
+        - type
+        - severity
+        - message
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum: [max_rate, max_jobs, max_duration, max_memory, max_cpu, emergency_stop]
+        severity:
+          type: string
+          enum: [warning, error, critical]
+        message:
+          type: string
+          description: Human-readable violation description
+        requested_value:
+          type: number
+          description: Value that was requested
+        allowed_value:
+          type: number
+          description: Maximum allowed value
+        timestamp:
+          type: string
+          format: date-time
+        action_taken:
+          type: string
+          enum: [throttled, stopped, ignored]
+          description: Action taken in response to violation
+
+    TestError:
+      type: object
+      required:
+        - type
+        - message
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum: [enqueue_error, system_error, configuration_error, network_error]
+        message:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Detailed error information
+        timestamp:
+          type: string
+          format: date-time
+        recoverable:
+          type: boolean
+          description: Whether error is recoverable
+        retry_count:
+          type: integer
+          minimum: 0
+          description: Number of retry attempts made
+
+    PatternTestStopResponse:
+      type: object
+      required:
+        - test_id
+        - status
+        - summary
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+        status:
+          type: string
+          enum: [stopping, stopped, completed]
+        summary:
+          $ref: '#/components/schemas/TestSummary'
+        final_metrics:
+          $ref: '#/components/schemas/CurrentMetrics'
+        report_url:
+          type: string
+          format: uri
+          description: URL to detailed test report
+
+    # Profile Management Schemas
+    CreateProfileRequest:
+      type: object
+      required:
+        - name
+        - pattern
+        - job_config
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 20
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        job_config:
+          $ref: '#/components/schemas/JobConfiguration'
+        metadata:
+          $ref: '#/components/schemas/ProfileMetadata'
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 20
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        job_config:
+          $ref: '#/components/schemas/JobConfiguration'
+        metadata:
+          $ref: '#/components/schemas/ProfileMetadata'
+
+    RunProfileRequest:
+      type: object
+      properties:
+        overrides:
+          $ref: '#/components/schemas/ProfileOverrides'
+        save_as_new:
+          type: boolean
+          default: false
+          description: Save overrides as new profile
+        new_profile_name:
+          type: string
+          maxLength: 100
+          description: Name for new profile if save_as_new is true
+
+    ProfileOverrides:
+      type: object
+      properties:
+        duration:
+          type: string
+          pattern: '^\\d+[smh]$'
+          description: Override pattern duration
+        max_rate:
+          type: number
+          minimum: 0
+          description: Override maximum rate
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        job_config:
+          $ref: '#/components/schemas/JobConfiguration'
+
+    ImportProfileRequest:
+      type: object
+      required:
+        - source
+      properties:
+        source:
+          type: string
+          enum: [json, yaml, url]
+        data:
+          type: object
+          description: Profile data for json/yaml import
+        url:
+          type: string
+          format: uri
+          description: URL for remote profile import
+        name:
+          type: string
+          maxLength: 100
+          description: Name for imported profile
+        validate:
+          type: boolean
+          default: true
+          description: Validate profile before importing
+
+    ProfileListResponse:
+      type: object
+      required:
+        - profiles
+        - total
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfileSummary'
+        total:
+          type: integer
+          minimum: 0
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ProfileSummary:
+      type: object
+      required:
+        - id
+        - name
+        - pattern_type
+        - created_at
+      properties:
+        id:
+          type: string
+          pattern: '^profile_[a-zA-Z0-9]+$'
+        name:
+          type: string
+        description:
+          type: string
+        pattern_type:
+          $ref: '#/components/schemas/PatternType'
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        usage_count:
+          type: integer
+          minimum: 0
+        last_used:
+          type: string
+          format: date-time
+
+    # Guardrail Schemas
+    GuardrailConfigurationResponse:
+      type: object
+      required:
+        - global_limits
+        - environment_limits
+      properties:
+        global_limits:
+          $ref: '#/components/schemas/GuardrailConfig'
+        environment_limits:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/GuardrailConfig'
+        user_limits:
+          $ref: '#/components/schemas/GuardrailConfig'
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardrailPolicy'
+
+    GuardrailPolicy:
+      type: object
+      required:
+        - name
+        - description
+        - conditions
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyCondition'
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [warn, throttle, stop, alert]
+
+    PolicyCondition:
+      type: object
+      required:
+        - field
+        - operator
+        - value
+      properties:
+        field:
+          type: string
+          enum: [rate, total_jobs, duration, memory, cpu]
+        operator:
+          type: string
+          enum: [gt, gte, lt, lte, eq]
+        value:
+          type: number
+
+    ValidateGuardrailsRequest:
+      type: object
+      required:
+        - pattern
+      properties:
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        environment:
+          type: string
+          enum: [development, staging, production]
+
+    GuardrailValidationResponse:
+      type: object
+      required:
+        - valid
+        - violations
+      properties:
+        valid:
+          type: boolean
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardrailViolation'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardrailWarning'
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    GuardrailWarning:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          enum: [approaching_limit, high_resource_usage, long_duration]
+        message:
+          type: string
+        threshold:
+          type: number
+        current_value:
+          type: number
+
+    # Template and History Schemas
+    PatternTemplatesResponse:
+      type: object
+      required:
+        - templates
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternTemplate'
+        categories:
+          type: array
+          items:
+            type: string
+
+    PatternTemplate:
+      type: object
+      required:
+        - id
+        - name
+        - pattern
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [basic, advanced, stress, spike, endurance]
+        pattern:
+          $ref: '#/components/schemas/PatternConfig'
+        recommended_guardrails:
+          $ref: '#/components/schemas/GuardrailConfig'
+        use_cases:
+          type: array
+          items:
+            type: string
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+
+    LoadTestHistoryResponse:
+      type: object
+      required:
+        - tests
+        - total
+      properties:
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoadTestHistoryItem'
+        total:
+          type: integer
+          minimum: 0
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    LoadTestHistoryItem:
+      type: object
+      required:
+        - test_id
+        - status
+        - started_at
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+        profile_id:
+          type: string
+          pattern: '^profile_[a-zA-Z0-9]+$'
+        profile_name:
+          type: string
+        pattern_type:
+          $ref: '#/components/schemas/PatternType'
+        status:
+          type: string
+          enum: [completed, failed, stopped, cancelled]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        duration:
+          type: string
+        total_jobs:
+          type: integer
+          minimum: 0
+        avg_rate:
+          type: number
+          minimum: 0
+        peak_rate:
+          type: number
+          minimum: 0
+        success_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+        started_by:
+          type: string
+
+    LoadTestAnalyticsResponse:
+      type: object
+      required:
+        - period
+        - metrics
+      properties:
+        period:
+          type: string
+        metrics:
+          $ref: '#/components/schemas/AnalyticsMetrics'
+
+    AnalyticsMetrics:
+      type: object
+      properties:
+        usage_stats:
+          $ref: '#/components/schemas/UsageStats'
+        performance_trends:
+          $ref: '#/components/schemas/PerformanceTrends'
+        pattern_popularity:
+          $ref: '#/components/schemas/PatternPopularity'
+        violation_stats:
+          $ref: '#/components/schemas/ViolationStats'
+
+    UsageStats:
+      type: object
+      properties:
+        total_tests:
+          type: integer
+        unique_users:
+          type: integer
+        avg_test_duration:
+          type: string
+        total_jobs_generated:
+          type: integer
+        peak_concurrent_tests:
+          type: integer
+
+    PerformanceTrends:
+      type: object
+      properties:
+        avg_rate_accuracy:
+          type: number
+        avg_system_utilization:
+          type: number
+        error_rate_trend:
+          type: number
+        latency_trend:
+          type: number
+
+    PatternPopularity:
+      type: object
+      properties:
+        most_used_patterns:
+          type: array
+          items:
+            type: object
+            properties:
+              pattern_type:
+                $ref: '#/components/schemas/PatternType'
+              usage_count:
+                type: integer
+              percentage:
+                type: number
+
+    ViolationStats:
+      type: object
+      properties:
+        total_violations:
+          type: integer
+        violation_types:
+          type: object
+          additionalProperties:
+            type: integer
+        avg_violations_per_test:
+          type: number
+
+    # Common Response Schemas
+    ActiveTestsResponse:
+      type: object
+      required:
+        - tests
+        - total_active
+      properties:
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveTestSummary'
+        total_active:
+          type: integer
+          minimum: 0
+
+    ActiveTestSummary:
+      type: object
+      required:
+        - test_id
+        - pattern_type
+        - started_at
+        - progress
+      properties:
+        test_id:
+          type: string
+          pattern: '^test_[a-zA-Z0-9]+$'
+        pattern_type:
+          $ref: '#/components/schemas/PatternType'
+        started_at:
+          type: string
+          format: date-time
+        started_by:
+          type: string
+        progress:
+          $ref: '#/components/schemas/TestProgress'
+        current_rate:
+          type: number
+          minimum: 0
+
+    ExportResponse:
+      type: object
+      required:
+        - format
+        - data
+      properties:
+        format:
+          type: string
+          enum: [json, csv, xlsx]
+        data:
+          type: string
+          description: Exported data (base64 encoded for binary formats)
+        filename:
+          type: string
+          description: Suggested filename for download
+        size:
+          type: integer
+          description: Data size in bytes
+
+    PaginationInfo:
+      type: object
+      required:
+        - limit
+        - offset
+        - total
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    # Error Response Schemas
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - validation_errors
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        validation_errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        expected:
+          type: string
+        actual:
+          type: string
+
+    GuardrailViolationResponse:
+      type: object
+      required:
+        - error
+        - message
+        - violations
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardrailViolation'
+        allowed_limits:
+          $ref: '#/components/schemas/GuardrailConfig'
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+
+tags:
+  - name: Pattern Execution
+    description: Start, stop, and monitor load pattern tests
+  - name: Profile Management
+    description: Create, update, and manage load test profiles
+  - name: Guardrails
+    description: Safety limits and validation for load tests
+  - name: Real-time Streaming
+    description: WebSocket streaming for live test updates
+  - name: Templates
+    description: Predefined pattern templates
+  - name: History
+    description: Historical test data and results
+  - name: Analytics
+    description: Usage analytics and performance insights

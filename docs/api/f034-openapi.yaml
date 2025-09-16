@@ -1,0 +1,1169 @@
+openapi: 3.0.3
+info:
+  title: Collaborative Session API
+  description: |
+    API for managing collaborative TUI sessions with real-time sharing,
+    control handoff, and secure multi-participant interactions.
+  version: 1.0.0
+  contact:
+    name: Redis Work Queue Team
+    email: team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /sessions:
+    post:
+      summary: Create a new collaborative session
+      description: |
+        Creates a new collaborative session with the specified configuration.
+        Returns session tokens for presenter and observers.
+      operationId: createSession
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List active sessions
+      description: |
+        Retrieves a list of active sessions accessible to the authenticated user.
+        Supports filtering and pagination.
+      operationId: listSessions
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by session status
+          schema:
+            type: string
+            enum: [active, inactive, expired]
+        - name: presenter
+          in: query
+          description: Filter by presenter user ID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of sessions to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of sessions to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}:
+    get:
+      summary: Get session details
+      description: |
+        Retrieves detailed information about a specific session including
+        participants, current status, and metadata.
+      operationId: getSession
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '200':
+          description: Session details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Access denied to session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Terminate session
+      description: |
+        Terminates an active session, disconnecting all participants
+        and cleaning up resources.
+      operationId: terminateSession
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '204':
+          description: Session terminated successfully
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions to terminate session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/join:
+    get:
+      summary: Join session as observer
+      description: |
+        Establishes a WebSocket connection to join a session as an observer.
+        Requires a valid observer token for authentication.
+      operationId: joinSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+        - name: token
+          in: query
+          required: true
+          description: Observer token for session access
+          schema:
+            type: string
+            pattern: '^obs_[a-zA-Z0-9]{20,64}$'
+        - name: Upgrade
+          in: header
+          required: true
+          description: WebSocket upgrade header
+          schema:
+            type: string
+            enum: [websocket]
+        - name: Connection
+          in: header
+          required: true
+          description: WebSocket connection header
+          schema:
+            type: string
+            enum: [Upgrade]
+      responses:
+        '101':
+          description: WebSocket connection established
+        '400':
+          description: Invalid WebSocket upgrade request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Session access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Session observer limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/control:
+    post:
+      summary: Grant control to participant
+      description: |
+        Grants control permissions to a specific participant in the session.
+        Only the presenter can grant control.
+      operationId: grantControl
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantControlRequest'
+      responses:
+        '200':
+          description: Control granted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlStatusResponse'
+        '400':
+          description: Invalid control grant request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only presenter can grant control
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session or participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Revoke control
+      description: |
+        Revokes control permissions from the current controller.
+        Can be called by presenter or current controller.
+      operationId: revokeControl
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '200':
+          description: Control revoked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlStatusResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions to revoke control
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found or no active control
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/participants:
+    get:
+      summary: List session participants
+      description: |
+        Retrieves a list of all participants currently in the session
+        including their roles and status.
+      operationId: listParticipants
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '200':
+          description: Participants list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Access denied to session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/participants/{participantId}:
+    delete:
+      summary: Remove participant from session
+      description: |
+        Removes a participant from the session. Only the presenter
+        can remove participants.
+      operationId: removeParticipant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+        - name: participantId
+          in: path
+          required: true
+          description: Unique participant identifier
+          schema:
+            type: string
+            pattern: '^part_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '204':
+          description: Participant removed successfully
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only presenter can remove participants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session or participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/frames:
+    get:
+      summary: Get frame history
+      description: |
+        Retrieves historical frames for session replay or late-joining observers.
+        Returns frame deltas in chronological order.
+      operationId: getFrameHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+        - name: fromSequence
+          in: query
+          description: Starting sequence number for frame retrieval
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          description: Maximum number of frames to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Frame history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameHistoryResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Access denied to session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Send frame update
+      description: |
+        Sends a new frame update to all session observers.
+        Only the presenter or active controller can send frames.
+      operationId: sendFrame
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrameUpdateRequest'
+      responses:
+        '201':
+          description: Frame sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameUpdateResponse'
+        '400':
+          description: Invalid frame data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions to send frames
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{sessionId}/input:
+    post:
+      summary: Send input event
+      description: |
+        Sends an input event (keyboard/mouse) to the session.
+        Only the presenter or active controller can send input.
+      operationId: sendInput
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique session identifier
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputEventRequest'
+      responses:
+        '200':
+          description: Input event sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InputEventResponse'
+        '400':
+          description: Invalid input event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No input permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tokens/{tokenId}/refresh:
+    post:
+      summary: Refresh session token
+      description: |
+        Refreshes an existing session token before expiry.
+        Returns a new token with extended validity.
+      operationId: refreshToken
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          description: Token identifier to refresh
+          schema:
+            type: string
+            pattern: '^tok_[a-zA-Z0-9]{6,32}$'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Token refresh not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication for service-to-service communication
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication for user sessions
+
+  schemas:
+    CreateSessionRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable session title
+          example: "Production Incident Response"
+        description:
+          type: string
+          maxLength: 1000
+          description: Optional session description
+          example: "Debugging queue backlog in production environment"
+        maxObservers:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+          description: Maximum number of concurrent observers
+        timeoutMinutes:
+          type: integer
+          minimum: 5
+          maximum: 480
+          default: 60
+          description: Session timeout in minutes
+        allowControlHandoff:
+          type: boolean
+          default: true
+          description: Whether presenter can grant control to observers
+        redactionRules:
+          type: array
+          items:
+            type: string
+          description: Content redaction patterns to apply
+          example: ["password", "token", "api_key"]
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional session metadata
+
+    CreateSessionResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+          description: Unique session identifier
+          example: "sess_abc123def456"
+        presenterToken:
+          type: string
+          pattern: '^pres_[a-zA-Z0-9]{20,64}$'
+          description: Authentication token for session presenter
+          example: "pres_xyz789abc123def456ghi789"
+        observerToken:
+          type: string
+          pattern: '^obs_[a-zA-Z0-9]{20,64}$'
+          description: Authentication token for session observers
+          example: "obs_def456ghi789jkl012mno345"
+        wsUrl:
+          type: string
+          format: uri
+          description: WebSocket URL for session connection
+          example: "wss://session.example.com/sessions/sess_abc123def456"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+          example: "2024-01-15T16:30:00Z"
+
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          pattern: '^sess_[a-zA-Z0-9]{6,32}$'
+          description: Unique session identifier
+        title:
+          type: string
+          description: Session title
+        description:
+          type: string
+          description: Session description
+        presenterId:
+          type: string
+          description: User ID of session presenter
+        status:
+          type: string
+          enum: [active, inactive, expired, terminated]
+          description: Current session status
+        createdAt:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+        expiresAt:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+        maxObservers:
+          type: integer
+          description: Maximum allowed observers
+        currentObservers:
+          type: integer
+          description: Current number of observers
+        allowControlHandoff:
+          type: boolean
+          description: Whether control handoff is allowed
+        redactionRules:
+          type: array
+          items:
+            type: string
+          description: Active redaction rules
+        metadata:
+          type: object
+          properties:
+            terminalSize:
+              $ref: '#/components/schemas/TerminalSize'
+            applicationName:
+              type: string
+              description: Name of the presenting application
+            version:
+              type: string
+              description: Application version
+          additionalProperties: true
+
+    SessionListResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        total:
+          type: integer
+          description: Total number of sessions matching criteria
+        hasMore:
+          type: boolean
+          description: Whether more sessions are available
+
+    GrantControlRequest:
+      type: object
+      required:
+        - grantTo
+      properties:
+        grantTo:
+          type: string
+          description: User ID or participant ID to grant control to
+          example: "user_456789"
+        timeoutSeconds:
+          type: integer
+          minimum: 30
+          maximum: 3600
+          default: 300
+          description: Control timeout in seconds
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [input, navigation, commands]
+          description: Specific permissions to grant
+          example: ["input", "navigation"]
+
+    ControlStatusResponse:
+      type: object
+      properties:
+        hasControl:
+          type: boolean
+          description: Whether control is currently granted
+        controlledBy:
+          type: string
+          description: User ID of current controller
+        grantedAt:
+          type: string
+          format: date-time
+          description: When control was granted
+        expiresAt:
+          type: string
+          format: date-time
+          description: When control expires
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Active control permissions
+
+    Participant:
+      type: object
+      properties:
+        participantId:
+          type: string
+          pattern: '^part_[a-zA-Z0-9]{6,32}$'
+          description: Unique participant identifier
+        sessionId:
+          type: string
+          description: Associated session ID
+        userId:
+          type: string
+          description: User ID of participant
+        role:
+          type: string
+          enum: [presenter, observer, controller]
+          description: Participant role in session
+        joinedAt:
+          type: string
+          format: date-time
+          description: When participant joined
+        lastActivity:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        hasControl:
+          type: boolean
+          description: Whether participant has control
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Participant permissions
+        clientInfo:
+          type: object
+          properties:
+            userAgent:
+              type: string
+              description: Client user agent string
+            terminalSize:
+              $ref: '#/components/schemas/TerminalSize'
+            ipAddress:
+              type: string
+              format: ipv4
+              description: Client IP address
+
+    ParticipantListResponse:
+      type: object
+      properties:
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        total:
+          type: integer
+          description: Total number of participants
+
+    FrameDelta:
+      type: object
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          description: Frame sequence number
+        timestamp:
+          type: string
+          format: date-time
+          description: Frame timestamp
+        changedLines:
+          type: array
+          items:
+            type: object
+            properties:
+              lineNumber:
+                type: integer
+                minimum: 0
+                description: Line number (0-based)
+              content:
+                type: string
+                description: Line content
+              attributes:
+                type: object
+                properties:
+                  color:
+                    type: string
+                    description: Text color
+                  backgroundColor:
+                    type: string
+                    description: Background color
+                  style:
+                    type: string
+                    enum: [normal, bold, italic, underline]
+                    description: Text style
+        cursor:
+          type: object
+          properties:
+            row:
+              type: integer
+              minimum: 0
+              description: Cursor row position
+            col:
+              type: integer
+              minimum: 0
+              description: Cursor column position
+            visible:
+              type: boolean
+              description: Whether cursor is visible
+        terminalSize:
+          $ref: '#/components/schemas/TerminalSize'
+
+    FrameHistoryResponse:
+      type: object
+      properties:
+        frames:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrameDelta'
+        fromSequence:
+          type: integer
+          format: int64
+          description: Starting sequence number
+        hasMore:
+          type: boolean
+          description: Whether more frames are available
+
+    FrameUpdateRequest:
+      type: object
+      required:
+        - delta
+      properties:
+        delta:
+          $ref: '#/components/schemas/FrameDelta'
+        applyRedaction:
+          type: boolean
+          default: true
+          description: Whether to apply redaction rules
+
+    FrameUpdateResponse:
+      type: object
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          description: Assigned sequence number
+        broadcastedTo:
+          type: integer
+          description: Number of observers that received the frame
+        timestamp:
+          type: string
+          format: date-time
+          description: Server timestamp
+
+    InputEvent:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [key, mouse, resize]
+          description: Input event type
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        key:
+          type: object
+          properties:
+            key:
+              type: string
+              description: Key identifier
+            modifiers:
+              type: array
+              items:
+                type: string
+                enum: [ctrl, alt, shift, meta]
+              description: Key modifiers
+          description: Key event data (when type=key)
+        mouse:
+          type: object
+          properties:
+            button:
+              type: string
+              enum: [left, right, middle, wheel_up, wheel_down]
+              description: Mouse button
+            action:
+              type: string
+              enum: [press, release, move, drag]
+              description: Mouse action
+            position:
+              type: object
+              properties:
+                row:
+                  type: integer
+                  minimum: 0
+                col:
+                  type: integer
+                  minimum: 0
+          description: Mouse event data (when type=mouse)
+        resize:
+          type: object
+          properties:
+            size:
+              $ref: '#/components/schemas/TerminalSize'
+          description: Resize event data (when type=resize)
+
+    InputEventRequest:
+      type: object
+      required:
+        - event
+      properties:
+        event:
+          $ref: '#/components/schemas/InputEvent'
+
+    InputEventResponse:
+      type: object
+      properties:
+        processed:
+          type: boolean
+          description: Whether event was processed
+        timestamp:
+          type: string
+          format: date-time
+          description: Server processing timestamp
+
+    TokenRefreshResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: New token identifier
+        tokenValue:
+          type: string
+          description: New token value
+        expiresAt:
+          type: string
+          format: date-time
+          description: New expiration timestamp
+
+    TerminalSize:
+      type: object
+      properties:
+        rows:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Number of terminal rows
+        cols:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Number of terminal columns
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Error code identifier
+              example: "INVALID_SESSION"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Session not found or expired"
+            details:
+              type: object
+              additionalProperties: true
+              description: Additional error details
+            timestamp:
+              type: string
+              format: date-time
+              description: Error timestamp
+
+tags:
+  - name: Sessions
+    description: Session management operations
+  - name: Participants
+    description: Participant management operations
+  - name: Control
+    description: Control handoff operations
+  - name: Frames
+    description: Frame and content operations
+  - name: Input
+    description: Input event operations
+  - name: Tokens
+    description: Token management operations

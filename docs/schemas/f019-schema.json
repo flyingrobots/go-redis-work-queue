@@ -1,0 +1,905 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.queue-system.com/schemas/forecasting/v1",
+  "title": "Forecasting System Data Models",
+  "description": "Comprehensive data models for the queue forecasting system",
+  "type": "object",
+
+  "definitions": {
+    "ForecastingModel": {
+      "type": "object",
+      "description": "Core forecasting model data structure",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique model identifier",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "examples": ["ewma", "holt-winters", "arima"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable model name",
+          "minLength": 1,
+          "maxLength": 100,
+          "examples": ["Exponentially Weighted Moving Average", "Holt-Winters Seasonal"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Model algorithm type",
+          "enum": ["ewma", "holt-winters", "arima", "prophet", "lstm"],
+          "examples": ["holt-winters"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Current operational status",
+          "enum": ["active", "training", "disabled", "failed", "deprecated"],
+          "examples": ["active"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Model version identifier",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "examples": ["1.2.0"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the model was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the model was last updated"
+        },
+        "configuration": {
+          "$ref": "#/definitions/ModelConfiguration"
+        },
+        "performance": {
+          "$ref": "#/definitions/ModelPerformance"
+        }
+      },
+      "required": ["id", "name", "type", "status", "version", "created_at"],
+      "additionalProperties": false
+    },
+
+    "ModelConfiguration": {
+      "type": "object",
+      "description": "Model configuration parameters",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the model is enabled for forecasting",
+          "default": true
+        },
+        "auto_tune": {
+          "type": "boolean",
+          "description": "Enable automatic parameter optimization",
+          "default": false
+        },
+        "update_interval_seconds": {
+          "type": "integer",
+          "description": "How often to update model parameters",
+          "minimum": 30,
+          "maximum": 86400,
+          "default": 300
+        },
+        "min_data_points": {
+          "type": "integer",
+          "description": "Minimum data points required for training",
+          "minimum": 5,
+          "maximum": 10000,
+          "default": 50
+        },
+        "max_forecast_horizon": {
+          "type": "integer",
+          "description": "Maximum forecast horizon in minutes",
+          "minimum": 5,
+          "maximum": 10080,
+          "default": 480
+        },
+        "confidence_level": {
+          "type": "number",
+          "description": "Default confidence level for predictions",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "default": 0.95
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Model-specific parameters",
+          "properties": {
+            "alpha": {
+              "type": "number",
+              "description": "Level smoothing parameter",
+              "minimum": 0.01,
+              "maximum": 1.0
+            },
+            "beta": {
+              "type": "number",
+              "description": "Trend smoothing parameter",
+              "minimum": 0.01,
+              "maximum": 1.0
+            },
+            "gamma": {
+              "type": "number",
+              "description": "Seasonal smoothing parameter",
+              "minimum": 0.01,
+              "maximum": 1.0
+            },
+            "season_length": {
+              "type": "integer",
+              "description": "Length of seasonal cycle",
+              "minimum": 2,
+              "maximum": 168
+            },
+            "damping_factor": {
+              "type": "number",
+              "description": "Trend damping factor",
+              "minimum": 0.8,
+              "maximum": 1.0
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+
+    "ModelPerformance": {
+      "type": "object",
+      "description": "Model performance metrics and statistics",
+      "properties": {
+        "accuracy": {
+          "$ref": "#/definitions/AccuracyMetrics"
+        },
+        "resource_usage": {
+          "$ref": "#/definitions/ResourceUsage"
+        },
+        "training_history": {
+          "type": "array",
+          "description": "Historical training performance",
+          "items": {
+            "$ref": "#/definitions/TrainingRecord"
+          },
+          "maxItems": 100
+        },
+        "prediction_latency": {
+          "$ref": "#/definitions/LatencyMetrics"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccuracyMetrics": {
+      "type": "object",
+      "description": "Statistical accuracy measurements",
+      "properties": {
+        "mae": {
+          "type": "number",
+          "description": "Mean Absolute Error",
+          "minimum": 0,
+          "examples": [12.5]
+        },
+        "rmse": {
+          "type": "number",
+          "description": "Root Mean Square Error",
+          "minimum": 0,
+          "examples": [18.3]
+        },
+        "mape": {
+          "type": "number",
+          "description": "Mean Absolute Percentage Error (%)",
+          "minimum": 0,
+          "maximum": 1000,
+          "examples": [8.7]
+        },
+        "smape": {
+          "type": "number",
+          "description": "Symmetric Mean Absolute Percentage Error (%)",
+          "minimum": 0,
+          "maximum": 200,
+          "examples": [7.2]
+        },
+        "prediction_bias": {
+          "type": "number",
+          "description": "Average prediction bias (positive = over-prediction)",
+          "examples": [-2.1]
+        },
+        "r2_score": {
+          "type": "number",
+          "description": "Coefficient of determination (R²)",
+          "minimum": -1,
+          "maximum": 1,
+          "examples": [0.89]
+        },
+        "directional_accuracy": {
+          "type": "number",
+          "description": "Percentage of correct trend predictions",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.78]
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When accuracy metrics were last calculated"
+        },
+        "sample_size": {
+          "type": "integer",
+          "description": "Number of predictions used in calculation",
+          "minimum": 1,
+          "examples": [500]
+        }
+      },
+      "required": ["last_updated"],
+      "additionalProperties": false
+    },
+
+    "ResourceUsage": {
+      "type": "object",
+      "description": "System resource consumption metrics",
+      "properties": {
+        "memory_usage_mb": {
+          "type": "number",
+          "description": "Memory usage in megabytes",
+          "minimum": 0,
+          "examples": [2.8]
+        },
+        "cpu_usage_percent": {
+          "type": "number",
+          "description": "CPU utilization percentage",
+          "minimum": 0,
+          "maximum": 100,
+          "examples": [15.3]
+        },
+        "disk_usage_mb": {
+          "type": "number",
+          "description": "Disk usage in megabytes",
+          "minimum": 0,
+          "examples": [45.2]
+        },
+        "cache_hit_rate": {
+          "type": "number",
+          "description": "Cache hit rate (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.87]
+        },
+        "last_measured": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When metrics were last measured"
+        }
+      },
+      "required": ["last_measured"],
+      "additionalProperties": false
+    },
+
+    "LatencyMetrics": {
+      "type": "object",
+      "description": "Prediction generation latency statistics",
+      "properties": {
+        "avg_ms": {
+          "type": "number",
+          "description": "Average prediction time in milliseconds",
+          "minimum": 0,
+          "examples": [45.2]
+        },
+        "p50_ms": {
+          "type": "number",
+          "description": "50th percentile latency",
+          "minimum": 0,
+          "examples": [38.1]
+        },
+        "p95_ms": {
+          "type": "number",
+          "description": "95th percentile latency",
+          "minimum": 0,
+          "examples": [89.5]
+        },
+        "p99_ms": {
+          "type": "number",
+          "description": "99th percentile latency",
+          "minimum": 0,
+          "examples": [156.3]
+        },
+        "max_ms": {
+          "type": "number",
+          "description": "Maximum observed latency",
+          "minimum": 0,
+          "examples": [234.7]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TrainingRecord": {
+      "type": "object",
+      "description": "Record of a model training session",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When training occurred"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "description": "Training duration in seconds",
+          "minimum": 0,
+          "examples": [12.5]
+        },
+        "data_points": {
+          "type": "integer",
+          "description": "Number of data points used",
+          "minimum": 1,
+          "examples": [1000]
+        },
+        "convergence": {
+          "type": "boolean",
+          "description": "Whether training converged",
+          "examples": [true]
+        },
+        "final_error": {
+          "type": "number",
+          "description": "Final training error",
+          "minimum": 0,
+          "examples": [0.045]
+        }
+      },
+      "required": ["timestamp", "duration_seconds", "data_points"],
+      "additionalProperties": false
+    },
+
+    "ForecastResult": {
+      "type": "object",
+      "description": "Complete forecast output with metadata",
+      "properties": {
+        "model_used": {
+          "type": "string",
+          "description": "Model that generated this forecast",
+          "enum": ["ewma", "holt-winters", "arima", "prophet", "lstm"],
+          "examples": ["holt-winters"]
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When forecast was generated"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When forecast expires and should be regenerated"
+        },
+        "horizon_minutes": {
+          "type": "integer",
+          "description": "Forecast horizon in minutes",
+          "minimum": 1,
+          "maximum": 10080,
+          "examples": [120]
+        },
+        "confidence_level": {
+          "type": "number",
+          "description": "Confidence level for bounds",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "examples": [0.95]
+        },
+        "timestamps": {
+          "type": "array",
+          "description": "Timestamp for each forecast point",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "points": {
+          "type": "array",
+          "description": "Point forecasts",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "upper_bounds": {
+          "type": "array",
+          "description": "Upper confidence bounds",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "lower_bounds": {
+          "type": "array",
+          "description": "Lower confidence bounds",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "prediction_intervals": {
+          "type": "array",
+          "description": "Multiple prediction intervals",
+          "items": {
+            "$ref": "#/definitions/PredictionInterval"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/ForecastMetadata"
+        }
+      },
+      "required": ["model_used", "generated_at", "horizon_minutes", "timestamps", "points"],
+      "additionalProperties": false
+    },
+
+    "PredictionInterval": {
+      "type": "object",
+      "description": "Prediction interval at specific confidence level",
+      "properties": {
+        "confidence_level": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "examples": [0.80]
+        },
+        "upper_bounds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "lower_bounds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "required": ["confidence_level", "upper_bounds", "lower_bounds"],
+      "additionalProperties": false
+    },
+
+    "ForecastMetadata": {
+      "type": "object",
+      "description": "Additional forecast metadata",
+      "properties": {
+        "data_quality_score": {
+          "type": "number",
+          "description": "Quality score of input data (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.92]
+        },
+        "seasonality_detected": {
+          "type": "boolean",
+          "description": "Whether seasonal patterns were detected",
+          "examples": [true]
+        },
+        "trend_direction": {
+          "type": "string",
+          "description": "Overall trend direction",
+          "enum": ["increasing", "decreasing", "stable", "unknown"],
+          "examples": ["increasing"]
+        },
+        "anomalies_detected": {
+          "type": "integer",
+          "description": "Number of anomalies in recent data",
+          "minimum": 0,
+          "examples": [2]
+        },
+        "model_confidence": {
+          "type": "number",
+          "description": "Model's confidence in this forecast (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.85]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Recommendation": {
+      "type": "object",
+      "description": "Actionable capacity or scaling recommendation",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique recommendation identifier",
+          "pattern": "^rec_[a-zA-Z0-9]+$",
+          "examples": ["rec_001"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Recommendation priority level",
+          "enum": ["critical", "high", "medium", "low", "info"],
+          "examples": ["critical"]
+        },
+        "category": {
+          "type": "string",
+          "description": "Recommendation category",
+          "enum": ["capacity_scaling", "slo_management", "maintenance_scheduling", "cost_optimization", "performance_tuning"],
+          "examples": ["capacity_scaling"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Short recommendation title",
+          "minLength": 5,
+          "maxLength": 100,
+          "examples": ["SCALE WORKERS"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed recommendation description",
+          "minLength": 10,
+          "maxLength": 500,
+          "examples": ["Scale workers +3 in next 25 minutes"]
+        },
+        "action": {
+          "type": "string",
+          "description": "Specific action command or instruction",
+          "minLength": 5,
+          "maxLength": 1000,
+          "examples": ["kubectl scale deployment workers --replicas=8"]
+        },
+        "timing_minutes": {
+          "type": "integer",
+          "description": "When to take action (minutes from now)",
+          "minimum": 0,
+          "maximum": 10080,
+          "examples": [25]
+        },
+        "urgency_window": {
+          "type": "integer",
+          "description": "Window of effectiveness (minutes)",
+          "minimum": 1,
+          "maximum": 1440,
+          "examples": [45]
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence in recommendation (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.87]
+        },
+        "impact": {
+          "$ref": "#/definitions/RecommendationImpact"
+        },
+        "forecast_basis": {
+          "$ref": "#/definitions/ForecastBasis"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recommendation was generated"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When recommendation expires"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current recommendation status",
+          "enum": ["active", "executed", "dismissed", "expired"],
+          "default": "active",
+          "examples": ["active"]
+        }
+      },
+      "required": ["id", "priority", "category", "title", "description", "confidence", "created_at"],
+      "additionalProperties": false
+    },
+
+    "RecommendationImpact": {
+      "type": "object",
+      "description": "Expected impact of following the recommendation",
+      "properties": {
+        "capacity_change": {
+          "type": "number",
+          "description": "Expected capacity change (positive = increase)",
+          "examples": [150.5]
+        },
+        "cost_impact_hourly": {
+          "type": "number",
+          "description": "Estimated hourly cost impact (USD)",
+          "examples": [12.50]
+        },
+        "performance_improvement": {
+          "type": "number",
+          "description": "Expected performance improvement (%)",
+          "minimum": 0,
+          "maximum": 100,
+          "examples": [25.3]
+        },
+        "risk_level": {
+          "type": "string",
+          "description": "Risk level of implementing recommendation",
+          "enum": ["low", "medium", "high"],
+          "examples": ["low"]
+        },
+        "reversible": {
+          "type": "boolean",
+          "description": "Whether action can be easily reversed",
+          "examples": [true]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ForecastBasis": {
+      "type": "object",
+      "description": "Forecast data supporting the recommendation",
+      "properties": {
+        "predicted_peak": {
+          "type": "number",
+          "description": "Predicted peak value",
+          "minimum": 0,
+          "examples": [450]
+        },
+        "predicted_peak_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When peak is expected"
+        },
+        "current_value": {
+          "type": "number",
+          "description": "Current observed value",
+          "minimum": 0,
+          "examples": [300]
+        },
+        "current_capacity": {
+          "type": "number",
+          "description": "Current system capacity",
+          "minimum": 0,
+          "examples": [300]
+        },
+        "utilization_threshold": {
+          "type": "number",
+          "description": "Utilization threshold that triggered recommendation",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.8]
+        },
+        "time_to_threshold": {
+          "type": "integer",
+          "description": "Minutes until threshold breach",
+          "minimum": 0,
+          "examples": [35]
+        },
+        "forecast_accuracy": {
+          "type": "number",
+          "description": "Estimated forecast accuracy for this timeframe",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.89]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimeSeriesData": {
+      "type": "object",
+      "description": "Time series data point",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data point timestamp"
+        },
+        "value": {
+          "type": "number",
+          "description": "Observed value",
+          "examples": [125.5]
+        },
+        "quality": {
+          "type": "number",
+          "description": "Data quality score (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0,
+          "examples": [0.95]
+        },
+        "tags": {
+          "type": "object",
+          "description": "Additional metadata tags",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [{"queue": "high-priority", "source": "prometheus"}]
+        }
+      },
+      "required": ["timestamp", "value"],
+      "additionalProperties": false
+    },
+
+    "SystemHealth": {
+      "type": "object",
+      "description": "Overall forecasting system health status",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Overall system health",
+          "enum": ["healthy", "degraded", "unhealthy", "maintenance"],
+          "examples": ["healthy"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When health check was performed"
+        },
+        "components": {
+          "type": "object",
+          "description": "Health status of system components",
+          "properties": {
+            "data_pipeline": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "models": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/ComponentHealth"
+              }
+            },
+            "api": {
+              "$ref": "#/definitions/ComponentHealth"
+            },
+            "storage": {
+              "$ref": "#/definitions/ComponentHealth"
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "description": "System-wide metrics",
+          "properties": {
+            "total_models": {
+              "type": "integer",
+              "minimum": 0,
+              "examples": [3]
+            },
+            "active_models": {
+              "type": "integer",
+              "minimum": 0,
+              "examples": [2]
+            },
+            "predictions_per_hour": {
+              "type": "number",
+              "minimum": 0,
+              "examples": [150.5]
+            },
+            "average_accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "examples": [0.87]
+            },
+            "uptime_hours": {
+              "type": "number",
+              "minimum": 0,
+              "examples": [72.5]
+            }
+          }
+        }
+      },
+      "required": ["status", "timestamp"],
+      "additionalProperties": false
+    },
+
+    "ComponentHealth": {
+      "type": "object",
+      "description": "Health status of a system component",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "failed", "unknown"],
+          "examples": ["healthy"]
+        },
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When component was last checked"
+        },
+        "error_count": {
+          "type": "integer",
+          "description": "Number of recent errors",
+          "minimum": 0,
+          "examples": [0]
+        },
+        "response_time_ms": {
+          "type": "number",
+          "description": "Average response time in milliseconds",
+          "minimum": 0,
+          "examples": [45.2]
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional health details",
+          "examples": ["All systems operational"]
+        }
+      },
+      "required": ["status", "last_check"],
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+    "forecasting_models": {
+      "type": "array",
+      "description": "Collection of forecasting models",
+      "items": {
+        "$ref": "#/definitions/ForecastingModel"
+      }
+    },
+    "forecast_results": {
+      "type": "array",
+      "description": "Collection of forecast results",
+      "items": {
+        "$ref": "#/definitions/ForecastResult"
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "Collection of recommendations",
+      "items": {
+        "$ref": "#/definitions/Recommendation"
+      }
+    },
+    "time_series_data": {
+      "type": "array",
+      "description": "Time series data points",
+      "items": {
+        "$ref": "#/definitions/TimeSeriesData"
+      }
+    },
+    "system_health": {
+      "$ref": "#/definitions/SystemHealth"
+    }
+  },
+
+  "examples": [
+    {
+      "forecasting_models": [
+        {
+          "id": "holt-winters",
+          "name": "Holt-Winters Seasonal Forecasting",
+          "type": "holt-winters",
+          "status": "active",
+          "version": "1.0.0",
+          "created_at": "2025-09-14T10:00:00Z",
+          "updated_at": "2025-09-14T18:30:00Z",
+          "configuration": {
+            "enabled": true,
+            "auto_tune": false,
+            "update_interval_seconds": 300,
+            "parameters": {
+              "alpha": 0.3,
+              "beta": 0.1,
+              "gamma": 0.05,
+              "season_length": 24
+            }
+          }
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec_001",
+          "priority": "critical",
+          "category": "capacity_scaling",
+          "title": "SCALE WORKERS",
+          "description": "Scale workers +3 in next 25 minutes",
+          "action": "kubectl scale deployment workers --replicas=8",
+          "timing_minutes": 25,
+          "confidence": 0.87,
+          "created_at": "2025-09-14T18:47:37Z",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

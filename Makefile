@@ -12,6 +12,14 @@ all: build
 build:
 	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/$(APP) ./cmd/$(APP)
 
+.PHONY: build-tui tui-build
+build-tui tui-build:
+	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/tui ./cmd/tui
+
+.PHONY: run-tui tui
+run-tui tui: build-tui
+	./bin/tui --config=config/config.yaml
+
 run:
 	./bin/$(APP) --role=all --config=config/config.yaml
 
@@ -23,3 +31,38 @@ tidy:
 
 version:
 	@echo $(VERSION)
+
+.PHONY: hooks
+hooks:
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/pre-commit
+	@echo "Git hooks enabled (pre-commit updates progress bars and stages docs)."
+
+.PHONY: mdlint
+mdlint:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+
+.PHONY: mdlint-docs
+mdlint-docs:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 "docs/**/*.md"
+
+.PHONY: mdlint-fix
+mdlint-fix:
+	@if ! command -v npx >/dev/null 2>&1; then \
+		echo "npx not found. Please install Node.js to run markdownlint."; \
+		exit 1; \
+	fi
+	@npx -y markdownlint-cli2 --fix "docs/**/*.md"
+
+.PHONY: mdlint-docker
+mdlint-docker:
+	@docker run --rm -v "$(PWD)":/work -w /work node:20 \
+	  npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"

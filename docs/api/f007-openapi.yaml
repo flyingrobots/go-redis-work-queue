@@ -1,0 +1,682 @@
+openapi: 3.0.3
+info:
+  title: Exactly Once Patterns API
+  description: |
+    API for managing exactly-once processing patterns in the go-redis-work-queue system.
+
+    This API provides endpoints for monitoring deduplication statistics, managing idempotency keys,
+    and tracking outbox event processing.
+  version: 1.0.0
+  contact:
+    name: Go Redis Work Queue Team
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /dedup/stats:
+    get:
+      summary: Get deduplication statistics
+      description: Retrieve statistics about deduplication performance and storage utilization
+      operationId: getDedupStats
+      tags:
+        - Deduplication
+      parameters:
+        - name: queue
+          in: query
+          description: Filter statistics by queue name
+          required: false
+          schema:
+            type: string
+            example: "default"
+        - name: tenant
+          in: query
+          description: Filter statistics by tenant ID
+          required: false
+          schema:
+            type: string
+            example: "tenant-123"
+        - name: time_range
+          in: query
+          description: Time range for statistics calculation
+          required: false
+          schema:
+            type: string
+            enum: ["1h", "24h", "7d", "30d"]
+            default: "24h"
+      responses:
+        '200':
+          description: Deduplication statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DedupStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dedup/keys/{key}:
+    get:
+      summary: Get idempotency key status
+      description: Retrieve the processing status and metadata for a specific idempotency key
+      operationId: getIdempotencyKeyStatus
+      tags:
+        - Deduplication
+      parameters:
+        - name: key
+          in: path
+          description: The idempotency key to query
+          required: true
+          schema:
+            type: string
+            example: "dedup:default:job-123"
+      responses:
+        '200':
+          description: Key status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdempotencyKeyStatus'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete idempotency key
+      description: Remove an idempotency key from the deduplication store
+      operationId: deleteIdempotencyKey
+      tags:
+        - Deduplication
+      parameters:
+        - name: key
+          in: path
+          description: The idempotency key to delete
+          required: true
+          schema:
+            type: string
+            example: "dedup:default:job-123"
+      responses:
+        '204':
+          description: Key deleted successfully
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dedup/keys:
+    get:
+      summary: List idempotency keys
+      description: Retrieve a paginated list of idempotency keys with optional filtering
+      operationId: listIdempotencyKeys
+      tags:
+        - Deduplication
+      parameters:
+        - name: queue
+          in: query
+          description: Filter by queue name
+          required: false
+          schema:
+            type: string
+        - name: tenant
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by processing status
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProcessingStatus'
+        - name: limit
+          in: query
+          description: Maximum number of keys to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: cursor
+          in: query
+          description: Pagination cursor for retrieving next page
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdempotencyKeyList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /outbox/pending:
+    get:
+      summary: Get pending outbox events
+      description: Retrieve a list of outbox events that are pending processing
+      operationId: getPendingOutboxEvents
+      tags:
+        - Outbox
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: event_type
+          in: query
+          description: Filter by event type
+          required: false
+          schema:
+            type: string
+        - name: aggregate_id
+          in: query
+          description: Filter by aggregate ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pending outbox events retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /outbox/stats:
+    get:
+      summary: Get outbox statistics
+      description: Retrieve statistics about outbox event processing
+      operationId: getOutboxStats
+      tags:
+        - Outbox
+      parameters:
+        - name: time_range
+          in: query
+          description: Time range for statistics calculation
+          required: false
+          schema:
+            type: string
+            enum: ["1h", "24h", "7d", "30d"]
+            default: "24h"
+      responses:
+        '200':
+          description: Outbox statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /outbox/events/{id}/retry:
+    post:
+      summary: Retry failed outbox event
+      description: Retry processing of a failed outbox event
+      operationId: retryOutboxEvent
+      tags:
+        - Outbox
+      parameters:
+        - name: id
+          in: path
+          description: The outbox event ID to retry
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '202':
+          description: Event retry queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEvent'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Event is not in a retriable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Check the health of the exactly-once patterns service
+      operationId: getHealth
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    DedupStats:
+      type: object
+      required:
+        - queue_name
+        - total_keys
+        - hit_rate_24h
+        - duplicate_jobs_blocked
+        - storage_size_mb
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "default"
+        total_keys:
+          type: integer
+          description: Total number of active deduplication keys
+          example: 15420
+          minimum: 0
+        hit_rate_24h:
+          type: number
+          format: float
+          description: Duplicate detection rate over the last 24 hours
+          example: 0.023
+          minimum: 0
+          maximum: 1
+        duplicate_jobs_blocked:
+          type: integer
+          description: Number of duplicate jobs blocked
+          example: 354
+          minimum: 0
+        storage_size_mb:
+          type: number
+          format: float
+          description: Storage size in megabytes
+          example: 12.4
+          minimum: 0
+        ttl_distribution:
+          type: object
+          description: Distribution of keys by TTL ranges
+          additionalProperties:
+            type: integer
+          example:
+            "0-1h": 5230
+            "1-6h": 4120
+            "6-24h": 6070
+
+    ProcessingStatus:
+      type: string
+      enum: ["not_seen", "processing", "completed", "failed"]
+      description: Processing status of an idempotency key
+
+    IdempotencyKeyStatus:
+      type: object
+      required:
+        - key
+        - status
+      properties:
+        key:
+          type: string
+          description: The idempotency key
+          example: "dedup:default:job-123"
+        status:
+          $ref: '#/components/schemas/ProcessingStatus'
+        processed_at:
+          type: string
+          format: date-time
+          description: When the job was processed
+          example: "2025-09-14T19:41:47Z"
+        worker_id:
+          type: string
+          description: ID of the worker that processed the job
+          example: "worker-001"
+        attempt_count:
+          type: integer
+          description: Number of processing attempts
+          example: 1
+          minimum: 0
+        ttl_seconds:
+          type: integer
+          description: Time to live in seconds
+          example: 3600
+          minimum: 0
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties:
+            type: string
+          example:
+            correlation_id: "req-456"
+            tenant_id: "tenant-123"
+
+    IdempotencyKeyList:
+      type: object
+      required:
+        - keys
+        - pagination
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdempotencyKeyStatus'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    OutboxEvent:
+      type: object
+      required:
+        - id
+        - event_type
+        - aggregate_id
+        - data
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique event identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        event_type:
+          type: string
+          description: Type of the event
+          example: "user.created"
+        aggregate_id:
+          type: string
+          description: ID of the aggregate that produced the event
+          example: "user-456"
+        data:
+          type: object
+          description: Event payload data
+          additionalProperties: true
+        metadata:
+          type: object
+          description: Event metadata
+          additionalProperties:
+            type: string
+        status:
+          type: string
+          enum: ["pending", "published", "failed"]
+          description: Processing status of the event
+        created_at:
+          type: string
+          format: date-time
+          description: When the event was created
+          example: "2025-09-14T19:41:47Z"
+        published_at:
+          type: string
+          format: date-time
+          description: When the event was published
+          example: "2025-09-14T19:42:15Z"
+          nullable: true
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+          example: 0
+          minimum: 0
+        last_error:
+          type: string
+          description: Last error message if processing failed
+          nullable: true
+
+    OutboxEventList:
+      type: object
+      required:
+        - events
+        - pagination
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxEvent'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    OutboxStats:
+      type: object
+      required:
+        - total_events
+        - pending_events
+        - published_events
+        - failed_events
+        - average_processing_time_ms
+      properties:
+        total_events:
+          type: integer
+          description: Total number of events processed
+          example: 12450
+          minimum: 0
+        pending_events:
+          type: integer
+          description: Number of pending events
+          example: 23
+          minimum: 0
+        published_events:
+          type: integer
+          description: Number of successfully published events
+          example: 12380
+          minimum: 0
+        failed_events:
+          type: integer
+          description: Number of failed events
+          example: 47
+          minimum: 0
+        average_processing_time_ms:
+          type: number
+          format: float
+          description: Average processing time in milliseconds
+          example: 125.4
+          minimum: 0
+        events_by_type:
+          type: object
+          description: Event counts grouped by event type
+          additionalProperties:
+            type: integer
+          example:
+            "user.created": 1250
+            "order.placed": 3420
+            "payment.processed": 2180
+
+    Pagination:
+      type: object
+      required:
+        - total
+        - limit
+        - has_next
+      properties:
+        total:
+          type: integer
+          description: Total number of items available
+          example: 1500
+          minimum: 0
+        limit:
+          type: integer
+          description: Number of items per page
+          example: 100
+          minimum: 1
+        cursor:
+          type: string
+          description: Cursor for the current page
+          nullable: true
+        next_cursor:
+          type: string
+          description: Cursor for the next page
+          nullable: true
+        has_next:
+          type: boolean
+          description: Whether there are more items available
+          example: true
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "unhealthy", "degraded"]
+          description: Overall health status
+        timestamp:
+          type: string
+          format: date-time
+          description: When the health check was performed
+          example: "2025-09-14T19:41:47Z"
+        components:
+          type: object
+          description: Health status of individual components
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: ["healthy", "unhealthy"]
+              message:
+                type: string
+              last_check:
+                type: string
+                format: date-time
+          example:
+            redis:
+              status: "healthy"
+              message: "Connected to Redis cluster"
+              last_check: "2025-09-14T19:41:45Z"
+            database:
+              status: "healthy"
+              message: "Database connection pool active"
+              last_check: "2025-09-14T19:41:46Z"
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code or type
+          example: "NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The requested idempotency key was not found"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+          example: "abc123def456"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INVALID_PARAMETER"
+            message: "The 'queue' parameter must be a non-empty string"
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "UNAUTHORIZED"
+            message: "Valid authentication credentials are required"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INTERNAL_ERROR"
+            message: "An internal server error occurred"
+
+tags:
+  - name: Deduplication
+    description: Operations for managing deduplication keys and statistics
+  - name: Outbox
+    description: Operations for managing outbox events and processing
+  - name: Health
+    description: Service health and status endpoints

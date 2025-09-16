@@ -1,0 +1,1916 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.go-redis-wq.com/theme-playground/v1.0.0",
+  "title": "Theme Playground Data Models",
+  "description": "Comprehensive schema definitions for the Theme Playground system including themes, user preferences, accessibility validation, and import/export functionality.",
+  "definitions": {
+    "Theme": {
+      "title": "Theme",
+      "description": "Complete theme definition with all visual styling information",
+      "type": "object",
+      "required": ["metadata", "palette", "components"],
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/ThemeMetadata"
+        },
+        "palette": {
+          "$ref": "#/definitions/ColorPalette"
+        },
+        "components": {
+          "$ref": "#/definitions/ComponentStyles"
+        },
+        "typography": {
+          "$ref": "#/definitions/Typography"
+        },
+        "animations": {
+          "$ref": "#/definitions/AnimationConfig"
+        },
+        "accessibility": {
+          "$ref": "#/definitions/AccessibilityInfo"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeMetadata": {
+      "title": "Theme Metadata",
+      "description": "Descriptive information about a theme",
+      "type": "object",
+      "required": ["name", "version", "category"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 50,
+          "description": "Unique theme identifier using kebab-case"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version number (major.minor.patch)"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Human-readable theme description"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Theme author or creator name"
+        },
+        "category": {
+          "$ref": "#/definitions/ThemeCategory"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of theme creation"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of last modification"
+        },
+        "based_on": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Parent theme this theme is derived from"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Searchable tags for theme categorization"
+        },
+        "preview_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to theme preview image or screenshot"
+        },
+        "popularity_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Calculated popularity rating based on usage"
+        },
+        "license": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Theme license (e.g., MIT, CC0, proprietary)"
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Theme homepage or documentation URL"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeCategory": {
+      "title": "Theme Category",
+      "description": "Classification of theme types",
+      "type": "string",
+      "enum": [
+        "standard",
+        "accessibility",
+        "specialty",
+        "custom"
+      ]
+    },
+
+    "ColorPalette": {
+      "title": "Color Palette",
+      "description": "Complete color definitions for all theme elements",
+      "type": "object",
+      "required": [
+        "background", "surface", "primary", "secondary", "accent",
+        "success", "warning", "error", "info",
+        "text_primary", "text_secondary", "border"
+      ],
+      "properties": {
+        "background": {
+          "$ref": "#/definitions/Color",
+          "description": "Primary background color"
+        },
+        "surface": {
+          "$ref": "#/definitions/Color",
+          "description": "Secondary surface background color"
+        },
+        "surface_variant": {
+          "$ref": "#/definitions/Color",
+          "description": "Alternative surface color for variation"
+        },
+        "primary": {
+          "$ref": "#/definitions/Color",
+          "description": "Primary brand color"
+        },
+        "primary_variant": {
+          "$ref": "#/definitions/Color",
+          "description": "Darker or lighter variant of primary color"
+        },
+        "secondary": {
+          "$ref": "#/definitions/Color",
+          "description": "Secondary brand color"
+        },
+        "secondary_variant": {
+          "$ref": "#/definitions/Color",
+          "description": "Variant of secondary color"
+        },
+        "accent": {
+          "$ref": "#/definitions/Color",
+          "description": "Accent color for highlights and emphasis"
+        },
+        "success": {
+          "$ref": "#/definitions/Color",
+          "description": "Success state color (typically green)"
+        },
+        "warning": {
+          "$ref": "#/definitions/Color",
+          "description": "Warning state color (typically yellow/orange)"
+        },
+        "error": {
+          "$ref": "#/definitions/Color",
+          "description": "Error state color (typically red)"
+        },
+        "info": {
+          "$ref": "#/definitions/Color",
+          "description": "Information state color (typically blue)"
+        },
+        "text_primary": {
+          "$ref": "#/definitions/Color",
+          "description": "Primary text color with highest contrast"
+        },
+        "text_secondary": {
+          "$ref": "#/definitions/Color",
+          "description": "Secondary text color for less important content"
+        },
+        "text_tertiary": {
+          "$ref": "#/definitions/Color",
+          "description": "Tertiary text color for subtle content"
+        },
+        "text_disabled": {
+          "$ref": "#/definitions/Color",
+          "description": "Text color for disabled elements"
+        },
+        "text_inverse": {
+          "$ref": "#/definitions/Color",
+          "description": "Inverse text color for dark backgrounds"
+        },
+        "border": {
+          "$ref": "#/definitions/Color",
+          "description": "Default border color"
+        },
+        "border_focus": {
+          "$ref": "#/definitions/Color",
+          "description": "Border color for focused elements"
+        },
+        "border_error": {
+          "$ref": "#/definitions/Color",
+          "description": "Border color for error states"
+        },
+        "divider": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for dividing lines and separators"
+        },
+        "shadow": {
+          "$ref": "#/definitions/Color",
+          "description": "Shadow color for depth effects"
+        },
+        "overlay": {
+          "$ref": "#/definitions/Color",
+          "description": "Semi-transparent overlay color"
+        },
+        "status_pending": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for pending job status"
+        },
+        "status_running": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for running job status"
+        },
+        "status_completed": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for completed job status"
+        },
+        "status_failed": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for failed job status"
+        },
+        "status_retry": {
+          "$ref": "#/definitions/Color",
+          "description": "Color for retry job status"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Color": {
+      "title": "Color",
+      "description": "Color definition with multiple format support",
+      "type": "object",
+      "required": ["hex"],
+      "properties": {
+        "hex": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Hexadecimal color value (e.g., #FF5733)"
+        },
+        "rgb": {
+          "$ref": "#/definitions/RGB",
+          "description": "RGB color values"
+        },
+        "hsl": {
+          "$ref": "#/definitions/HSL",
+          "description": "HSL color values"
+        },
+        "alpha": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "Alpha transparency value (0 = transparent, 1 = opaque)"
+        },
+        "adaptive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether color automatically adapts to terminal dark/light mode"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Human-readable color name for accessibility"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RGB": {
+      "title": "RGB Color",
+      "description": "RGB color representation",
+      "type": "object",
+      "required": ["r", "g", "b"],
+      "properties": {
+        "r": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Red component (0-255)"
+        },
+        "g": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Green component (0-255)"
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Blue component (0-255)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "HSL": {
+      "title": "HSL Color",
+      "description": "HSL color representation",
+      "type": "object",
+      "required": ["h", "s", "l"],
+      "properties": {
+        "h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360,
+          "description": "Hue in degrees (0-360)"
+        },
+        "s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Saturation percentage (0-100)"
+        },
+        "l": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Lightness percentage (0-100)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ComponentStyles": {
+      "title": "Component Styles",
+      "description": "Style definitions for all UI components",
+      "type": "object",
+      "properties": {
+        "button": {
+          "$ref": "#/definitions/ButtonStyles"
+        },
+        "input": {
+          "$ref": "#/definitions/InputStyles"
+        },
+        "table": {
+          "$ref": "#/definitions/TableStyles"
+        },
+        "card": {
+          "$ref": "#/definitions/CardStyles"
+        },
+        "modal": {
+          "$ref": "#/definitions/ModalStyles"
+        },
+        "navigation": {
+          "$ref": "#/definitions/NavigationStyles"
+        },
+        "status": {
+          "$ref": "#/definitions/StatusStyles"
+        },
+        "chart": {
+          "$ref": "#/definitions/ChartStyles"
+        },
+        "progress": {
+          "$ref": "#/definitions/ProgressStyles"
+        },
+        "tooltip": {
+          "$ref": "#/definitions/TooltipStyles"
+        },
+        "breadcrumb": {
+          "$ref": "#/definitions/BreadcrumbStyles"
+        },
+        "badge": {
+          "$ref": "#/definitions/BadgeStyles"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ButtonStyles": {
+      "title": "Button Styles",
+      "description": "Button component style variants",
+      "type": "object",
+      "properties": {
+        "primary": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Primary action button style"
+        },
+        "secondary": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Secondary action button style"
+        },
+        "accent": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Accent/highlight button style"
+        },
+        "danger": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Destructive action button style"
+        },
+        "ghost": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Minimal/transparent button style"
+        },
+        "disabled": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Disabled button state style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "InputStyles": {
+      "title": "Input Styles",
+      "description": "Input component style variants",
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Default input field style"
+        },
+        "focused": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Focused input field style"
+        },
+        "error": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Error state input style"
+        },
+        "disabled": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Disabled input field style"
+        },
+        "readonly": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Read-only input field style"
+        },
+        "placeholder": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Placeholder text style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TableStyles": {
+      "title": "Table Styles",
+      "description": "Table component style variants",
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Table header style"
+        },
+        "row": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Default table row style"
+        },
+        "row_alt": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Alternating table row style"
+        },
+        "row_selected": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Selected table row style"
+        },
+        "row_hover": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Hovered table row style"
+        },
+        "cell": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Table cell style"
+        },
+        "border": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Table border style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CardStyles": {
+      "title": "Card Styles",
+      "description": "Card component style variants",
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Default card style"
+        },
+        "elevated": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Elevated card with shadow"
+        },
+        "outlined": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Outlined card style"
+        },
+        "interactive": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Interactive/clickable card style"
+        },
+        "header": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Card header style"
+        },
+        "footer": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Card footer style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ModalStyles": {
+      "title": "Modal Styles",
+      "description": "Modal component style variants",
+      "type": "object",
+      "properties": {
+        "backdrop": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal backdrop/overlay style"
+        },
+        "container": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal container style"
+        },
+        "header": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal header style"
+        },
+        "body": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal body content style"
+        },
+        "footer": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal footer style"
+        },
+        "close_button": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Modal close button style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "NavigationStyles": {
+      "title": "Navigation Styles",
+      "description": "Navigation component style variants",
+      "type": "object",
+      "properties": {
+        "tab": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Default tab style"
+        },
+        "tab_active": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Active tab style"
+        },
+        "tab_hover": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Hovered tab style"
+        },
+        "tab_disabled": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Disabled tab style"
+        },
+        "menu_item": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Menu item style"
+        },
+        "menu_item_active": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Active menu item style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "StatusStyles": {
+      "title": "Status Styles",
+      "description": "Status indicator style variants",
+      "type": "object",
+      "properties": {
+        "success": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Success status indicator"
+        },
+        "warning": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Warning status indicator"
+        },
+        "error": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Error status indicator"
+        },
+        "info": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Information status indicator"
+        },
+        "pending": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Pending status indicator"
+        },
+        "neutral": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Neutral status indicator"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ChartStyles": {
+      "title": "Chart Styles",
+      "description": "Chart component style variants",
+      "type": "object",
+      "properties": {
+        "line": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Line chart style"
+        },
+        "bar": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Bar chart style"
+        },
+        "area": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Area chart style"
+        },
+        "grid": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Chart grid lines style"
+        },
+        "axis": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Chart axis style"
+        },
+        "legend": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Chart legend style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ProgressStyles": {
+      "title": "Progress Styles",
+      "description": "Progress indicator style variants",
+      "type": "object",
+      "properties": {
+        "bar": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Progress bar style"
+        },
+        "background": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Progress bar background"
+        },
+        "spinner": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Loading spinner style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TooltipStyles": {
+      "title": "Tooltip Styles",
+      "description": "Tooltip component style variants",
+      "type": "object",
+      "properties": {
+        "container": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Tooltip container style"
+        },
+        "arrow": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Tooltip arrow/pointer style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BreadcrumbStyles": {
+      "title": "Breadcrumb Styles",
+      "description": "Breadcrumb navigation style variants",
+      "type": "object",
+      "properties": {
+        "container": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Breadcrumb container style"
+        },
+        "item": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Breadcrumb item style"
+        },
+        "item_active": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Active breadcrumb item style"
+        },
+        "separator": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Breadcrumb separator style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BadgeStyles": {
+      "title": "Badge Styles",
+      "description": "Badge component style variants",
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Default badge style"
+        },
+        "primary": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Primary badge style"
+        },
+        "secondary": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Secondary badge style"
+        },
+        "success": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Success badge style"
+        },
+        "warning": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Warning badge style"
+        },
+        "error": {
+          "$ref": "#/definitions/ComponentStyle",
+          "description": "Error badge style"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ComponentStyle": {
+      "title": "Component Style",
+      "description": "Individual component style definition",
+      "type": "object",
+      "properties": {
+        "background": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Background color reference from palette"
+        },
+        "foreground": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Foreground/text color reference from palette"
+        },
+        "border": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Border color reference from palette"
+        },
+        "border_style": {
+          "type": "string",
+          "enum": ["solid", "dashed", "dotted", "double", "none"],
+          "default": "solid",
+          "description": "Border line style"
+        },
+        "border_width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 1,
+          "description": "Border width in pixels"
+        },
+        "border_radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "default": 0,
+          "description": "Border radius for rounded corners"
+        },
+        "padding": {
+          "$ref": "#/definitions/Spacing",
+          "description": "Internal spacing"
+        },
+        "margin": {
+          "$ref": "#/definitions/Spacing",
+          "description": "External spacing"
+        },
+        "font_weight": {
+          "type": "string",
+          "enum": ["normal", "bold", "light", "medium", "semibold"],
+          "default": "normal",
+          "description": "Font weight"
+        },
+        "font_style": {
+          "type": "string",
+          "enum": ["normal", "italic", "underline", "strikethrough"],
+          "default": "normal",
+          "description": "Font style decoration"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "Element opacity"
+        },
+        "shadow": {
+          "$ref": "#/definitions/Shadow",
+          "description": "Drop shadow configuration"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Spacing": {
+      "title": "Spacing",
+      "description": "Spacing configuration for padding and margins",
+      "type": "object",
+      "properties": {
+        "top": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Top spacing in pixels"
+        },
+        "right": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Right spacing in pixels"
+        },
+        "bottom": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Bottom spacing in pixels"
+        },
+        "left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Left spacing in pixels"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Shadow": {
+      "title": "Shadow",
+      "description": "Drop shadow configuration",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "description": "Horizontal shadow offset"
+        },
+        "y": {
+          "type": "integer",
+          "description": "Vertical shadow offset"
+        },
+        "blur": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shadow blur radius"
+        },
+        "spread": {
+          "type": "integer",
+          "description": "Shadow spread radius"
+        },
+        "color": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Shadow color reference from palette"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Shadow opacity"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Typography": {
+      "title": "Typography",
+      "description": "Typography configuration for the theme",
+      "type": "object",
+      "properties": {
+        "font_family": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Primary font family"
+        },
+        "font_family_monospace": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Monospace font family for code"
+        },
+        "font_size_base": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 24,
+          "default": 14,
+          "description": "Base font size in points"
+        },
+        "font_size_small": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "description": "Small font size"
+        },
+        "font_size_large": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 32,
+          "description": "Large font size"
+        },
+        "line_height": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "default": 1.4,
+          "description": "Line height multiplier"
+        },
+        "letter_spacing": {
+          "type": "number",
+          "minimum": -2.0,
+          "maximum": 2.0,
+          "default": 0,
+          "description": "Letter spacing adjustment in pixels"
+        },
+        "text_transform": {
+          "type": "string",
+          "enum": ["none", "uppercase", "lowercase", "capitalize"],
+          "default": "none",
+          "description": "Text transformation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AnimationConfig": {
+      "title": "Animation Configuration",
+      "description": "Animation settings for the theme",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether animations are enabled"
+        },
+        "duration_fast": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 500,
+          "default": 150,
+          "description": "Fast animation duration in milliseconds"
+        },
+        "duration_normal": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 1000,
+          "default": 300,
+          "description": "Normal animation duration in milliseconds"
+        },
+        "duration_slow": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 2000,
+          "default": 500,
+          "description": "Slow animation duration in milliseconds"
+        },
+        "easing": {
+          "type": "string",
+          "enum": ["linear", "ease", "ease-in", "ease-out", "ease-in-out"],
+          "default": "ease-out",
+          "description": "Animation easing function"
+        },
+        "reduced_motion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Respect user's reduced motion preferences"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccessibilityInfo": {
+      "title": "Accessibility Information",
+      "description": "Accessibility compliance and analysis data",
+      "type": "object",
+      "properties": {
+        "wcag_level": {
+          "$ref": "#/definitions/WCAGLevel",
+          "description": "WCAG compliance level achieved"
+        },
+        "contrast_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Overall contrast ratio score"
+        },
+        "color_blind_safe": {
+          "type": "boolean",
+          "description": "Safe for users with color vision deficiencies"
+        },
+        "motion_safe": {
+          "type": "boolean",
+          "description": "Respects motion sensitivity preferences"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 20,
+          "description": "Accessibility warnings and issues"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 20,
+          "description": "Suggestions for accessibility improvements"
+        },
+        "tested_combinations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContrastTest"
+          },
+          "description": "Detailed contrast test results"
+        },
+        "last_validated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last accessibility validation timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WCAGLevel": {
+      "title": "WCAG Compliance Level",
+      "description": "Web Content Accessibility Guidelines compliance level",
+      "type": "string",
+      "enum": ["A", "AA", "AAA", "FAIL"]
+    },
+
+    "ContrastTest": {
+      "title": "Contrast Test",
+      "description": "Individual color contrast test result",
+      "type": "object",
+      "required": ["name", "ratio", "passed"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Descriptive name of the contrast test"
+        },
+        "foreground": {
+          "$ref": "#/definitions/Color",
+          "description": "Foreground color being tested"
+        },
+        "background": {
+          "$ref": "#/definitions/Color",
+          "description": "Background color being tested"
+        },
+        "ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Calculated contrast ratio"
+        },
+        "required_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Required minimum contrast ratio"
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether the test passed the requirements"
+        },
+        "level": {
+          "$ref": "#/definitions/WCAGLevel",
+          "description": "WCAG level achieved by this combination"
+        },
+        "critical": {
+          "type": "boolean",
+          "description": "Whether this is a critical accessibility issue"
+        },
+        "component": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Component or area where this combination is used"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UserThemePreferences": {
+      "title": "User Theme Preferences",
+      "description": "User-specific theme settings and preferences",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "default": "1.0",
+          "description": "Preferences schema version"
+        },
+        "active_theme": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Currently active theme identifier"
+        },
+        "preferences": {
+          "$ref": "#/definitions/ThemeUserSettings",
+          "description": "General theme preferences"
+        },
+        "accessibility": {
+          "$ref": "#/definitions/AccessibilityPreferences",
+          "description": "Accessibility-specific preferences"
+        },
+        "custom_themes": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z0-9-]+$": {
+              "$ref": "#/definitions/UserThemeData"
+            }
+          },
+          "description": "User's custom theme metadata"
+        },
+        "theme_history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ThemeHistoryEntry"
+          },
+          "maxItems": 100,
+          "description": "History of theme usage"
+        },
+        "sync": {
+          "$ref": "#/definitions/SyncConfiguration",
+          "description": "Theme synchronization settings"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeUserSettings": {
+      "title": "Theme User Settings",
+      "description": "General user preferences for theme behavior",
+      "type": "object",
+      "properties": {
+        "auto_detect_terminal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect terminal dark/light mode"
+        },
+        "respect_no_color": {
+          "type": "boolean",
+          "default": true,
+          "description": "Respect NO_COLOR environment variable"
+        },
+        "sync_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable theme synchronization across devices"
+        },
+        "accessibility_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable enhanced accessibility features"
+        },
+        "animation_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable theme transition animations"
+        },
+        "preview_mode": {
+          "type": "string",
+          "enum": ["live", "static", "minimal"],
+          "default": "live",
+          "description": "Theme preview mode preference"
+        },
+        "auto_apply": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically apply previewed themes"
+        },
+        "backup_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic theme preference backups"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccessibilityPreferences": {
+      "title": "Accessibility Preferences",
+      "description": "User accessibility settings and requirements",
+      "type": "object",
+      "properties": {
+        "min_contrast_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "default": 4.5,
+          "description": "Minimum required contrast ratio"
+        },
+        "color_blind_mode": {
+          "type": "string",
+          "enum": ["none", "deuteranopia", "protanopia", "tritanopia", "achromatopsia"],
+          "default": "none",
+          "description": "Color vision deficiency accommodation"
+        },
+        "motion_reduced": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefer reduced motion and animations"
+        },
+        "high_contrast": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefer high contrast themes"
+        },
+        "large_text": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefer larger text sizes"
+        },
+        "focus_indicators": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enhanced focus indicators for keyboard navigation"
+        },
+        "screen_reader": {
+          "type": "boolean",
+          "default": false,
+          "description": "Screen reader compatibility mode"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UserThemeData": {
+      "title": "User Theme Data",
+      "description": "User-specific metadata for themes",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "File path to custom theme"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Theme creation timestamp"
+        },
+        "last_used": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last usage timestamp"
+        },
+        "use_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of times theme has been applied"
+        },
+        "is_favorite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user has marked theme as favorite"
+        },
+        "rating": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "User rating for the theme"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "User notes about the theme"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeHistoryEntry": {
+      "title": "Theme History Entry",
+      "description": "Record of theme usage",
+      "type": "object",
+      "required": ["theme", "applied_at"],
+      "properties": {
+        "theme": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Theme identifier"
+        },
+        "applied_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When theme was applied"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[hms]$",
+          "description": "Duration theme was active (e.g., 2h30m)"
+        },
+        "context": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Context or reason for theme change"
+        },
+        "auto_applied": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether theme was automatically applied"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SyncConfiguration": {
+      "title": "Sync Configuration",
+      "description": "Theme synchronization settings",
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["git", "cloud", "manual"],
+          "description": "Synchronization provider"
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri",
+          "description": "Git repository URL for theme sync"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Path within repository for themes"
+        },
+        "auto_sync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic synchronization"
+        },
+        "sync_interval": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 1440,
+          "default": 60,
+          "description": "Sync interval in minutes"
+        },
+        "last_sync": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last successful sync timestamp"
+        },
+        "conflict_resolution": {
+          "type": "string",
+          "enum": ["local", "remote", "prompt"],
+          "default": "prompt",
+          "description": "How to handle sync conflicts"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeCollection": {
+      "title": "Theme Collection",
+      "description": "Curated collection of related themes",
+      "type": "object",
+      "required": ["id", "name", "themes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique collection identifier"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Collection display name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Collection description"
+        },
+        "themes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Theme identifiers in this collection"
+        },
+        "category": {
+          "$ref": "#/definitions/ThemeCategory",
+          "description": "Collection category"
+        },
+        "curated_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Collection curator or author"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Collection creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "featured": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether collection is featured"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "maxItems": 10,
+          "uniqueItems": true,
+          "description": "Collection tags"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccessibilityReport": {
+      "title": "Accessibility Report",
+      "description": "Comprehensive accessibility analysis report",
+      "type": "object",
+      "required": ["theme_name", "overall_score", "wcag_level"],
+      "properties": {
+        "theme_name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Theme being analyzed"
+        },
+        "overall_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Overall accessibility score"
+        },
+        "wcag_level": {
+          "$ref": "#/definitions/WCAGLevel",
+          "description": "Highest WCAG level achieved"
+        },
+        "color_blind_safe": {
+          "type": "boolean",
+          "description": "Safe for color vision deficiencies"
+        },
+        "motion_safe": {
+          "type": "boolean",
+          "description": "Motion sensitivity compliant"
+        },
+        "contrast_tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContrastTest"
+          },
+          "description": "Detailed contrast test results"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 50,
+          "description": "Accessibility improvement recommendations"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AccessibilityWarning"
+          },
+          "description": "Accessibility warnings and issues"
+        },
+        "tested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When accessibility test was performed"
+        },
+        "test_configuration": {
+          "$ref": "#/definitions/AccessibilityTestConfig",
+          "description": "Test configuration used"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccessibilityWarning": {
+      "title": "Accessibility Warning",
+      "description": "Individual accessibility issue or warning",
+      "type": "object",
+      "required": ["severity", "message"],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Issue severity level"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Warning message"
+        },
+        "component": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Affected component or area"
+        },
+        "suggestion": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Suggested fix or improvement"
+        },
+        "wcag_criterion": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Related WCAG criterion (e.g., 1.4.3)"
+        },
+        "auto_fixable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether issue can be automatically fixed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AccessibilityTestConfig": {
+      "title": "Accessibility Test Configuration",
+      "description": "Configuration for accessibility testing",
+      "type": "object",
+      "properties": {
+        "wcag_level": {
+          "$ref": "#/definitions/WCAGLevel",
+          "default": "AA",
+          "description": "Target WCAG compliance level"
+        },
+        "check_color_blindness": {
+          "type": "boolean",
+          "default": true,
+          "description": "Test color vision deficiency compatibility"
+        },
+        "check_motion_sensitivity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Test motion sensitivity compliance"
+        },
+        "custom_requirements": {
+          "type": "object",
+          "properties": {
+            "min_contrast_ratio": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 21,
+              "description": "Custom minimum contrast ratio"
+            },
+            "font_size_minimum": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 24,
+              "description": "Minimum font size requirement"
+            }
+          },
+          "description": "Custom accessibility requirements"
+        },
+        "simulation_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["deuteranopia", "protanopia", "tritanopia", "achromatopsia"]
+          },
+          "uniqueItems": true,
+          "description": "Color vision deficiency types to simulate"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ColorVisionSimulation": {
+      "title": "Color Vision Simulation",
+      "description": "Color vision deficiency simulation result",
+      "type": "object",
+      "required": ["simulation_type", "results"],
+      "properties": {
+        "simulation_type": {
+          "type": "string",
+          "enum": ["deuteranopia", "protanopia", "tritanopia", "achromatopsia"],
+          "description": "Type of color vision deficiency simulated"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ColorSimulationResult"
+          },
+          "description": "Simulation results for each color"
+        },
+        "overall_compatibility": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall compatibility score (0-1)"
+        },
+        "problematic_combinations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "foreground": {
+                "$ref": "#/definitions/Color"
+              },
+              "background": {
+                "$ref": "#/definitions/Color"
+              },
+              "issue": {
+                "type": "string",
+                "maxLength": 100
+              }
+            }
+          },
+          "description": "Color combinations that may be problematic"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ColorSimulationResult": {
+      "title": "Color Simulation Result",
+      "description": "Individual color simulation result",
+      "type": "object",
+      "required": ["original", "simulated"],
+      "properties": {
+        "original": {
+          "$ref": "#/definitions/Color",
+          "description": "Original color"
+        },
+        "simulated": {
+          "$ref": "#/definitions/Color",
+          "description": "Color as perceived with vision deficiency"
+        },
+        "difference_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Perceptual difference score (0 = identical, 1 = completely different)"
+        },
+        "distinguishable": {
+          "type": "boolean",
+          "description": "Whether original and simulated colors are distinguishable"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeExportData": {
+      "title": "Theme Export Data",
+      "description": "Data structure for theme export",
+      "type": "object",
+      "required": ["format", "theme", "exported_at"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["json", "yaml", "css", "lipgloss"],
+          "description": "Export format"
+        },
+        "theme": {
+          "$ref": "#/definitions/Theme",
+          "description": "Complete theme data"
+        },
+        "exported_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Export timestamp"
+        },
+        "exported_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who exported the theme"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Export format version"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "generator": {
+              "type": "string",
+              "description": "Tool used to generate export"
+            },
+            "checksum": {
+              "type": "string",
+              "description": "SHA-256 checksum of theme data"
+            },
+            "compatibility": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Compatible system versions"
+            }
+          },
+          "description": "Export metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThemeImportData": {
+      "title": "Theme Import Data",
+      "description": "Data structure for theme import",
+      "type": "object",
+      "required": ["source", "theme"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["url", "file", "json", "clipboard"],
+          "description": "Import source type"
+        },
+        "theme": {
+          "$ref": "#/definitions/Theme",
+          "description": "Imported theme data"
+        },
+        "imported_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Import timestamp"
+        },
+        "imported_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who imported the theme"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Source URL if imported from web"
+        },
+        "validation_report": {
+          "$ref": "#/definitions/ValidationReport",
+          "description": "Import validation results"
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "resolution": {
+                "type": "string",
+                "enum": ["auto", "manual", "skip"]
+              }
+            }
+          },
+          "description": "Import conflicts and resolutions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationReport": {
+      "title": "Validation Report",
+      "description": "Theme validation results",
+      "type": "object",
+      "required": ["valid"],
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "Whether theme passed validation"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationError"
+          },
+          "description": "Validation errors that prevent theme usage"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationWarning"
+          },
+          "description": "Validation warnings that don't prevent usage"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Schema version used for validation"
+        },
+        "validated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Validation timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationError": {
+      "title": "Validation Error",
+      "description": "Individual validation error",
+      "type": "object",
+      "required": ["field", "message"],
+      "properties": {
+        "field": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Field path that failed validation"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Error message"
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Error code for programmatic handling"
+        },
+        "expected": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Expected value or format"
+        },
+        "actual": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Actual value that failed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationWarning": {
+      "title": "Validation Warning",
+      "description": "Individual validation warning",
+      "type": "object",
+      "required": ["message"],
+      "properties": {
+        "message": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Warning message"
+        },
+        "suggestion": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Suggested improvement"
+        },
+        "field": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Related field path"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "default": "medium",
+          "description": "Warning severity"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

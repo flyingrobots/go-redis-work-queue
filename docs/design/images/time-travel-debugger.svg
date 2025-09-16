@@ -1,0 +1,337 @@
+<svg viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .debugger-bg { fill: #1a1b26; }
+      .panel-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .timeline-bg { fill: #1f2335; }
+      .code-bg { fill: #16161e; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 9px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 8px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 9px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 8px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 8px; }
+      .warning-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 8px; }
+      .code-text { fill: #c0caf5; font-family: 'Courier New', monospace; font-size: 8px; }
+      .code-comment { fill: #565f89; font-family: 'Courier New', monospace; font-size: 8px; }
+      .code-keyword { fill: #bb9af7; font-family: 'Courier New', monospace; font-size: 8px; }
+      .code-string { fill: #9ece6a; font-family: 'Courier New', monospace; font-size: 8px; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="700" class="debugger-bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="40" class="timeline-bg"/>
+  <text x="20" y="15" class="accent-text">⏰ Time Travel Debugger - Job Execution Replay</text>
+  <text x="20" y="30" class="secondary-text">Job ID: ABC123-DEF456 • Queue: high-priority • Started: 14:32:15.234 • Duration: 3.7s • Status: COMPLETED</text>
+
+  <!-- Controls -->
+  <g transform="translate(800,5)">
+    <rect x="0" y="0" width="40" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="20" y="16" text-anchor="middle" class="secondary-text">⏮</text>
+
+    <rect x="50" y="0" width="40" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="70" y="16" text-anchor="middle" class="secondary-text">⏸</text>
+
+    <rect x="100" y="0" width="40" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="120" y="16" text-anchor="middle" class="secondary-text">▶</text>
+
+    <rect x="150" y="0" width="40" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="170" y="16" text-anchor="middle" class="secondary-text">⏭</text>
+
+    <!-- Speed controls -->
+    <rect x="200" y="0" width="30" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="215" y="16" text-anchor="middle" class="success-text" font-size="7">0.5x</text>
+
+    <rect x="235" y="0" width="30" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="250" y="16" text-anchor="middle" class="secondary-text" font-size="7">1x</text>
+
+    <rect x="270" y="0" width="30" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="285" y="16" text-anchor="middle" class="success-text" font-size="7">2x</text>
+
+    <!-- Export button -->
+    <rect x="320" y="0" width="60" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="350" y="16" text-anchor="middle" class="accent-text" font-size="8">Export</text>
+  </g>
+
+  <!-- Timeline Scrubber -->
+  <g transform="translate(0,50)">
+    <rect x="20" y="0" width="1160" height="60" class="timeline-bg" stroke="#414868" rx="4"/>
+    <text x="30" y="15" class="accent-text">Execution Timeline</text>
+
+    <!-- Timeline track -->
+    <rect x="30" y="25" width="1140" height="20" fill="#16161e" stroke="#414868" rx="10"/>
+
+    <!-- Timeline segments (different colors for different phases) -->
+    <rect x="30" y="25" width="200" height="20" fill="#7aa2f7" rx="10"/> <!-- Init -->
+    <rect x="230" y="25" width="400" height="20" fill="#9ece6a" rx="0"/> <!-- Processing -->
+    <rect x="630" y="25" width="100" height="20" fill="#e0af68" rx="0"/> <!-- Validation -->
+    <rect x="730" y="25" width="300" height="20" fill="#9ece6a" rx="0"/> <!-- Completion -->
+    <rect x="1030" y="25" width="140" height="20" fill="#bb9af7" rx="10"/> <!-- Cleanup -->
+
+    <!-- Current position indicator -->
+    <rect x="628" y="20" width="4" height="30" fill="#f7768e"/>
+    <circle cx="630" cy="35" r="6" fill="#f7768e"/>
+
+    <!-- Timeline markers -->
+    <g transform="translate(30,50)">
+      <text x="0" y="0" class="secondary-text" font-size="7">Init</text>
+      <text x="200" y="0" class="secondary-text" font-size="7">Process</text>
+      <text x="600" y="0" class="secondary-text" font-size="7">Validate</text>
+      <text x="900" y="0" class="secondary-text" font-size="7">Complete</text>
+      <text x="1100" y="0" class="secondary-text" font-size="7">Cleanup</text>
+    </g>
+
+    <!-- Time stamps -->
+    <g transform="translate(30,48)">
+      <text x="0" y="0" class="secondary-text" font-size="6">14:32:15.234</text>
+      <text x="570" y="0" class="danger-text" font-size="6">14:32:17.891</text>
+      <text x="1100" y="0" class="secondary-text" font-size="6">14:32:18.967</text>
+    </g>
+  </g>
+
+  <!-- Main Content Area -->
+  <g transform="translate(0,120)">
+    <!-- Left Panel: Code View -->
+    <rect x="20" y="0" width="580" height="520" class="panel-bg" rx="4"/>
+    <rect x="20" y="0" width="580" height="25" fill="#1f2335" rx="4"/>
+    <text x="30" y="17" class="accent-text">Job Execution Code • Line 47 (Current Breakpoint)</text>
+
+    <!-- Code content -->
+    <g transform="translate(30,35)">
+      <rect x="0" y="0" width="560" height="475" class="code-bg"/>
+
+      <!-- Line numbers -->
+      <g transform="translate(10,20)" class="secondary-text">
+        <text x="0" y="0" font-size="7">42</text>
+        <text x="0" y="12" font-size="7">43</text>
+        <text x="0" y="24" font-size="7">44</text>
+        <text x="0" y="36" font-size="7">45</text>
+        <text x="0" y="48" font-size="7">46</text>
+        <text x="0" y="60" font-size="7">47</text>
+        <text x="0" y="72" font-size="7">48</text>
+        <text x="0" y="84" font-size="7">49</text>
+        <text x="0" y="96" font-size="7">50</text>
+        <text x="0" y="108" font-size="7">51</text>
+        <text x="0" y="120" font-size="7">52</text>
+        <text x="0" y="132" font-size="7">53</text>
+      </g>
+
+      <!-- Code lines -->
+      <g transform="translate(35,20)">
+        <text x="0" y="0" class="code-text">  result := processPayload(job.Data)</text>
+        <text x="0" y="12" class="code-keyword">  if</text> <text x="20" y="12" class="code-text">err != nil {</text>
+        <text x="0" y="24" class="code-text">    logger.Error(</text><text x="100" y="24" class="code-string">"processing failed"</text><text x="200" y="24" class="code-text">, err)</text>
+        <text x="0" y="36" class="code-keyword">    return</text> <text x="50" y="36" class="code-text">err</text>
+        <text x="0" y="48" class="code-text">  }</text>
+
+        <!-- Current line (highlighted) -->
+        <rect x="-5" y="52" width="520" height="12" fill="#2d3561"/>
+        <text x="0" y="60" class="code-comment">  // Validation step - this is where the error occurred</text>
+
+        <text x="0" y="72" class="code-keyword">  if</text> <text x="20" y="72" class="code-text">!validateResult(result) {</text>
+        <text x="0" y="84" class="code-text">    logger.Warn(</text><text x="100" y="84" class="code-string">"validation failed"</text><text x="200" y="84" class="code-text">)</text>
+        <text x="0" y="96" class="code-keyword">    return</text> <text x="50" y="96" class="code-text">ErrValidation</text>
+        <text x="0" y="108" class="code-text">  }</text>
+        <text x="0" y="120" class="code-text">  job.Status = </text><text x="90" y="120" class="code-string">"completed"</text>
+        <text x="0" y="132" class="code-keyword">  return</text> <text x="50" y="132" class="code-text">nil</text>
+      </g>
+
+      <!-- Breakpoint indicator -->
+      <circle cx="22" cy="80" r="4" fill="#f7768e"/>
+
+      <!-- Variable inspector at bottom -->
+      <g transform="translate(10,200)">
+        <rect x="0" y="0" width="540" height="260" fill="#1f2335" stroke="#414868" rx="3"/>
+        <text x="10" y="15" class="accent-text">Variables at Line 47</text>
+
+        <!-- Variable table -->
+        <g transform="translate(10,25)">
+          <text x="0" y="15" class="secondary-text">Variable</text>
+          <text x="120" y="15" class="secondary-text">Type</text>
+          <text x="200" y="15" class="secondary-text">Value</text>
+          <text x="400" y="15" class="secondary-text">Previous Value</text>
+
+          <!-- Variable rows -->
+          <rect x="0" y="20" width="520" height="15" fill="#24283b"/>
+          <text x="5" y="32" class="primary-text" font-size="7">job</text>
+          <text x="120" y="32" class="accent-text" font-size="7">*Job</text>
+          <text x="200" y="32" class="code-text" font-size="7">{ID: "ABC123", Status: "processing"}</text>
+          <text x="400" y="32" class="secondary-text" font-size="7">{ID: "ABC123", Status: "pending"}</text>
+
+          <rect x="0" y="35" width="520" height="15" fill="transparent"/>
+          <text x="5" y="47" class="primary-text" font-size="7">result</text>
+          <text x="120" y="47" class="accent-text" font-size="7">interface{}</text>
+          <text x="200" y="47" class="code-text" font-size="7">map[string]interface{}{"processed": true}</text>
+          <text x="400" y="47" class="secondary-text" font-size="7">nil</text>
+
+          <rect x="0" y="50" width="520" height="15" fill="#24283b"/>
+          <text x="5" y="62" class="primary-text" font-size="7">err</text>
+          <text x="120" y="62" class="accent-text" font-size="7">error</text>
+          <text x="200" y="62" class="code-text" font-size="7">nil</text>
+          <text x="400" y="62" class="secondary-text" font-size="7">nil</text>
+
+          <rect x="0" y="65" width="520" height="15" fill="transparent"/>
+          <text x="5" y="77" class="primary-text" font-size="7">logger</text>
+          <text x="120" y="77" class="accent-text" font-size="7">*Logger</text>
+          <text x="200" y="77" class="code-text" font-size="7">&Logger{level: INFO}</text>
+          <text x="400" y="77" class="secondary-text" font-size="7">unchanged</text>
+
+          <rect x="0" y="80" width="520" height="15" fill="#24283b"/>
+          <text x="5" y="92" class="primary-text" font-size="7">startTime</text>
+          <text x="120" y="92" class="accent-text" font-size="7">time.Time</text>
+          <text x="200" y="92" class="code-text" font-size="7">2025-09-15T14:32:15.234Z</text>
+          <text x="400" y="92" class="secondary-text" font-size="7">unchanged</text>
+        </g>
+
+        <!-- Stack trace -->
+        <g transform="translate(10,140)">
+          <text x="0" y="0" class="accent-text" font-size="8">Call Stack</text>
+          <text x="0" y="15" class="primary-text" font-size="7">1. main.processJob() • worker.go:47</text>
+          <text x="0" y="27" class="secondary-text" font-size="7">2. Worker.Execute() • worker.go:23</text>
+          <text x="0" y="39" class="secondary-text" font-size="7">3. Queue.ProcessNext() • queue.go:156</text>
+          <text x="0" y="51" class="secondary-text" font-size="7">4. Worker.Run() • worker.go:12</text>
+          <text x="0" y="63" class="secondary-text" font-size="7">5. main.main() • main.go:45</text>
+        </g>
+
+        <!-- Memory inspection -->
+        <g transform="translate(280,140)">
+          <text x="0" y="0" class="accent-text" font-size="8">Memory State</text>
+          <text x="0" y="15" class="secondary-text" font-size="7">Heap Size: 45.2 MB (+2.1 MB)</text>
+          <text x="0" y="27" class="secondary-text" font-size="7">Goroutines: 156 (+0)</text>
+          <text x="0" y="39" class="secondary-text" font-size="7">GC Cycles: 23 (+1 since last step)</text>
+          <text x="0" y="51" class="warning-text" font-size="7">Memory Leak: None detected</text>
+          <text x="0" y="63" class="success-text" font-size="7">Performance: Normal</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Right Panel: Event Log & State -->
+    <rect x="620" y="0" width="560" height="520" class="panel-bg" rx="4"/>
+    <rect x="620" y="0" width="560" height="25" fill="#1f2335" rx="4"/>
+    <text x="630" y="17" class="accent-text">Event Log & State Changes</text>
+
+    <!-- Event timeline -->
+    <g transform="translate(630,35)">
+      <rect x="0" y="0" width="540" height="475" class="code-bg"/>
+
+      <!-- Event list -->
+      <g transform="translate(10,15)">
+        <!-- Event 1 -->
+        <g>
+          <circle cx="5" cy="5" r="3" fill="#7aa2f7"/>
+          <text x="15" y="8" class="secondary-text" font-size="8">14:32:15.234 - Job started</text>
+          <text x="15" y="20" class="primary-text" font-size="7">  Worker-3 claimed job ABC123 from high-priority queue</text>
+          <text x="15" y="32" class="secondary-text" font-size="7">  State: pending → processing</text>
+        </g>
+
+        <!-- Event 2 -->
+        <g transform="translate(0,45)">
+          <circle cx="5" cy="5" r="3" fill="#9ece6a"/>
+          <text x="15" y="8" class="secondary-text" font-size="8">14:32:15.267 - Payload deserialized</text>
+          <text x="15" y="20" class="primary-text" font-size="7">  JSON payload (1.2KB) parsed successfully</text>
+          <text x="15" y="32" class="code-text" font-size="7">  {"user_id": 12345, "action": "process_order"}</text>
+        </g>
+
+        <!-- Event 3 -->
+        <g transform="translate(0,90)">
+          <circle cx="5" cy="5" r="3" fill="#9ece6a"/>
+          <text x="15" y="8" class="secondary-text" font-size="8">14:32:16.123 - Database connection opened</text>
+          <text x="15" y="20" class="primary-text" font-size="7">  Connected to postgres://prod-db:5432</text>
+          <text x="15" y="32" class="secondary-text" font-size="7">  Connection pool: 3/10 active</text>
+        </g>
+
+        <!-- Event 4 -->
+        <g transform="translate(0,135)">
+          <circle cx="5" cy="5" r="3" fill="#9ece6a"/>
+          <text x="15" y="8" class="secondary-text" font-size="8">14:32:17.456 - Processing completed</text>
+          <text x="15" y="20" class="primary-text" font-size="7">  processPayload() returned successfully</text>
+          <text x="15" y="32" class="success-text" font-size="7">  Duration: 1.33s, Memory delta: +2.1MB</text>
+        </g>
+
+        <!-- Event 5 (Current) -->
+        <g transform="translate(0,180)">
+          <rect x="-5" y="-5" width="520" height="40" fill="#2d3561" rx="3"/>
+          <circle cx="5" cy="5" r="3" fill="#f7768e"/>
+          <text x="15" y="8" class="danger-text" font-size="8">14:32:17.891 - Validation started (CURRENT)</text>
+          <text x="15" y="20" class="primary-text" font-size="7">  validateResult() called with processed data</text>
+          <text x="15" y="32" class="warning-text" font-size="7">  ⚠ This step historically fails 3% of the time</text>
+        </g>
+
+        <!-- Future events (grayed out) -->
+        <g transform="translate(0,225)">
+          <circle cx="5" cy="5" r="3" fill="#565f89"/>
+          <text x="15" y="8" class="secondary-text" font-size="8" opacity="0.5">14:32:18.234 - Validation completed</text>
+          <text x="15" y="20" class="secondary-text" font-size="7" opacity="0.5">  Result validated, proceeding to completion</text>
+        </g>
+
+        <g transform="translate(0,255)">
+          <circle cx="5" cy="5" r="3" fill="#565f89"/>
+          <text x="15" y="8" class="secondary-text" font-size="8" opacity="0.5">14:32:18.567 - Job completed</text>
+          <text x="15" y="20" class="secondary-text" font-size="7" opacity="0.5">  Status updated to completed, metrics recorded</text>
+        </g>
+      </g>
+
+      <!-- State diff viewer -->
+      <g transform="translate(10,350)">
+        <rect x="0" y="0" width="520" height="115" fill="#1f2335" stroke="#414868" rx="3"/>
+        <text x="10" y="15" class="accent-text" font-size="8">State Diff (Previous Step → Current Step)</text>
+
+        <g transform="translate(10,25)">
+          <text x="0" y="15" class="secondary-text" font-size="8">Job Object Changes:</text>
+
+          <!-- Diff visualization -->
+          <rect x="0" y="20" width="10" height="10" fill="#f7768e"/> <!-- Removed -->
+          <text x="15" y="28" class="danger-text" font-size="7">- status: "processing"</text>
+
+          <rect x="0" y="35" width="10" height="10" fill="#9ece6a"/> <!-- Added -->
+          <text x="15" y="43" class="success-text" font-size="7">+ status: "validating"</text>
+          <text x="15" y="55" class="success-text" font-size="7">+ processing_duration: 1.33s</text>
+          <text x="15" y="67" class="success-text" font-size="7">+ result: {processed: true, items: 42}</text>
+
+          <text x="250" y="15" class="secondary-text" font-size="8">Performance Impact:</text>
+          <text x="250" y="28" class="primary-text" font-size="7">CPU: +12%</text>
+          <text x="250" y="40" class="primary-text" font-size="7">Memory: +2.1MB</text>
+          <text x="250" y="52" class="primary-text" font-size="7">Network: 3 DB queries</text>
+          <text x="250" y="64" class="success-text" font-size="7">Latency: 1.33s (within SLA)</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Bottom Control Panel -->
+  <g transform="translate(0,650)">
+    <rect x="0" y="0" width="1200" height="50" class="timeline-bg"/>
+
+    <!-- Left controls -->
+    <g transform="translate(20,10)">
+      <rect x="0" y="0" width="80" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+      <text x="40" y="16" text-anchor="middle" class="secondary-text" font-size="8">Add Breakpoint</text>
+
+      <rect x="90" y="0" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+      <text x="130" y="16" text-anchor="middle" class="success-text" font-size="8">Step Over</text>
+
+      <rect x="180" y="0" width="80" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+      <text x="220" y="16" text-anchor="middle" class="accent-text" font-size="8">Step Into</text>
+
+      <rect x="270" y="0" width="80" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+      <text x="310" y="16" text-anchor="middle" class="warning-text" font-size="8">Run to Cursor</text>
+    </g>
+
+    <!-- Center info -->
+    <g transform="translate(600,10)">
+      <text x="0" y="12" text-anchor="middle" class="accent-text">Time Travel Position: 67% complete (2.7s elapsed)</text>
+      <text x="0" y="25" text-anchor="middle" class="secondary-text">Replay Speed: 1x • Next Event: Validation Complete (0.3s)</text>
+    </g>
+
+    <!-- Right controls -->
+    <g transform="translate(1000,10)">
+      <rect x="0" y="0" width="80" height="25" class="panel-bg" stroke="#f7768e" rx="3"/>
+      <text x="40" y="16" text-anchor="middle" class="danger-text" font-size="8">Reset Session</text>
+
+      <rect x="90" y="0" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+      <text x="130" y="16" text-anchor="middle" class="success-text" font-size="8">Share Debug</text>
+    </g>
+  </g>
+</svg>

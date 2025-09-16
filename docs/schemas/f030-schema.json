@@ -1,0 +1,1920 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.go-redis-wq.com/patterned-load-generator/v1.0.0",
+  "title": "Patterned Load Generator Data Models",
+  "description": "Comprehensive schema definitions for the Patterned Load Generator system including pattern configurations, guardrails, profiles, and test execution data.",
+  "definitions": {
+    "PatternConfig": {
+      "title": "Pattern Configuration",
+      "description": "Configuration for load generation patterns",
+      "type": "object",
+      "required": ["type", "duration", "base_rate"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/PatternType"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Pattern duration (e.g., 5m, 1h, 30s)",
+          "examples": ["5m", "1h", "30s", "2h30m"]
+        },
+        "base_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Base rate in jobs per second"
+        },
+        "max_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum rate in jobs per second (for validation)"
+        },
+        "amplitude": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Pattern amplitude for sine waves (variation from base rate)"
+        },
+        "period": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Pattern period for repeating patterns",
+          "examples": ["1m", "5m", "1h"]
+        },
+        "start_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Starting rate for ramp patterns"
+        },
+        "end_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ending rate for ramp patterns"
+        },
+        "burst_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak rate during burst periods"
+        },
+        "burst_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Duration of each burst period"
+        },
+        "burst_interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Interval between burst periods"
+        },
+        "ramp_type": {
+          "$ref": "#/definitions/RampType"
+        },
+        "phase": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 6.28318,
+          "description": "Phase shift for sine patterns (in radians)"
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PatternPhase"
+          },
+          "maxItems": 20,
+          "description": "Custom pattern phases for complex multi-phase patterns"
+        },
+        "random_variance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Random variance factor (0-1) for chaos patterns"
+        },
+        "step_size": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Step size for staircase patterns"
+        },
+        "step_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Duration of each step in staircase patterns"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"const": "sine"}}
+          },
+          "then": {
+            "required": ["amplitude", "period"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "burst"}}
+          },
+          "then": {
+            "required": ["burst_rate", "burst_duration", "burst_interval"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "ramp"}}
+          },
+          "then": {
+            "required": ["start_rate", "end_rate"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "staircase"}}
+          },
+          "then": {
+            "required": ["step_size", "step_duration"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "custom"}}
+          },
+          "then": {
+            "required": ["phases"]
+          }
+        }
+      ]
+    },
+
+    "PatternType": {
+      "title": "Pattern Type",
+      "description": "Type of load generation pattern",
+      "type": "string",
+      "enum": [
+        "sine",
+        "burst",
+        "ramp",
+        "staircase",
+        "custom",
+        "chaos"
+      ]
+    },
+
+    "RampType": {
+      "title": "Ramp Type",
+      "description": "Type of ramp curve for rate transitions",
+      "type": "string",
+      "enum": [
+        "linear",
+        "exponential",
+        "logarithmic",
+        "quadratic"
+      ],
+      "default": "linear"
+    },
+
+    "PatternPhase": {
+      "title": "Pattern Phase",
+      "description": "Individual phase in a custom pattern",
+      "type": "object",
+      "required": ["duration", "rate"],
+      "properties": {
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Phase duration"
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Target rate for this phase (jobs/sec)"
+        },
+        "transition": {
+          "$ref": "#/definitions/TransitionType"
+        },
+        "variance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Random variance for this phase (0-1)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TransitionType": {
+      "title": "Transition Type",
+      "description": "Type of transition between pattern phases",
+      "type": "string",
+      "enum": [
+        "immediate",
+        "linear",
+        "smooth",
+        "exponential"
+      ],
+      "default": "linear"
+    },
+
+    "GuardrailConfig": {
+      "title": "Guardrail Configuration",
+      "description": "Safety limits and constraints for load testing",
+      "type": "object",
+      "properties": {
+        "max_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Maximum allowed rate (jobs/sec)"
+        },
+        "max_total_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000,
+          "description": "Maximum total jobs to enqueue"
+        },
+        "max_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Maximum test duration"
+        },
+        "max_memory_mb": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32768,
+          "description": "Maximum memory usage in MB"
+        },
+        "max_cpu_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum CPU usage percentage"
+        },
+        "max_queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum queue depth allowed"
+        },
+        "rate_limit_window": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "1m",
+          "description": "Rate limiting window duration"
+        },
+        "emergency_stop": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable emergency stop on violations"
+        },
+        "warn_thresholds": {
+          "$ref": "#/definitions/WarnThresholds"
+        },
+        "cooldown_period": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Required cooldown between high-rate tests"
+        },
+        "environment_restrictions": {
+          "$ref": "#/definitions/EnvironmentRestrictions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "WarnThresholds": {
+      "title": "Warning Thresholds",
+      "description": "Thresholds for warning alerts before violations",
+      "type": "object",
+      "properties": {
+        "rate_warning": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80,
+          "description": "Rate warning threshold (percentage of max)"
+        },
+        "memory_warning": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80,
+          "description": "Memory warning threshold (percentage of max)"
+        },
+        "cpu_warning": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 70,
+          "description": "CPU warning threshold (percentage of max)"
+        },
+        "queue_depth_warn": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Queue depth warning threshold"
+        },
+        "duration_warning": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Duration warning threshold"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EnvironmentRestrictions": {
+      "title": "Environment Restrictions",
+      "description": "Environment-specific restrictions",
+      "type": "object",
+      "properties": {
+        "production": {
+          "$ref": "#/definitions/EnvironmentLimits"
+        },
+        "staging": {
+          "$ref": "#/definitions/EnvironmentLimits"
+        },
+        "development": {
+          "$ref": "#/definitions/EnvironmentLimits"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "EnvironmentLimits": {
+      "title": "Environment Limits",
+      "description": "Limits specific to an environment",
+      "type": "object",
+      "properties": {
+        "max_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_total_jobs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$"
+        },
+        "allowed_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PatternType"
+          }
+        },
+        "require_approval": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require manual approval for tests in this environment"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobConfiguration": {
+      "title": "Job Configuration",
+      "description": "Configuration for jobs to be enqueued during testing",
+      "type": "object",
+      "required": ["queue"],
+      "properties": {
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Target queue name"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Job payload data (any valid JSON object)"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 5,
+          "description": "Job priority level"
+        },
+        "delay": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "0s",
+          "description": "Job delay before processing"
+        },
+        "retry": {
+          "$ref": "#/definitions/RetryConfig"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "30s",
+          "description": "Job processing timeout"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom job headers"
+        },
+        "payload_template": {
+          "$ref": "#/definitions/PayloadTemplate"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RetryConfig": {
+      "title": "Retry Configuration",
+      "description": "Job retry configuration",
+      "type": "object",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum retry attempts"
+        },
+        "backoff_strategy": {
+          "$ref": "#/definitions/BackoffStrategy"
+        },
+        "initial_delay": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "1s",
+          "description": "Initial retry delay"
+        },
+        "max_delay": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "30s",
+          "description": "Maximum retry delay"
+        },
+        "backoff_multiplier": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 2,
+          "description": "Backoff multiplier for exponential strategy"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BackoffStrategy": {
+      "title": "Backoff Strategy",
+      "description": "Strategy for retry delay calculation",
+      "type": "string",
+      "enum": [
+        "fixed",
+        "exponential",
+        "linear",
+        "quadratic"
+      ],
+      "default": "exponential"
+    },
+
+    "PayloadTemplate": {
+      "title": "Payload Template",
+      "description": "Template for generating dynamic job payloads",
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "object",
+          "description": "Payload template with variable placeholders"
+        },
+        "variables": {
+          "$ref": "#/definitions/TemplateVariables"
+        },
+        "randomization": {
+          "$ref": "#/definitions/PayloadRandomization"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TemplateVariables": {
+      "title": "Template Variables",
+      "description": "Variables for payload template substitution",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include current timestamp"
+        },
+        "sequence": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include sequence number"
+        },
+        "random_id": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include random UUID"
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom variable definitions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PayloadRandomization": {
+      "title": "Payload Randomization",
+      "description": "Configuration for randomizing payload data",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RandomField"
+          },
+          "description": "Fields to randomize"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RandomField": {
+      "title": "Random Field",
+      "description": "Configuration for a randomized field",
+      "type": "object",
+      "required": ["path", "type"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "JSON path to the field"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "float", "boolean", "uuid"],
+          "description": "Type of random data to generate"
+        },
+        "options": {
+          "type": "object",
+          "description": "Type-specific options for random generation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LoadTestProfile": {
+      "title": "Load Test Profile",
+      "description": "Saved configuration for reusable load tests",
+      "type": "object",
+      "required": ["id", "name", "pattern", "job_config"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^profile_[a-zA-Z0-9]+$",
+          "description": "Unique profile identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Profile display name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Profile description"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0",
+          "description": "Profile version (semantic versioning)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "created_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Profile creator username"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "maxItems": 20,
+          "uniqueItems": true,
+          "description": "Profile tags for categorization and search"
+        },
+        "pattern": {
+          "$ref": "#/definitions/PatternConfig"
+        },
+        "guardrails": {
+          "$ref": "#/definitions/GuardrailConfig"
+        },
+        "job_config": {
+          "$ref": "#/definitions/JobConfiguration"
+        },
+        "metadata": {
+          "$ref": "#/definitions/ProfileMetadata"
+        },
+        "usage_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of times profile has been used"
+        },
+        "last_used": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last usage timestamp"
+        },
+        "favorite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether profile is marked as favorite"
+        },
+        "shared": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether profile is shared with team"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ProfileMetadata": {
+      "title": "Profile Metadata",
+      "description": "Additional metadata for load test profiles",
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production"],
+          "description": "Target environment for this profile"
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Profile purpose or use case"
+        },
+        "expected_load": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Expected load description (e.g., 'peak traffic', 'baseline')"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "maxItems": 10,
+          "description": "Required system dependencies"
+        },
+        "compatibility": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "maxItems": 10,
+          "description": "Compatible system versions"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Profile author information"
+        },
+        "documentation_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to additional documentation"
+        },
+        "custom_fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxProperties": 20,
+          "description": "Custom metadata fields"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternTestExecution": {
+      "title": "Pattern Test Execution",
+      "description": "Live execution state of a pattern test",
+      "type": "object",
+      "required": ["test_id", "status", "started_at"],
+      "properties": {
+        "test_id": {
+          "type": "string",
+          "pattern": "^test_[a-zA-Z0-9]+$",
+          "description": "Unique test execution identifier"
+        },
+        "profile_id": {
+          "type": "string",
+          "pattern": "^profile_[a-zA-Z0-9]+$",
+          "description": "Profile used for this test (if any)"
+        },
+        "status": {
+          "$ref": "#/definitions/TestStatus"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Test start timestamp"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Test completion timestamp"
+        },
+        "started_by": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User who started the test"
+        },
+        "pattern": {
+          "$ref": "#/definitions/PatternConfig"
+        },
+        "guardrails": {
+          "$ref": "#/definitions/GuardrailConfig"
+        },
+        "job_config": {
+          "$ref": "#/definitions/JobConfiguration"
+        },
+        "progress": {
+          "$ref": "#/definitions/TestProgress"
+        },
+        "current_metrics": {
+          "$ref": "#/definitions/CurrentMetrics"
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuardrailViolation"
+          },
+          "description": "Guardrail violations during test"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TestError"
+          },
+          "description": "Errors encountered during test"
+        },
+        "configuration": {
+          "$ref": "#/definitions/TestConfiguration"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TestStatus": {
+      "title": "Test Status",
+      "description": "Current status of a pattern test",
+      "type": "string",
+      "enum": [
+        "starting",
+        "running",
+        "stopping",
+        "completed",
+        "failed",
+        "cancelled",
+        "paused"
+      ]
+    },
+
+    "TestProgress": {
+      "title": "Test Progress",
+      "description": "Progress information for a running test",
+      "type": "object",
+      "required": ["elapsed_time", "percent_complete"],
+      "properties": {
+        "elapsed_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Time elapsed since test start"
+        },
+        "remaining_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Estimated remaining time"
+        },
+        "percent_complete": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Test completion percentage"
+        },
+        "jobs_enqueued": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Jobs enqueued so far"
+        },
+        "jobs_completed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Jobs completed so far"
+        },
+        "jobs_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Jobs failed so far"
+        },
+        "phase": {
+          "type": "string",
+          "description": "Current phase name (for multi-phase patterns)"
+        },
+        "phase_progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Progress within current phase"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CurrentMetrics": {
+      "title": "Current Metrics",
+      "description": "Real-time metrics for a running test",
+      "type": "object",
+      "properties": {
+        "target_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current target rate (jobs/sec)"
+        },
+        "actual_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current actual rate (jobs/sec)"
+        },
+        "rate_deviation": {
+          "type": "number",
+          "description": "Deviation from target rate (percentage)"
+        },
+        "queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current queue depth"
+        },
+        "processing_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current job processing rate (jobs/sec)"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Current error rate (0-1)"
+        },
+        "avg_latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average job latency in milliseconds"
+        },
+        "cpu_usage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Current CPU usage percentage"
+        },
+        "memory_usage": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current memory usage in MB"
+        },
+        "network_io": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Network I/O rate in bytes/sec"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "GuardrailViolation": {
+      "title": "Guardrail Violation",
+      "description": "A violation of configured guardrails",
+      "type": "object",
+      "required": ["type", "severity", "message", "timestamp"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ViolationType"
+        },
+        "severity": {
+          "$ref": "#/definitions/ViolationSeverity"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Human-readable violation description"
+        },
+        "requested_value": {
+          "type": "number",
+          "description": "Value that was requested"
+        },
+        "allowed_value": {
+          "type": "number",
+          "description": "Maximum allowed value"
+        },
+        "current_value": {
+          "type": "number",
+          "description": "Current measured value"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When violation occurred"
+        },
+        "action_taken": {
+          "$ref": "#/definitions/ViolationAction"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "How long violation lasted"
+        },
+        "context": {
+          "type": "object",
+          "description": "Additional context about the violation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ViolationType": {
+      "title": "Violation Type",
+      "description": "Type of guardrail violation",
+      "type": "string",
+      "enum": [
+        "max_rate",
+        "max_jobs",
+        "max_duration",
+        "max_memory",
+        "max_cpu",
+        "max_queue_depth",
+        "emergency_stop",
+        "environment_restriction",
+        "user_limit"
+      ]
+    },
+
+    "ViolationSeverity": {
+      "title": "Violation Severity",
+      "description": "Severity level of a violation",
+      "type": "string",
+      "enum": [
+        "warning",
+        "error",
+        "critical"
+      ]
+    },
+
+    "ViolationAction": {
+      "title": "Violation Action",
+      "description": "Action taken in response to a violation",
+      "type": "string",
+      "enum": [
+        "throttled",
+        "stopped",
+        "paused",
+        "ignored",
+        "alerted"
+      ]
+    },
+
+    "TestError": {
+      "title": "Test Error",
+      "description": "Error that occurred during test execution",
+      "type": "object",
+      "required": ["type", "message", "timestamp"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ErrorType"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Error message"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Detailed error information"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When error occurred"
+        },
+        "recoverable": {
+          "type": "boolean",
+          "description": "Whether error is recoverable"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of retry attempts made"
+        },
+        "stack_trace": {
+          "type": "string",
+          "description": "Error stack trace (if available)"
+        },
+        "component": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Component that generated the error"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ErrorType": {
+      "title": "Error Type",
+      "description": "Type of error that occurred",
+      "type": "string",
+      "enum": [
+        "enqueue_error",
+        "pattern_error",
+        "system_error",
+        "configuration_error",
+        "network_error",
+        "authentication_error",
+        "validation_error",
+        "timeout_error",
+        "resource_error"
+      ]
+    },
+
+    "TestConfiguration": {
+      "title": "Test Configuration",
+      "description": "Additional configuration for test execution",
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "$ref": "#/definitions/NotificationConfig"
+        },
+        "monitoring": {
+          "$ref": "#/definitions/MonitoringConfig"
+        },
+        "data_retention": {
+          "$ref": "#/definitions/DataRetentionConfig"
+        },
+        "export_settings": {
+          "$ref": "#/definitions/ExportSettings"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "NotificationConfig": {
+      "title": "Notification Configuration",
+      "description": "Configuration for test notifications",
+      "type": "object",
+      "properties": {
+        "webhook_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL for notifications"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address for notifications"
+        },
+        "slack_channel": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Slack channel for notifications"
+        },
+        "notify_on_start": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send notification when test starts"
+        },
+        "notify_on_complete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send notification when test completes"
+        },
+        "notify_on_violation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send notification on guardrail violations"
+        },
+        "notify_on_error": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send notification on errors"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MonitoringConfig": {
+      "title": "Monitoring Configuration",
+      "description": "Configuration for test monitoring",
+      "type": "object",
+      "properties": {
+        "metrics_interval": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "default": "5s",
+          "description": "Metrics collection interval"
+        },
+        "detailed_logging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable detailed logging"
+        },
+        "performance_profiling": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable performance profiling"
+        },
+        "custom_metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CustomMetric"
+          },
+          "description": "Custom metrics to collect"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CustomMetric": {
+      "title": "Custom Metric",
+      "description": "Definition of a custom metric to collect",
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "maxLength": 100,
+          "description": "Metric name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["counter", "gauge", "histogram"],
+          "description": "Metric type"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Metric description"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "description": "Metric labels"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DataRetentionConfig": {
+      "title": "Data Retention Configuration",
+      "description": "Configuration for test data retention",
+      "type": "object",
+      "properties": {
+        "retain_duration": {
+          "type": "string",
+          "pattern": "^\\d+[dw]$",
+          "default": "30d",
+          "description": "How long to retain test data"
+        },
+        "compress_after": {
+          "type": "string",
+          "pattern": "^\\d+[dw]$",
+          "default": "7d",
+          "description": "When to compress old data"
+        },
+        "export_before_deletion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Export data before deletion"
+        },
+        "retention_policy": {
+          "type": "string",
+          "enum": ["time_based", "size_based", "count_based"],
+          "default": "time_based",
+          "description": "Retention policy type"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ExportSettings": {
+      "title": "Export Settings",
+      "description": "Settings for test data export",
+      "type": "object",
+      "properties": {
+        "auto_export": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically export test results"
+        },
+        "export_format": {
+          "type": "string",
+          "enum": ["json", "csv", "xlsx"],
+          "default": "json",
+          "description": "Export format"
+        },
+        "include_raw_data": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include raw time-series data"
+        },
+        "export_location": {
+          "type": "string",
+          "format": "uri",
+          "description": "Export destination URL"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TestMetrics": {
+      "title": "Test Metrics",
+      "description": "Comprehensive metrics for a completed test",
+      "type": "object",
+      "required": ["test_id", "summary"],
+      "properties": {
+        "test_id": {
+          "type": "string",
+          "pattern": "^test_[a-zA-Z0-9]+$"
+        },
+        "summary": {
+          "$ref": "#/definitions/TestSummary"
+        },
+        "timeseries": {
+          "$ref": "#/definitions/TimeSeriesData"
+        },
+        "performance_stats": {
+          "$ref": "#/definitions/PerformanceStats"
+        },
+        "quality_metrics": {
+          "$ref": "#/definitions/QualityMetrics"
+        },
+        "pattern_analysis": {
+          "$ref": "#/definitions/PatternAnalysis"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TestSummary": {
+      "title": "Test Summary",
+      "description": "Summary statistics for a test",
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Total test duration"
+        },
+        "total_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total jobs enqueued"
+        },
+        "successful_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successfully completed jobs"
+        },
+        "failed_jobs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed jobs"
+        },
+        "avg_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average enqueue rate (jobs/sec)"
+        },
+        "peak_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak enqueue rate (jobs/sec)"
+        },
+        "min_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum enqueue rate (jobs/sec)"
+        },
+        "rate_accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rate accuracy (actual vs target)"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Job success rate"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimeSeriesData": {
+      "title": "Time Series Data",
+      "description": "Time-series data collected during test",
+      "type": "object",
+      "properties": {
+        "rates": {
+          "$ref": "#/definitions/RateTimeSeries"
+        },
+        "queue_metrics": {
+          "$ref": "#/definitions/QueueTimeSeries"
+        },
+        "system_metrics": {
+          "$ref": "#/definitions/SystemTimeSeries"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["1s", "5s", "10s", "30s", "1m"],
+          "description": "Data point resolution"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start time for time series"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End time for time series"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RateTimeSeries": {
+      "title": "Rate Time Series",
+      "description": "Time series data for rates",
+      "type": "object",
+      "properties": {
+        "target_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Target rate over time"
+        },
+        "actual_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Actual rate over time"
+        },
+        "deviation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Rate deviation over time"
+        },
+        "processing_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Job processing rate over time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "QueueTimeSeries": {
+      "title": "Queue Time Series",
+      "description": "Time series data for queue metrics",
+      "type": "object",
+      "properties": {
+        "depth": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Queue depth over time"
+        },
+        "enqueue_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Enqueue rate over time"
+        },
+        "dequeue_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Dequeue rate over time"
+        },
+        "error_rate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Error rate over time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SystemTimeSeries": {
+      "title": "System Time Series",
+      "description": "Time series data for system metrics",
+      "type": "object",
+      "properties": {
+        "cpu_usage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "CPU usage over time"
+        },
+        "memory_usage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Memory usage over time"
+        },
+        "network_io": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Network I/O over time"
+        },
+        "disk_io": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Disk I/O over time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DataPoint": {
+      "title": "Data Point",
+      "description": "A single data point in time series",
+      "type": "object",
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data point timestamp"
+        },
+        "value": {
+          "type": "number",
+          "description": "Data point value"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata for this data point"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PerformanceStats": {
+      "title": "Performance Statistics",
+      "description": "Performance statistics for a test",
+      "type": "object",
+      "properties": {
+        "latency_percentiles": {
+          "$ref": "#/definitions/LatencyPercentiles"
+        },
+        "throughput_stats": {
+          "$ref": "#/definitions/ThroughputStats"
+        },
+        "resource_utilization": {
+          "$ref": "#/definitions/ResourceUtilization"
+        },
+        "stability_metrics": {
+          "$ref": "#/definitions/StabilityMetrics"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LatencyPercentiles": {
+      "title": "Latency Percentiles",
+      "description": "Latency percentile statistics",
+      "type": "object",
+      "properties": {
+        "p50": {
+          "type": "number",
+          "minimum": 0,
+          "description": "50th percentile latency (ms)"
+        },
+        "p90": {
+          "type": "number",
+          "minimum": 0,
+          "description": "90th percentile latency (ms)"
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0,
+          "description": "95th percentile latency (ms)"
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99th percentile latency (ms)"
+        },
+        "p999": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99.9th percentile latency (ms)"
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum latency (ms)"
+        },
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum latency (ms)"
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Mean latency (ms)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThroughputStats": {
+      "title": "Throughput Statistics",
+      "description": "Throughput statistics",
+      "type": "object",
+      "properties": {
+        "peak_throughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak throughput (jobs/sec)"
+        },
+        "avg_throughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average throughput (jobs/sec)"
+        },
+        "sustained_throughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sustained throughput (jobs/sec)"
+        },
+        "throughput_variance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Throughput variance"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceUtilization": {
+      "title": "Resource Utilization",
+      "description": "System resource utilization statistics",
+      "type": "object",
+      "properties": {
+        "peak_cpu": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Peak CPU usage (%)"
+        },
+        "avg_cpu": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Average CPU usage (%)"
+        },
+        "peak_memory": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak memory usage (MB)"
+        },
+        "avg_memory": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average memory usage (MB)"
+        },
+        "peak_network": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak network I/O (bytes/sec)"
+        },
+        "avg_network": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average network I/O (bytes/sec)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "StabilityMetrics": {
+      "title": "Stability Metrics",
+      "description": "System stability metrics during test",
+      "type": "object",
+      "properties": {
+        "error_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of errors"
+        },
+        "violation_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of guardrail violations"
+        },
+        "downtime": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Total downtime during test"
+        },
+        "recovery_time": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "Average recovery time from errors"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "QualityMetrics": {
+      "title": "Quality Metrics",
+      "description": "Test quality and accuracy metrics",
+      "type": "object",
+      "properties": {
+        "rate_accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "How closely actual matched target rates"
+        },
+        "pattern_fidelity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "How well the pattern was followed"
+        },
+        "stability_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall system stability during test"
+        },
+        "error_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Error rate quality score (1 = no errors)"
+        },
+        "timing_accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Timing accuracy of pattern execution"
+        },
+        "resource_efficiency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Resource utilization efficiency"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternAnalysis": {
+      "title": "Pattern Analysis",
+      "description": "Analysis of pattern execution quality",
+      "type": "object",
+      "properties": {
+        "correlation_coefficient": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Correlation between target and actual rates"
+        },
+        "mean_squared_error": {
+          "type": "number",
+          "minimum": 0,
+          "description": "MSE between target and actual rates"
+        },
+        "phase_analysis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PhaseAnalysis"
+          },
+          "description": "Analysis for each pattern phase"
+        },
+        "anomalies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PatternAnomaly"
+          },
+          "description": "Detected pattern anomalies"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PhaseAnalysis": {
+      "title": "Phase Analysis",
+      "description": "Analysis of a specific pattern phase",
+      "type": "object",
+      "required": ["phase", "accuracy"],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "description": "Phase identifier"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Phase start time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Phase end time"
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Phase execution accuracy"
+        },
+        "avg_deviation": {
+          "type": "number",
+          "description": "Average deviation from target"
+        },
+        "max_deviation": {
+          "type": "number",
+          "description": "Maximum deviation from target"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternAnomaly": {
+      "title": "Pattern Anomaly",
+      "description": "Detected anomaly in pattern execution",
+      "type": "object",
+      "required": ["type", "timestamp", "severity"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["spike", "drop", "plateau", "oscillation", "drift"],
+          "description": "Type of anomaly detected"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When anomaly occurred"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+[smh]$",
+          "description": "How long anomaly lasted"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Anomaly severity"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Anomaly description"
+        },
+        "impact": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Impact on overall pattern quality"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternTemplate": {
+      "title": "Pattern Template",
+      "description": "Predefined pattern template",
+      "type": "object",
+      "required": ["id", "name", "pattern"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^template_[a-zA-Z0-9]+$",
+          "description": "Unique template identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Template display name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Template description"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["basic", "advanced", "stress", "spike", "endurance"],
+          "description": "Template category"
+        },
+        "pattern": {
+          "$ref": "#/definitions/PatternConfig"
+        },
+        "recommended_guardrails": {
+          "$ref": "#/definitions/GuardrailConfig"
+        },
+        "use_cases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10,
+          "description": "Common use cases for this template"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Template difficulty level"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "maxItems": 20,
+          "description": "Template tags"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Template author"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Template version"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

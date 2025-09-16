@@ -1,0 +1,771 @@
+openapi: 3.0.3
+info:
+  title: Producer Backpressure API
+  description: |
+    API specification for the Producer Backpressure system (F021) that provides real-time
+    queue health signals, throttling recommendations, and circuit breaker management.
+
+    This API enables producers to intelligently throttle themselves based on queue health,
+    preventing cascade failures and maintaining system stability under load.
+  version: 1.0.0
+  contact:
+    name: Queue System Team
+    email: queue-team@company.com
+  license:
+    name: Internal Use Only
+
+servers:
+  - url: https://api.queue-system.company.com/v1
+    description: Production API
+  - url: https://staging-api.queue-system.company.com/v1
+    description: Staging API
+  - url: http://localhost:8080/v1
+    description: Local development
+
+paths:
+  /backpressure/stats:
+    get:
+      summary: Get queue health statistics
+      description: |
+        Returns real-time queue health metrics including backlog sizes, processing rates,
+        and threshold states. Used by backpressure controllers to make throttling decisions.
+      operationId: getBackpressureStats
+      tags:
+        - Backpressure
+      parameters:
+        - name: queue
+          in: query
+          description: Filter stats for specific queue (optional, returns all if omitted)
+          required: false
+          schema:
+            type: string
+            example: "email-queue"
+        - name: priority
+          in: query
+          description: Filter stats for specific priority level
+          required: false
+          schema:
+            $ref: '#/components/schemas/Priority'
+        - name: include_history
+          in: query
+          description: Include historical trend data
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Queue health statistics retrieved successfully
+          headers:
+            X-Poll-Interval:
+              description: Recommended polling interval for next request
+              schema:
+                type: string
+                example: "5s"
+            X-Cache-Until:
+              description: Cache expiry time for these stats
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackpressureStatsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /backpressure/thresholds:
+    get:
+      summary: Get backpressure thresholds
+      description: |
+        Returns current threshold configuration for all queues and priority levels.
+        Thresholds define when throttling and circuit breaking should occur.
+      operationId: getBackpressureThresholds
+      tags:
+        - Configuration
+      parameters:
+        - name: queue
+          in: query
+          description: Filter thresholds for specific queue
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thresholds retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThresholdsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Update backpressure thresholds
+      description: |
+        Updates threshold configuration for queues. Changes take effect immediately
+        and are validated for consistency (green < yellow < red).
+      operationId: updateBackpressureThresholds
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateThresholdsRequest'
+      responses:
+        '200':
+          description: Thresholds updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThresholdsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invalid threshold configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /backpressure/circuit-breakers:
+    get:
+      summary: Get circuit breaker states
+      description: |
+        Returns current circuit breaker states for all queues, including failure counts,
+        state transitions, and next probe times.
+      operationId: getCircuitBreakerStates
+      tags:
+        - Circuit Breakers
+      parameters:
+        - name: queue
+          in: query
+          description: Filter circuit breakers for specific queue
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          description: Filter by circuit breaker state
+          required: false
+          schema:
+            $ref: '#/components/schemas/CircuitState'
+      responses:
+        '200':
+          description: Circuit breaker states retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CircuitBreakersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /backpressure/circuit-breakers/{queue}/trip:
+    post:
+      summary: Manually trip circuit breaker
+      description: |
+        Manually opens a circuit breaker for emergency load shedding.
+        Should only be used in critical situations.
+      operationId: tripCircuitBreaker
+      tags:
+        - Circuit Breakers
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          description: Queue name for circuit breaker to trip
+          schema:
+            type: string
+            example: "email-queue"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Reason for manual circuit trip
+                  example: "Emergency load shedding during incident"
+                duration:
+                  type: string
+                  description: How long to keep circuit open (ISO 8601 duration)
+                  example: "PT5M"
+      responses:
+        '200':
+          description: Circuit breaker tripped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CircuitBreakerState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Queue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /backpressure/circuit-breakers/{queue}/reset:
+    post:
+      summary: Reset circuit breaker
+      description: |
+        Manually resets a circuit breaker to closed state, clearing failure counts
+        and allowing normal operation to resume.
+      operationId: resetCircuitBreaker
+      tags:
+        - Circuit Breakers
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          description: Queue name for circuit breaker to reset
+          schema:
+            type: string
+            example: "email-queue"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Reason for manual circuit reset
+                  example: "Issue resolved, resuming normal operation"
+      responses:
+        '200':
+          description: Circuit breaker reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CircuitBreakerState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Queue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /backpressure/recommendations:
+    post:
+      summary: Get throttling recommendations
+      description: |
+        Returns specific throttling recommendations for a given context.
+        This is primarily used by SDK implementations for real-time decisions.
+      operationId: getThrottlingRecommendations
+      tags:
+        - Recommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+      responses:
+        '200':
+          description: Throttling recommendations generated successfully
+          headers:
+            X-Backpressure-Status:
+              description: Overall backpressure status
+              schema:
+                type: string
+                enum: [normal, throttled, shedding]
+            X-Backpressure-Delay:
+              description: Recommended delay in milliseconds
+              schema:
+                type: integer
+                example: 250
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Priority:
+      type: string
+      enum: [high, medium, low]
+      description: Job priority level
+      example: medium
+
+    CircuitState:
+      type: string
+      enum: [closed, open, half_open]
+      description: Circuit breaker state
+      example: closed
+
+    BacklogWindow:
+      type: object
+      description: Threshold window defining backlog ranges
+      required:
+        - green_max
+        - yellow_max
+        - red_max
+      properties:
+        green_max:
+          type: integer
+          description: Maximum backlog for green zone (no throttling)
+          minimum: 0
+          example: 500
+        yellow_max:
+          type: integer
+          description: Maximum backlog for yellow zone (light throttling)
+          minimum: 1
+          example: 2000
+        red_max:
+          type: integer
+          description: Maximum backlog for red zone (heavy throttling)
+          minimum: 1
+          example: 5000
+
+    QueueStats:
+      type: object
+      description: Real-time queue health statistics
+      required:
+        - queue_name
+        - current_backlog
+        - processing_rate
+        - oldest_job_age_ms
+        - current_zone
+        - last_updated
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "email-queue"
+        current_backlog:
+          type: integer
+          description: Current number of jobs in queue
+          minimum: 0
+          example: 1250
+        processing_rate:
+          type: number
+          description: Jobs processed per second (recent average)
+          minimum: 0
+          example: 45.7
+        oldest_job_age_ms:
+          type: integer
+          description: Age of oldest job in milliseconds
+          minimum: 0
+          example: 30000
+        avg_job_latency_ms:
+          type: integer
+          description: Average job processing latency in milliseconds
+          minimum: 0
+          example: 150
+        rate_limit_budget:
+          type: number
+          description: Remaining rate limit budget (0.0 to 1.0)
+          minimum: 0
+          maximum: 1
+          example: 0.75
+        current_zone:
+          type: string
+          enum: [green, yellow, red]
+          description: Current threshold zone based on backlog
+          example: yellow
+        worker_count:
+          type: integer
+          description: Number of active workers processing this queue
+          minimum: 0
+          example: 5
+        last_updated:
+          type: string
+          format: date-time
+          description: When these stats were last updated
+          example: "2024-01-15T10:30:00Z"
+
+    ThresholdConfig:
+      type: object
+      description: Threshold configuration for a specific queue and priority
+      required:
+        - queue_name
+        - priority
+        - thresholds
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "email-queue"
+        priority:
+          $ref: '#/components/schemas/Priority'
+        thresholds:
+          $ref: '#/components/schemas/BacklogWindow'
+        updated_at:
+          type: string
+          format: date-time
+          description: When these thresholds were last updated
+          example: "2024-01-15T09:00:00Z"
+
+    CircuitBreakerState:
+      type: object
+      description: Current state of a circuit breaker
+      required:
+        - queue_name
+        - state
+        - failure_count
+        - success_count
+        - last_state_change
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "email-queue"
+        state:
+          $ref: '#/components/schemas/CircuitState'
+        failure_count:
+          type: integer
+          description: Current failure count in the current window
+          minimum: 0
+          example: 2
+        success_count:
+          type: integer
+          description: Current success count in the current window
+          minimum: 0
+          example: 8
+        last_state_change:
+          type: string
+          format: date-time
+          description: When the circuit last changed state
+          example: "2024-01-15T10:25:00Z"
+        next_probe_time:
+          type: string
+          format: date-time
+          description: When the next probe will be attempted (half-open state only)
+          example: "2024-01-15T10:35:00Z"
+        trip_reason:
+          type: string
+          description: Reason why circuit was tripped (if manual)
+          example: "Emergency load shedding during incident"
+
+    BackpressureStatsResponse:
+      type: object
+      description: Response containing queue health statistics
+      required:
+        - queues
+        - timestamp
+      properties:
+        queues:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueStats'
+          description: Array of queue statistics
+        timestamp:
+          type: string
+          format: date-time
+          description: When this response was generated
+          example: "2024-01-15T10:30:00Z"
+        cache_until:
+          type: string
+          format: date-time
+          description: When this data should be considered stale
+          example: "2024-01-15T10:30:30Z"
+
+    ThresholdsResponse:
+      type: object
+      description: Response containing threshold configurations
+      required:
+        - thresholds
+        - timestamp
+      properties:
+        thresholds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThresholdConfig'
+          description: Array of threshold configurations
+        defaults:
+          type: object
+          description: Default thresholds for queues without specific configuration
+          additionalProperties:
+            $ref: '#/components/schemas/BacklogWindow'
+        timestamp:
+          type: string
+          format: date-time
+          description: When this response was generated
+          example: "2024-01-15T10:30:00Z"
+
+    CircuitBreakersResponse:
+      type: object
+      description: Response containing circuit breaker states
+      required:
+        - circuit_breakers
+        - timestamp
+      properties:
+        circuit_breakers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitBreakerState'
+          description: Array of circuit breaker states
+        timestamp:
+          type: string
+          format: date-time
+          description: When this response was generated
+          example: "2024-01-15T10:30:00Z"
+
+    UpdateThresholdsRequest:
+      type: object
+      description: Request to update threshold configurations
+      required:
+        - thresholds
+      properties:
+        thresholds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThresholdConfig'
+          description: Array of threshold configurations to update
+        reason:
+          type: string
+          description: Reason for threshold update
+          example: "Adjusting for increased traffic capacity"
+
+    RecommendationRequest:
+      type: object
+      description: Request for throttling recommendations
+      required:
+        - queue_name
+        - priority
+      properties:
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "email-queue"
+        priority:
+          $ref: '#/components/schemas/Priority'
+        current_rate:
+          type: number
+          description: Current enqueue rate (jobs/second)
+          minimum: 0
+          example: 10.5
+        batch_size:
+          type: integer
+          description: Number of jobs in current batch
+          minimum: 1
+          example: 5
+
+    RecommendationResponse:
+      type: object
+      description: Throttling recommendations
+      required:
+        - action
+        - queue_name
+        - priority
+        - timestamp
+      properties:
+        action:
+          type: string
+          enum: [allow, throttle, shed]
+          description: Recommended action
+          example: throttle
+        queue_name:
+          type: string
+          description: Name of the queue
+          example: "email-queue"
+        priority:
+          $ref: '#/components/schemas/Priority'
+        delay_ms:
+          type: integer
+          description: Recommended delay in milliseconds (if throttling)
+          minimum: 0
+          example: 250
+        reason:
+          type: string
+          description: Explanation for the recommendation
+          example: "Queue backlog in yellow zone, applying light throttling"
+        circuit_breaker_state:
+          $ref: '#/components/schemas/CircuitState'
+        expires_at:
+          type: string
+          format: date-time
+          description: When this recommendation expires
+          example: "2024-01-15T10:30:30Z"
+        timestamp:
+          type: string
+          format: date-time
+          description: When this recommendation was generated
+          example: "2024-01-15T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      description: Standard error response
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "QUEUE_NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Queue 'invalid-queue' not found"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+          example: "abc123def456"
+        timestamp:
+          type: string
+          format: date-time
+          description: When this error occurred
+          example: "2024-01-15T10:30:00Z"
+
+    ValidationError:
+      type: object
+      description: Validation error response
+      required:
+        - error
+        - message
+        - violations
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "VALIDATION_FAILED"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Threshold validation failed"
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field that failed validation
+                example: "thresholds[0].yellow_max"
+              message:
+                type: string
+                description: Validation error message
+                example: "yellow_max must be greater than green_max"
+              value:
+                description: Invalid value
+                example: 100
+        timestamp:
+          type: string
+          format: date-time
+          description: When this error occurred
+          example: "2024-01-15T10:30:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters or request format
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimited:
+      description: Rate limited - too many requests
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 30
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Backpressure
+    description: Core backpressure monitoring and statistics
+  - name: Configuration
+    description: Threshold and configuration management
+  - name: Circuit Breakers
+    description: Circuit breaker state management
+  - name: Recommendations
+    description: Real-time throttling recommendations

@@ -1,0 +1,28 @@
+default: true
+
+# Allow long lines in docs where URLs and code blocks occur
+MD013: false
+
+# Permit duplicate headings at different levels/siblings only
+MD024:
+  siblings_only: true
+
+# Heading punctuation rules (common sentence punctuation)
+MD026:
+  punctuation: ".,;:!"
+
+# Allow first line not to be a top-level heading (some docs start with metadata)
+MD041: false
+
+# Code block style
+MD046:
+  style: fenced
+
+# Inline code spans: allow backticks in text without strict checks
+MD038: false
+
+# Ordered list item prefix flexible (allow any numbering)
+MD029: false
+
+# Allow inline HTML (used in some docs)
+MD033: false

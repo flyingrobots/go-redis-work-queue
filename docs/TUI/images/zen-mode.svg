@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+  <rect width="100%" height="100%" fill="#0f0f14"/>
+  <!-- Single full-screen panel to suggest zen mode -->
+  <rect x="20" y="20" width="680" height="320" fill="#1d1f27" stroke="#7aa2f7"/>
+  <g font-family="monospace" font-size="14" fill="#e8e8e8">
+    <text x="36" y="48">Zen Mode — Focused Panel</text>
+  </g>
+</svg>
+

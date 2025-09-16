@@ -1,0 +1,2195 @@
+openapi: 3.0.3
+info:
+  title: Chaos Harness API
+  description: |
+    The Chaos Harness API provides controlled fault injection and reliability testing
+    capabilities for the go-redis-work-queue system. This API enables teams to execute
+    chaos engineering experiments with built-in safety guardrails and comprehensive
+    observability.
+
+    ## Key Features
+    - **Controlled Fault Injection**: Inject failures across workers, Redis, and network
+    - **Safety Guardrails**: Built-in protections prevent uncontrolled chaos
+    - **Scenario Management**: Pre-built and custom chaos experiment definitions
+    - **Real-time Monitoring**: Live metrics and recovery tracking during experiments
+    - **Emergency Controls**: Instant termination of active chaos experiments
+
+    ## Safety Notice
+      **WARNING**: Chaos experiments can impact system performance and availability.
+    Always validate scenarios in non-production environments first. Production usage
+    requires explicit approval and should only be performed by authorized personnel.
+
+    ## Authentication
+    All endpoints require authentication via API key or JWT token.
+    Chaos operations require elevated permissions and may need approval workflows.
+
+  version: 1.0.0
+  contact:
+    name: Platform Team
+    url: https://github.com/company/go-redis-work-queue
+    email: platform-team@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.company.com/v1
+    description: Production server
+  - url: https://staging-api.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - apiKey: []
+  - bearerAuth: []
+
+paths:
+  /chaos/scenarios:
+    get:
+      summary: List chaos scenarios
+      description: |
+        Retrieve available chaos scenarios including pre-built templates
+        and custom scenarios. Supports filtering by category and environment.
+      tags:
+        - Scenarios
+      parameters:
+        - name: category
+          in: query
+          description: Filter by scenario category
+          schema:
+            type: string
+            enum: [basic, advanced, game_day, custom]
+        - name: environment
+          in: query
+          description: Filter by target environment
+          schema:
+            type: string
+        - name: complexity
+          in: query
+          description: Filter by complexity level
+          schema:
+            type: string
+            enum: [low, medium, high]
+      responses:
+        '200':
+          description: List of available scenarios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScenarioSummary'
+                  categories:
+                    type: array
+                    items:
+                      type: string
+                  total_count:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create custom scenario
+      description: |
+        Create a new custom chaos scenario with specified injection steps
+        and safety constraints. Custom scenarios are validated before creation.
+      tags:
+        - Scenarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioDefinition'
+      responses:
+        '201':
+          description: Scenario created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosScenario'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Scenario validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/scenarios/{scenario_id}:
+    get:
+      summary: Get scenario details
+      description: |
+        Retrieve detailed information about a specific chaos scenario
+        including injection steps, safety constraints, and execution history.
+      tags:
+        - Scenarios
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          description: Unique scenario identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scenario details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosScenario'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update scenario
+      description: |
+        Update an existing custom scenario. Pre-built scenarios cannot be modified.
+        Updates are validated and require re-approval for production use.
+      tags:
+        - Scenarios
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          description: Unique scenario identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioDefinition'
+      responses:
+        '200':
+          description: Scenario updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosScenario'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Scenario validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete custom scenario
+      description: |
+        Delete a custom chaos scenario. Pre-built scenarios cannot be deleted.
+        Scenarios with active executions cannot be deleted.
+      tags:
+        - Scenarios
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          description: Unique scenario identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scenario deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Scenario has active executions
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/executions:
+    get:
+      summary: List chaos executions
+      description: |
+        Retrieve chaos experiment executions with support for filtering
+        by status, scenario, and time range.
+      tags:
+        - Executions
+      parameters:
+        - name: status
+          in: query
+          description: Filter by execution status
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, stopped]
+        - name: scenario_id
+          in: query
+          description: Filter by scenario ID
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: Filter executions after this time
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Filter executions before this time
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of executions per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of chaos executions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  executions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExecutionSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Execute chaos scenario
+      description: |
+        Start execution of a chaos scenario. Requires safety validation
+        and may require approval for production environments.
+      tags:
+        - Executions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionRequest'
+      responses:
+        '201':
+          description: Execution started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosExecution'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Safety constraints violated or approval required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyViolation'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/executions/{execution_id}:
+    get:
+      summary: Get execution details
+      description: |
+        Retrieve detailed information about a specific chaos execution
+        including current status, metrics, and recovery progress.
+      tags:
+        - Executions
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          description: Unique execution identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosExecution'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Stop chaos execution
+      description: |
+        Immediately stop an active chaos execution and clean up all
+        fault injections. This is equivalent to the emergency stop function.
+      tags:
+        - Executions
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          description: Unique execution identifier
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Stop command accepted, cleanup in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  stop_initiated_at:
+                    type: string
+                    format: date-time
+                  estimated_cleanup_time:
+                    type: string
+                    format: duration
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Execution already stopped or completed
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/executions/{execution_id}/metrics:
+    get:
+      summary: Get execution metrics
+      description: |
+        Retrieve real-time and historical metrics for a chaos execution
+        including system performance and recovery indicators.
+      tags:
+        - Metrics
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          description: Unique execution identifier
+          schema:
+            type: string
+        - name: metric_types
+          in: query
+          description: Filter by specific metric types
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [performance, recovery, system, custom]
+        - name: start_time
+          in: query
+          description: Start time for metric range
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for metric range
+          schema:
+            type: string
+            format: date-time
+        - name: resolution
+          in: query
+          description: Metric resolution (aggregation interval)
+          schema:
+            type: string
+            enum: [1s, 5s, 30s, 1m, 5m]
+            default: 5s
+      responses:
+        '200':
+          description: Execution metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionMetrics'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/executions/{execution_id}/events:
+    get:
+      summary: Get execution events
+      description: |
+        Retrieve timeline of events during chaos execution including
+        injection starts/stops, system responses, and recovery milestones.
+      tags:
+        - Events
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          description: Unique execution identifier
+          schema:
+            type: string
+        - name: event_types
+          in: query
+          description: Filter by event types
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [injection, system, recovery, alert, error]
+        - name: start_time
+          in: query
+          description: Start time for event range
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for event range
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Execution events timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChaosEvent'
+                  total_events:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/injectors:
+    get:
+      summary: List fault injectors
+      description: |
+        Retrieve available fault injectors and their current status.
+        Shows which injectors are active and their capabilities.
+      tags:
+        - Injectors
+      responses:
+        '200':
+          description: List of fault injectors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  injectors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InjectorInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/injectors/{injector_id}:
+    get:
+      summary: Get injector details
+      description: |
+        Retrieve detailed information about a specific fault injector
+        including capabilities, current status, and configuration options.
+      tags:
+        - Injectors
+      parameters:
+        - name: injector_id
+          in: path
+          required: true
+          description: Unique injector identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Injector details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InjectorDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Control injector
+      description: |
+        Manually control a fault injector for testing and validation.
+        This bypasses scenario execution for direct injector testing.
+      tags:
+        - Injectors
+      parameters:
+        - name: injector_id
+          in: path
+          required: true
+          description: Unique injector identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InjectorControl'
+      responses:
+        '200':
+          description: Injector control command executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InjectorStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Injector not available or conflicting operation
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/safety:
+    get:
+      summary: Get safety status
+      description: |
+        Retrieve current safety guardian status including active constraints,
+        environment protections, and emergency stop availability.
+      tags:
+        - Safety
+      responses:
+        '200':
+          description: Safety system status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/safety/emergency-stop:
+    post:
+      summary: Emergency stop all chaos
+      description: |
+        Immediately stop ALL active chaos executions across the entire system.
+        This is the ultimate safety mechanism and should only be used in emergencies.
+      tags:
+        - Safety
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation:
+                  type: string
+                  description: Must be "EMERGENCY_STOP" to confirm
+                reason:
+                  type: string
+                  description: Reason for emergency stop
+              required: [confirmation, reason]
+      responses:
+        '202':
+          description: Emergency stop initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  stop_initiated_at:
+                    type: string
+                    format: date-time
+                  affected_executions:
+                    type: array
+                    items:
+                      type: string
+                  estimated_cleanup_time:
+                    type: string
+                    format: duration
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/reports:
+    get:
+      summary: List chaos reports
+      description: |
+        Retrieve generated chaos experiment reports with filtering
+        and pagination support.
+      tags:
+        - Reports
+      parameters:
+        - name: scenario_id
+          in: query
+          description: Filter by scenario ID
+          schema:
+            type: string
+        - name: execution_id
+          in: query
+          description: Filter by execution ID
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Filter reports after this date
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter reports before this date
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of reports per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: List of chaos reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReportSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Generate chaos report
+      description: |
+        Generate a comprehensive report for a completed chaos execution
+        including analysis, recommendations, and visualizations.
+      tags:
+        - Reports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '202':
+          description: Report generation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/reports/{report_id}:
+    get:
+      summary: Get chaos report
+      description: |
+        Retrieve a generated chaos experiment report with detailed
+        analysis and recommendations.
+      tags:
+        - Reports
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          description: Unique report identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chaos experiment report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosReport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/reports/{report_id}/download:
+    get:
+      summary: Download report file
+      description: |
+        Download the chaos report in specified format (PDF, HTML, JSON).
+        Reports are available for limited time after generation.
+      tags:
+        - Reports
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          description: Unique report identifier
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: Download format
+          schema:
+            type: string
+            enum: [pdf, html, json]
+            default: pdf
+      responses:
+        '200':
+          description: Report file download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/html:
+              schema:
+                type: string
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosReport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          description: Report file expired or no longer available
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /chaos/config:
+    get:
+      summary: Get chaos configuration
+      description: |
+        Retrieve current chaos harness configuration including
+        safety limits, environment settings, and feature flags.
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update chaos configuration
+      description: |
+        Update chaos harness configuration. Some changes may require
+        system restart and must be approved by administrators.
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChaosConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChaosConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Configuration validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ScenarioSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique scenario identifier
+        name:
+          type: string
+          description: Human-readable scenario name
+        description:
+          type: string
+          description: Scenario description
+        category:
+          type: string
+          enum: [basic, advanced, game_day, custom]
+          description: Scenario category
+        complexity:
+          type: string
+          enum: [low, medium, high]
+          description: Complexity level
+        estimated_duration:
+          type: string
+          format: duration
+          description: Estimated execution duration
+        environments:
+          type: array
+          items:
+            type: string
+          description: Supported environments
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        last_executed:
+          type: string
+          format: date-time
+          description: Last execution timestamp
+      required:
+        - id
+        - name
+        - description
+        - category
+        - complexity
+
+    ScenarioDefinition:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Scenario name
+        description:
+          type: string
+          description: Scenario description
+        duration:
+          type: string
+          format: duration
+          description: Total scenario duration
+        injection_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/InjectionStep'
+          description: Fault injection steps
+        expected_metrics:
+          $ref: '#/components/schemas/ExpectedMetrics'
+        safety_limits:
+          $ref: '#/components/schemas/SafetyLimits'
+        environments:
+          type: array
+          items:
+            type: string
+          description: Allowed environments
+        tags:
+          type: array
+          items:
+            type: string
+          description: Scenario tags
+      required:
+        - name
+        - description
+        - duration
+        - injection_steps
+        - safety_limits
+
+    ChaosScenario:
+      allOf:
+        - $ref: '#/components/schemas/ScenarioDefinition'
+        - type: object
+          properties:
+            id:
+              type: string
+              description: Unique scenario identifier
+            category:
+              type: string
+              enum: [basic, advanced, game_day, custom]
+              description: Scenario category
+            complexity:
+              type: string
+              enum: [low, medium, high]
+              description: Complexity level
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+            created_by:
+              type: string
+              description: Creator identifier
+            execution_count:
+              type: integer
+              description: Number of times executed
+            success_rate:
+              type: number
+              description: Historical success rate
+          required:
+            - id
+            - category
+            - complexity
+            - created_at
+
+    InjectionStep:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Step identifier
+        start_offset:
+          type: string
+          format: duration
+          description: Delay before starting injection
+        duration:
+          type: string
+          format: duration
+          description: Injection duration
+        injector_type:
+          type: string
+          enum: [worker, redis, network, load]
+          description: Type of fault injector
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Injector-specific parameters
+        target_scope:
+          $ref: '#/components/schemas/TargetScope'
+        description:
+          type: string
+          description: Step description
+      required:
+        - start_offset
+        - duration
+        - injector_type
+        - parameters
+        - target_scope
+
+    TargetScope:
+      type: object
+      properties:
+        workers:
+          type: array
+          items:
+            type: string
+          description: Target worker IDs (empty = all)
+        queues:
+          type: array
+          items:
+            type: string
+          description: Target queue names (empty = all)
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Percentage of targets to affect
+        selection_strategy:
+          type: string
+          enum: [random, round_robin, specific]
+          default: random
+          description: Target selection strategy
+      additionalProperties: false
+
+    ExpectedMetrics:
+      type: object
+      properties:
+        max_recovery_time:
+          type: string
+          format: duration
+          description: Maximum expected recovery time
+        max_error_rate:
+          type: number
+          description: Maximum acceptable error rate
+        min_throughput:
+          type: number
+          description: Minimum acceptable throughput
+        max_dlq_jobs:
+          type: integer
+          description: Maximum jobs in DLQ
+        stability_threshold:
+          type: string
+          format: duration
+          description: Time to consider system stable
+      additionalProperties: false
+
+    SafetyLimits:
+      type: object
+      properties:
+        max_affected_workers:
+          type: integer
+          description: Maximum workers that can be affected
+        max_affected_queues:
+          type: integer
+          description: Maximum queues that can be affected
+        max_failure_rate:
+          type: number
+          description: Maximum allowed failure rate
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum scenario duration
+        requires_approval:
+          type: boolean
+          description: Whether approval is required
+        production_allowed:
+          type: boolean
+          description: Whether production execution is allowed
+      required:
+        - max_affected_workers
+        - max_affected_queues
+        - max_failure_rate
+        - max_duration
+
+    ExecutionRequest:
+      type: object
+      properties:
+        scenario_id:
+          type: string
+          description: Scenario to execute
+        environment:
+          type: string
+          description: Target environment
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Execution parameters (overrides)
+        dry_run:
+          type: boolean
+          default: false
+          description: Validate without executing
+        approval_token:
+          type: string
+          description: Approval token if required
+        description:
+          type: string
+          description: Execution description
+      required:
+        - scenario_id
+        - environment
+
+    ExecutionSummary:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          description: Unique execution identifier
+        scenario_id:
+          type: string
+          description: Associated scenario ID
+        scenario_name:
+          type: string
+          description: Scenario name
+        status:
+          type: string
+          enum: [pending, running, completed, failed, stopped]
+          description: Current execution status
+        environment:
+          type: string
+          description: Target environment
+        started_at:
+          type: string
+          format: date-time
+          description: Execution start time
+        completed_at:
+          type: string
+          format: date-time
+          description: Execution completion time
+        duration:
+          type: string
+          format: duration
+          description: Total execution duration
+        initiated_by:
+          type: string
+          description: User who initiated execution
+        success:
+          type: boolean
+          description: Whether execution was successful
+      required:
+        - execution_id
+        - scenario_id
+        - scenario_name
+        - status
+        - environment
+        - started_at
+        - initiated_by
+
+    ChaosExecution:
+      allOf:
+        - $ref: '#/components/schemas/ExecutionSummary'
+        - type: object
+          properties:
+            scenario:
+              $ref: '#/components/schemas/ChaosScenario'
+            current_step:
+              type: integer
+              description: Current injection step index
+            injections:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActiveInjection'
+            metrics:
+              $ref: '#/components/schemas/ExecutionMetrics'
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChaosEvent'
+            safety_status:
+              $ref: '#/components/schemas/SafetyStatus'
+            estimated_completion:
+              type: string
+              format: date-time
+              description: Estimated completion time
+            can_stop:
+              type: boolean
+              description: Whether execution can be stopped
+
+    ActiveInjection:
+      type: object
+      properties:
+        injection_id:
+          type: string
+          description: Unique injection identifier
+        injector_type:
+          type: string
+          description: Type of fault injector
+        status:
+          type: string
+          enum: [starting, active, stopping, stopped]
+          description: Injection status
+        started_at:
+          type: string
+          format: date-time
+          description: Injection start time
+        ends_at:
+          type: string
+          format: date-time
+          description: Planned injection end time
+        target_scope:
+          $ref: '#/components/schemas/TargetScope'
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Injection parameters
+        affected_count:
+          type: integer
+          description: Number of affected targets
+      required:
+        - injection_id
+        - injector_type
+        - status
+        - target_scope
+
+    ExecutionMetrics:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          description: Associated execution ID
+        last_updated:
+          type: string
+          format: date-time
+          description: Last metrics update time
+        system_metrics:
+          $ref: '#/components/schemas/SystemMetrics'
+        recovery_metrics:
+          $ref: '#/components/schemas/RecoveryMetrics'
+        performance_metrics:
+          $ref: '#/components/schemas/PerformanceMetrics'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricDataPoint'
+          description: Time series metrics data
+      required:
+        - execution_id
+        - last_updated
+        - system_metrics
+
+    SystemMetrics:
+      type: object
+      properties:
+        worker_count:
+          type: integer
+          description: Total worker count
+        healthy_workers:
+          type: integer
+          description: Number of healthy workers
+        queue_depth:
+          type: integer
+          description: Total queue depth
+        processing_rate:
+          type: number
+          description: Jobs processed per second
+        error_rate:
+          type: number
+          description: Current error rate percentage
+        dlq_count:
+          type: integer
+          description: Jobs in dead letter queue
+        memory_usage:
+          type: number
+          description: System memory usage percentage
+        cpu_usage:
+          type: number
+          description: System CPU usage percentage
+      required:
+        - worker_count
+        - healthy_workers
+        - queue_depth
+        - processing_rate
+        - error_rate
+
+    RecoveryMetrics:
+      type: object
+      properties:
+        recovery_started_at:
+          type: string
+          format: date-time
+          description: When recovery began
+        recovery_completed_at:
+          type: string
+          format: date-time
+          description: When recovery completed
+        recovery_time:
+          type: string
+          format: duration
+          description: Total recovery duration
+        backlog_drain_time:
+          type: string
+          format: duration
+          description: Time to clear backlog
+        stability_achieved_at:
+          type: string
+          format: date-time
+          description: When system became stable
+        recovery_efficiency:
+          type: number
+          description: Recovery efficiency score
+      additionalProperties: false
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        baseline_throughput:
+          type: number
+          description: Baseline throughput before chaos
+        minimum_throughput:
+          type: number
+          description: Minimum throughput during chaos
+        current_throughput:
+          type: number
+          description: Current throughput
+        throughput_impact:
+          type: number
+          description: Percentage throughput impact
+        latency_p50:
+          type: number
+          description: 50th percentile latency
+        latency_p95:
+          type: number
+          description: 95th percentile latency
+        latency_p99:
+          type: number
+          description: 99th percentile latency
+      required:
+        - baseline_throughput
+        - current_throughput
+        - throughput_impact
+
+    MetricDataPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Data point timestamp
+        metric_name:
+          type: string
+          description: Metric name
+        value:
+          type: number
+          description: Metric value
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+          description: Metric tags
+      required:
+        - timestamp
+        - metric_name
+        - value
+
+    ChaosEvent:
+      type: object
+      properties:
+        event_id:
+          type: string
+          description: Unique event identifier
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        event_type:
+          type: string
+          enum: [injection, system, recovery, alert, error]
+          description: Type of event
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Event severity
+        source:
+          type: string
+          description: Event source component
+        message:
+          type: string
+          description: Event message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional event details
+        related_injection:
+          type: string
+          description: Related injection ID if applicable
+      required:
+        - event_id
+        - timestamp
+        - event_type
+        - severity
+        - source
+        - message
+
+    InjectorInfo:
+      type: object
+      properties:
+        injector_id:
+          type: string
+          description: Unique injector identifier
+        injector_type:
+          type: string
+          enum: [worker, redis, network, load]
+          description: Type of fault injector
+        name:
+          type: string
+          description: Human-readable injector name
+        description:
+          type: string
+          description: Injector description
+        status:
+          type: string
+          enum: [available, busy, disabled, error]
+          description: Current injector status
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Injector capabilities
+        current_injections:
+          type: integer
+          description: Number of active injections
+        max_concurrent:
+          type: integer
+          description: Maximum concurrent injections
+      required:
+        - injector_id
+        - injector_type
+        - name
+        - status
+        - capabilities
+
+    InjectorDetails:
+      allOf:
+        - $ref: '#/components/schemas/InjectorInfo'
+        - type: object
+          properties:
+            configuration:
+              type: object
+              additionalProperties: true
+              description: Injector configuration
+            supported_parameters:
+              type: array
+              items:
+                $ref: '#/components/schemas/ParameterDefinition'
+            active_injections:
+              type: array
+              items:
+                $ref: '#/components/schemas/ActiveInjection'
+            metrics:
+              type: object
+              additionalProperties: true
+              description: Injector metrics
+            last_health_check:
+              type: string
+              format: date-time
+              description: Last health check timestamp
+
+    ParameterDefinition:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Parameter name
+        type:
+          type: string
+          enum: [string, integer, number, boolean, array, object]
+          description: Parameter type
+        description:
+          type: string
+          description: Parameter description
+        required:
+          type: boolean
+          description: Whether parameter is required
+        default_value:
+          description: Default parameter value
+        validation:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+            pattern:
+              type: string
+            enum:
+              type: array
+              items: {}
+          description: Parameter validation rules
+      required:
+        - name
+        - type
+        - description
+        - required
+
+    InjectorControl:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [start, stop, restart, configure]
+          description: Control action
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Action parameters
+        duration:
+          type: string
+          format: duration
+          description: Injection duration (for start action)
+        target_scope:
+          $ref: '#/components/schemas/TargetScope'
+      required:
+        - action
+
+    InjectorStatus:
+      type: object
+      properties:
+        injector_id:
+          type: string
+          description: Injector identifier
+        status:
+          type: string
+          enum: [available, busy, disabled, error]
+          description: Current status
+        last_action:
+          type: string
+          description: Last executed action
+        active_injections:
+          type: integer
+          description: Number of active injections
+        last_updated:
+          type: string
+          format: date-time
+          description: Last status update
+        message:
+          type: string
+          description: Status message
+      required:
+        - injector_id
+        - status
+        - last_updated
+
+    SafetyStatus:
+      type: object
+      properties:
+        overall_status:
+          type: string
+          enum: [safe, warning, danger, emergency]
+          description: Overall safety status
+        environment_guard:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            current_environment:
+              type: string
+            production_locked:
+              type: boolean
+            allowed_environments:
+              type: array
+              items:
+                type: string
+        blast_radius_limits:
+          type: object
+          properties:
+            max_affected_workers:
+              type: integer
+            current_affected_workers:
+              type: integer
+            max_affected_queues:
+              type: integer
+            current_affected_queues:
+              type: integer
+            max_failure_rate:
+              type: number
+            current_failure_rate:
+              type: number
+        emergency_stop:
+          type: object
+          properties:
+            available:
+              type: boolean
+            last_used:
+              type: string
+              format: date-time
+            reason:
+              type: string
+        active_violations:
+          type: array
+          items:
+            type: object
+            properties:
+              violation_type:
+                type: string
+              severity:
+                type: string
+                enum: [low, medium, high, critical]
+              message:
+                type: string
+              detected_at:
+                type: string
+                format: date-time
+      required:
+        - overall_status
+        - environment_guard
+        - blast_radius_limits
+        - emergency_stop
+
+    SafetyViolation:
+      type: object
+      properties:
+        violation_type:
+          type: string
+          enum: [environment, blast_radius, approval_required, resource_limit]
+          description: Type of safety violation
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Violation severity
+        message:
+          type: string
+          description: Violation description
+        requirements:
+          type: array
+          items:
+            type: string
+          description: Requirements to resolve violation
+        can_override:
+          type: boolean
+          description: Whether violation can be overridden
+        override_requirements:
+          type: array
+          items:
+            type: string
+          description: Requirements for override
+      required:
+        - violation_type
+        - severity
+        - message
+        - can_override
+
+    ReportRequest:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          description: Execution to generate report for
+        report_type:
+          type: string
+          enum: [summary, detailed, comparison]
+          default: detailed
+          description: Type of report to generate
+        format:
+          type: string
+          enum: [pdf, html, json]
+          default: pdf
+          description: Report format
+        include_sections:
+          type: array
+          items:
+            type: string
+            enum: [executive_summary, metrics, timeline, analysis, recommendations]
+          description: Sections to include in report
+        comparison_executions:
+          type: array
+          items:
+            type: string
+          description: Additional executions for comparison (if report_type=comparison)
+      required:
+        - execution_id
+
+    ReportSummary:
+      type: object
+      properties:
+        report_id:
+          type: string
+          description: Unique report identifier
+        execution_id:
+          type: string
+          description: Associated execution ID
+        scenario_name:
+          type: string
+          description: Scenario name
+        report_type:
+          type: string
+          description: Report type
+        format:
+          type: string
+          description: Report format
+        status:
+          type: string
+          enum: [generating, completed, failed]
+          description: Generation status
+        created_at:
+          type: string
+          format: date-time
+          description: Report creation time
+        completed_at:
+          type: string
+          format: date-time
+          description: Report completion time
+        file_size:
+          type: integer
+          description: Report file size in bytes
+        download_expires_at:
+          type: string
+          format: date-time
+          description: Download expiration time
+      required:
+        - report_id
+        - execution_id
+        - scenario_name
+        - report_type
+        - format
+        - status
+        - created_at
+
+    ReportJob:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: Report generation job ID
+        execution_id:
+          type: string
+          description: Associated execution ID
+        status:
+          type: string
+          enum: [queued, generating, completed, failed]
+          description: Job status
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Generation progress percentage
+        estimated_completion:
+          type: string
+          format: date-time
+          description: Estimated completion time
+        message:
+          type: string
+          description: Status message
+      required:
+        - job_id
+        - execution_id
+        - status
+        - progress
+
+    ChaosReport:
+      type: object
+      properties:
+        report_id:
+          type: string
+          description: Unique report identifier
+        execution_id:
+          type: string
+          description: Associated execution ID
+        scenario:
+          $ref: '#/components/schemas/ChaosScenario'
+        execution_summary:
+          $ref: '#/components/schemas/ExecutionSummary'
+        executive_summary:
+          type: object
+          properties:
+            success:
+              type: boolean
+            duration:
+              type: string
+              format: duration
+            recovery_time:
+              type: string
+              format: duration
+            impact_assessment:
+              type: string
+            key_findings:
+              type: array
+              items:
+                type: string
+        metrics_analysis:
+          type: object
+          properties:
+            baseline_performance:
+              $ref: '#/components/schemas/PerformanceMetrics'
+            impact_metrics:
+              $ref: '#/components/schemas/PerformanceMetrics'
+            recovery_analysis:
+              $ref: '#/components/schemas/RecoveryMetrics'
+            comparative_analysis:
+              type: string
+        timeline_analysis:
+          type: object
+          properties:
+            key_events:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChaosEvent'
+            phase_breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  phase_name:
+                    type: string
+                  duration:
+                    type: string
+                    format: duration
+                  description:
+                    type: string
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+                enum: [performance, reliability, monitoring, process]
+              priority:
+                type: string
+                enum: [low, medium, high, critical]
+              title:
+                type: string
+              description:
+                type: string
+              implementation_effort:
+                type: string
+                enum: [low, medium, high]
+        generated_at:
+          type: string
+          format: date-time
+          description: Report generation time
+        generated_by:
+          type: string
+          description: Report generator identifier
+      required:
+        - report_id
+        - execution_id
+        - scenario
+        - execution_summary
+        - generated_at
+
+    ChaosConfig:
+      type: object
+      properties:
+        safety:
+          type: object
+          properties:
+            environment_protection:
+              type: object
+              properties:
+                production_locked:
+                  type: boolean
+                  default: true
+                allowed_environments:
+                  type: array
+                  items:
+                    type: string
+                  default: ["development", "staging"]
+                approval_required_environments:
+                  type: array
+                  items:
+                    type: string
+                  default: ["production", "staging"]
+            blast_radius_limits:
+              type: object
+              properties:
+                max_affected_workers_percentage:
+                  type: number
+                  default: 50
+                max_affected_queues_percentage:
+                  type: number
+                  default: 30
+                max_global_failure_rate:
+                  type: number
+                  default: 25
+                max_concurrent_scenarios:
+                  type: integer
+                  default: 3
+            emergency_controls:
+              type: object
+              properties:
+                auto_stop_on_violation:
+                  type: boolean
+                  default: true
+                emergency_contact:
+                  type: string
+                escalation_timeout:
+                  type: string
+                  format: duration
+                  default: "5m"
+        injectors:
+          type: object
+          properties:
+            worker_injector:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: true
+                max_latency:
+                  type: string
+                  format: duration
+                  default: "30s"
+                max_failure_rate:
+                  type: number
+                  default: 50
+            redis_injector:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                proxy_required:
+                  type: boolean
+                  default: true
+                max_latency:
+                  type: string
+                  format: duration
+                  default: "10s"
+            network_injector:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                requires_privileges:
+                  type: boolean
+                  default: true
+        monitoring:
+          type: object
+          properties:
+            metrics_retention:
+              type: string
+              format: duration
+              default: "30d"
+            real_time_updates:
+              type: boolean
+              default: true
+            alert_on_violations:
+              type: boolean
+              default: true
+            export_metrics:
+              type: boolean
+              default: true
+        features:
+          type: object
+          properties:
+            scenario_builder:
+              type: boolean
+              default: true
+            report_generation:
+              type: boolean
+              default: true
+            scheduled_chaos:
+              type: boolean
+              default: false
+            game_day_mode:
+              type: boolean
+              default: true
+      required: []
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Validation error message
+        field_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+        request_id:
+          type: string
+          description: Request identifier for debugging
+      required:
+        - error
+        - message
+        - request_id
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+        total_pages:
+          type: integer
+          minimum: 0
+        total_items:
+          type: integer
+          minimum: 0
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+      required:
+        - page
+        - limit
+        - total_pages
+        - total_items
+        - has_next
+        - has_previous
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+      required:
+        - error
+        - message
+        - request_id
+        - timestamp
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions for chaos operations
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Scenarios
+    description: Chaos scenario management and templates
+  - name: Executions
+    description: Chaos experiment execution and control
+  - name: Metrics
+    description: Real-time and historical chaos metrics
+  - name: Events
+    description: Chaos event timeline and logging
+  - name: Injectors
+    description: Fault injector management and control
+  - name: Safety
+    description: Safety controls and emergency procedures
+  - name: Reports
+    description: Chaos experiment reporting and analysis
+  - name: Configuration
+    description: Chaos harness configuration management

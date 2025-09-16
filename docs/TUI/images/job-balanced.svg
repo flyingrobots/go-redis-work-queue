@@ -1,0 +1,22 @@
+<svg width="960" height="540" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .label{font-family: monospace; font-size: 14px; fill: #ddd}
+  </style>
+  <!-- Background -->
+  <rect x="0" y="0" width="960" height="540" fill="#1e1e1e"/>
+  <!-- Tab Bar -->
+  <rect x="8" y="8" width="300" height="28" fill="#2a2a2a" stroke="#666"/>
+  <text x="16" y="27" class="label">[ Job Queue ] [ Workers ] [ DLQ ] [ Settings ]</text>
+  <!-- Header -->
+  <text x="16" y="64" class="label">Job Queue TUI — Redis localhost:6379</text>
+  <text x="16" y="84" class="label">Focus: Queues | Heartbeats: 0 | Processing lists: 0</text>
+  <!-- Body Top Row: Queues | gutter | Charts -->
+  <rect x="16" y="100" width="450" height="300" fill="#2b3240" stroke="#607ae6"/>
+  <text x="28" y="122" class="label">Queues</text>
+  <rect x="470" y="100" width="20" height="300" fill="#1e1e1e"/>
+  <rect x="492" y="100" width="452" height="300" fill="#2f3b2e" stroke="#607ae6"/>
+  <text x="504" y="122" class="label">Charts</text>
+  <!-- Bottom Row: Info -->
+  <rect x="16" y="412" width="928" height="96" fill="#303040" stroke="#607ae6"/>
+  <text x="28" y="434" class="label">Info</text>
+</svg>

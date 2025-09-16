@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+  <rect width="100%" height="100%" fill="#0f0f14"/>
+  <!-- Dim background to suggest overlay -->
+  <rect x="0" y="0" width="100%" height="100%" fill="#000" opacity="0.35"/>
+  <!-- Palette panel -->
+  <rect x="120" y="60" width="480" height="240" rx="8" fill="#1d1f27" stroke="#7aa2f7"/>
+  <g font-family="monospace" font-size="12" fill="#e8e8e8">
+    <!-- Input -->
+    <rect x="140" y="80" width="440" height="24" rx="4" fill="#0f0f14" stroke="#444"/>
+    <text x="150" y="96" fill="#888">&gt; requeue selected…</text>
+    <!-- Results -->
+    <text x="150" y="126">Requeue selected (DLQ → high)</text>
+    <text x="150" y="146">Purge DLQ (confirm)</text>
+    <text x="150" y="166">Peek 10 from selected queue</text>
+    <text x="150" y="186">Open Trace for selected job</text>
+    <text x="150" y="206">Export table to CSV</text>
+  </g>
+</svg>
+

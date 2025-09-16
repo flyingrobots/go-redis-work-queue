@@ -1,0 +1,48 @@
+redis:
+  addr: "localhost:6379"
+  pool_size_multiplier: 10
+  min_idle_conns: 5
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  max_retries: 3
+
+worker:
+  count: 8
+  heartbeat_ttl: 30s
+  max_retries: 3
+  backoff:
+    base: 100ms
+    max: 2s
+  priorities: ["high", "low"]
+  queues:
+    high: "jobqueue:high_priority"
+    low:  "jobqueue:low_priority"
+  processing_list_pattern: "jobqueue:worker:%s:processing"
+  heartbeat_key_pattern:  "jobqueue:processing:worker:%s"
+  completed_list: "jobqueue:completed"
+  dead_letter_list: "jobqueue:dead_letter"
+  brpoplpush_timeout: 1s
+
+producer:
+  scan_dir: "./data"
+  include_globs: ["**/*"]
+  exclude_globs: ["**/*.tmp", "**/.DS_Store"]
+  default_priority: "low"
+  high_priority_exts: [".pdf", ".docx", ".xlsx", ".zip"]
+  rate_limit_per_sec: 1000
+  rate_limit_key: "jobqueue:rate_limit:producer"
+
+circuit_breaker:
+  failure_threshold: 0.5
+  window: 1m
+  cooldown_period: 30s
+  min_samples: 20
+
+observability:
+  metrics_port: 9191
+  log_level: "info"
+  queue_sample_interval: 2s
+  tracing:
+    enabled: false
+    endpoint: ""

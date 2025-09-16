@@ -1,0 +1,886 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.example.com/schemas/calendar-view/v1",
+  "title": "Calendar View Schema",
+  "description": "JSON Schema definitions for calendar-based job scheduling and visualization data models",
+  "definitions": {
+    "ScheduleWindow": {
+      "type": "object",
+      "title": "Schedule Window",
+      "description": "Time window data for calendar view with aggregated job information",
+      "properties": {
+        "window": {
+          "type": "object",
+          "description": "Time window definition",
+          "properties": {
+            "from": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Start of the time window (ISO 8601)",
+              "example": "2025-09-14T00:00:00Z"
+            },
+            "till": {
+              "type": "string",
+              "format": "date-time",
+              "description": "End of the time window (ISO 8601)",
+              "example": "2025-10-14T23:59:59Z"
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Timezone for display purposes",
+              "default": "UTC",
+              "example": "America/New_York"
+            },
+            "granularity": {
+              "type": "string",
+              "enum": ["hour", "day", "week"],
+              "description": "Time bucket granularity for aggregation",
+              "default": "day"
+            }
+          },
+          "required": ["from", "till", "timezone", "granularity"],
+          "additionalProperties": false
+        },
+        "buckets": {
+          "type": "array",
+          "description": "Array of time buckets with aggregated job data",
+          "items": {
+            "$ref": "#/definitions/TimeBucket"
+          },
+          "minItems": 0,
+          "maxItems": 10000
+        },
+        "summary": {
+          "type": "object",
+          "description": "Summary statistics for the entire window",
+          "properties": {
+            "total_jobs": {
+              "type": "integer",
+              "description": "Total number of jobs in the window",
+              "minimum": 0,
+              "example": 1250
+            },
+            "peak_day": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Day with the highest job count",
+              "example": "2025-09-20T00:00:00Z"
+            },
+            "peak_count": {
+              "type": "integer",
+              "description": "Highest job count on any single day",
+              "minimum": 0,
+              "example": 89
+            },
+            "avg_daily": {
+              "type": "number",
+              "description": "Average jobs per day",
+              "minimum": 0,
+              "example": 41.7
+            },
+            "unique_queues": {
+              "type": "integer",
+              "description": "Number of unique queues with jobs",
+              "minimum": 0
+            },
+            "unique_job_types": {
+              "type": "integer",
+              "description": "Number of unique job types",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["window", "buckets"],
+      "additionalProperties": false
+    },
+
+    "TimeBucket": {
+      "type": "object",
+      "title": "Time Bucket",
+      "description": "Aggregated job data for a specific time period",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start timestamp of the bucket (UTC)",
+          "example": "2025-09-14T00:00:00Z"
+        },
+        "local_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start timestamp in display timezone",
+          "example": "2025-09-13T20:00:00-04:00"
+        },
+        "job_count": {
+          "type": "integer",
+          "description": "Total number of jobs in this bucket",
+          "minimum": 0,
+          "example": 42
+        },
+        "queues": {
+          "type": "object",
+          "description": "Job counts broken down by queue",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": {
+            "high-priority": 15,
+            "normal": 20,
+            "low": 7
+          }
+        },
+        "density_score": {
+          "type": "number",
+          "description": "Normalized density score for heatmap visualization (0.0 to 1.0)",
+          "minimum": 0,
+          "maximum": 1,
+          "example": 0.7
+        },
+        "job_types": {
+          "type": "object",
+          "description": "Job counts broken down by job type",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example": {
+            "daily_report": 10,
+            "data_sync": 15,
+            "cleanup": 5
+          }
+        },
+        "estimated_duration": {
+          "type": "integer",
+          "description": "Total estimated execution time for all jobs in seconds",
+          "minimum": 0,
+          "example": 7200
+        },
+        "recurring_count": {
+          "type": "integer",
+          "description": "Number of jobs from recurring rules",
+          "minimum": 0
+        },
+        "manual_count": {
+          "type": "integer",
+          "description": "Number of manually scheduled jobs",
+          "minimum": 0
+        },
+        "priority_breakdown": {
+          "type": "object",
+          "description": "Job counts by priority level",
+          "properties": {
+            "high": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "normal": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "low": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["timestamp", "local_time", "job_count", "density_score"],
+      "additionalProperties": false
+    },
+
+    "ScheduledJob": {
+      "type": "object",
+      "title": "Scheduled Job",
+      "description": "Individual scheduled job with calendar-specific metadata",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier",
+          "minLength": 1,
+          "maxLength": 128,
+          "example": "job_12345"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue name where job will be executed",
+          "minLength": 1,
+          "maxLength": 64,
+          "example": "high-priority"
+        },
+        "job_type": {
+          "type": "string",
+          "description": "Type of job being scheduled",
+          "minLength": 1,
+          "maxLength": 64,
+          "example": "daily_report"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Scheduled execution time (UTC)",
+          "example": "2025-09-14T13:00:00Z"
+        },
+        "local_time": {
+          "type": "string",
+          "description": "Human-readable local time",
+          "example": "09:00 AM EDT"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["manual", "recurring_rule", "api", "retry", "dependency"],
+          "description": "How this job was scheduled"
+        },
+        "rule_id": {
+          "type": "string",
+          "description": "ID of recurring rule that created this job (if applicable)",
+          "example": "rule_001"
+        },
+        "estimated_duration": {
+          "type": "string",
+          "description": "Estimated execution duration",
+          "pattern": "^\\d+[smh]$",
+          "example": "5m"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "Job IDs that must complete before this job can run",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "maxItems": 100,
+          "example": ["job_11111", "job_11112"]
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for categorization and filtering",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "uniqueItems": true,
+          "maxItems": 20,
+          "example": ["reporting", "daily", "critical"]
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Job priority (1=highest, 10=lowest)",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional job metadata",
+          "additionalProperties": true,
+          "properties": {
+            "owner": {
+              "type": "string",
+              "description": "User or team responsible for the job"
+            },
+            "environment": {
+              "type": "string",
+              "description": "Target environment (dev, staging, prod)"
+            },
+            "retry_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of retry attempts"
+            }
+          }
+        },
+        "can_reschedule": {
+          "type": "boolean",
+          "description": "Whether this job can be rescheduled",
+          "default": true
+        },
+        "reschedule_count": {
+          "type": "integer",
+          "description": "Number of times this job has been rescheduled",
+          "minimum": 0,
+          "default": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job was originally scheduled"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who scheduled the job"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["scheduled", "pending", "running", "completed", "failed", "cancelled"],
+          "description": "Current job status"
+        }
+      },
+      "required": ["id", "queue", "job_type", "scheduled_at", "source"],
+      "additionalProperties": false
+    },
+
+    "RecurringRule": {
+      "type": "object",
+      "title": "Recurring Rule",
+      "description": "Configuration for automatically generating recurring scheduled jobs",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique rule identifier",
+          "minLength": 1,
+          "maxLength": 128,
+          "example": "rule_001"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable rule name",
+          "minLength": 1,
+          "maxLength": 128,
+          "example": "Daily Reports"
+        },
+        "cron": {
+          "type": "string",
+          "description": "Standard 5-field cron expression (minute hour day month weekday)",
+          "pattern": "^[0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+ [0-9/*,-]+$",
+          "example": "0 9 * * 1-5"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for cron evaluation",
+          "default": "UTC",
+          "example": "America/New_York"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Target queue for generated jobs",
+          "minLength": 1,
+          "maxLength": 64,
+          "example": "high-priority"
+        },
+        "job_template": {
+          "type": "object",
+          "description": "Template for jobs created by this rule",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Job type for generated jobs",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "payload": {
+              "type": "object",
+              "description": "Job payload template",
+              "additionalProperties": true
+            },
+            "priority": {
+              "type": "integer",
+              "description": "Priority for generated jobs",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 5
+            },
+            "timeout": {
+              "type": "integer",
+              "description": "Job timeout in seconds",
+              "minimum": 1,
+              "maximum": 86400,
+              "default": 300
+            },
+            "tags": {
+              "type": "array",
+              "description": "Tags to apply to generated jobs",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        },
+        "options": {
+          "type": "object",
+          "description": "Advanced options for rule execution",
+          "properties": {
+            "max_concurrent": {
+              "type": "integer",
+              "description": "Maximum concurrent jobs from this rule",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 1
+            },
+            "jitter_seconds": {
+              "type": "integer",
+              "description": "Random jitter to add to scheduled time (0-3600 seconds)",
+              "minimum": 0,
+              "maximum": 3600,
+              "default": 0
+            },
+            "retry_policy": {
+              "type": "string",
+              "enum": ["none", "linear", "exponential"],
+              "description": "Retry policy for failed jobs from this rule",
+              "default": "none"
+            },
+            "catchup": {
+              "type": "boolean",
+              "description": "Whether to catch up missed executions after downtime",
+              "default": false
+            },
+            "max_history": {
+              "type": "integer",
+              "description": "Maximum number of historical executions to track",
+              "minimum": 0,
+              "maximum": 1000,
+              "default": 100
+            },
+            "overlap_policy": {
+              "type": "string",
+              "enum": ["allow", "skip", "replace"],
+              "description": "What to do if previous execution is still running",
+              "default": "skip"
+            }
+          },
+          "additionalProperties": false
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "disabled", "expired"],
+          "description": "Current rule status"
+        },
+        "next_run": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Next scheduled execution time (null if paused/disabled)",
+          "example": "2025-09-15T13:00:00Z"
+        },
+        "last_run": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last execution time (null if never executed)",
+          "example": "2025-09-14T13:00:00Z"
+        },
+        "execution_count": {
+          "type": "integer",
+          "description": "Total number of jobs created by this rule",
+          "minimum": 0,
+          "default": 0
+        },
+        "success_count": {
+          "type": "integer",
+          "description": "Number of successful executions",
+          "minimum": 0,
+          "default": 0
+        },
+        "failure_count": {
+          "type": "integer",
+          "description": "Number of failed executions",
+          "minimum": 0,
+          "default": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the rule was created"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who created the rule",
+          "example": "user123"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the rule was last modified"
+        },
+        "updated_by": {
+          "type": "string",
+          "description": "User who last modified the rule"
+        },
+        "paused_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the rule was paused (null if not paused)"
+        },
+        "paused_by": {
+          "type": "string",
+          "description": "User who paused the rule"
+        },
+        "resume_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Automatic resume time (null if manual resume required)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional rule metadata",
+          "properties": {
+            "owner": {
+              "type": "string",
+              "description": "Team or user responsible for this rule",
+              "example": "platform-team"
+            },
+            "description": {
+              "type": "string",
+              "description": "Human-readable description of the rule's purpose",
+              "maxLength": 512,
+              "example": "Generates daily reports for business stakeholders"
+            },
+            "tags": {
+              "type": "array",
+              "description": "Tags for categorization",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "uniqueItems": true,
+              "maxItems": 20
+            },
+            "contact": {
+              "type": "string",
+              "description": "Contact information for rule owner",
+              "example": "platform-team@company.com"
+            },
+            "documentation_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Link to rule documentation"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["id", "name", "cron", "timezone", "queue", "job_template", "status"],
+      "additionalProperties": false
+    },
+
+    "RescheduleRequest": {
+      "type": "object",
+      "title": "Reschedule Request",
+      "description": "Request to reschedule a job to a new time",
+      "properties": {
+        "new_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "New scheduled execution time",
+          "example": "2025-09-14T14:30:00Z"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for interpreting the new time",
+          "default": "UTC",
+          "example": "America/New_York"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for rescheduling",
+          "maxLength": 256,
+          "example": "Avoiding maintenance window"
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Whether to send notifications about the reschedule",
+          "default": false
+        },
+        "cascade": {
+          "type": "boolean",
+          "description": "Whether to reschedule dependent jobs automatically",
+          "default": false
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Force reschedule even if job is close to execution",
+          "default": false
+        }
+      },
+      "required": ["new_time"],
+      "additionalProperties": false
+    },
+
+    "CalendarConfiguration": {
+      "type": "object",
+      "title": "Calendar Configuration",
+      "description": "Configuration settings for calendar view behavior and appearance",
+      "properties": {
+        "default_timezone": {
+          "type": "string",
+          "description": "Default timezone for calendar display",
+          "default": "UTC",
+          "example": "America/New_York"
+        },
+        "supported_timezones": {
+          "type": "array",
+          "description": "List of timezones supported by the system",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "example": ["UTC", "America/New_York", "Europe/London", "Asia/Tokyo"]
+        },
+        "view_settings": {
+          "type": "object",
+          "description": "Default view preferences",
+          "properties": {
+            "default_view": {
+              "type": "string",
+              "enum": ["month", "week", "day"],
+              "description": "Default calendar view",
+              "default": "month"
+            },
+            "week_start": {
+              "type": "string",
+              "enum": ["sunday", "monday"],
+              "description": "First day of the week",
+              "default": "monday"
+            },
+            "time_format": {
+              "type": "string",
+              "enum": ["12h", "24h"],
+              "description": "Time display format",
+              "default": "24h"
+            },
+            "show_weekends": {
+              "type": "boolean",
+              "description": "Whether to show weekends in calendar views",
+              "default": true
+            },
+            "compact_mode": {
+              "type": "boolean",
+              "description": "Use compact display for dense calendars",
+              "default": false
+            },
+            "density_colors": {
+              "type": "object",
+              "description": "Color scheme for job density visualization",
+              "properties": {
+                "low": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "description": "Color for low job density",
+                  "example": "#e8f5e8"
+                },
+                "medium": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "description": "Color for medium job density",
+                  "example": "#a5d6a7"
+                },
+                "high": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "description": "Color for high job density",
+                  "example": "#66bb6a"
+                },
+                "critical": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "description": "Color for critical job density",
+                  "example": "#ef5350"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "object",
+          "description": "System limits for calendar operations",
+          "properties": {
+            "max_window_days": {
+              "type": "integer",
+              "description": "Maximum days that can be requested in a single window",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 365
+            },
+            "max_jobs_per_request": {
+              "type": "integer",
+              "description": "Maximum jobs returned in a single API request",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1000
+            },
+            "max_rules_per_user": {
+              "type": "integer",
+              "description": "Maximum recurring rules per user",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 50
+            },
+            "max_reschedules_per_hour": {
+              "type": "integer",
+              "description": "Maximum reschedule operations per user per hour",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "features": {
+          "type": "object",
+          "description": "Feature toggles for calendar functionality",
+          "properties": {
+            "reschedule_enabled": {
+              "type": "boolean",
+              "description": "Whether job rescheduling is enabled",
+              "default": true
+            },
+            "bulk_operations": {
+              "type": "boolean",
+              "description": "Whether bulk operations are allowed",
+              "default": true
+            },
+            "recurring_rules": {
+              "type": "boolean",
+              "description": "Whether recurring rules are enabled",
+              "default": true
+            },
+            "timezone_conversion": {
+              "type": "boolean",
+              "description": "Whether timezone conversion is enabled",
+              "default": true
+            },
+            "heatmap_visualization": {
+              "type": "boolean",
+              "description": "Whether heatmap visualization is enabled",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["default_timezone", "supported_timezones"],
+      "additionalProperties": false
+    },
+
+    "CalendarEvent": {
+      "type": "object",
+      "title": "Calendar Event",
+      "description": "Real-time event notification for calendar updates",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "description": "Unique event identifier"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": ["job_scheduled", "job_rescheduled", "job_cancelled", "rule_created", "rule_updated", "rule_paused", "rule_resumed"],
+          "description": "Type of calendar event"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the event occurred"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User who triggered the event"
+        },
+        "affected_entities": {
+          "type": "object",
+          "description": "Entities affected by this event",
+          "properties": {
+            "jobs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Job IDs affected"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Rule IDs affected"
+            },
+            "queues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Queue names affected"
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Event-specific data",
+          "additionalProperties": true
+        }
+      },
+      "required": ["event_id", "event_type", "timestamp"],
+      "additionalProperties": false
+    },
+
+    "Error": {
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "minLength": 1,
+          "example": "Invalid cron expression"
+        },
+        "code": {
+          "type": "string",
+          "description": "Machine-readable error code",
+          "pattern": "^[A-Z_]+$",
+          "example": "INVALID_CRON_EXPRESSION"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error context and details",
+          "additionalProperties": true,
+          "properties": {
+            "field": {
+              "type": "string",
+              "description": "Field that caused the error"
+            },
+            "value": {
+              "type": "string",
+              "description": "Invalid value that was provided"
+            },
+            "allowed_values": {
+              "type": "array",
+              "description": "List of allowed values"
+            }
+          }
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Request trace ID for debugging",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        },
+        "path": {
+          "type": "string",
+          "description": "API path where the error occurred",
+          "example": "/api/v1/schedules/rules"
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTP method used",
+          "example": "POST"
+        }
+      },
+      "required": ["error"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,824 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.company.com/context-menu/v1",
+  "title": "Right-Click Context Menu Schema",
+  "description": "JSON Schema definitions for the right-click context menu system",
+  "definitions": {
+    "Position": {
+      "$id": "#/definitions/Position",
+      "type": "object",
+      "title": "Screen Position",
+      "description": "X,Y coordinates on the screen",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767,
+          "description": "X coordinate in pixels"
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767,
+          "description": "Y coordinate in pixels"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Rect": {
+      "$id": "#/definitions/Rect",
+      "type": "object",
+      "title": "Rectangle Bounds",
+      "description": "Rectangular area defined by position and dimensions",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Left edge X coordinate"
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Top edge Y coordinate"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32767,
+          "description": "Rectangle width in pixels"
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32767,
+          "description": "Rectangle height in pixels"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ContextType": {
+      "$id": "#/definitions/ContextType",
+      "type": "string",
+      "title": "Context Type",
+      "description": "Type of UI element that can have context menus",
+      "enum": [
+        "queue_row",
+        "dlq_item",
+        "worker_row",
+        "job_item",
+        "cluster_tab",
+        "chart",
+        "info_panel",
+        "status_bar",
+        "navigation_tab",
+        "metric_card"
+      ]
+    },
+
+    "InputType": {
+      "$id": "#/definitions/InputType",
+      "type": "string",
+      "title": "Input Event Type",
+      "description": "Type of user input event",
+      "enum": [
+        "mouse_click",
+        "mouse_move",
+        "mouse_enter",
+        "mouse_leave",
+        "key_press",
+        "key_release",
+        "touch_start",
+        "touch_end"
+      ]
+    },
+
+    "ActionStatus": {
+      "$id": "#/definitions/ActionStatus",
+      "type": "string",
+      "title": "Action Execution Status",
+      "description": "Status of action execution",
+      "enum": [
+        "pending",
+        "executing",
+        "completed",
+        "failed",
+        "cancelled",
+        "confirmation_required"
+      ]
+    },
+
+    "PermissionLevel": {
+      "$id": "#/definitions/PermissionLevel",
+      "type": "string",
+      "title": "Permission Level",
+      "description": "Level of permission required for actions",
+      "enum": [
+        "none",
+        "read",
+        "write",
+        "admin",
+        "super_admin"
+      ]
+    },
+
+    "MenuContext": {
+      "$id": "#/definitions/MenuContext",
+      "type": "object",
+      "title": "Menu Context",
+      "description": "Context information for where a menu was invoked",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ContextType"
+        },
+        "target_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "maxLength": 256,
+          "description": "Identifier of the target object"
+        },
+        "data": {
+          "type": "object",
+          "description": "Additional context-specific data",
+          "additionalProperties": true
+        },
+        "position": {
+          "$ref": "#/definitions/Position"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "uniqueItems": true,
+          "description": "Available permissions in this context"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9-]{36}$"
+            },
+            "user_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MenuItem": {
+      "$id": "#/definitions/MenuItem",
+      "type": "object",
+      "title": "Menu Item",
+      "description": "Individual item in a context menu",
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique identifier for the menu item"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Display text for the menu item"
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Unicode icon or emoji"
+        },
+        "accelerator": {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9+]+|F[0-9]+|Enter|Escape|Space|Tab|Delete|Backspace|Arrow(Up|Down|Left|Right))$",
+          "description": "Keyboard shortcut for the action"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the menu item is enabled"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the menu item is visible"
+        },
+        "destructive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this action is destructive"
+        },
+        "separator": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this is a separator line"
+        },
+        "submenu": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MenuItem"
+          },
+          "maxItems": 20,
+          "description": "Submenu items"
+        },
+        "data": {
+          "type": "object",
+          "description": "Additional data for the action",
+          "additionalProperties": true
+        },
+        "tooltip": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Tooltip text for the menu item"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Display priority (higher = shown first)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ContextAction": {
+      "$id": "#/definitions/ContextAction",
+      "type": "object",
+      "title": "Context Action",
+      "description": "An action that can be performed from a context menu",
+      "required": ["id", "label", "contexts"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique action identifier"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Display label for the action"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Detailed description of the action"
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Unicode icon or emoji"
+        },
+        "accelerator": {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9+]+|F[0-9]+|Enter|Escape|Space|Tab|Delete|Backspace|Arrow(Up|Down|Left|Right))$",
+          "description": "Keyboard shortcut"
+        },
+        "contexts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContextType"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Contexts where this action is available"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "uniqueItems": true,
+          "description": "Required permissions"
+        },
+        "destructive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this action requires confirmation"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this action is enabled"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["view", "edit", "delete", "export", "admin"],
+          "description": "Action category for grouping"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Display priority in menus"
+        },
+        "confirmation": {
+          "$ref": "#/definitions/ConfirmationConfig"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "execution_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of times executed"
+            },
+            "last_executed": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ConfirmationConfig": {
+      "$id": "#/definitions/ConfirmationConfig",
+      "type": "object",
+      "title": "Confirmation Configuration",
+      "description": "Configuration for action confirmation dialogs",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether confirmation is required"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Confirmation message to display"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Additional details about the action"
+        },
+        "require_typing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user must type confirmation text"
+        },
+        "confirmation_text": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Text that must be typed for confirmation"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 300,
+          "default": 30,
+          "description": "Timeout for confirmation dialog"
+        },
+        "show_consequences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show consequences of the action"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Zone": {
+      "$id": "#/definitions/Zone",
+      "type": "object",
+      "title": "Clickable Zone",
+      "description": "A registered area that responds to context menu events",
+      "required": ["id", "bounds", "context"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique zone identifier"
+        },
+        "bounds": {
+          "$ref": "#/definitions/Rect"
+        },
+        "context": {
+          "$ref": "#/definitions/MenuContext"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the zone is active"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0,
+          "description": "Zone priority for overlapping areas"
+        },
+        "hover_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to track mouse hover events"
+        },
+        "click_through": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether clicks pass through to underlying elements"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "last_accessed": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "access_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "InputEvent": {
+      "$id": "#/definitions/InputEvent",
+      "type": "object",
+      "title": "Input Event",
+      "description": "User input event for context menu processing",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/InputType"
+        },
+        "position": {
+          "$ref": "#/definitions/Position"
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Key name for keyboard events"
+        },
+        "button": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Mouse button (1=left, 2=right, 3=middle)"
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ctrl", "alt", "shift", "meta", "cmd"]
+          },
+          "uniqueItems": true,
+          "maxItems": 5,
+          "description": "Modifier keys pressed"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the event occurred"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$",
+          "description": "Session identifier"
+        },
+        "sequence_number": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Event sequence number for ordering"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MenuConfig": {
+      "$id": "#/definitions/MenuConfig",
+      "type": "object",
+      "title": "Menu Configuration",
+      "description": "Configuration for context menu appearance and behavior",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether context menus are enabled"
+        },
+        "keyboard_shortcut": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9]$",
+          "default": "m",
+          "description": "Keyboard shortcut to open context menu"
+        },
+        "menu_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 30000,
+          "default": 5000,
+          "description": "Auto-hide timeout for menus"
+        },
+        "confirm_destructive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to confirm destructive actions"
+        },
+        "animation_duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 150,
+          "description": "Menu animation duration"
+        },
+        "max_menu_width": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 800,
+          "default": 300,
+          "description": "Maximum menu width in pixels"
+        },
+        "max_menu_height": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 600,
+          "default": 400,
+          "description": "Maximum menu height in pixels"
+        },
+        "max_menu_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20,
+          "description": "Maximum items per menu"
+        },
+        "submenu_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000,
+          "default": 300,
+          "description": "Delay before showing submenu"
+        },
+        "theme": {
+          "$ref": "#/definitions/MenuTheme"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MenuTheme": {
+      "$id": "#/definitions/MenuTheme",
+      "type": "object",
+      "title": "Menu Theme",
+      "description": "Visual theming for context menus",
+      "properties": {
+        "background_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#ffffff",
+          "description": "Menu background color"
+        },
+        "border_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#cccccc",
+          "description": "Menu border color"
+        },
+        "text_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#000000",
+          "description": "Menu text color"
+        },
+        "highlight_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#007acc",
+          "description": "Highlight color for selected items"
+        },
+        "disabled_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#999999",
+          "description": "Color for disabled items"
+        },
+        "separator_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#eeeeee",
+          "description": "Color for separator lines"
+        },
+        "destructive_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#dc3545",
+          "description": "Color for destructive actions"
+        },
+        "shadow_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show menu shadow"
+        },
+        "border_radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "default": 4,
+          "description": "Border radius in pixels"
+        },
+        "font_size": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 24,
+          "default": 14,
+          "description": "Font size in pixels"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ActionExecutionRequest": {
+      "$id": "#/definitions/ActionExecutionRequest",
+      "type": "object",
+      "title": "Action Execution Request",
+      "description": "Request to execute a context menu action",
+      "required": ["action_id", "context"],
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "ID of the action to execute"
+        },
+        "context": {
+          "$ref": "#/definitions/MenuContext"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Additional parameters for the action",
+          "additionalProperties": true
+        },
+        "confirmation_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$",
+          "description": "Confirmation ID if this is a confirmed destructive action"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$",
+          "description": "Session identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ActionExecutionResponse": {
+      "$id": "#/definitions/ActionExecutionResponse",
+      "type": "object",
+      "title": "Action Execution Response",
+      "description": "Response from executing a context menu action",
+      "required": ["success", "action_id"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the action executed successfully"
+        },
+        "action_id": {
+          "type": "string",
+          "description": "ID of the executed action"
+        },
+        "status": {
+          "$ref": "#/definitions/ActionStatus"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable result message"
+        },
+        "data": {
+          "type": "object",
+          "description": "Action result data",
+          "additionalProperties": true
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution time in milliseconds"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Error"
+          },
+          "description": "Any errors that occurred"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the action completed"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Error": {
+      "$id": "#/definitions/Error",
+      "type": "object",
+      "title": "Error",
+      "description": "Error information",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z_]+$",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details",
+          "additionalProperties": true
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$",
+          "description": "Request identifier for tracking"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "title": "Context Menu System",
+  "description": "Root schema for context menu system configuration and data",
+  "properties": {
+    "config": {
+      "$ref": "#/definitions/MenuConfig"
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Zone"
+      },
+      "description": "Registered clickable zones"
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ContextAction"
+      },
+      "description": "Available context actions"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Schema version"
+    }
+  },
+  "additionalProperties": false
+}

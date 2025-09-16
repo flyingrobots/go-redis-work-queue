@@ -18,6 +18,7 @@ services:
     command: ["/job-queue-system", "--role=all", "--config=/config/config.yaml"]
     volumes:
       - ../config:/config:ro
+      - ./data:/data
     ports:
       - "9090:9090"
 
@@ -36,4 +37,5 @@ services:
     command: ["/job-queue-system", "--role=producer", "--config=/config/config.yaml"]
     volumes:
       - ../config:/config:ro
+      - ./data:/data
 

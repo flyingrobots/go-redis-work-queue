@@ -1,0 +1,1077 @@
+openapi: 3.0.3
+info:
+  title: Smart Payload Deduplication API
+  description: |
+    API for managing payload deduplication in the go-redis-work-queue system.
+    Provides endpoints for deduplication operations, statistics, and administration.
+  version: 1.0.0
+  contact:
+    name: Queue System Team
+    email: queue-team@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue.company.com/v1
+    description: Production server
+  - url: https://staging-api.queue.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /deduplication/payloads/{jobId}/deduplicate:
+    post:
+      summary: Deduplicate a job payload
+      description: |
+        Breaks a job payload into chunks and stores them in the content-addressable store.
+        Returns chunk references that can be used to reconstruct the original payload.
+      operationId: deduplicatePayload
+      tags:
+        - Deduplication
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier for the job
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenant deployments
+          schema:
+            type: string
+            example: "tenant_123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeduplicationRequest'
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Raw binary payload data
+      responses:
+        200:
+          description: Payload successfully deduplicated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeduplicationResponse'
+        400:
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/payloads/{jobId}/reconstruct:
+    post:
+      summary: Reconstruct a payload from chunks
+      description: |
+        Reconstructs the original payload from a list of chunk references.
+        Used by workers to retrieve the full payload for job processing.
+      operationId: reconstructPayload
+      tags:
+        - Deduplication
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier for the job
+          schema:
+            type: string
+            format: uuid
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenant deployments
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconstructionRequest'
+      responses:
+        200:
+          description: Payload successfully reconstructed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconstructionResponse'
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: Reconstructed binary payload
+        400:
+          description: Invalid chunk references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: One or more chunks not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Reconstruction failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/similarity/search:
+    post:
+      summary: Find similar payloads
+      description: |
+        Searches for payloads that are similar to the provided content using
+        locality-sensitive hashing and similarity thresholds.
+      operationId: findSimilarPayloads
+      tags:
+        - Similarity
+      parameters:
+        - name: threshold
+          in: query
+          description: Similarity threshold (0.0 to 1.0)
+          schema:
+            type: number
+            format: float
+            minimum: 0.0
+            maximum: 1.0
+            default: 0.8
+        - name: limit
+          in: query
+          description: Maximum number of similar payloads to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimilaritySearchRequest'
+      responses:
+        200:
+          description: Similar payloads found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimilaritySearchResponse'
+        400:
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/chunks/{chunkHash}:
+    get:
+      summary: Retrieve a specific chunk
+      description: |
+        Retrieves the content of a specific chunk by its SHA-256 hash.
+        Primarily used for debugging and administrative purposes.
+      operationId: getChunk
+      tags:
+        - Chunks
+      parameters:
+        - name: chunkHash
+          in: path
+          required: true
+          description: SHA-256 hash of the chunk
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+            example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenant deployments
+          schema:
+            type: string
+      responses:
+        200:
+          description: Chunk retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChunkResponse'
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: Chunk not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a specific chunk
+      description: |
+        Manually deletes a chunk from the store. This is an administrative
+        operation that should be used carefully as it may break payload reconstruction.
+      operationId: deleteChunk
+      tags:
+        - Chunks
+      parameters:
+        - name: chunkHash
+          in: path
+          required: true
+          description: SHA-256 hash of the chunk
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+        - name: force
+          in: query
+          description: Force deletion even if chunk has references
+          schema:
+            type: boolean
+            default: false
+      responses:
+        204:
+          description: Chunk deleted successfully
+        400:
+          description: Chunk has references and force=false
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: Chunk not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/statistics:
+    get:
+      summary: Get deduplication statistics
+      description: |
+        Retrieves comprehensive statistics about deduplication effectiveness,
+        memory savings, and system performance.
+      operationId: getStatistics
+      tags:
+        - Statistics
+      parameters:
+        - name: timeRange
+          in: query
+          description: Time range for statistics
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+            default: day
+        - name: aggregation
+          in: query
+          description: Aggregation level for time-series data
+          schema:
+            type: string
+            enum: [minute, hour, day]
+            default: hour
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for tenant-specific stats
+          schema:
+            type: string
+      responses:
+        200:
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsResponse'
+
+  /deduplication/configuration:
+    get:
+      summary: Get current deduplication configuration
+      description: |
+        Retrieves the current configuration settings for the deduplication system.
+      operationId: getConfiguration
+      tags:
+        - Configuration
+      responses:
+        200:
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationResponse'
+
+    put:
+      summary: Update deduplication configuration
+      description: |
+        Updates the deduplication configuration. Changes take effect immediately
+        for new operations but do not affect ongoing processes.
+      operationId: updateConfiguration
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationUpdateRequest'
+      responses:
+        200:
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationResponse'
+        400:
+          description: Invalid configuration parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/garbage-collection:
+    post:
+      summary: Trigger garbage collection
+      description: |
+        Manually triggers garbage collection to clean up unreferenced chunks.
+        This is typically handled automatically but can be triggered manually
+        for maintenance purposes.
+      operationId: triggerGarbageCollection
+      tags:
+        - Administration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GarbageCollectionRequest'
+      responses:
+        202:
+          description: Garbage collection started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GarbageCollectionResponse'
+        429:
+          description: Garbage collection already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deduplication/health:
+    get:
+      summary: Health check for deduplication service
+      description: |
+        Performs a comprehensive health check of the deduplication system,
+        including chunk store connectivity and reference counting integrity.
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        200:
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        503:
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DeduplicationRequest:
+      type: object
+      required:
+        - payload
+      properties:
+        payload:
+          oneOf:
+            - type: string
+              description: Base64-encoded binary payload
+              format: byte
+            - type: object
+              description: JSON payload object
+        options:
+          $ref: '#/components/schemas/DeduplicationOptions'
+        metadata:
+          type: object
+          description: Optional metadata about the payload
+          additionalProperties: true
+
+    DeduplicationOptions:
+      type: object
+      properties:
+        compression:
+          type: boolean
+          description: Enable compression for chunks
+          default: true
+        similarity_detection:
+          type: boolean
+          description: Enable similarity detection
+          default: true
+        chunk_size_hint:
+          type: integer
+          description: Preferred chunk size in bytes
+          minimum: 1024
+          maximum: 65536
+        force_chunking:
+          type: boolean
+          description: Force chunking even for small payloads
+          default: false
+
+    DeduplicationResponse:
+      type: object
+      required:
+        - job_id
+        - chunk_refs
+        - original_size
+        - deduplicated_size
+        - savings_ratio
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Job identifier
+        chunk_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChunkReference'
+          description: List of chunk references
+        original_size:
+          type: integer
+          description: Original payload size in bytes
+          minimum: 0
+        deduplicated_size:
+          type: integer
+          description: Total size of chunks in bytes
+          minimum: 0
+        savings_ratio:
+          type: number
+          format: float
+          description: Memory savings ratio (0.0 to 1.0)
+          minimum: 0.0
+          maximum: 1.0
+        compression_ratio:
+          type: number
+          format: float
+          description: Compression ratio applied to chunks
+        processing_time:
+          type: number
+          format: float
+          description: Processing time in milliseconds
+        chunk_count:
+          type: integer
+          description: Number of chunks created
+          minimum: 1
+        reused_chunks:
+          type: integer
+          description: Number of existing chunks reused
+          minimum: 0
+
+    ChunkReference:
+      type: object
+      required:
+        - hash
+        - size
+        - offset
+      properties:
+        hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: SHA-256 hash of the chunk
+        size:
+          type: integer
+          description: Size of the chunk in bytes
+          minimum: 1
+        offset:
+          type: integer
+          description: Offset within the original payload
+          minimum: 0
+        compressed:
+          type: boolean
+          description: Whether the chunk is compressed
+        compression_algorithm:
+          type: string
+          enum: [zstd, gzip, none]
+          description: Compression algorithm used
+
+    ReconstructionRequest:
+      type: object
+      required:
+        - chunk_refs
+      properties:
+        chunk_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChunkReference'
+        verify_checksum:
+          type: boolean
+          description: Verify chunk integrity during reconstruction
+          default: true
+        output_format:
+          type: string
+          enum: [json, binary, auto]
+          description: Desired output format
+          default: auto
+
+    ReconstructionResponse:
+      type: object
+      required:
+        - job_id
+        - payload
+        - reconstructed_size
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        payload:
+          oneOf:
+            - type: string
+              description: Base64-encoded binary payload
+              format: byte
+            - type: object
+              description: JSON payload object
+        reconstructed_size:
+          type: integer
+          description: Size of reconstructed payload in bytes
+        processing_time:
+          type: number
+          format: float
+          description: Reconstruction time in milliseconds
+        chunks_retrieved:
+          type: integer
+          description: Number of chunks successfully retrieved
+        cache_hits:
+          type: integer
+          description: Number of chunks served from cache
+
+    SimilaritySearchRequest:
+      type: object
+      required:
+        - payload
+      properties:
+        payload:
+          oneOf:
+            - type: string
+              format: byte
+            - type: object
+        algorithm:
+          type: string
+          enum: [minhash, simhash, jaccard]
+          default: minhash
+        include_metadata:
+          type: boolean
+          default: false
+
+    SimilaritySearchResponse:
+      type: object
+      required:
+        - similar_payloads
+        - search_time
+      properties:
+        similar_payloads:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimilarPayload'
+        search_time:
+          type: number
+          format: float
+          description: Search time in milliseconds
+        total_candidates:
+          type: integer
+          description: Total candidates evaluated
+
+    SimilarPayload:
+      type: object
+      required:
+        - job_id
+        - similarity_score
+        - chunk_overlap
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        similarity_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        chunk_overlap:
+          type: integer
+          description: Number of overlapping chunks
+        size_difference:
+          type: integer
+          description: Size difference in bytes
+        last_seen:
+          type: string
+          format: date-time
+
+    ChunkResponse:
+      type: object
+      required:
+        - hash
+        - size
+        - reference_count
+      properties:
+        hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        size:
+          type: integer
+        data:
+          type: string
+          format: byte
+          description: Base64-encoded chunk data
+        reference_count:
+          type: integer
+          description: Current reference count
+        created_at:
+          type: string
+          format: date-time
+        last_accessed:
+          type: string
+          format: date-time
+        compressed:
+          type: boolean
+        compression_algorithm:
+          type: string
+          enum: [zstd, gzip, none]
+
+    StatisticsResponse:
+      type: object
+      required:
+        - summary
+        - time_series
+      properties:
+        summary:
+          $ref: '#/components/schemas/StatisticsSummary'
+        time_series:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeSeriesPoint'
+        top_chunks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularChunk'
+        tenant_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantStats'
+
+    StatisticsSummary:
+      type: object
+      required:
+        - total_payloads
+        - total_chunks
+        - bytes_original
+        - bytes_deduplicated
+        - savings_ratio
+      properties:
+        total_payloads:
+          type: integer
+          description: Total number of payloads processed
+        total_chunks:
+          type: integer
+          description: Total number of unique chunks
+        bytes_original:
+          type: integer
+          format: int64
+          description: Total bytes of original payloads
+        bytes_deduplicated:
+          type: integer
+          format: int64
+          description: Total bytes after deduplication
+        savings_ratio:
+          type: number
+          format: float
+          description: Overall savings ratio
+        average_chunk_size:
+          type: integer
+          description: Average chunk size in bytes
+        average_chunks_per_payload:
+          type: number
+          format: float
+        chunk_reuse_rate:
+          type: number
+          format: float
+          description: Percentage of chunks that are reused
+
+    TimeSeriesPoint:
+      type: object
+      required:
+        - timestamp
+        - payloads_processed
+        - bytes_saved
+        - avg_processing_time
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        payloads_processed:
+          type: integer
+        bytes_saved:
+          type: integer
+          format: int64
+        avg_processing_time:
+          type: number
+          format: float
+        error_rate:
+          type: number
+          format: float
+
+    PopularChunk:
+      type: object
+      required:
+        - hash
+        - reference_count
+        - size
+      properties:
+        hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        reference_count:
+          type: integer
+        size:
+          type: integer
+        first_seen:
+          type: string
+          format: date-time
+        last_accessed:
+          type: string
+          format: date-time
+
+    TenantStats:
+      type: object
+      required:
+        - tenant_id
+        - payloads_processed
+        - savings_ratio
+      properties:
+        tenant_id:
+          type: string
+        payloads_processed:
+          type: integer
+        savings_ratio:
+          type: number
+          format: float
+        bytes_saved:
+          type: integer
+          format: int64
+
+    ConfigurationResponse:
+      type: object
+      required:
+        - chunking
+        - compression
+        - similarity
+        - garbage_collection
+      properties:
+        chunking:
+          $ref: '#/components/schemas/ChunkingConfig'
+        compression:
+          $ref: '#/components/schemas/CompressionConfig'
+        similarity:
+          $ref: '#/components/schemas/SimilarityConfig'
+        garbage_collection:
+          $ref: '#/components/schemas/GarbageCollectionConfig'
+        feature_flags:
+          $ref: '#/components/schemas/FeatureFlags'
+
+    ConfigurationUpdateRequest:
+      type: object
+      properties:
+        chunking:
+          $ref: '#/components/schemas/ChunkingConfig'
+        compression:
+          $ref: '#/components/schemas/CompressionConfig'
+        similarity:
+          $ref: '#/components/schemas/SimilarityConfig'
+        garbage_collection:
+          $ref: '#/components/schemas/GarbageCollectionConfig'
+        feature_flags:
+          $ref: '#/components/schemas/FeatureFlags'
+
+    ChunkingConfig:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          enum: [rabin, fixed, content_defined]
+          default: rabin
+        min_chunk_size:
+          type: integer
+          minimum: 512
+          maximum: 8192
+          default: 2048
+        max_chunk_size:
+          type: integer
+          minimum: 8192
+          maximum: 65536
+          default: 32768
+        avg_chunk_size:
+          type: integer
+          minimum: 2048
+          maximum: 32768
+          default: 8192
+        window_size:
+          type: integer
+          minimum: 32
+          maximum: 128
+          default: 64
+
+    CompressionConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        algorithm:
+          type: string
+          enum: [zstd, gzip, lz4]
+          default: zstd
+        level:
+          type: integer
+          minimum: 1
+          maximum: 22
+          default: 3
+        dictionary_size:
+          type: integer
+          minimum: 16384
+          maximum: 131072
+          default: 65536
+
+    SimilarityConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        threshold:
+          type: number
+          format: float
+          minimum: 0.1
+          maximum: 1.0
+          default: 0.8
+        algorithm:
+          type: string
+          enum: [minhash, simhash]
+          default: minhash
+        lsh_bands:
+          type: integer
+          minimum: 10
+          maximum: 50
+          default: 20
+        lsh_rows:
+          type: integer
+          minimum: 3
+          maximum: 10
+          default: 5
+
+    GarbageCollectionConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        interval:
+          type: string
+          pattern: '^\d+[smhd]$'
+          default: "1h"
+        batch_size:
+          type: integer
+          minimum: 100
+          maximum: 10000
+          default: 1000
+        orphan_age:
+          type: string
+          pattern: '^\d+[smhd]$'
+          default: "24h"
+        concurrent_workers:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+
+    FeatureFlags:
+      type: object
+      properties:
+        deduplication_enabled:
+          type: boolean
+          default: true
+        compression_enabled:
+          type: boolean
+          default: true
+        similarity_enabled:
+          type: boolean
+          default: true
+        fallback_enabled:
+          type: boolean
+          default: true
+        metrics_enabled:
+          type: boolean
+          default: true
+        safety_mode_enabled:
+          type: boolean
+          default: true
+
+    GarbageCollectionRequest:
+      type: object
+      properties:
+        force:
+          type: boolean
+          description: Force GC even if one is in progress
+          default: false
+        batch_size:
+          type: integer
+          description: Override default batch size
+          minimum: 10
+          maximum: 10000
+        max_age:
+          type: string
+          description: Override default max age for orphaned chunks
+          pattern: '^\d+[smhd]$'
+
+    GarbageCollectionResponse:
+      type: object
+      required:
+        - gc_id
+        - status
+        - started_at
+      properties:
+        gc_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this GC run
+        status:
+          type: string
+          enum: [started, running, completed, failed]
+        started_at:
+          type: string
+          format: date-time
+        estimated_duration:
+          type: string
+          description: Estimated completion time
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthCheck'
+        uptime:
+          type: string
+          description: Service uptime
+        version:
+          type: string
+          description: Service version
+
+    HealthCheck:
+      type: object
+      required:
+        - name
+        - status
+      properties:
+        name:
+          type: string
+          description: Name of the health check
+        status:
+          type: string
+          enum: [pass, fail, warn]
+        duration:
+          type: number
+          format: float
+          description: Check duration in milliseconds
+        message:
+          type: string
+          description: Detailed status message
+        last_success:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Unique request identifier for tracing
+
+tags:
+  - name: Deduplication
+    description: Core deduplication operations
+  - name: Similarity
+    description: Payload similarity detection
+  - name: Chunks
+    description: Individual chunk management
+  - name: Statistics
+    description: Performance and usage statistics
+  - name: Configuration
+    description: System configuration management
+  - name: Administration
+    description: Administrative operations
+  - name: Health
+    description: Health monitoring and diagnostics

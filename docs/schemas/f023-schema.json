@@ -1,0 +1,1269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/james/go-redis-work-queue/schemas/f023-smart-retry-strategies",
+  "title": "Smart Retry Strategies Schema Definitions",
+  "description": "JSON Schema definitions for the Smart Retry Strategies system",
+  "definitions": {
+    "ModelType": {
+      "type": "string",
+      "enum": ["heuristic", "bayesian", "ml"],
+      "description": "Types of retry prediction models"
+    },
+    "ModelStatus": {
+      "type": "string",
+      "enum": ["training", "active", "deprecated", "failed"],
+      "description": "Model lifecycle states"
+    },
+    "JobPriority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "critical"],
+      "description": "Job priority levels"
+    },
+    "CircuitBreakerState": {
+      "type": "string",
+      "enum": ["closed", "open", "half_open"],
+      "description": "Circuit breaker states"
+    },
+    "ErrorClass": {
+      "type": "string",
+      "enum": [
+        "http_4xx",
+        "http_5xx",
+        "timeout",
+        "connection_error",
+        "validation_error",
+        "resource_exhausted",
+        "dependency_unavailable",
+        "rate_limited",
+        "authentication_error",
+        "unknown"
+      ],
+      "description": "Standard error classifications"
+    },
+    "Duration": {
+      "type": "string",
+      "pattern": "^([0-9]+([.][0-9]*)?[a-z]+)+$",
+      "description": "Duration string (e.g., '1s', '2m30s', '1h')"
+    },
+    "RetryFeatures": {
+      "type": "object",
+      "required": ["job_type", "queue", "error_class", "attempt_number"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "job_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Type of job that failed"
+        },
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Queue containing the failed job"
+        },
+        "tenant_id": {
+          "type": "string",
+          "description": "Tenant identifier for multi-tenant environments"
+        },
+        "error_class": {
+          "$ref": "#/definitions/ErrorClass"
+        },
+        "error_code": {
+          "type": "string",
+          "description": "Specific error code from the failure"
+        },
+        "error_message": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Error message (may be redacted for privacy)"
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "HTTP status code if applicable"
+        },
+        "attempt_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Current retry attempt number"
+        },
+        "payload_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Job payload size in bytes"
+        },
+        "priority": {
+          "$ref": "#/definitions/JobPriority"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job was originally created"
+        },
+        "failed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job failure occurred"
+        },
+        "execution_time": {
+          "$ref": "#/definitions/Duration",
+          "description": "How long the job ran before failing"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Identifier of the worker that processed the job"
+        },
+        "worker_version": {
+          "type": "string",
+          "description": "Version of the worker software"
+        },
+        "time_of_day": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23,
+          "description": "Hour of day when failure occurred (0-23)"
+        },
+        "day_of_week": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6,
+          "description": "Day of week when failure occurred (0=Sunday)"
+        },
+        "cpu_utilization": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "CPU utilization at time of failure"
+        },
+        "memory_usage": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Memory usage in MB at time of failure"
+        },
+        "queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of jobs in queue at time of failure"
+        },
+        "recent_failures": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of similar failures in the last hour"
+        },
+        "success_rate_24h": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate for similar jobs in last 24 hours"
+        },
+        "downstream_latency_p95": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "95th percentile downstream latency in milliseconds"
+        },
+        "circuit_breaker_state": {
+          "$ref": "#/definitions/CircuitBreakerState"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags associated with the job"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetryStrategy": {
+      "type": "object",
+      "required": ["id", "name", "queues", "enabled", "config"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the strategy"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable strategy name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Strategy description and purpose"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Queues this strategy applies to"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the strategy is active"
+        },
+        "config": {
+          "$ref": "#/definitions/StrategyConfig"
+        },
+        "guardrails": {
+          "$ref": "#/definitions/Guardrails"
+        },
+        "performance": {
+          "$ref": "#/definitions/StrategyPerformance"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the strategy was created"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who created the strategy"
+        },
+        "last_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the strategy was last modified"
+        },
+        "last_modified_by": {
+          "type": "string",
+          "description": "User who last modified the strategy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StrategyConfig": {
+      "type": "object",
+      "properties": {
+        "enable_ml": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable machine learning predictions"
+        },
+        "enable_bayesian": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Bayesian inference models"
+        },
+        "enable_heuristics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable heuristic fallback rules"
+        },
+        "bayesian_confidence_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.7,
+          "description": "Minimum confidence for Bayesian recommendations"
+        },
+        "ml_confidence_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8,
+          "description": "Minimum confidence for ML recommendations"
+        },
+        "success_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.85,
+          "description": "Target success probability for recommendations"
+        },
+        "max_delay": {
+          "$ref": "#/definitions/Duration",
+          "default": "300s",
+          "description": "Maximum retry delay allowed"
+        },
+        "min_delay": {
+          "$ref": "#/definitions/Duration",
+          "default": "1s",
+          "description": "Minimum retry delay allowed"
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Maximum retry attempts allowed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Guardrails": {
+      "type": "object",
+      "properties": {
+        "max_retries_per_minute": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000,
+          "description": "Maximum retries per minute across all jobs"
+        },
+        "max_retries_per_queue": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum retries per minute per queue"
+        },
+        "circuit_breaker_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.5,
+          "description": "Failure rate threshold for circuit breaker"
+        },
+        "circuit_breaker_window": {
+          "$ref": "#/definitions/Duration",
+          "default": "60s",
+          "description": "Time window for circuit breaker evaluation"
+        },
+        "tenant_quotas": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Per-tenant retry quotas"
+        },
+        "queue_quotas": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Per-queue retry quotas"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StrategyPerformance": {
+      "type": "object",
+      "properties": {
+        "success_rate_improvement": {
+          "type": "number",
+          "description": "Improvement in success rate vs baseline"
+        },
+        "retry_reduction": {
+          "type": "number",
+          "description": "Percentage reduction in total retry attempts"
+        },
+        "average_time_to_success": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average time from failure to successful retry"
+        },
+        "cost_savings": {
+          "type": "number",
+          "description": "Estimated cost savings in USD"
+        },
+        "predictions_made": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total predictions made by this strategy"
+        },
+        "last_evaluated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When performance was last calculated"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BayesianModel": {
+      "type": "object",
+      "required": ["model_id", "queue", "error_class", "alpha", "beta"],
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "description": "Unique model identifier"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Queue this model applies to"
+        },
+        "error_class": {
+          "$ref": "#/definitions/ErrorClass"
+        },
+        "alpha": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Beta distribution alpha parameter (successes + prior)"
+        },
+        "beta": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Beta distribution beta parameter (failures + prior)"
+        },
+        "delay_buckets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DelayBucket"
+          },
+          "description": "Delay buckets with success/failure counts"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model confidence score"
+        },
+        "sample_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of samples used to train model"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When model was last updated"
+        },
+        "version": {
+          "type": "string",
+          "description": "Model version identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DelayBucket": {
+      "type": "object",
+      "required": ["min_delay", "max_delay", "successes", "failures"],
+      "properties": {
+        "min_delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Minimum delay for this bucket"
+        },
+        "max_delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Maximum delay for this bucket"
+        },
+        "successes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of successful retries in this delay range"
+        },
+        "failures": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failed retries in this delay range"
+        },
+        "avg_recovery_time": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average time to recovery for successful retries"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate for this delay bucket"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MLModel": {
+      "type": "object",
+      "required": ["model_id", "version", "algorithm", "features"],
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "description": "Unique model identifier"
+        },
+        "version": {
+          "type": "string",
+          "description": "Model version identifier"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["logistic_regression", "gradient_boosting", "random_forest", "neural_network"],
+          "description": "Machine learning algorithm used"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of features used by this model"
+        },
+        "hyperparameters": {
+          "type": "object",
+          "description": "Model hyperparameters"
+        },
+        "performance": {
+          "$ref": "#/definitions/ModelPerformance"
+        },
+        "training_info": {
+          "$ref": "#/definitions/TrainingInfo"
+        },
+        "deployment_config": {
+          "$ref": "#/definitions/DeploymentConfig"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the model was created"
+        },
+        "status": {
+          "$ref": "#/definitions/ModelStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModelPerformance": {
+      "type": "object",
+      "properties": {
+        "accuracy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model prediction accuracy"
+        },
+        "precision": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model precision score"
+        },
+        "recall": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model recall score"
+        },
+        "f1_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model F1 score"
+        },
+        "auc_roc": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Area under ROC curve"
+        },
+        "predictions_made": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total predictions made by this model"
+        },
+        "correct_predictions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of correct predictions"
+        },
+        "avg_confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Average confidence of predictions"
+        },
+        "drift_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Model drift detection score"
+        },
+        "last_evaluated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When performance was last evaluated"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrainingInfo": {
+      "type": "object",
+      "properties": {
+        "training_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of samples used for training"
+        },
+        "validation_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of samples used for validation"
+        },
+        "test_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of samples used for testing"
+        },
+        "training_duration": {
+          "$ref": "#/definitions/Duration",
+          "description": "Time taken to train the model"
+        },
+        "data_date_range": {
+          "$ref": "#/definitions/DateRange"
+        },
+        "cross_validation_folds": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Number of cross-validation folds used"
+        },
+        "feature_importance": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Feature importance scores"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeploymentConfig": {
+      "type": "object",
+      "properties": {
+        "traffic_weight": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Percentage of traffic to route to this model"
+        },
+        "canary_enabled": {
+          "type": "boolean",
+          "description": "Whether this model is in canary deployment"
+        },
+        "fallback_model": {
+          "type": "string",
+          "description": "Model ID to fall back to if this model fails"
+        },
+        "max_prediction_latency": {
+          "$ref": "#/definitions/Duration",
+          "description": "Maximum allowed prediction latency"
+        },
+        "auto_rollback_enabled": {
+          "type": "boolean",
+          "description": "Whether to automatically rollback on performance degradation"
+        },
+        "rollback_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Accuracy threshold for automatic rollback"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DateRange": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start date and time"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End date and time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetryRecommendation": {
+      "type": "object",
+      "required": ["delay", "confidence", "model_used", "reasoning"],
+      "properties": {
+        "delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Recommended retry delay"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence in the recommendation"
+        },
+        "success_probability": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Estimated success probability"
+        },
+        "model_used": {
+          "$ref": "#/definitions/ModelType",
+          "description": "Model that generated the recommendation"
+        },
+        "reasoning": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Human-readable explanation of the recommendation"
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RecommendationFactor"
+          },
+          "description": "Factors that influenced the recommendation"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Alternative"
+          },
+          "maxItems": 5,
+          "description": "Alternative retry options"
+        },
+        "recommendation_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this recommendation"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the recommendation was generated"
+        },
+        "guardrails_applied": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Guardrails that were applied to this recommendation"
+        },
+        "override_reason": {
+          "type": "string",
+          "description": "Reason if recommendation was overridden by guardrails"
+        },
+        "features_used": {
+          "$ref": "#/definitions/RetryFeatures",
+          "description": "Features used to generate this recommendation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecommendationFactor": {
+      "type": "object",
+      "required": ["name", "weight", "impact"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Factor name"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Weight of this factor in the decision"
+        },
+        "impact": {
+          "type": "string",
+          "enum": ["increases_delay", "decreases_delay", "neutral"],
+          "description": "How this factor affects the delay"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable factor description"
+        },
+        "value": {
+          "type": ["string", "number", "boolean"],
+          "description": "Actual value of this factor"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Alternative": {
+      "type": "object",
+      "required": ["delay", "success_probability", "reasoning"],
+      "properties": {
+        "delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Alternative delay option"
+        },
+        "success_probability": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success probability for this option"
+        },
+        "reasoning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reasoning for this alternative"
+        },
+        "tradeoffs": {
+          "type": "string",
+          "description": "Tradeoffs of choosing this alternative"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence in this alternative"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrainingJob": {
+      "type": "object",
+      "required": ["job_id", "model_type", "status"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Training job identifier"
+        },
+        "model_type": {
+          "$ref": "#/definitions/ModelType"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Queues to train models for"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["queued", "running", "completed", "failed", "cancelled"],
+          "description": "Current training job status"
+        },
+        "progress_percentage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Training progress percentage"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When training started"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When training completed"
+        },
+        "estimated_completion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Estimated completion time"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if training failed"
+        },
+        "config": {
+          "$ref": "#/definitions/TrainingConfig"
+        },
+        "result": {
+          "$ref": "#/definitions/TrainingResult"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrainingConfig": {
+      "type": "object",
+      "properties": {
+        "training_window_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "description": "Number of days of historical data to use"
+        },
+        "min_samples_per_model": {
+          "type": "integer",
+          "minimum": 10,
+          "description": "Minimum samples required to train a model"
+        },
+        "cross_validation_folds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 10,
+          "description": "Number of cross-validation folds"
+        },
+        "test_split_ratio": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 0.5,
+          "description": "Ratio of data to use for testing"
+        },
+        "feature_selection": {
+          "type": "boolean",
+          "description": "Whether to perform automatic feature selection"
+        },
+        "hyperparameter_tuning": {
+          "type": "boolean",
+          "description": "Whether to perform hyperparameter tuning"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrainingResult": {
+      "type": "object",
+      "properties": {
+        "models_created": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of models created"
+        },
+        "models_updated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of existing models updated"
+        },
+        "avg_accuracy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Average accuracy across all models"
+        },
+        "best_model": {
+          "type": "string",
+          "description": "ID of the best performing model"
+        },
+        "total_samples_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of samples processed"
+        },
+        "training_duration": {
+          "$ref": "#/definitions/Duration",
+          "description": "Total training duration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RetryMetrics": {
+      "type": "object",
+      "properties": {
+        "time_range": {
+          "$ref": "#/definitions/DateRange"
+        },
+        "overall_performance": {
+          "$ref": "#/definitions/OverallPerformance"
+        },
+        "by_model": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ModelUsageMetrics"
+          },
+          "description": "Metrics broken down by model type"
+        },
+        "by_queue": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/QueueMetrics"
+          },
+          "description": "Metrics broken down by queue"
+        },
+        "by_error_class": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ErrorClassMetrics"
+          },
+          "description": "Metrics broken down by error class"
+        },
+        "guardrail_stats": {
+          "$ref": "#/definitions/GuardrailStats"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OverallPerformance": {
+      "type": "object",
+      "properties": {
+        "success_rate_improvement": {
+          "type": "number",
+          "description": "Overall improvement in success rate vs baseline"
+        },
+        "average_time_to_success": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average time from failure to successful retry"
+        },
+        "total_retries_saved": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total retry attempts saved"
+        },
+        "cost_savings_usd": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Estimated cost savings in USD"
+        },
+        "predictions_made": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total predictions made in time range"
+        },
+        "average_prediction_latency": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average time to generate predictions"
+        },
+        "baseline_success_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate with exponential backoff baseline"
+        },
+        "smart_retry_success_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate with smart retry strategies"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModelUsageMetrics": {
+      "type": "object",
+      "properties": {
+        "usage_percentage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Percentage of predictions from this model"
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Model accuracy in time range"
+        },
+        "avg_confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Average confidence score"
+        },
+        "avg_delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average recommended delay"
+        },
+        "predictions_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of predictions made"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate for this model's predictions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueMetrics": {
+      "type": "object",
+      "properties": {
+        "predictions_made": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of predictions made for this queue"
+        },
+        "success_rate_improvement": {
+          "type": "number",
+          "description": "Improvement in success rate for this queue"
+        },
+        "retry_reduction": {
+          "type": "number",
+          "description": "Percentage reduction in retry attempts"
+        },
+        "dominant_model": {
+          "$ref": "#/definitions/ModelType",
+          "description": "Most frequently used model for this queue"
+        },
+        "avg_time_to_success": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average time to success for this queue"
+        },
+        "total_jobs_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total jobs processed in this queue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ErrorClassMetrics": {
+      "type": "object",
+      "properties": {
+        "frequency": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of occurrences of this error class"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate for retries of this error class"
+        },
+        "avg_delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Average delay recommended for this error class"
+        },
+        "improvement_vs_baseline": {
+          "type": "number",
+          "description": "Improvement vs exponential backoff for this error class"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GuardrailStats": {
+      "type": "object",
+      "properties": {
+        "overrides_applied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times guardrails overrode recommendations"
+        },
+        "quota_violations_prevented": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of quota violations prevented"
+        },
+        "circuit_breaker_activations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of circuit breaker activations"
+        },
+        "delay_cap_enforcements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times max delay cap was enforced"
+        },
+        "attempt_limit_enforcements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times max attempt limit was enforced"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FeatureImportance": {
+      "type": "object",
+      "properties": {
+        "feature_scores": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "description": "Feature importance scores"
+        },
+        "top_features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FeatureScore"
+          },
+          "description": "Top 10 most important features"
+        },
+        "model_type": {
+          "$ref": "#/definitions/ModelType"
+        },
+        "calculated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When feature importance was calculated"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FeatureScore": {
+      "type": "object",
+      "required": ["feature_name", "score"],
+      "properties": {
+        "feature_name": {
+          "type": "string",
+          "description": "Name of the feature"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Importance score for this feature"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the feature"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PredictionHistory": {
+      "type": "object",
+      "required": ["prediction_id", "features", "recommendation", "outcome"],
+      "properties": {
+        "prediction_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique prediction identifier"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "Job that this prediction was for"
+        },
+        "features": {
+          "$ref": "#/definitions/RetryFeatures"
+        },
+        "recommendation": {
+          "$ref": "#/definitions/RetryRecommendation"
+        },
+        "outcome": {
+          "$ref": "#/definitions/PredictionOutcome"
+        },
+        "predicted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the prediction was made"
+        },
+        "outcome_recorded_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the outcome was recorded"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PredictionOutcome": {
+      "type": "object",
+      "required": ["success", "actual_delay"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the retry was successful"
+        },
+        "actual_delay": {
+          "$ref": "#/definitions/Duration",
+          "description": "Actual delay that was used"
+        },
+        "time_to_success": {
+          "$ref": "#/definitions/Duration",
+          "description": "Total time from prediction to success (if successful)"
+        },
+        "final_attempt_number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Final attempt number (successful or max reached)"
+        },
+        "prediction_accuracy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "How accurate the prediction was"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the outcome"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

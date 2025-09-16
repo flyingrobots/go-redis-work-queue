@@ -1,0 +1,112 @@
+<svg viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Main Container -->
+  <rect x="10" y="10" width="380" height="780" fill="#161b22" stroke="#30363d" stroke-width="2" rx="6"/>
+
+  <!-- Header -->
+  <rect x="10" y="10" width="380" height="40" fill="#1f2937" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="30" fill="#f0f6fc" font-family="monospace" font-size="12">📱 Queue Snapshots</text>
+  <text x="340" y="30" fill="#8b949e" font-family="monospace" font-size="10">⋮</text>
+
+  <!-- Tab Navigation -->
+  <rect x="20" y="60" width="360" height="35" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+
+  <!-- Active Tab: Browser -->
+  <rect x="25" y="65" width="85" height="25" fill="#238636" fill-opacity="0.2" stroke="#39d353" stroke-width="1" rx="2"/>
+  <text x="55" y="80" fill="#39d353" font-family="monospace" font-size="10">Browser</text>
+
+  <!-- Inactive Tabs -->
+  <rect x="115" y="65" width="85" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="145" y="80" fill="#8b949e" font-family="monospace" font-size="10">Details</text>
+
+  <rect x="205" y="65" width="85" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="240" y="80" fill="#8b949e" font-family="monospace" font-size="10">Diff</text>
+
+  <rect x="295" y="65" width="80" height="25" fill="transparent" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="325" y="80" fill="#8b949e" font-family="monospace" font-size="10">Actions</text>
+
+  <!-- Search Bar -->
+  <rect x="20" y="105" width="360" height="30" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="30" y="123" fill="#8b949e" font-family="monospace" font-size="10">🔍 Search snapshots...</text>
+
+  <!-- Snapshot List -->
+  <text x="25" y="155" fill="#58a6ff" font-family="monospace" font-size="11">RECENT SNAPSHOTS</text>
+
+  <!-- Snapshot Item 1 - Selected -->
+  <rect x="20" y="165" width="360" height="60" fill="#238636" fill-opacity="0.1" stroke="#39d353" stroke-width="1" rx="3"/>
+  <circle cx="35" cy="185" r="4" fill="#39d353"/>
+  <text x="50" y="180" fill="#f0f6fc" font-family="monospace" font-size="11">stress_test_Jan15.snap</text>
+  <text x="320" y="180" fill="#8b949e" font-family="monospace" font-size="9">2.3MB</text>
+  <text x="50" y="195" fill="#8b949e" font-family="monospace" font-size="9">10K jobs, 5 queues</text>
+  <text x="50" y="210" fill="#8b949e" font-family="monospace" font-size="8">15:30 UTC • production-staging</text>
+  <text x="320" y="210" fill="#39d353" font-family="monospace" font-size="8">Current</text>
+
+  <!-- Snapshot Item 2 -->
+  <rect x="20" y="230" width="360" height="60" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <circle cx="35" cy="250" r="4" fill="#39d353"/>
+  <text x="50" y="245" fill="#f0f6fc" font-family="monospace" font-size="11">dlq_patterns.snap</text>
+  <text x="320" y="245" fill="#8b949e" font-family="monospace" font-size="9">1.1MB</text>
+  <text x="50" y="260" fill="#8b949e" font-family="monospace" font-size="9">DLQ failure analysis</text>
+  <text x="50" y="275" fill="#8b949e" font-family="monospace" font-size="8">14:22 UTC • test-env</text>
+
+  <!-- Snapshot Item 3 -->
+  <rect x="20" y="295" width="360" height="60" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <circle cx="35" cy="315" r="4" fill="#ffa657"/>
+  <text x="50" y="310" fill="#f0f6fc" font-family="monospace" font-size="11">baseline_empty.snap</text>
+  <text x="320" y="310" fill="#8b949e" font-family="monospace" font-size="9">12KB</text>
+  <text x="50" y="325" fill="#8b949e" font-family="monospace" font-size="9">Clean state template</text>
+  <text x="50" y="340" fill="#8b949e" font-family="monospace" font-size="8">Yesterday • template</text>
+
+  <!-- Snapshot Item 4 -->
+  <rect x="20" y="360" width="360" height="60" fill="transparent" stroke="#30363d" stroke-width="1" rx="3"/>
+  <circle cx="35" cy="380" r="4" fill="#ffa657"/>
+  <text x="50" y="375" fill="#f0f6fc" font-family="monospace" font-size="11">high_load_scenario.snap</text>
+  <text x="320" y="375" fill="#8b949e" font-family="monospace" font-size="9">8.7MB</text>
+  <text x="50" y="390" fill="#8b949e" font-family="monospace" font-size="9">50K jobs stress test</text>
+  <text x="50" y="405" fill="#8b949e" font-family="monospace" font-size="8">2 days ago • template</text>
+
+  <!-- Current State Card -->
+  <text x="25" y="440" fill="#58a6ff" font-family="monospace" font-size="11">CURRENT STATE</text>
+  <rect x="20" y="450" width="360" height="80" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="30" y="470" fill="#8b949e" font-family="monospace" font-size="10">Queues: 4 active</text>
+  <text x="30" y="485" fill="#8b949e" font-family="monospace" font-size="10">Jobs: 12,543 active, 287 failed</text>
+  <text x="30" y="500" fill="#8b949e" font-family="monospace" font-size="10">Workers: 28 active, 5 idle</text>
+  <text x="30" y="515" fill="#39d353" font-family="monospace" font-size="10">✓ Ready for snapshot</text>
+
+  <!-- Action Buttons -->
+  <rect x="20" y="545" width="175" height="40" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="85" y="568" fill="#f0f6fc" font-family="monospace" font-size="11">💾 Capture</text>
+
+  <rect x="205" y="545" width="175" height="40" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="275" y="568" fill="#f0f6fc" font-family="monospace" font-size="11">🔄 Restore</text>
+
+  <!-- Git Status Section -->
+  <text x="25" y="610" fill="#58a6ff" font-family="monospace" font-size="11">GIT INTEGRATION</text>
+  <rect x="20" y="620" width="360" height="100" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="3"/>
+
+  <text x="30" y="640" fill="#8b949e" font-family="monospace" font-size="10">Branch: feat/snapshot-testing</text>
+  <rect x="30" y="650" width="340" height="20" fill="#f85149" fill-opacity="0.1" rx="2"/>
+  <text x="40" y="663" fill="#f85149" font-family="monospace" font-size="9">⚠ 3 modified snapshots</text>
+
+  <rect x="30" y="675" width="340" height="20" fill="#39d353" fill-opacity="0.1" rx="2"/>
+  <text x="40" y="688" fill="#39d353" font-family="monospace" font-size="9">✓ 2 staged for commit</text>
+
+  <rect x="30" y="700" width="165" height="15" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="2"/>
+  <text x="95" y="710" fill="#f0f6fc" font-family="monospace" font-size="8">Commit</text>
+
+  <rect x="205" y="700" width="165" height="15" fill="transparent" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="275" y="710" fill="#8b949e" font-family="monospace" font-size="8">Push</text>
+
+  <!-- Smart Diff Preview -->
+  <text x="25" y="745" fill="#58a6ff" font-family="monospace" font-size="11">QUICK DIFF</text>
+  <rect x="20" y="755" width="360" height="25" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="30" y="770" fill="#39d353" font-family="monospace" font-size="9">✓ Payloads match</text>
+  <text x="150" y="770" fill="#ffa657" font-family="monospace" font-size="9">⚠ +12 failures</text>
+  <text x="280" y="770" fill="#f85149" font-family="monospace" font-size="9">✗ Workers</text>
+
+  <!-- Status Bar -->
+  <rect x="10" y="785" width="380" height="5" fill="#1f2937"/>
+
+</svg>

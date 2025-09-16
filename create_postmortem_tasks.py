@@ -1,0 +1,132 @@
+import json
+from datetime import datetime
+
+# Create post-mortem reflection tasks for each worker
+workers = [
+    "claude-001", "claude-002", "claude-003", "claude-004", "claude-005",
+    "claude-006", "claude-007", "claude-008", "claude-009", "claude-010"
+]
+
+postmortem_tasks = []
+
+for i, worker in enumerate(workers, 1):
+    task = {
+        "task_id": f"POSTMORTEM.{i:03d}",
+        "created_at": datetime.now().isoformat() + "Z",
+        "task": {
+            "id": f"POSTMORTEM.{i:03d}",
+            "feature_id": "SLAPS_REFLECTION",
+            "title": f"Worker {i:02d} Post-Mortem Reflection",
+            "description": f"As Worker {i} ({worker}), write your personal post-mortem reflection on the SLAPS experiment.",
+            "boundaries": {
+                "expected_complexity": {
+                    "value": "~500-1000 words",
+                    "breakdown": "Personal reflection and insights"
+                },
+                "definition_of_done": {
+                    "criteria": [
+                        "Write from YOUR perspective as Worker {i}",
+                        "Describe your unique experiences during SLAPS",
+                        "Share challenges you faced",
+                        "Highlight your achievements",
+                        "Discuss any conflicts or collaborations",
+                        "Reflect on the chaos and how you adapted",
+                        "Include specific examples from your tasks",
+                        "Be honest about what worked and what didn't",
+                        "Share any emergent behaviors you developed",
+                        "Save to docs/SLAPS/worker-reflections/{worker}-reflection.md"
+                    ]
+                }
+            },
+            "execution_guidance": {
+                "reflection_prompts": [
+                    "What was your most challenging moment?",
+                    "How did you handle conflicts with other workers?",
+                    "What task are you most proud of completing?",
+                    "Did you develop any unique strategies or patterns?",
+                    "How did you deal with the compilation/test conflicts?",
+                    "What was it like working without central coordination?",
+                    "Did you ever get confused or lost? How did you recover?",
+                    "What would you do differently next time?",
+                    "How did the rate limit pauses affect you?",
+                    "What emergent behaviors did you develop?",
+                    "Any memorable interactions with other workers?",
+                    "How did you feel about the chaos?"
+                ],
+                "tone": "Personal, honest, reflective - this is YOUR story",
+                "format": "First-person narrative from the worker's perspective"
+            },
+            "dependencies": [],
+            "resources_required": ["reflection_time"],
+            "output_path": f"docs/SLAPS/worker-reflections/{worker}-reflection.md"
+        }
+    }
+    postmortem_tasks.append(task)
+
+# Add final coordinator summary task
+coordinator_task = {
+    "task_id": "POSTMORTEM.FINAL",
+    "created_at": datetime.now().isoformat() + "Z",
+    "task": {
+        "id": "POSTMORTEM.FINAL",
+        "feature_id": "SLAPS_REFLECTION",
+        "title": "Coordinator Final Summary and Analysis",
+        "description": "Collect all worker reflections and create the final SLAPS post-mortem document.",
+        "boundaries": {
+            "expected_complexity": {
+                "value": "Comprehensive document",
+                "breakdown": "Collect, analyze, synthesize, conclude"
+            },
+            "definition_of_done": {
+                "criteria": [
+                    "Read all 10 worker reflection documents",
+                    "Include excerpts from each worker's perspective",
+                    "Identify common themes and patterns",
+                    "Highlight unique insights from individual workers",
+                    "Add coordinator's perspective and analysis",
+                    "Draw conclusions about distributed AI coordination",
+                    "Document lessons learned",
+                    "Create final comprehensive post-mortem",
+                    "Save to docs/SLAPS/FINAL-POSTMORTEM.md"
+                ]
+            }
+        },
+        "execution_guidance": {
+            "sections": [
+                "Executive Summary",
+                "Individual Worker Perspectives (excerpts from all 10)",
+                "Common Themes Across Workers",
+                "Unique Experiences and Edge Cases",
+                "Technical Challenges and Solutions",
+                "Emergent Behaviors Observed",
+                "Coordinator's Analysis",
+                "Lessons for Future Distributed AI Systems",
+                "Conclusions"
+            ]
+        },
+        "dependencies": ["POSTMORTEM.001", "POSTMORTEM.002", "POSTMORTEM.003", "POSTMORTEM.004", "POSTMORTEM.005",
+                         "POSTMORTEM.006", "POSTMORTEM.007", "POSTMORTEM.008", "POSTMORTEM.009", "POSTMORTEM.010"],
+        "resources_required": ["all_worker_reflections"]
+    }
+}
+
+# Write all tasks to open-tasks
+import os
+os.makedirs('slaps-coordination/open-tasks', exist_ok=True)
+os.makedirs('docs/SLAPS/worker-reflections', exist_ok=True)
+
+for task in postmortem_tasks:
+    filename = f"slaps-coordination/open-tasks/{task['task_id']}.json"
+    with open(filename, 'w') as f:
+        json.dump(task, f, indent=2)
+    print(f"Created: {task['task']['title']}")
+
+# Write coordinator task
+filename = f"slaps-coordination/open-tasks/{coordinator_task['task_id']}.json"
+with open(filename, 'w') as f:
+    json.dump(coordinator_task, f, indent=2)
+print(f"Created: {coordinator_task['task']['title']}")
+
+print(f"\n📝 Created {len(postmortem_tasks) + 1} post-mortem reflection tasks!")
+print("Workers will now share their unique perspectives on the SLAPS experiment.")
+print("Final task will synthesize all reflections into comprehensive post-mortem.")

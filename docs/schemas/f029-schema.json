@@ -1,0 +1,1390 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.company.com/schemas/dlq-remediation-pipeline/v1.0.0",
+  "title": "DLQ Remediation Pipeline Data Models",
+  "description": "JSON Schema definitions for DLQ Remediation Pipeline data structures",
+  "type": "object",
+  "definitions": {
+    "RemediationRule": {
+      "$id": "#/definitions/RemediationRule",
+      "type": "object",
+      "title": "Remediation Rule",
+      "description": "A rule that defines how to classify and remediate failed jobs from the dead letter queue",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "priority",
+        "enabled",
+        "matcher",
+        "actions",
+        "safety",
+        "created_at",
+        "updated_at",
+        "created_by"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the remediation rule",
+          "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Unique name for the rule (alphanumeric, underscores, and hyphens only)",
+          "examples": ["validation_errors_pii_redaction", "payment_timeout_retry"]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Human-readable description of what the rule does",
+          "examples": ["Handle validation errors by redacting PII fields and retrying"]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Rule execution priority (higher numbers execute first)",
+          "default": 100,
+          "examples": [100, 500, 999]
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the rule is active for processing",
+          "default": false,
+          "examples": [true, false]
+        },
+        "matcher": {
+          "$ref": "#/definitions/MatcherConfig"
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "description": "List of actions to execute when the rule matches",
+          "items": {
+            "$ref": "#/definitions/ActionConfig"
+          }
+        },
+        "safety": {
+          "$ref": "#/definitions/SafetyConfig"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the rule was created",
+          "examples": ["2025-09-14T10:30:00Z"]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the rule was last modified",
+          "examples": ["2025-09-14T15:45:30Z"]
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who created the rule",
+          "examples": ["john.doe@company.com", "sre-team"]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "Tags for categorizing and filtering rules",
+          "items": {
+            "type": "string",
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "examples": [["validation", "pii", "user-data"], ["payment", "timeout", "retry"]]
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata for the rule",
+          "additionalProperties": true,
+          "examples": [
+            {
+              "team": "platform",
+              "environment": "production",
+              "jira_ticket": "PLAT-1234"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "MatcherConfig": {
+      "$id": "#/definitions/MatcherConfig",
+      "type": "object",
+      "title": "Matcher Configuration",
+      "description": "Defines patterns and conditions for matching DLQ jobs",
+      "properties": {
+        "error_pattern": {
+          "type": "string",
+          "description": "Regular expression pattern to match against error messages",
+          "examples": ["validation.*required", "timeout.*gateway", "auth.*failed"]
+        },
+        "error_pattern_flags": {
+          "type": "string",
+          "pattern": "^[ims]*$",
+          "description": "Regular expression flags (i=case insensitive, m=multiline, s=dotall)",
+          "examples": ["i", "im", ""]
+        },
+        "field_matchers": {
+          "type": "array",
+          "description": "Matchers for specific fields in the job payload",
+          "items": {
+            "$ref": "#/definitions/FieldMatcher"
+          }
+        },
+        "source_queue_pattern": {
+          "type": "string",
+          "description": "Regular expression pattern to match source queue names",
+          "examples": ["user.*", "payment\\..*", "^critical_.*"]
+        },
+        "retry_count_min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum number of retry attempts",
+          "examples": [0, 1, 3]
+        },
+        "retry_count_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of retry attempts",
+          "examples": [3, 5, 10]
+        },
+        "age_min_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum age of the job in seconds",
+          "examples": [300, 3600, 86400]
+        },
+        "age_max_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum age of the job in seconds",
+          "examples": [3600, 86400, 604800]
+        },
+        "payload_size_min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum payload size in bytes",
+          "examples": [100, 1024, 10240]
+        },
+        "payload_size_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum payload size in bytes",
+          "examples": [1048576, 10485760, 104857600]
+        },
+        "time_of_day_start": {
+          "type": "string",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Start time for time-based matching (24-hour format HH:MM)",
+          "examples": ["09:00", "18:30", "00:00"]
+        },
+        "time_of_day_end": {
+          "type": "string",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "End time for time-based matching (24-hour format HH:MM)",
+          "examples": ["17:00", "23:59", "06:00"]
+        },
+        "external_classifier": {
+          "$ref": "#/definitions/ExternalClassifierConfig"
+        }
+      },
+      "anyOf": [
+        {"required": ["error_pattern"]},
+        {"required": ["field_matchers"]},
+        {"required": ["source_queue_pattern"]},
+        {"required": ["retry_count_min"]},
+        {"required": ["retry_count_max"]},
+        {"required": ["external_classifier"]}
+      ],
+      "additionalProperties": false
+    },
+
+    "FieldMatcher": {
+      "$id": "#/definitions/FieldMatcher",
+      "type": "object",
+      "title": "Field Matcher",
+      "description": "Matches specific fields within job payloads using JSON path expressions",
+      "required": ["json_path", "operator", "value"],
+      "properties": {
+        "json_path": {
+          "type": "string",
+          "description": "JSON path expression to the field",
+          "pattern": "^\\$\\.",
+          "examples": ["$.payload.user.email", "$.error.code", "$.metadata.source"]
+        },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "equals",
+            "not_equals",
+            "contains",
+            "not_contains",
+            "regex",
+            "exists",
+            "not_exists",
+            "greater_than",
+            "less_than",
+            "greater_than_or_equal",
+            "less_than_or_equal"
+          ],
+          "description": "Comparison operator to apply"
+        },
+        "value": {
+          "description": "Value to compare against (type depends on operator)",
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "boolean"},
+            {"type": "null"}
+          ]
+        },
+        "case_sensitive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether string comparisons should be case sensitive"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ExternalClassifierConfig": {
+      "$id": "#/definitions/ExternalClassifierConfig",
+      "type": "object",
+      "title": "External Classifier Configuration",
+      "description": "Configuration for external classification services (HTTP/ML endpoints)",
+      "required": ["endpoint"],
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "HTTP endpoint for the external classifier",
+          "examples": ["https://ml-classifier.company.com/classify"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["POST", "PUT"],
+          "default": "POST",
+          "description": "HTTP method to use for classification requests"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 5,
+          "description": "Request timeout in seconds"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Additional HTTP headers to send with requests",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "Content-Type": "application/json",
+              "X-API-Key": "classifier-key-123"
+            }
+          ]
+        },
+        "auth": {
+          "$ref": "#/definitions/ExternalAuthConfig"
+        },
+        "retry_policy": {
+          "type": "object",
+          "properties": {
+            "max_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "default": 2
+            },
+            "backoff_multiplier": {
+              "type": "number",
+              "minimum": 1.0,
+              "maximum": 10.0,
+              "default": 2.0
+            },
+            "initial_delay_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000,
+              "default": 1000
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ExternalAuthConfig": {
+      "$id": "#/definitions/ExternalAuthConfig",
+      "type": "object",
+      "title": "External Authentication Configuration",
+      "description": "Authentication configuration for external services",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "basic", "bearer", "api_key"],
+          "default": "none",
+          "description": "Type of authentication to use"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username for basic authentication"
+        },
+        "password": {
+          "type": "string",
+          "description": "Password for basic authentication"
+        },
+        "token": {
+          "type": "string",
+          "description": "Bearer token or API key value"
+        },
+        "header_name": {
+          "type": "string",
+          "description": "Header name for API key authentication",
+          "examples": ["X-API-Key", "Authorization", "X-Auth-Token"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "basic"}}},
+          "then": {"required": ["username", "password"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "bearer"}}},
+          "then": {"required": ["token"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "api_key"}}},
+          "then": {"required": ["token", "header_name"]}
+        }
+      ],
+      "additionalProperties": false
+    },
+
+    "ActionConfig": {
+      "$id": "#/definitions/ActionConfig",
+      "type": "object",
+      "title": "Action Configuration",
+      "description": "Configuration for a remediation action to execute",
+      "required": ["type", "config"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["requeue", "transform", "redact", "drop", "route"],
+          "description": "Type of action to execute"
+        },
+        "config": {
+          "type": "object",
+          "description": "Action-specific configuration",
+          "additionalProperties": true
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 30,
+          "description": "Maximum time to wait for action completion"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 2,
+          "description": "Number of retry attempts for failed actions"
+        },
+        "idempotent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the action is idempotent and safe to retry"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Optional JavaScript expression to evaluate before executing action",
+          "examples": ["payload.user && payload.user.type === 'premium'"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "requeue"}}},
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/RequeueActionConfig"
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "transform"}}},
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/TransformActionConfig"
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "redact"}}},
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/RedactActionConfig"
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "drop"}}},
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/DropActionConfig"
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "route"}}},
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/RouteActionConfig"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+
+    "RequeueActionConfig": {
+      "$id": "#/definitions/RequeueActionConfig",
+      "type": "object",
+      "title": "Requeue Action Configuration",
+      "description": "Configuration for requeuing jobs to a target queue",
+      "properties": {
+        "target_queue": {
+          "type": "string",
+          "description": "Target queue name (supports templates like {{original_queue}}.retry)",
+          "examples": ["user.validation.retry", "{{original_queue}}.fixed", "payment.retry"]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Priority for the requeued job (1=lowest, 10=highest)"
+        },
+        "delay_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400,
+          "default": 0,
+          "description": "Delay before the job becomes available for processing"
+        },
+        "max_retry_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum retry count to set on the requeued job"
+        },
+        "preserve_metadata": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to preserve original job metadata"
+        },
+        "add_metadata": {
+          "type": "object",
+          "description": "Additional metadata to add to the requeued job",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TransformActionConfig": {
+      "$id": "#/definitions/TransformActionConfig",
+      "type": "object",
+      "title": "Transform Action Configuration",
+      "description": "Configuration for transforming job payloads",
+      "properties": {
+        "script": {
+          "type": "string",
+          "description": "JavaScript transformation script (payload variable available)",
+          "examples": [
+            "payload.user.email = payload.user.email.toLowerCase();",
+            "if (!payload.retry_count) payload.retry_count = 0; payload.retry_count++;"
+          ]
+        },
+        "field_transforms": {
+          "type": "array",
+          "description": "Simple field-level transformations",
+          "items": {
+            "$ref": "#/definitions/FieldTransform"
+          }
+        },
+        "schema_validation": {
+          "type": "object",
+          "description": "JSON schema to validate transformed payload against",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "description": "JSON schema definition"
+            },
+            "on_validation_failure": {
+              "type": "string",
+              "enum": ["abort", "warn", "ignore"],
+              "default": "abort",
+              "description": "Action to take if validation fails"
+            }
+          }
+        },
+        "sandbox_config": {
+          "type": "object",
+          "description": "JavaScript execution sandbox configuration",
+          "properties": {
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000,
+              "default": 1000
+            },
+            "memory_limit_mb": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "allowed_globals": {
+              "type": "array",
+              "items": {"type": "string"},
+              "default": ["Math", "Date", "JSON"]
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {"required": ["script"]},
+        {"required": ["field_transforms"]}
+      ],
+      "additionalProperties": false
+    },
+
+    "FieldTransform": {
+      "$id": "#/definitions/FieldTransform",
+      "type": "object",
+      "title": "Field Transformation",
+      "description": "Simple transformation for a specific field",
+      "required": ["path", "operation"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "JSON path to the field",
+          "examples": ["$.payload.user.email", "$.metadata.source"]
+        },
+        "operation": {
+          "type": "string",
+          "enum": ["set", "delete", "lowercase", "uppercase", "trim", "hash", "encrypt"],
+          "description": "Transformation operation to apply"
+        },
+        "value": {
+          "description": "Value for 'set' operation",
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "boolean"},
+            {"type": "object"},
+            {"type": "array"}
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "description": "Optional condition for applying the transformation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RedactActionConfig": {
+      "$id": "#/definitions/RedactActionConfig",
+      "type": "object",
+      "title": "Redact Action Configuration",
+      "description": "Configuration for redacting sensitive information from job payloads",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "description": "List of field paths to redact",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["$.payload.user.ssn", "$.payload.user.email", "$.payload.user.phone"]]
+        },
+        "patterns": {
+          "type": "array",
+          "description": "Regular expression patterns to redact",
+          "items": {
+            "type": "object",
+            "required": ["pattern"],
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "description": "Regular expression pattern"
+              },
+              "flags": {
+                "type": "string",
+                "pattern": "^[gimuy]*$",
+                "description": "Regular expression flags"
+              },
+              "replacement": {
+                "type": "string",
+                "default": "[REDACTED]",
+                "description": "Replacement text"
+              }
+            }
+          }
+        },
+        "replacement": {
+          "type": "string",
+          "default": "[REDACTED]",
+          "description": "Default replacement text for redacted fields"
+        },
+        "preserve_structure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to preserve the original data structure"
+        },
+        "audit_redactions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to log details of what was redacted"
+        },
+        "pii_categories": {
+          "type": "array",
+          "description": "Categories of PII to automatically detect and redact",
+          "items": {
+            "type": "string",
+            "enum": ["email", "phone", "ssn", "credit_card", "ip_address", "custom"]
+          }
+        }
+      },
+      "anyOf": [
+        {"required": ["fields"]},
+        {"required": ["patterns"]},
+        {"required": ["pii_categories"]}
+      ],
+      "additionalProperties": false
+    },
+
+    "DropActionConfig": {
+      "$id": "#/definitions/DropActionConfig",
+      "type": "object",
+      "title": "Drop Action Configuration",
+      "description": "Configuration for permanently dropping jobs",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Reason for dropping the job",
+          "examples": ["Invalid payload format", "Exceeded retry limit", "Malicious content detected"]
+        },
+        "archive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to archive the job before dropping"
+        },
+        "archive_location": {
+          "type": "string",
+          "description": "Location to archive dropped jobs",
+          "examples": ["s3://company-archives/dlq-drops/", "file:///var/log/dlq-drops/"]
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2555,
+          "default": 30,
+          "description": "How long to retain archived jobs"
+        },
+        "require_confirmation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to require manual confirmation before dropping"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RouteActionConfig": {
+      "$id": "#/definitions/RouteActionConfig",
+      "type": "object",
+      "title": "Route Action Configuration",
+      "description": "Configuration for routing jobs to different queues based on conditions",
+      "required": ["routes"],
+      "properties": {
+        "routes": {
+          "type": "array",
+          "description": "List of routing rules to evaluate",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/RouteRule"
+          }
+        },
+        "default_queue": {
+          "type": "string",
+          "description": "Default queue if no routes match"
+        },
+        "load_balancing": {
+          "type": "object",
+          "description": "Load balancing configuration for multiple target queues",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": ["round_robin", "weighted", "least_loaded"],
+              "default": "round_robin"
+            },
+            "weights": {
+              "type": "object",
+              "description": "Queue weights for weighted load balancing",
+              "additionalProperties": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RouteRule": {
+      "$id": "#/definitions/RouteRule",
+      "type": "object",
+      "title": "Route Rule",
+      "description": "A single routing rule with condition and target",
+      "required": ["condition", "target_queue"],
+      "properties": {
+        "condition": {
+          "type": "string",
+          "description": "JavaScript expression to evaluate for routing",
+          "examples": [
+            "payload.user.type === 'premium'",
+            "error.code === 'PAYMENT_TIMEOUT'",
+            "retry_count < 3"
+          ]
+        },
+        "target_queue": {
+          "type": "string",
+          "description": "Queue to route to if condition matches"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Priority for jobs routed to this queue"
+        },
+        "delay_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400,
+          "default": 0,
+          "description": "Delay before the job becomes available"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata to add to routed jobs",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SafetyConfig": {
+      "$id": "#/definitions/SafetyConfig",
+      "type": "object",
+      "title": "Safety Configuration",
+      "description": "Safety limits and circuit breaker configuration for rule execution",
+      "required": ["max_per_minute", "max_total_per_run", "error_rate_threshold"],
+      "properties": {
+        "max_per_minute": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of jobs to process per minute",
+          "examples": [10, 100, 1000]
+        },
+        "max_total_per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Maximum total jobs to process in a single pipeline run",
+          "examples": [100, 1000, 10000]
+        },
+        "error_rate_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Error rate threshold for triggering circuit breaker (0.0-1.0)",
+          "examples": [0.05, 0.1, 0.25]
+        },
+        "backoff_on_failure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to apply exponential backoff when failures occur"
+        },
+        "circuit_breaker": {
+          "$ref": "#/definitions/CircuitBreakerConfig"
+        },
+        "emergency_stop_conditions": {
+          "type": "array",
+          "description": "Conditions that trigger emergency stop",
+          "items": {
+            "type": "object",
+            "required": ["condition", "description"],
+            "properties": {
+              "condition": {
+                "type": "string",
+                "description": "JavaScript expression for emergency stop condition"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable description of the condition"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CircuitBreakerConfig": {
+      "$id": "#/definitions/CircuitBreakerConfig",
+      "type": "object",
+      "title": "Circuit Breaker Configuration",
+      "description": "Configuration for circuit breaker to prevent cascading failures",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the circuit breaker is enabled"
+        },
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5,
+          "description": "Number of consecutive failures before opening the circuit"
+        },
+        "recovery_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300,
+          "description": "Time to wait before attempting to close the circuit"
+        },
+        "min_requests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 10,
+          "description": "Minimum number of requests before calculating error rate"
+        },
+        "half_open_max_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 3,
+          "description": "Maximum calls allowed in half-open state"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ClassificationResult": {
+      "$id": "#/definitions/ClassificationResult",
+      "type": "object",
+      "title": "Classification Result",
+      "description": "Result of classifying a DLQ job",
+      "required": ["job_id", "category", "confidence", "timestamp", "source"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Unique identifier of the classified job",
+          "examples": ["job_12345", "550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "category": {
+          "type": "string",
+          "description": "Classification category assigned to the job",
+          "examples": ["validation_error", "payment_timeout", "auth_failure", "unknown"]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence score for the classification (0.0-1.0)",
+          "examples": [0.95, 0.73, 0.21]
+        },
+        "matched_rules": {
+          "type": "array",
+          "description": "List of rule IDs that matched this job",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "reason": {
+          "type": "string",
+          "description": "Human-readable explanation for the classification",
+          "examples": ["Error message contains 'validation' keyword", "Payment gateway timeout pattern detected"]
+        },
+        "source": {
+          "type": "string",
+          "enum": ["builtin", "external", "manual"],
+          "description": "Source of the classification"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the classification was performed"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional classification metadata",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuditLogEntry": {
+      "$id": "#/definitions/AuditLogEntry",
+      "type": "object",
+      "title": "Audit Log Entry",
+      "description": "Single entry in the remediation audit log",
+      "required": ["id", "job_id", "action_type", "success", "timestamp"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this audit entry"
+        },
+        "job_id": {
+          "type": "string",
+          "description": "ID of the job that was processed"
+        },
+        "rule_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the rule that was applied"
+        },
+        "rule_name": {
+          "type": "string",
+          "description": "Name of the rule that was applied"
+        },
+        "action_type": {
+          "type": "string",
+          "enum": ["requeue", "transform", "redact", "drop", "route"],
+          "description": "Type of action that was executed"
+        },
+        "classification": {
+          "$ref": "#/definitions/ClassificationResult",
+          "description": "Classification result that triggered the rule"
+        },
+        "action_details": {
+          "type": "object",
+          "description": "Detailed information about the action executed",
+          "additionalProperties": true
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the action was successful"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if the action failed"
+        },
+        "execution_time_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time taken to execute the action in milliseconds"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Whether this was a dry-run execution"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the action was executed"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User who triggered the action (for manual triggers)"
+        },
+        "ip_address": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "IP address of the request origin"
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "User agent string of the request"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed tracing ID for correlation"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional context and metadata",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PipelineMetrics": {
+      "$id": "#/definitions/PipelineMetrics",
+      "type": "object",
+      "title": "Pipeline Metrics",
+      "description": "Comprehensive performance metrics for the remediation pipeline",
+      "required": ["timestamp", "time_range", "granularity"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When these metrics were collected"
+        },
+        "time_range": {
+          "type": "string",
+          "description": "Time range covered by these metrics",
+          "examples": ["1h", "24h", "7d"]
+        },
+        "granularity": {
+          "type": "string",
+          "description": "Granularity of the metric data points",
+          "examples": ["1m", "5m", "1h"]
+        },
+        "throughput": {
+          "$ref": "#/definitions/ThroughputMetrics"
+        },
+        "latency": {
+          "$ref": "#/definitions/LatencyMetrics"
+        },
+        "success_rates": {
+          "$ref": "#/definitions/SuccessRateMetrics"
+        },
+        "safety_metrics": {
+          "$ref": "#/definitions/SafetyMetrics"
+        },
+        "resource_usage": {
+          "$ref": "#/definitions/ResourceUsageMetrics"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ThroughputMetrics": {
+      "$id": "#/definitions/ThroughputMetrics",
+      "type": "object",
+      "title": "Throughput Metrics",
+      "description": "Metrics related to processing throughput",
+      "properties": {
+        "jobs_classified_per_minute": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "jobs_remediated_per_minute": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "actions_executed_per_minute": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LatencyMetrics": {
+      "$id": "#/definitions/LatencyMetrics",
+      "type": "object",
+      "title": "Latency Metrics",
+      "description": "Metrics related to processing latency",
+      "properties": {
+        "classification_latency_ms": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/LatencyPoint"}
+        },
+        "remediation_latency_ms": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/LatencyPoint"}
+        },
+        "end_to_end_latency_ms": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/LatencyPoint"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SuccessRateMetrics": {
+      "$id": "#/definitions/SuccessRateMetrics",
+      "type": "object",
+      "title": "Success Rate Metrics",
+      "description": "Metrics related to success rates",
+      "properties": {
+        "classification_success_rate": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "remediation_success_rate": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "rule_effectiveness": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/RuleEffectivenessPoint"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SafetyMetrics": {
+      "$id": "#/definitions/SafetyMetrics",
+      "type": "object",
+      "title": "Safety Metrics",
+      "description": "Metrics related to safety systems",
+      "properties": {
+        "rate_limit_hits": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/RateLimitHitPoint"}
+        },
+        "circuit_breaker_trips": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/CircuitBreakerTripPoint"}
+        },
+        "safety_overrides": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceUsageMetrics": {
+      "$id": "#/definitions/ResourceUsageMetrics",
+      "type": "object",
+      "title": "Resource Usage Metrics",
+      "description": "Metrics related to system resource usage",
+      "properties": {
+        "cpu_usage_percent": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "memory_usage_mb": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "disk_usage_mb": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        },
+        "network_io_mbps": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/TimeSeriesPoint"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "TimeSeriesPoint": {
+      "$id": "#/definitions/TimeSeriesPoint",
+      "type": "object",
+      "title": "Time Series Data Point",
+      "description": "A single data point in a time series",
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this data point"
+        },
+        "value": {
+          "type": "number",
+          "description": "Numeric value for this data point"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LatencyPoint": {
+      "$id": "#/definitions/LatencyPoint",
+      "type": "object",
+      "title": "Latency Data Point",
+      "description": "A latency measurement with percentiles",
+      "required": ["timestamp", "p50", "p95", "p99"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this measurement"
+        },
+        "p50": {
+          "type": "number",
+          "minimum": 0,
+          "description": "50th percentile latency in milliseconds"
+        },
+        "p95": {
+          "type": "number",
+          "minimum": 0,
+          "description": "95th percentile latency in milliseconds"
+        },
+        "p99": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99th percentile latency in milliseconds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RuleEffectivenessPoint": {
+      "$id": "#/definitions/RuleEffectivenessPoint",
+      "type": "object",
+      "title": "Rule Effectiveness Data Point",
+      "description": "Effectiveness measurement for a specific rule",
+      "required": ["timestamp", "rule_id", "rule_name", "effectiveness_rate"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rule_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "effectiveness_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rule effectiveness rate (0.0-1.0)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RateLimitHitPoint": {
+      "$id": "#/definitions/RateLimitHitPoint",
+      "type": "object",
+      "title": "Rate Limit Hit Data Point",
+      "description": "Rate limit violation measurement",
+      "required": ["timestamp", "rule_id", "rule_name", "limit_type", "hits"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rule_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "limit_type": {
+          "type": "string",
+          "enum": ["per_minute", "total_per_run"]
+        },
+        "hits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of rate limit hits"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "CircuitBreakerTripPoint": {
+      "$id": "#/definitions/CircuitBreakerTripPoint",
+      "type": "object",
+      "title": "Circuit Breaker Trip Data Point",
+      "description": "Circuit breaker activation measurement",
+      "required": ["timestamp", "rule_id", "rule_name", "failure_count", "error_rate"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rule_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "failure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failures that triggered the circuit breaker"
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Error rate when circuit breaker triggered"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Error": {
+      "$id": "#/definitions/Error",
+      "type": "object",
+      "title": "Error Response",
+      "description": "Standard error response format",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable error code",
+          "examples": ["RULE_NOT_FOUND", "VALIDATION_FAILED", "PERMISSION_DENIED"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message",
+          "examples": ["The specified rule was not found", "Validation failed for the provided data"]
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error context and details",
+          "additionalProperties": true
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Request trace ID for debugging"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -3,9 +3,11 @@
 - Last updated: 2025-09-12
 
 ## Executive Summary
+
 Top project risks with probability, impact, mitigation strategies, and contingency plans.
 
 ## Table of Contents
+
 - [Risk Matrix](#risk-matrix)
 
 ## Risk Matrix
@@ -22,4 +24,3 @@ Top project risks with probability, impact, mitigation strategies, and contingen
 | 8 | CI flakiness (timing-sensitive tests) | Medium | 3 | Retries; timeouts; use service containers | Quarantine and fix tests |
 | 9 | Security vulnerabilities in deps | Medium | 4 | `govulncheck` in CI | Pin versions; patch on release |
 | 10 | Operator error on DLQ purge | Low | 4 | Confirmation prompts; export-first guidance | Restore from backup/export |
-

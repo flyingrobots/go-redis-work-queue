@@ -1,0 +1,706 @@
+openapi: 3.0.3
+info:
+  title: Storage Backends API
+  description: API for managing pluggable storage backends in the Redis Work Queue system
+  version: 1.0.0
+  contact:
+    name: Platform Team
+    email: platform@example.com
+
+servers:
+  - url: https://api.queue.example.com/v1
+    description: Production API
+  - url: https://staging-api.queue.example.com/v1
+    description: Staging API
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+tags:
+  - name: backends
+    description: Storage backend management
+  - name: migration
+    description: Backend migration operations
+  - name: configuration
+    description: Backend configuration
+  - name: monitoring
+    description: Backend monitoring and health
+
+paths:
+  /backends:
+    get:
+      tags: [backends]
+      summary: List available storage backends
+      description: Returns all registered storage backends and their capabilities
+      responses:
+        200:
+          description: List of available backends
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backends:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BackendInfo'
+
+    post:
+      tags: [backends]
+      summary: Register a new storage backend
+      description: Registers a custom storage backend implementation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterBackendRequest'
+      responses:
+        201:
+          description: Backend registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackendInfo'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        409:
+          description: Backend already registered
+
+  /backends/{backendName}:
+    get:
+      tags: [backends]
+      summary: Get backend details
+      parameters:
+        - $ref: '#/components/parameters/BackendName'
+      responses:
+        200:
+          description: Backend details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackendDetails'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [backends]
+      summary: Unregister a backend
+      description: Removes a backend from the registry (does not affect existing queues)
+      parameters:
+        - $ref: '#/components/parameters/BackendName'
+      responses:
+        204:
+          description: Backend unregistered
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          description: Backend is in use
+
+  /backends/{backendName}/capabilities:
+    get:
+      tags: [backends]
+      summary: Get backend capabilities
+      description: Returns detailed capability information for a specific backend
+      parameters:
+        - $ref: '#/components/parameters/BackendName'
+      responses:
+        200:
+          description: Backend capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackendCapabilities'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /backends/{backendName}/health:
+    get:
+      tags: [monitoring]
+      summary: Check backend health
+      parameters:
+        - $ref: '#/components/parameters/BackendName'
+      responses:
+        200:
+          description: Backend is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        503:
+          description: Backend is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /backends/{backendName}/stats:
+    get:
+      tags: [monitoring]
+      summary: Get backend statistics
+      parameters:
+        - $ref: '#/components/parameters/BackendName'
+        - name: queue
+          in: query
+          schema:
+            type: string
+          description: Optional queue name for queue-specific stats
+      responses:
+        200:
+          description: Backend statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackendStats'
+
+  /queues/{queueName}/backend:
+    get:
+      tags: [configuration]
+      summary: Get queue backend configuration
+      parameters:
+        - $ref: '#/components/parameters/QueueName'
+      responses:
+        200:
+          description: Queue backend configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueBackendConfig'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [configuration]
+      summary: Set queue backend
+      description: Configures which backend a queue should use
+      parameters:
+        - $ref: '#/components/parameters/QueueName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBackendRequest'
+      responses:
+        200:
+          description: Backend configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueBackendConfig'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /migrations:
+    get:
+      tags: [migration]
+      summary: List active migrations
+      description: Returns all currently running or recently completed migrations
+      responses:
+        200:
+          description: List of migrations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  migrations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MigrationStatus'
+
+    post:
+      tags: [migration]
+      summary: Start a new migration
+      description: Initiates migration of a queue from one backend to another
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartMigrationRequest'
+      responses:
+        202:
+          description: Migration started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationStatus'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        409:
+          description: Migration already in progress
+
+  /migrations/{migrationId}:
+    get:
+      tags: [migration]
+      summary: Get migration status
+      parameters:
+        - $ref: '#/components/parameters/MigrationId'
+      responses:
+        200:
+          description: Migration status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationStatus'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [migration]
+      summary: Cancel migration
+      description: Cancels an in-progress migration
+      parameters:
+        - $ref: '#/components/parameters/MigrationId'
+      responses:
+        204:
+          description: Migration cancelled
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          description: Migration cannot be cancelled
+
+  /migrations/{migrationId}/rollback:
+    post:
+      tags: [migration]
+      summary: Rollback migration
+      description: Reverts a migration to its original state
+      parameters:
+        - $ref: '#/components/parameters/MigrationId'
+      responses:
+        202:
+          description: Rollback initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationStatus'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          description: Migration cannot be rolled back
+
+  /backends/kafka-bridge/config:
+    get:
+      tags: [configuration]
+      summary: Get Kafka bridge configuration
+      responses:
+        200:
+          description: Kafka bridge configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaBridgeConfig'
+
+    put:
+      tags: [configuration]
+      summary: Update Kafka bridge configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KafkaBridgeConfig'
+      responses:
+        200:
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaBridgeConfig'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    BackendName:
+      name: backendName
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [redis-lists, redis-streams, keydb, dragonfly, kafka-bridge]
+      description: Storage backend name
+
+    QueueName:
+      name: queueName
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Queue name
+
+    MigrationId:
+      name: migrationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Migration identifier
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    BackendInfo:
+      type: object
+      required: [name, type, status]
+      properties:
+        name:
+          type: string
+          description: Backend identifier
+        type:
+          type: string
+          enum: [redis-lists, redis-streams, keydb, dragonfly, kafka-bridge, custom]
+        status:
+          type: string
+          enum: [available, unavailable, degraded]
+        description:
+          type: string
+        version:
+          type: string
+
+    BackendDetails:
+      allOf:
+        - $ref: '#/components/schemas/BackendInfo'
+        - type: object
+          properties:
+            capabilities:
+              $ref: '#/components/schemas/BackendCapabilities'
+            configuration:
+              type: object
+              additionalProperties: true
+            statistics:
+              $ref: '#/components/schemas/BackendStats'
+            health:
+              $ref: '#/components/schemas/HealthStatus'
+
+    BackendCapabilities:
+      type: object
+      properties:
+        atomic_ack:
+          type: boolean
+          description: Supports atomic acknowledgment
+        consumer_groups:
+          type: boolean
+          description: Supports multiple consumer groups
+        replay:
+          type: boolean
+          description: Supports historical job replay
+        idempotent_enqueue:
+          type: boolean
+          description: Supports duplicate detection
+        transactions:
+          type: boolean
+          description: Supports multi-operation transactions
+        persistence:
+          type: boolean
+          description: Data survives restarts
+        clustering:
+          type: boolean
+          description: Supports distributed operation
+        sharding:
+          type: boolean
+          description: Supports horizontal partitioning
+        time_to_live:
+          type: boolean
+          description: Supports automatic expiration
+        prioritization:
+          type: boolean
+          description: Supports priority queues
+        batch_operations:
+          type: boolean
+          description: Supports bulk operations
+        streaming:
+          type: boolean
+          description: Supports real-time events
+        max_throughput:
+          type: integer
+          description: Maximum operations per second
+        max_connections:
+          type: integer
+          description: Maximum concurrent connections
+        max_queue_size:
+          type: integer
+          description: Maximum jobs per queue
+
+    BackendStats:
+      type: object
+      properties:
+        enqueue_rate:
+          type: number
+          format: float
+          description: Enqueues per second
+        dequeue_rate:
+          type: number
+          format: float
+          description: Dequeues per second
+        error_rate:
+          type: number
+          format: float
+          description: Errors per second
+        queue_depth:
+          type: integer
+          description: Current number of jobs
+        avg_latency_ms:
+          type: number
+          format: float
+        p99_latency_ms:
+          type: number
+          format: float
+        memory_usage_bytes:
+          type: integer
+        connection_pool:
+          type: object
+          properties:
+            active:
+              type: integer
+            idle:
+              type: integer
+            total:
+              type: integer
+        backend_specific:
+          type: object
+          additionalProperties: true
+          description: Backend-specific metrics
+
+    HealthStatus:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [pass, warn, fail]
+              message:
+                type: string
+              latency_ms:
+                type: number
+
+    QueueBackendConfig:
+      type: object
+      required: [queue_name, backend_name]
+      properties:
+        queue_name:
+          type: string
+        backend_name:
+          type: string
+        backend_config:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SetBackendRequest:
+      type: object
+      required: [backend_name]
+      properties:
+        backend_name:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        migrate_existing:
+          type: boolean
+          default: false
+          description: Migrate existing jobs to new backend
+
+    RegisterBackendRequest:
+      type: object
+      required: [name, type, endpoint]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [redis-lists, redis-streams, keydb, dragonfly, custom]
+        endpoint:
+          type: string
+          format: uri
+        config:
+          type: object
+          additionalProperties: true
+        auth:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [none, password, certificate]
+            credentials:
+              type: object
+
+    StartMigrationRequest:
+      type: object
+      required: [queue_name, target_backend]
+      properties:
+        queue_name:
+          type: string
+        source_backend:
+          type: string
+          description: Current backend (auto-detected if not specified)
+        target_backend:
+          type: string
+        options:
+          type: object
+          properties:
+            drain_first:
+              type: boolean
+              default: false
+              description: Stop new jobs during migration
+            batch_size:
+              type: integer
+              default: 100
+              minimum: 1
+              maximum: 10000
+            verify:
+              type: boolean
+              default: true
+              description: Verify data integrity after migration
+            rollback_on_error:
+              type: boolean
+              default: true
+            max_duration:
+              type: string
+              description: Maximum migration time (ISO 8601)
+
+    MigrationStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        queue_name:
+          type: string
+        source_backend:
+          type: string
+        target_backend:
+          type: string
+        status:
+          type: string
+          enum: [planning, running, verifying, completed, failed, cancelled, rolling_back]
+        progress:
+          type: object
+          properties:
+            total_jobs:
+              type: integer
+            migrated_jobs:
+              type: integer
+            failed_jobs:
+              type: integer
+            percentage:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        estimated_completion:
+          type: string
+          format: date-time
+        error:
+          type: string
+        can_rollback:
+          type: boolean
+
+    KafkaBridgeConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        brokers:
+          type: array
+          items:
+            type: string
+        topic_prefix:
+          type: string
+          default: queue-events
+        producer_config:
+          type: object
+          properties:
+            acks:
+              type: string
+              enum: [none, leader, all]
+              default: leader
+            compression:
+              type: string
+              enum: [none, gzip, snappy, lz4, zstd]
+            batch_size:
+              type: integer
+            linger_ms:
+              type: integer
+        consumer_config:
+          type: object
+          properties:
+            group_id:
+              type: string
+            auto_offset_reset:
+              type: string
+              enum: [earliest, latest]
+        outbox:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            retry_policy:
+              type: object
+              properties:
+                max_retries:
+                  type: integer
+                backoff_ms:
+                  type: integer
+
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

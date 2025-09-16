@@ -1,0 +1,412 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: work-queue
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbac-config
+  namespace: work-queue
+data:
+  roles.yaml: |
+    roles:
+      viewer:
+        name: "Viewer"
+        description: "Read-only access to stats and job lists"
+        permissions:
+          - "stats:read"
+          - "queues:read"
+          - "jobs:read"
+          - "workers:read"
+        resource_constraints:
+          queues: ["*"]
+          environment: ["staging", "production"]
+      operator:
+        name: "Operator"
+        description: "Basic operations including job enqueuing"
+        inherits: ["viewer"]
+        permissions:
+          - "jobs:enqueue"
+          - "jobs:retry"
+          - "queues:list"
+          - "bench:run"
+        resource_constraints:
+          queues: ["*"]
+          environment: ["staging", "production"]
+      maintainer:
+        name: "Maintainer"
+        description: "Advanced operations including DLQ management"
+        inherits: ["operator"]
+        permissions:
+          - "dlq:read"
+          - "dlq:retry"
+          - "dlq:export"
+          - "jobs:cancel"
+          - "jobs:priority"
+          - "queues:create"
+          - "workers:manage"
+        resource_constraints:
+          queues: ["*"]
+          environment: ["staging", "production"]
+      admin:
+        name: "Administrator"
+        description: "Full administrative access"
+        inherits: ["maintainer"]
+        permissions:
+          - "dlq:purge"
+          - "queues:delete"
+          - "admin:*"
+          - "system:*"
+        resource_constraints:
+          queues: ["*"]
+          environment: ["*"]
+    default_role: "viewer"
+
+  resources.yaml: |
+    resources:
+      queues:
+        patterns:
+          - name: "all_queues"
+            pattern: "*"
+            description: "All queues in the system"
+          - name: "production_queues"
+            pattern: "prod-*"
+            description: "Production queue prefix"
+          - name: "staging_queues"
+            pattern: "staging-*"
+            description: "Staging queue prefix"
+    actions:
+      "stats:read":
+        description: "Read queue statistics and metrics"
+        risk_level: "low"
+        audit_required: false
+      "queues:read":
+        description: "View queue contents"
+        risk_level: "low"
+        audit_required: false
+      "jobs:enqueue":
+        description: "Submit new jobs"
+        risk_level: "low"
+        audit_required: false
+      "dlq:purge":
+        description: "Permanently delete DLQ jobs"
+        risk_level: "high"
+        audit_required: true
+    endpoints:
+      "GET /api/v1/stats": ["stats:read"]
+      "GET /api/v1/queues/*/peek": ["queues:read"]
+      "POST /api/v1/jobs": ["jobs:enqueue"]
+      "DELETE /api/v1/queues/dlq": ["dlq:purge"]
+
+  token-service.yaml: |
+    server:
+      port: 8081
+      read_timeout: 30s
+      write_timeout: 30s
+      idle_timeout: 60s
+    token:
+      format: "jwt"
+      default_ttl: 24h
+      max_ttl: 168h
+      issuer: "redis-work-queue-rbac"
+      audience: "admin-api"
+      allow_refresh: true
+      refresh_ttl: 168h
+    keys:
+      rotation_interval: 720h
+      grace_period: 24h
+      algorithm: "HS256"
+      key_size: 256
+      storage:
+        type: "file"
+        connection: "/app/keys"
+    audit:
+      enabled: true
+      log_path: "/app/audit/token-service-audit.log"
+      rotate_size: 104857600
+      max_backups: 10
+      compress: true
+      retention_days: 90
+      filter_sensitive: true
+    authz:
+      default_deny: true
+      cache_enabled: true
+      cache_ttl: 5m
+      roles_file: "/app/configs/roles.yaml"
+      resources_file: "/app/configs/resources.yaml"
+    redis:
+      host: "redis-master.work-queue.svc.cluster.local"
+      port: "6379"
+      db: 1
+    rate_limit:
+      enabled: true
+      requests_per_minute: 60
+      burst: 10
+    cors:
+      enabled: true
+      allowed_origins:
+        - "https://admin.staging.example.com"
+        - "https://admin.example.com"
+      allowed_methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "OPTIONS"
+    logging:
+      level: "info"
+      format: "json"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rbac-secrets
+  namespace: work-queue
+type: Opaque
+stringData:
+  rbac-signing-key: "changeme-rbac-signing-key-use-random-256bit-key"
+  rbac-encryption-key: "changeme-rbac-encryption-key-use-random-256bit-key"
+  redis-password: "changeme-redis-password"
+  admin-bootstrap-token: "bootstrap-admin-token-for-initial-setup"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+    component: auth
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rbac-token-service
+  template:
+    metadata:
+      labels:
+        app: rbac-token-service
+        component: auth
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: rbac-token-service
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: rbac-token-service
+        image: work-queue/rbac-token-service:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: REDIS_HOST
+          value: "redis-master.work-queue.svc.cluster.local"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rbac-secrets
+              key: redis-password
+        - name: RBAC_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rbac-secrets
+              key: rbac-signing-key
+        - name: RBAC_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rbac-secrets
+              key: rbac-encryption-key
+        - name: LOG_LEVEL
+          value: "info"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: rbac-config
+          mountPath: /app/configs
+          readOnly: true
+        - name: rbac-keys
+          mountPath: /app/keys
+        - name: audit-logs
+          mountPath: /app/audit
+      volumes:
+      - name: rbac-config
+        configMap:
+          name: rbac-config
+      - name: rbac-keys
+        persistentVolumeClaim:
+          claimName: rbac-keys-pvc
+      - name: audit-logs
+        persistentVolumeClaim:
+          claimName: rbac-audit-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: rbac-token-service
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rbac-token-service
+subjects:
+- kind: ServiceAccount
+  name: rbac-token-service
+  namespace: work-queue
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rbac-keys-pvc
+  namespace: work-queue
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rbac-audit-pvc
+  namespace: work-queue
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "60"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - auth.staging.example.com
+    secretName: rbac-token-service-tls
+  rules:
+  - host: auth.staging.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: rbac-token-service
+            port:
+              number: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rbac-token-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rbac-token-service

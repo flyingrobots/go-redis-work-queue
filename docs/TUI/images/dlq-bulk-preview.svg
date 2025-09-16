@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360">
+  <rect width="100%" height="100%" fill="#0f0f14"/>
+  <rect width="100%" height="100%" fill="#000" opacity="0.35"/>
+  <rect x="120" y="60" width="480" height="240" rx="8" fill="#1d1f27" stroke="#f7768e"/>
+  <g font-family="monospace" font-size="12" fill="#e8e8e8">
+    <text x="140" y="84">Bulk Requeue Preview</text>
+    <line x1="140" y1="90" x2="580" y2="90" stroke="#444"/>
+    <text x="140" y="114">Filter: error contains "timeout"</text>
+    <text x="140" y="134">Matched: 432 items</text>
+    <text x="140" y="154">Destination: high</text>
+    <text x="140" y="174">Rate cap: 50/s</text>
+    <text x="140" y="214">Estimated duration: ~9s</text>
+    <text x="480" y="282" fill="#bbb">[Esc] Cancel</text>
+    <text x="560" y="282" fill="#f7768e">[Enter] Confirm</text>
+  </g>
+</svg>
+

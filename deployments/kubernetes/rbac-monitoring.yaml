@@ -1,0 +1,373 @@
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: rbac-token-service
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+    component: auth
+spec:
+  selector:
+    matchLabels:
+      app: rbac-token-service
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rbac-token-service-alerts
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+    component: auth
+spec:
+  groups:
+  - name: rbac-token-service.rules
+    interval: 30s
+    rules:
+    # High-level service availability
+    - alert: RBACTokenServiceDown
+      expr: up{job="rbac-token-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: rbac-token-service
+      annotations:
+        summary: "RBAC Token Service is down"
+        description: "RBAC Token Service has been down for more than 1 minute"
+        runbook_url: "https://wiki.company.com/rbac-service-down"
+
+    - alert: RBACTokenServiceHighErrorRate
+      expr: rate(http_requests_total{job="rbac-token-service",status=~"5.."}[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "High error rate in RBAC Token Service"
+        description: "RBAC Token Service is experiencing {{ $value | humanizePercentage }} error rate"
+
+    # Response time alerts
+    - alert: RBACTokenServiceHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m])) > 1.0
+      for: 5m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "High latency in RBAC Token Service"
+        description: "95th percentile latency is {{ $value }}s"
+
+    - alert: RBACTokenServiceVeryHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m])) > 5.0
+      for: 2m
+      labels:
+        severity: critical
+        service: rbac-token-service
+      annotations:
+        summary: "Very high latency in RBAC Token Service"
+        description: "95th percentile latency is {{ $value }}s"
+
+    # Token-specific alerts
+    - alert: RBACTokenValidationErrors
+      expr: rate(rbac_token_validation_errors_total[5m]) > 0.05
+      for: 3m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "High token validation error rate"
+        description: "Token validation errors: {{ $value }} per second"
+
+    - alert: RBACTokenExpirationWarning
+      expr: rbac_tokens_expiring_soon_total > 100
+      for: 0m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "Many tokens expiring soon"
+        description: "{{ $value }} tokens will expire within the next hour"
+
+    # Security alerts
+    - alert: RBACUnauthorizedAccess
+      expr: rate(rbac_unauthorized_attempts_total[5m]) > 0.1
+      for: 1m
+      labels:
+        severity: critical
+        service: rbac-token-service
+      annotations:
+        summary: "High rate of unauthorized access attempts"
+        description: "{{ $value }} unauthorized attempts per second"
+
+    - alert: RBACRateLimitHit
+      expr: rate(rbac_rate_limit_exceeded_total[5m]) > 0.01
+      for: 2m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "Rate limiting is being triggered"
+        description: "{{ $value }} rate limit violations per second"
+
+    # Resource alerts
+    - alert: RBACTokenServiceHighCPU
+      expr: rate(container_cpu_usage_seconds_total{pod=~"rbac-token-service-.*"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "High CPU usage in RBAC Token Service"
+        description: "CPU usage is {{ $value | humanizePercentage }}"
+
+    - alert: RBACTokenServiceHighMemory
+      expr: container_memory_working_set_bytes{pod=~"rbac-token-service-.*"} / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "High memory usage in RBAC Token Service"
+        description: "Memory usage is {{ $value | humanizePercentage }}"
+
+    - alert: RBACTokenServicePodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{pod=~"rbac-token-service-.*"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+        service: rbac-token-service
+      annotations:
+        summary: "RBAC Token Service pod is crash looping"
+        description: "Pod {{ $labels.pod }} is restarting frequently"
+
+    # Storage alerts
+    - alert: RBACAuditLogVolumeSpaceLow
+      expr: (kubelet_volume_stats_available_bytes{persistentvolumeclaim="rbac-audit-pvc"} / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="rbac-audit-pvc"}) < 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "RBAC audit log volume space is low"
+        description: "Only {{ $value | humanizePercentage }} of audit log volume space remaining"
+
+    - alert: RBACKeysVolumeSpaceLow
+      expr: (kubelet_volume_stats_available_bytes{persistentvolumeclaim="rbac-keys-pvc"} / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="rbac-keys-pvc"}) < 0.2
+      for: 5m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "RBAC keys volume space is low"
+        description: "Only {{ $value | humanizePercentage }} of keys volume space remaining"
+
+    # Business logic alerts
+    - alert: RBACAdminActivitySpike
+      expr: rate(rbac_admin_actions_total[5m]) > 0.5
+      for: 2m
+      labels:
+        severity: info
+        service: rbac-token-service
+      annotations:
+        summary: "Spike in admin activity"
+        description: "{{ $value }} admin actions per second (unusual activity)"
+
+    - alert: RBACKeyRotationDue
+      expr: time() - rbac_key_last_rotation_timestamp > 2592000  # 30 days
+      for: 0m
+      labels:
+        severity: warning
+        service: rbac-token-service
+      annotations:
+        summary: "RBAC key rotation is due"
+        description: "Keys haven't been rotated in over 30 days"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbac-grafana-dashboard
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+    grafana_dashboard: "1"
+data:
+  rbac-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "RBAC Token Service",
+        "tags": ["rbac", "auth", "tokens"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Service Availability",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"rbac-token-service\"}",
+                "legendFormat": "Service Up"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "green", "value": 1}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"rbac-token-service\"}[5m])",
+                "legendFormat": "{{method}} {{status}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Response Time (95th percentile)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"rbac-token-service\"}[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Token Operations",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(rbac_token_issued_total[5m])",
+                "legendFormat": "Tokens Issued"
+              },
+              {
+                "expr": "rate(rbac_token_validated_total[5m])",
+                "legendFormat": "Tokens Validated"
+              },
+              {
+                "expr": "rate(rbac_token_validation_errors_total[5m])",
+                "legendFormat": "Validation Errors"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Security Events",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(rbac_unauthorized_attempts_total[5m])",
+                "legendFormat": "Unauthorized Attempts"
+              },
+              {
+                "expr": "rate(rbac_rate_limit_exceeded_total[5m])",
+                "legendFormat": "Rate Limit Exceeded"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          },
+          {
+            "id": 6,
+            "title": "Resource Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{pod=~\"rbac-token-service-.*\"}[5m])",
+                "legendFormat": "CPU Usage"
+              },
+              {
+                "expr": "container_memory_working_set_bytes{pod=~\"rbac-token-service-.*\"} / 1024 / 1024",
+                "legendFormat": "Memory Usage (MB)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbac-alertmanager-config
+  namespace: work-queue
+  labels:
+    app: rbac-token-service
+data:
+  rbac-alerts.yml: |
+    groups:
+    - name: rbac-critical
+      routes:
+      - match:
+          service: rbac-token-service
+          severity: critical
+        receiver: critical-alerts
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 12h
+
+    - name: rbac-warning
+      routes:
+      - match:
+          service: rbac-token-service
+          severity: warning
+        receiver: warning-alerts
+        group_wait: 1m
+        group_interval: 15m
+        repeat_interval: 24h
+
+    receivers:
+    - name: critical-alerts
+      slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-critical'
+        title: 'Critical Alert: {{ .GroupLabels.service }}'
+        text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}'
+        send_resolved: true
+
+    - name: warning-alerts
+      slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-warning'
+        title: 'Warning: {{ .GroupLabels.service }}'
+        text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}'
+        send_resolved: true
+
+    inhibit_rules:
+    - source_match:
+        severity: critical
+      target_match:
+        severity: warning
+      equal: [service, instance]

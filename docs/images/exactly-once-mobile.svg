@@ -1,0 +1,116 @@
+<svg width="400" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="15" y="30" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Exactly-Once Control</text>
+  <text x="320" y="30" fill="#39d353" font-family="monospace" font-size="10">🔒 Active</text>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="50" width="400" height="40" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+
+  <rect x="10" y="60" width="90" height="30" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="45" y="80" fill="#f0f6fc" font-family="monospace" font-size="11" text-anchor="middle">Stats</text>
+
+  <rect x="110" y="60" width="90" height="30" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="155" y="80" fill="#8b949e" font-family="monospace" font-size="11" text-anchor="middle">Keys</text>
+
+  <rect x="210" y="60" width="90" height="30" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="255" y="80" fill="#8b949e" font-family="monospace" font-size="11" text-anchor="middle">Outbox</text>
+
+  <rect x="310" y="60" width="80" height="30" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="350" y="80" fill="#8b949e" font-family="monospace" font-size="11" text-anchor="middle">Config</text>
+
+  <!-- Main Content Area - Stats Tab -->
+  <rect x="10" y="110" width="380" height="670" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+
+  <!-- Hit Rate Gauge -->
+  <text x="30" y="140" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Dedup Hit Rate</text>
+
+  <circle cx="200" cy="200" r="50" fill="none" stroke="#30363d" stroke-width="6"/>
+  <path d="M 150 200 A 50 50 0 1 1 235 175" fill="none" stroke="#39d353" stroke-width="6"/>
+  <text x="190" y="205" fill="#39d353" font-family="monospace" font-size="16" font-weight="bold">87.3%</text>
+
+  <!-- Quick Stats Grid -->
+  <text x="30" y="280" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">24h Summary</text>
+
+  <!-- Row 1 -->
+  <rect x="30" y="300" width="160" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="45" y="320" fill="#8b949e" font-family="monospace" font-size="10">Total Processed</text>
+  <text x="110" y="340" fill="#39d353" font-family="monospace" font-size="16" font-weight="bold" text-anchor="middle">15,847</text>
+
+  <rect x="210" y="300" width="160" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="225" y="320" fill="#8b949e" font-family="monospace" font-size="10">Duplicates Blocked</text>
+  <text x="290" y="340" fill="#f85149" font-family="monospace" font-size="16" font-weight="bold" text-anchor="middle">2,073</text>
+
+  <!-- Row 2 -->
+  <rect x="30" y="380" width="160" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="45" y="400" fill="#8b949e" font-family="monospace" font-size="10">Unique Jobs</text>
+  <text x="110" y="420" fill="#58a6ff" font-family="monospace" font-size="16" font-weight="bold" text-anchor="middle">13,774</text>
+
+  <rect x="210" y="380" width="160" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="225" y="400" fill="#8b949e" font-family="monospace" font-size="10">Storage Used</text>
+  <text x="290" y="420" fill="#ffa657" font-family="monospace" font-size="16" font-weight="bold" text-anchor="middle">2.4MB</text>
+
+  <!-- Performance Graph -->
+  <text x="30" y="480" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Hit Rate Trend</text>
+
+  <rect x="30" y="500" width="340" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Simple bar chart -->
+  <rect x="40" y="560" width="8" height="10" fill="#39d353"/>
+  <rect x="55" y="555" width="8" height="15" fill="#39d353"/>
+  <rect x="70" y="550" width="8" height="20" fill="#39d353"/>
+  <rect x="85" y="545" width="8" height="25" fill="#39d353"/>
+  <rect x="100" y="540" width="8" height="30" fill="#39d353"/>
+  <rect x="115" y="535" width="8" height="35" fill="#39d353"/>
+  <rect x="130" y="530" width="8" height="40" fill="#39d353"/>
+  <rect x="145" y="535" width="8" height="35" fill="#39d353"/>
+  <rect x="160" y="540" width="8" height="30" fill="#39d353"/>
+  <rect x="175" y="545" width="8" height="25" fill="#39d353"/>
+  <rect x="190" y="550" width="8" height="20" fill="#39d353"/>
+  <rect x="205" y="555" width="8" height="15" fill="#39d353"/>
+  <rect x="220" y="560" width="8" height="10" fill="#39d353"/>
+  <rect x="235" y="565" width="8" height="5" fill="#ffa657"/>
+  <rect x="250" y="560" width="8" height="10" fill="#39d353"/>
+  <rect x="265" y="555" width="8" height="15" fill="#39d353"/>
+  <rect x="280" y="550" width="8" height="20" fill="#39d353"/>
+  <rect x="295" y="545" width="8" height="25" fill="#39d353"/>
+  <rect x="310" y="540" width="8" height="30" fill="#39d353"/>
+  <rect x="325" y="535" width="8" height="35" fill="#39d353"/>
+
+  <text x="50" y="575" fill="#8b949e" font-family="monospace" font-size="8">12h ago</text>
+  <text x="200" y="575" fill="#8b949e" font-family="monospace" font-size="8">6h ago</text>
+  <text x="340" y="575" fill="#8b949e" font-family="monospace" font-size="8">now</text>
+
+  <!-- Recent Activity -->
+  <text x="30" y="610" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Recent Duplicates</text>
+
+  <rect x="30" y="630" width="340" height="130" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Duplicate entries -->
+  <rect x="40" y="640" width="320" height="20" fill="#1f2937" rx="2"/>
+  <text x="50" y="653" fill="#f85149" font-family="monospace" font-size="9">❌ payment_abc123...def456</text>
+  <text x="340" y="653" fill="#8b949e" font-family="monospace" font-size="8">2s</text>
+
+  <rect x="40" y="665" width="320" height="20" fill="#1f2937" rx="2"/>
+  <text x="50" y="678" fill="#f85149" font-family="monospace" font-size="9">❌ user_signup_def456...ghi</text>
+  <text x="340" y="678" fill="#8b949e" font-family="monospace" font-size="8">7s</text>
+
+  <rect x="40" y="690" width="320" height="20" fill="#1f2937" rx="2"/>
+  <text x="50" y="703" fill="#f85149" font-family="monospace" font-size="9">❌ email_batch_ghi789...jkl</text>
+  <text x="340" y="703" fill="#8b949e" font-family="monospace" font-size="8">15s</text>
+
+  <rect x="40" y="715" width="320" height="20" fill="#1f2937" rx="2"/>
+  <text x="50" y="728" fill="#f85149" font-family="monospace" font-size="9">❌ data_export_jkl012...mno</text>
+  <text x="340" y="728" fill="#8b949e" font-family="monospace" font-size="8">23s</text>
+
+  <rect x="40" y="740" width="320" height="20" fill="#1f2937" rx="2"/>
+  <text x="50" y="753" fill="#f85149" font-family="monospace" font-size="9">❌ order_process_mno345...pqr</text>
+  <text x="340" y="753" fill="#8b949e" font-family="monospace" font-size="8">41s</text>
+
+  <!-- Bottom navigation help -->
+  <rect x="0" y="790" width="400" height="10" fill="#161b22"/>
+  <text x="15" y="805" fill="#8b949e" font-family="monospace" font-size="8">Swipe or use ←→ to switch tabs | Tap for details</text>
+</svg>

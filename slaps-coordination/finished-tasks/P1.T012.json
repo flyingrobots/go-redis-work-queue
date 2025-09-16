@@ -1,0 +1,248 @@
+{
+  "task_id": "P1.T012",
+  "created_at": "2025-09-14T19:41:47.126757Z",
+  "task": {
+    "id": "P1.T012",
+    "feature_id": "F004",
+    "title": "Implement Distributed Tracing Integration",
+    "description": "Implement task for Distributed Tracing Integration",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "~ LoC",
+        "breakdown": "Core logic (60%), Tests (25%), Integration (15%)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "All functions implemented per specification",
+          "Unit tests passing with 80% coverage",
+          "Integration tests passing",
+          "Code reviewed and approved",
+          "Documentation updated",
+          "No linting errors",
+          "Performance benchmarks met",
+          "Spans emitted for enqueue/dequeue/process with consistent attributes.",
+          "Context propagates via metadata; upstream trace linkage verified.",
+          "TUI shows trace IDs and open/copy actions."
+        ],
+        "stop_when": "Core functionality complete; do NOT add extra features"
+      },
+      "scope": {
+        "includes": [
+          "internal/distributed-tracing-integration/",
+          "internal/distributed-tracing-integration/*_test.go",
+          "docs/api/distributed-tracing-integration.md"
+        ],
+        "excludes": [
+          "UI unless specified",
+          "deployment configs"
+        ],
+        "restrictions": "Follow existing code patterns and style guide"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "setup",
+          "at_percent": 10,
+          "description": "Module structure created"
+        },
+        {
+          "id": "core",
+          "at_percent": 40,
+          "description": "Core logic implemented"
+        },
+        {
+          "id": "integration",
+          "at_percent": 60,
+          "description": "Integration complete"
+        },
+        {
+          "id": "tests",
+          "at_percent": 80,
+          "description": "Tests passing"
+        },
+        {
+          "id": "docs",
+          "at_percent": 100,
+          "description": "Documentation complete"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 1024,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 2048,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "golang",
+        "backend",
+        "redis"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "high",
+      "preemptible": false,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 8,
+      "mostLikely": 16,
+      "pessimistic": 24
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Spans emitted for enqueue/dequeue/process with consistent attributes.",
+        "script": "test_p1.t012.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Context propagates via metadata; upstream trace linkage verified.",
+        "script": "test_p1.t012.sh"
+      },
+      {
+        "type": "automated",
+        "description": "TUI shows trace IDs and open/copy actions.",
+        "script": "test_p1.t012.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Add otel setup in `internal/obs/tracing.go` with config",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Instrument producer/worker/admin critical paths",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/distributed-tracing-integration.md",
+        "excerpt": "Make tracing first\u2011class with OpenTelemetry: automatically create spans for enqueue, dequeue, and job processing, propagate context through job payloads/metadata, and link to external tracing backends",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "implementation_checklist": [
+        "Add otel setup in `internal/obs/tracing.go` with config",
+        "Instrument producer/worker/admin critical paths",
+        "Inject/extract trace headers in metadata",
+        "Add TUI trace actions in Peek/Info",
+        "Docs with backend examples and sampling guidance"
+      ],
+      "technical_approach": [
+        "SDK & instrumentation:",
+        "Use `go.opentelemetry.io/otel` across producer, worker, and admin.",
+        "Enqueue: start span `queue.enqueue` with attributes (queue, size, priority, tenant, idempotency_id).",
+        "Dequeue: span `queue.dequeue` with wait time and queue depth at dequeue.",
+        "Process: span `job.process` around user handler; record retries, outcome, error class.",
+        "Link parent context if `traceparent`/`tracestate` present in payload metadata; otherwise start a new root and inject on enqueue.",
+        "Propagation:",
+        "Embed W3C trace headers in job metadata (not payload) to avoid accidental redaction.",
+        "Ensure workers extract before processing and reinject on any outbound calls.",
+        "Exporters & sampling:",
+        "Default OTLP exporter to local Collector; config for endpoints/auth.",
+        "Head sampling with per\u2011route/queue rates; tail sampling via Collector for high\u2011value spans (errors, long latency).",
+        "Metrics + exemplars:",
+        "Attach trace IDs to latency/error metrics as exemplars when sampled.",
+        "TUI integration:",
+        "Show trace ID in Peek/Info; provide an \u201cOpen Trace\u201d action and copyable link; enable quick filter by trace ID.",
+        "Security & privacy:",
+        "Redact sensitive attributes; configurable allowlist for span attributes.",
+        "Disable/limit tracing in prod via config and sampling controls."
+      ],
+      "code_structure": {
+        "main_package": "internal/distributed-tracing-integration",
+        "files": [
+          "distributed-tracing-integration.go - Main implementation",
+          "types.go - Data structures",
+          "handlers.go - Request handlers",
+          "errors.go - Custom errors",
+          "config.go - Configuration"
+        ]
+      },
+      "tracing_components": [
+        "OpenTelemetry SDK integration",
+        "Trace context propagation (W3C format)",
+        "Span management (create, end, annotate)",
+        "Baggage propagation for metadata",
+        "Sampling strategies (always, probabilistic, adaptive)",
+        "Exporters (Jaeger, Zipkin, OTLP)",
+        "Metrics correlation"
+      ],
+      "context_propagation": [
+        "Extract trace context from incoming requests",
+        "Inject context into outgoing requests",
+        "Create child spans for operations",
+        "Add span attributes and events"
+      ]
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P1.T012.json",
+    "on_failure": "Move this file to failed-tasks/P1.T012.json",
+    "on_help_needed": "Move to help-me/P1.T012.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}
