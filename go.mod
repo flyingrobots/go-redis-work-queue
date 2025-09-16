@@ -5,8 +5,8 @@ go 1.24.0
 require (
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/bmatcuk/doublestar/v4 v4.6.0
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/prometheus/client_golang v1.18.0
+	github.com/redis/go-redis/v9 v9.14.0
 	github.com/spf13/viper v1.19.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0

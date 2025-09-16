@@ -1,0 +1,12 @@
+{
+  "cssTheme": "Primary",
+  "textFontFamily": "IBM Plex Serif",
+  "monospaceFontFamily": "IBM Plex Mono",
+  "baseFontSize": 20,
+  "baseFontSizeAction": true,
+  "theme": "moonstone",
+  "interfaceFontFamily": "IBM Plex Sans",
+  "accentColor": "#924820",
+  "showRibbon": false,
+  "showViewHeader": false
+}

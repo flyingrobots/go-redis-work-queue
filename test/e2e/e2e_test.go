@@ -10,7 +10,7 @@ import (
     "github.com/flyingrobots/go-redis-work-queue/internal/queue"
     "github.com/flyingrobots/go-redis-work-queue/internal/redisclient"
     "github.com/flyingrobots/go-redis-work-queue/internal/worker"
-    "github.com/go-redis/redis/v8"
+    "github.com/redis/go-redis/v9"
     "go.uber.org/zap"
 )
 

@@ -1,0 +1,245 @@
+{
+  "main": {
+    "id": "15c6acb6cb60c6a2",
+    "type": "split",
+    "children": [
+      {
+        "id": "18ab6ebed8da519b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8a563d80e606a42b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "preview",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          },
+          {
+            "id": "a14269f4f17b5b69",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "preview",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "3e89a66ee45d4351",
+    "type": "split",
+    "children": [
+      {
+        "id": "3571653a6ee99876",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a0968bc3274b4abe",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "9a9da490fdc859ae",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "5fd39e7a5fe12303",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 358
+  },
+  "right": {
+    "id": "9ecc8a83bb144ae6",
+    "type": "split",
+    "children": [
+      {
+        "id": "98fce30e30eb2771",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "12ffd22e6eb59db9",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "3111aa1d23baad13",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "design/features/F012-performance-optimization.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from F012-performance-optimization"
+            }
+          },
+          {
+            "id": "1b0dc5620d4f716e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "4b70e7de6d5207d1",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          },
+          {
+            "id": "7469e14302a890cb",
+            "type": "leaf",
+            "state": {
+              "type": "chronology-calendar-view",
+              "state": {},
+              "icon": "clock",
+              "title": "Chronology"
+            }
+          }
+        ],
+        "currentTab": 4
+      }
+    ],
+    "direction": "horizontal",
+    "width": 222
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Create new base": false,
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "chronology:Open Chronology": false
+    }
+  },
+  "active": "a14269f4f17b5b69",
+  "lastOpenFiles": [
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/f36723e8-9719-4f87-92be-aff699a58004.meta.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/f36723e8-9719-4f87-92be-aff699a58004.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/8c061d54-143b-4893-ae54-49bec5e99699.meta.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/8c061d54-143b-4893-ae54-49bec5e99699.json",
+    "docs/features-ledger.md",
+    "README.md",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/43b35a64-4921-413a-987e-c6b80c0bc468.meta.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/43b35a64-4921-413a-987e-c6b80c0bc468.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/505aa03b-da3a-4c4f-897c-e9c02278cba8.meta.json",
+    "internal/queue-snapshot-testing/testdata/snapshots/TestTestHelper/505aa03b-da3a-4c4f-897c-e9c02278cba8.json",
+    "internal/tui/styles.go",
+    "internal/tui/style_demo.go",
+    "internal/tui/enhanced_view.go",
+    "docs/design/images/worker-fleet.svg",
+    "docs/design/images/voice-commands.svg",
+    "docs/design/images/theme-system.svg",
+    "docs/design/images/process-launcher.svg",
+    "docs/design/images/plugin-system.svg",
+    "docs/design/images/notification-system.svg",
+    "docs/design/images/multi-cluster.svg",
+    "docs/design/images/gesture-system.svg",
+    "docs/design/images/dlq-remediation.svg",
+    "TASKS-and-SLAPS.md",
+    "test/README.md",
+    "slaps-coordination/finished-tasks/REVIEW.012-REPORT.md",
+    "internal/visual-dag-builder/TEST_DOCUMENTATION.md",
+    "internal/theme-playground/README.md",
+    "internal/storage-backends/TESTING_SUMMARY.md",
+    "internal/smart-retry-strategies/TEST_COVERAGE_REPORT.md",
+    "internal/policy-simulator/README.md",
+    "internal/kubernetes-operator/examples/README.md",
+    "features-todo.md",
+    "docs/testing/f011-strategy.md",
+    "docs/testing-guide.md",
+    "docs/security/f011-threat-model.md",
+    "docs/planning/TASKS/idea-features-v3/Plan.md",
+    "docs/planning/TASKS/idea-features-v3/Decisions.md",
+    "docs/planning/TASKS/idea-features/Plan.md",
+    "docs/planning/TASKS/idea-features/Decisions.md",
+    "docs/performance/f011-requirements.md",
+    "docs/images/voice-commands-mobile.svg",
+    "docs/ideas/worker-fleet-controls.md",
+    "docs/ideas/visual-dag-builder.md",
+    "docs/ideas/trace-drilldown-log-tail.md",
+    "docs/ideas/time-travel-debugger.md",
+    "docs/ideas/theme-playground.md"
+  ]
+}
