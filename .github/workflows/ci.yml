@@ -39,6 +39,7 @@ jobs:
         env:
           E2E_REDIS_ADDR: localhost:6379
         run: |
+          set -euo pipefail
           for i in {1..5}; do
             echo "Run #$i";
             go test ./test/e2e -run TestE2E_WorkerCompletesJobWithRealRedis -race -count=1 || exit 1;

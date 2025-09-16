@@ -4,15 +4,3 @@
 
 # Default owner for entire repository
 * @flyingrobots
-
-# CI/CD and workflows
-.github/** @flyingrobots
-
-# Helm chart and deployment assets
-deploy/** @flyingrobots
-
-# Go source
-cmd/** @flyingrobots
-internal/** @flyingrobots
-test/** @flyingrobots
-
