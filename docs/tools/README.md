@@ -43,6 +43,44 @@ Authoring tips
 
 We often want a local, searchable copy of review feedback from CodeRabbit — and specifically the “Prompt for AI Agents” sections.
 
+- Path: `scripts/extract_pr_comments.py`
+- Requirements: GitHub CLI (`gh`) authenticated to this repo
+- Usage examples:
+  - Full comments from a PR by CodeRabbit:
+    - `python3 scripts/extract_pr_comments.py --pr 123 --author coderabbit --out docs/audits/coderabbit-pr123-comments.md`
+  - Prompts-only into a separate file:
+    - `python3 scripts/extract_pr_comments.py --pr 123 --author coderabbit --prompts-only --prompts-out docs/audits/coderabbit-pr123-prompts.md`
+- Notes
+  - `--author` is a substring match (case-insensitive); defaults to `coderabbit`.
+  - Issue comments, review comments (inline), and review bodies authored by CodeRabbit are included.
+
+## Generate Code Review Worksheet (from CodeRabbit prompts)
+
+Create a comprehensive, fill-in-place worksheet from a PR’s CodeRabbit “Prompt for AI Agents” items.
+
+- Path: `scripts/generate_cr_worksheet.py`
+- Output: `docs/audits/code-reviews/PR{pr}/{head_sha}.md`
+- Requirements: GitHub CLI (`gh`) authenticated
+- What it does:
+  - Fetches PR metadata and comments with `gh`
+  - Extracts only the fenced blocks under “Prompt for AI Agents” (skips HTML-only artifacts like `</summary>`)
+  - Emits a worksheet with:
+    - Front matter and header table (Date | Agent | SHA | Branch | PR)
+    - Accepted/Rejected templates
+    - For each prompt: a heading (`### path:line`), checkboxes, the prompt text in a fenced block, and `{response}` placeholder
+    - A `---` horizontal rule before the Conclusion section
+- Usage examples:
+  - Current repo: `python3 scripts/generate_cr_worksheet.py --pr 3`
+  - Any repo: `python3 scripts/generate_cr_worksheet.py --repo owner/name --pr 123`
+  - Options:
+    - `--author coderabbit` (default, substring match)
+    - `--agent CodeRabbit` (label in the header)
+    - `--out-root docs/audits/code-reviews` (destination root)
+
+## Extracting CodeRabbit PR Comments and Prompts
+
+We often want a local, searchable copy of review feedback from CodeRabbit — and specifically the “Prompt for AI Agents” sections.
+
 Script
 - Path: `scripts/extract_pr_comments.py`
 - Requirements: `gh` CLI authenticated to GitHub
@@ -69,4 +107,3 @@ What gets extracted
 
 - The progress updater and comment extractor are intentionally lightweight and have no extra Python dependencies (use `gh` for GitHub API).
 - If you add or rename feature groups/tables in the ledger, the updater will scan all tables that include `Emoji` and `Progress %` columns, so it’s robust to grouping changes.
-
