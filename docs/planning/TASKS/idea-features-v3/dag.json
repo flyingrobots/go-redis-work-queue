@@ -1,0 +1,1384 @@
+{
+  "meta": {
+    "generated_at": "2025-09-14T16:49:01.338270Z",
+    "min_confidence": 0.85,
+    "planning_version": "3.0",
+    "execution_model": "rolling_frontier"
+  },
+  "metrics": {
+    "nodes": 88,
+    "edges": 59,
+    "density": 0.0154,
+    "longestPath": 7,
+    "widthApprox": 10,
+    "resourceBottlenecks": [
+      "deployment_slot"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "P1.T001",
+      "title": "Design Admin Api"
+    },
+    {
+      "id": "P1.T002",
+      "title": "Implement Admin Api"
+    },
+    {
+      "id": "P1.T003",
+      "title": "Test Admin Api"
+    },
+    {
+      "id": "P1.T004",
+      "title": "Deploy Admin Api"
+    },
+    {
+      "id": "P2.T005",
+      "title": "Design Multi Cluster Control"
+    },
+    {
+      "id": "P2.T006",
+      "title": "Implement Multi Cluster Control"
+    },
+    {
+      "id": "P2.T007",
+      "title": "Test Multi Cluster Control"
+    },
+    {
+      "id": "P2.T008",
+      "title": "Design Visual Dag Builder"
+    },
+    {
+      "id": "P2.T009",
+      "title": "Implement Visual Dag Builder"
+    },
+    {
+      "id": "P2.T010",
+      "title": "Test Visual Dag Builder"
+    },
+    {
+      "id": "P1.T011",
+      "title": "Design Distributed Tracing Integration"
+    },
+    {
+      "id": "P1.T012",
+      "title": "Implement Distributed Tracing Integration"
+    },
+    {
+      "id": "P1.T013",
+      "title": "Test Distributed Tracing Integration"
+    },
+    {
+      "id": "P1.T014",
+      "title": "Deploy Distributed Tracing Integration"
+    },
+    {
+      "id": "P4.T015",
+      "title": "Design Plugin Panel System"
+    },
+    {
+      "id": "P4.T016",
+      "title": "Implement Plugin Panel System"
+    },
+    {
+      "id": "P4.T017",
+      "title": "Design Time Travel Debugger"
+    },
+    {
+      "id": "P4.T018",
+      "title": "Implement Time Travel Debugger"
+    },
+    {
+      "id": "P1.T019",
+      "title": "Design Exactly Once Patterns"
+    },
+    {
+      "id": "P1.T020",
+      "title": "Implement Exactly Once Patterns"
+    },
+    {
+      "id": "P1.T021",
+      "title": "Test Exactly Once Patterns"
+    },
+    {
+      "id": "P1.T022",
+      "title": "Deploy Exactly Once Patterns"
+    },
+    {
+      "id": "P1.T023",
+      "title": "Design Rbac And Tokens"
+    },
+    {
+      "id": "P1.T024",
+      "title": "Implement Rbac And Tokens"
+    },
+    {
+      "id": "P1.T025",
+      "title": "Test Rbac And Tokens"
+    },
+    {
+      "id": "P1.T026",
+      "title": "Deploy Rbac And Tokens"
+    },
+    {
+      "id": "P4.T027",
+      "title": "Design Chaos Harness"
+    },
+    {
+      "id": "P4.T028",
+      "title": "Implement Chaos Harness"
+    },
+    {
+      "id": "P4.T029",
+      "title": "Design Anomaly Radar Slo Budget"
+    },
+    {
+      "id": "P4.T030",
+      "title": "Implement Anomaly Radar Slo Budget"
+    },
+    {
+      "id": "P4.T031",
+      "title": "Design Automatic Capacity Planning"
+    },
+    {
+      "id": "P4.T032",
+      "title": "Implement Automatic Capacity Planning"
+    },
+    {
+      "id": "P4.T033",
+      "title": "Design Kubernetes Operator"
+    },
+    {
+      "id": "P4.T034",
+      "title": "Implement Kubernetes Operator"
+    },
+    {
+      "id": "P3.T035",
+      "title": "Design Canary Deployments"
+    },
+    {
+      "id": "P3.T036",
+      "title": "Implement Canary Deployments"
+    },
+    {
+      "id": "P2.T037",
+      "title": "Design Event Hooks"
+    },
+    {
+      "id": "P2.T038",
+      "title": "Implement Event Hooks"
+    },
+    {
+      "id": "P2.T039",
+      "title": "Test Event Hooks"
+    },
+    {
+      "id": "P3.T040",
+      "title": "Design Smart Payload Deduplication"
+    },
+    {
+      "id": "P3.T041",
+      "title": "Implement Smart Payload Deduplication"
+    },
+    {
+      "id": "P3.T042",
+      "title": "Design Job Budgeting"
+    },
+    {
+      "id": "P3.T043",
+      "title": "Implement Job Budgeting"
+    },
+    {
+      "id": "P4.T044",
+      "title": "Design Job Genealogy Navigator"
+    },
+    {
+      "id": "P4.T045",
+      "title": "Implement Job Genealogy Navigator"
+    },
+    {
+      "id": "P3.T046",
+      "title": "Design Long Term Archives"
+    },
+    {
+      "id": "P3.T047",
+      "title": "Implement Long Term Archives"
+    },
+    {
+      "id": "P4.T048",
+      "title": "Design Forecasting"
+    },
+    {
+      "id": "P4.T049",
+      "title": "Implement Forecasting"
+    },
+    {
+      "id": "P2.T050",
+      "title": "Design Multi Tenant Isolation"
+    },
+    {
+      "id": "P2.T051",
+      "title": "Implement Multi Tenant Isolation"
+    },
+    {
+      "id": "P2.T052",
+      "title": "Test Multi Tenant Isolation"
+    },
+    {
+      "id": "P3.T053",
+      "title": "Design Producer Backpressure"
+    },
+    {
+      "id": "P3.T054",
+      "title": "Implement Producer Backpressure"
+    },
+    {
+      "id": "P4.T055",
+      "title": "Design Queue Snapshot Testing"
+    },
+    {
+      "id": "P4.T056",
+      "title": "Implement Queue Snapshot Testing"
+    },
+    {
+      "id": "P2.T057",
+      "title": "Design Smart Retry Strategies"
+    },
+    {
+      "id": "P2.T058",
+      "title": "Implement Smart Retry Strategies"
+    },
+    {
+      "id": "P2.T059",
+      "title": "Test Smart Retry Strategies"
+    },
+    {
+      "id": "P2.T060",
+      "title": "Design Storage Backends"
+    },
+    {
+      "id": "P2.T061",
+      "title": "Implement Storage Backends"
+    },
+    {
+      "id": "P2.T062",
+      "title": "Test Storage Backends"
+    },
+    {
+      "id": "P4.T063",
+      "title": "Design Terminal Voice Commands"
+    },
+    {
+      "id": "P4.T064",
+      "title": "Implement Terminal Voice Commands"
+    },
+    {
+      "id": "P4.T065",
+      "title": "Design Theme Playground"
+    },
+    {
+      "id": "P4.T066",
+      "title": "Implement Theme Playground"
+    },
+    {
+      "id": "P4.T067",
+      "title": "Design Trace Drilldown Log Tail"
+    },
+    {
+      "id": "P4.T068",
+      "title": "Implement Trace Drilldown Log Tail"
+    },
+    {
+      "id": "P3.T069",
+      "title": "Design Dlq Remediation Ui"
+    },
+    {
+      "id": "P3.T070",
+      "title": "Implement Dlq Remediation Ui"
+    },
+    {
+      "id": "P3.T071",
+      "title": "Design Dlq Remediation Pipeline"
+    },
+    {
+      "id": "P3.T072",
+      "title": "Implement Dlq Remediation Pipeline"
+    },
+    {
+      "id": "P4.T073",
+      "title": "Design Patterned Load Generator"
+    },
+    {
+      "id": "P4.T074",
+      "title": "Implement Patterned Load Generator"
+    },
+    {
+      "id": "P4.T075",
+      "title": "Design Policy Simulator"
+    },
+    {
+      "id": "P4.T076",
+      "title": "Implement Policy Simulator"
+    },
+    {
+      "id": "P3.T077",
+      "title": "Design Advanced Rate Limiting"
+    },
+    {
+      "id": "P3.T078",
+      "title": "Implement Advanced Rate Limiting"
+    },
+    {
+      "id": "P4.T079",
+      "title": "Design Calendar View"
+    },
+    {
+      "id": "P4.T080",
+      "title": "Implement Calendar View"
+    },
+    {
+      "id": "P4.T081",
+      "title": "Design Collaborative Session"
+    },
+    {
+      "id": "P4.T082",
+      "title": "Implement Collaborative Session"
+    },
+    {
+      "id": "P4.T083",
+      "title": "Design Json Payload Studio"
+    },
+    {
+      "id": "P4.T084",
+      "title": "Implement Json Payload Studio"
+    },
+    {
+      "id": "P3.T085",
+      "title": "Design Worker Fleet Controls"
+    },
+    {
+      "id": "P3.T086",
+      "title": "Implement Worker Fleet Controls"
+    },
+    {
+      "id": "P4.T087",
+      "title": "Design Right Click Context Menus"
+    },
+    {
+      "id": "P4.T088",
+      "title": "Implement Right Click Context Menus"
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "P1.T001",
+      "to": "P1.T002",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T002",
+      "to": "P1.T003",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T003",
+      "to": "P1.T004",
+      "type": "sequential",
+      "reason": "Deploy requires completed Test",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T005",
+      "to": "P2.T006",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T006",
+      "to": "P2.T007",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T008",
+      "to": "P2.T009",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T009",
+      "to": "P2.T010",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T011",
+      "to": "P1.T012",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T012",
+      "to": "P1.T013",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T013",
+      "to": "P1.T014",
+      "type": "sequential",
+      "reason": "Deploy requires completed Test",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T015",
+      "to": "P4.T016",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T017",
+      "to": "P4.T018",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T019",
+      "to": "P1.T020",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T020",
+      "to": "P1.T021",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T021",
+      "to": "P1.T022",
+      "type": "sequential",
+      "reason": "Deploy requires completed Test",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T023",
+      "to": "P1.T024",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T024",
+      "to": "P1.T025",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P1.T025",
+      "to": "P1.T026",
+      "type": "sequential",
+      "reason": "Deploy requires completed Test",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T027",
+      "to": "P4.T028",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T029",
+      "to": "P4.T030",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T031",
+      "to": "P4.T032",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T033",
+      "to": "P4.T034",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T035",
+      "to": "P3.T036",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T037",
+      "to": "P2.T038",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T038",
+      "to": "P2.T039",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T040",
+      "to": "P3.T041",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T042",
+      "to": "P3.T043",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T044",
+      "to": "P4.T045",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T046",
+      "to": "P3.T047",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T048",
+      "to": "P4.T049",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T050",
+      "to": "P2.T051",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T051",
+      "to": "P2.T052",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T053",
+      "to": "P3.T054",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T055",
+      "to": "P4.T056",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T057",
+      "to": "P2.T058",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T058",
+      "to": "P2.T059",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T060",
+      "to": "P2.T061",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P2.T061",
+      "to": "P2.T062",
+      "type": "sequential",
+      "reason": "Test requires completed Implement",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T063",
+      "to": "P4.T064",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T065",
+      "to": "P4.T066",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T067",
+      "to": "P4.T068",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T069",
+      "to": "P3.T070",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T071",
+      "to": "P3.T072",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T073",
+      "to": "P4.T074",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T075",
+      "to": "P4.T076",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T077",
+      "to": "P3.T078",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T079",
+      "to": "P4.T080",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T081",
+      "to": "P4.T082",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T083",
+      "to": "P4.T084",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P3.T085",
+      "to": "P3.T086",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T087",
+      "to": "P4.T088",
+      "type": "sequential",
+      "reason": "Implement requires completed Design",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "TASKS methodology",
+          "excerpt": "Sequential task progression",
+          "confidence": 1.0,
+          "rationale": "Standard development flow"
+        }
+      ]
+    },
+    {
+      "from": "P4.T049",
+      "to": "P4.T031",
+      "type": "technical",
+      "reason": "forecasting provides required functionality for automatic-capacity-planning",
+      "confidence": 0.9,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "plan",
+          "source": "docs/ideas/DAG.json",
+          "excerpt": "Feature dependency: forecasting -> automatic-capacity-planning",
+          "confidence": 0.9,
+          "rationale": "Dependency graph analysis"
+        }
+      ]
+    },
+    {
+      "from": "P1.T004",
+      "to": "P1.T014",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P1.T004",
+      "to": "P1.T022",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P1.T004",
+      "to": "P1.T026",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P1.T014",
+      "to": "P1.T022",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P1.T014",
+      "to": "P1.T026",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P1.T022",
+      "to": "P1.T026",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to deployment_slot",
+      "shared_resource": "deployment_slot",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on deployment_slot",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    },
+    {
+      "from": "P3.T047",
+      "to": "P4.T084",
+      "type": "mutual_exclusion",
+      "reason": "Both require exclusive access to redis_schema",
+      "shared_resource": "redis_schema",
+      "confidence": 1.0,
+      "isHard": true,
+      "evidence": [
+        {
+          "type": "infrastructure",
+          "source": "Resource constraints",
+          "excerpt": "Exclusive lock on redis_schema",
+          "confidence": 1.0,
+          "rationale": "Infrastructure constraint"
+        }
+      ]
+    }
+  ]
+}

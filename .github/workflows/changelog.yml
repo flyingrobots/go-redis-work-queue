@@ -1,0 +1,38 @@
+name: Update Changelog
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - name: Install git-chglog
+        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+      - name: Generate CHANGELOG.md
+        run: |
+          $(go env GOPATH)/bin/git-chglog -o CHANGELOG.md || echo "git-chglog not configured; keeping existing CHANGELOG.md"
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add CHANGELOG.md || true
+          git commit -m "chore(changelog): update CHANGELOG for ${GITHUB_REF_NAME}" || echo "no changes"
+      - name: Push changes
+        run: |
+          git push origin HEAD:${{ github.event.repository.default_branch }} || echo "no push"

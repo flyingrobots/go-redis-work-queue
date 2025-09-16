@@ -1,0 +1,1229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flyingrobots/go-redis-work-queue/schemas/policy-simulator.json",
+  "title": "Policy Simulator Data Models",
+  "description": "JSON Schema definitions for the Policy Simulator system data models and API contracts",
+  "definitions": {
+    "PolicyConfig": {
+      "type": "object",
+      "description": "Complete policy configuration for simulation",
+      "properties": {
+        "rateLimit": {
+          "$ref": "#/definitions/RateLimitConfig"
+        },
+        "retryPolicy": {
+          "$ref": "#/definitions/RetryPolicyConfig"
+        },
+        "concurrencyLimit": {
+          "$ref": "#/definitions/ConcurrencyConfig"
+        },
+        "prioritySettings": {
+          "$ref": "#/definitions/PriorityConfig"
+        },
+        "circuitBreaker": {
+          "$ref": "#/definitions/CircuitBreakerConfig"
+        },
+        "timeoutSettings": {
+          "$ref": "#/definitions/TimeoutConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RateLimitConfig": {
+      "type": "object",
+      "description": "Rate limiting policy configuration",
+      "properties": {
+        "requestsPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Maximum requests per second allowed"
+        },
+        "burstCapacity": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Burst capacity for token bucket algorithm"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether rate limiting is enabled"
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["token_bucket", "sliding_window", "fixed_window"],
+          "default": "token_bucket",
+          "description": "Rate limiting algorithm to use"
+        }
+      },
+      "required": ["requestsPerSecond", "burstCapacity", "enabled"],
+      "additionalProperties": false
+    },
+    "RetryPolicyConfig": {
+      "type": "object",
+      "description": "Retry and backoff policy configuration",
+      "properties": {
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Maximum number of retry attempts"
+        },
+        "initialDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Initial delay before first retry (Go duration format)"
+        },
+        "maxDelay": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Maximum delay between retries (Go duration format)"
+        },
+        "multiplier": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 10.0,
+          "description": "Backoff multiplier for exponential backoff"
+        },
+        "jitter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to add random jitter to delays"
+        },
+        "retryableErrors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of error types that should trigger retries"
+        }
+      },
+      "required": ["maxRetries", "initialDelay", "maxDelay", "multiplier"],
+      "additionalProperties": false
+    },
+    "ConcurrencyConfig": {
+      "type": "object",
+      "description": "Concurrency limit configuration",
+      "properties": {
+        "maxConcurrent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of concurrent jobs"
+        },
+        "queueTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Timeout for jobs waiting in queue"
+        },
+        "spilloverStrategy": {
+          "type": "string",
+          "enum": ["reject", "queue", "delay"],
+          "default": "queue",
+          "description": "Strategy when concurrency limit is reached"
+        }
+      },
+      "required": ["maxConcurrent"],
+      "additionalProperties": false
+    },
+    "PriorityConfig": {
+      "type": "object",
+      "description": "Priority queue configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether priority scheduling is enabled"
+        },
+        "defaultPriority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Default priority for jobs without explicit priority"
+        },
+        "priorityLevels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PriorityLevel"
+          },
+          "description": "Configured priority levels"
+        },
+        "starvationPrevention": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to prevent low-priority job starvation"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "PriorityLevel": {
+      "type": "object",
+      "description": "Individual priority level configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+          "description": "Priority level name"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Numeric priority value (higher = higher priority)"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0,
+          "default": 1.0,
+          "description": "Scheduling weight for this priority level"
+        }
+      },
+      "required": ["name", "value"],
+      "additionalProperties": false
+    },
+    "CircuitBreakerConfig": {
+      "type": "object",
+      "description": "Circuit breaker configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether circuit breaker is enabled"
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of failures before opening circuit"
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Number of successes before closing circuit"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Timeout before attempting to close circuit"
+        },
+        "halfOpenMaxCalls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10,
+          "description": "Maximum calls allowed in half-open state"
+        }
+      },
+      "required": ["enabled", "failureThreshold", "successThreshold", "timeout"],
+      "additionalProperties": false
+    },
+    "TimeoutConfig": {
+      "type": "object",
+      "description": "Timeout configuration",
+      "properties": {
+        "jobTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Maximum time allowed for job execution"
+        },
+        "queueTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Maximum time job can wait in queue"
+        },
+        "gracePeriod": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Grace period for job cancellation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrafficPattern": {
+      "type": "object",
+      "description": "Traffic pattern for simulation",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["constant", "burst", "seasonal", "custom"],
+          "description": "Type of traffic pattern"
+        },
+        "arrivalRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Base arrival rate in jobs per second"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Duration of simulation"
+        },
+        "burstConfig": {
+          "$ref": "#/definitions/BurstConfig"
+        },
+        "seasonalConfig": {
+          "$ref": "#/definitions/SeasonalConfig"
+        },
+        "customPoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataPoint"
+          },
+          "description": "Custom data points for traffic pattern"
+        }
+      },
+      "required": ["type", "arrivalRate", "duration"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "burst"
+              }
+            }
+          },
+          "then": {
+            "required": ["burstConfig"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "seasonal"
+              }
+            }
+          },
+          "then": {
+            "required": ["seasonalConfig"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "custom"
+              }
+            }
+          },
+          "then": {
+            "required": ["customPoints"]
+          }
+        }
+      ]
+    },
+    "BurstConfig": {
+      "type": "object",
+      "description": "Configuration for burst traffic patterns",
+      "properties": {
+        "burstRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak arrival rate during bursts"
+        },
+        "burstDuration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Duration of each burst"
+        },
+        "burstInterval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Interval between bursts"
+        },
+        "burstCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of bursts in simulation"
+        }
+      },
+      "required": ["burstRate", "burstDuration", "burstInterval"],
+      "additionalProperties": false
+    },
+    "SeasonalConfig": {
+      "type": "object",
+      "description": "Configuration for seasonal traffic patterns",
+      "properties": {
+        "baseRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Base arrival rate"
+        },
+        "peakRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak arrival rate"
+        },
+        "peakHours": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "description": "Hours of day with peak traffic (0-23)"
+        },
+        "weekdayMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1.0,
+          "description": "Traffic multiplier for weekdays"
+        },
+        "weekendMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0.5,
+          "description": "Traffic multiplier for weekends"
+        }
+      },
+      "required": ["baseRate", "peakRate", "peakHours"],
+      "additionalProperties": false
+    },
+    "DataPoint": {
+      "type": "object",
+      "description": "Individual data point for custom traffic patterns",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this data point"
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Arrival rate at this timestamp"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Duration this rate should be maintained"
+        }
+      },
+      "required": ["timestamp", "rate", "duration"],
+      "additionalProperties": false
+    },
+    "SimulationRequest": {
+      "type": "object",
+      "description": "Request to run a simulation",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$",
+          "description": "Simulation name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional description of the simulation"
+        },
+        "policyConfig": {
+          "$ref": "#/definitions/PolicyConfig"
+        },
+        "trafficPattern": {
+          "$ref": "#/definitions/TrafficPattern"
+        },
+        "modelType": {
+          "type": "string",
+          "enum": ["mm1", "mmc", "mg1", "priority"],
+          "description": "Queueing model type to use"
+        },
+        "systemParameters": {
+          "$ref": "#/definitions/SystemParameters"
+        },
+        "outputOptions": {
+          "$ref": "#/definitions/OutputOptions"
+        }
+      },
+      "required": ["name", "policyConfig", "trafficPattern", "modelType"],
+      "additionalProperties": false
+    },
+    "SystemParameters": {
+      "type": "object",
+      "description": "System parameters for simulation",
+      "properties": {
+        "serviceRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Service rate in jobs per second"
+        },
+        "numServers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of servers (for M/M/c models)"
+        },
+        "bufferSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Queue buffer size (0 = unlimited)"
+        },
+        "serviceTimeDistribution": {
+          "type": "string",
+          "enum": ["exponential", "constant", "normal", "lognormal"],
+          "default": "exponential",
+          "description": "Service time distribution"
+        },
+        "serviceTimeParams": {
+          "type": "object",
+          "description": "Parameters for service time distribution",
+          "properties": {
+            "mean": {
+              "type": "number",
+              "minimum": 0
+            },
+            "variance": {
+              "type": "number",
+              "minimum": 0
+            },
+            "shape": {
+              "type": "number",
+              "minimum": 0
+            },
+            "scale": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["serviceRate"],
+      "additionalProperties": false
+    },
+    "OutputOptions": {
+      "type": "object",
+      "description": "Output options for simulation results",
+      "properties": {
+        "includeTimeSeries": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include time series data in results"
+        },
+        "timeSeriesInterval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "default": "1s",
+          "description": "Interval for time series data points"
+        },
+        "includeDistributions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include latency distributions in results"
+        },
+        "distributionBuckets": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 1000,
+          "default": 100,
+          "description": "Number of histogram buckets for distributions"
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.99,
+          "default": 0.95,
+          "description": "Confidence level for prediction intervals"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SimulationResult": {
+      "type": "object",
+      "description": "Results from a simulation run",
+      "properties": {
+        "simulationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this simulation"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the simulation was executed"
+        },
+        "configuration": {
+          "$ref": "#/definitions/PolicyConfig"
+        },
+        "pattern": {
+          "$ref": "#/definitions/TrafficPattern"
+        },
+        "predictions": {
+          "$ref": "#/definitions/PerformancePredictions"
+        },
+        "modelMetadata": {
+          "$ref": "#/definitions/ModelMetadata"
+        },
+        "confidence": {
+          "$ref": "#/definitions/ConfidenceInterval"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidationWarning"
+          },
+          "description": "Validation warnings from simulation"
+        },
+        "executionStats": {
+          "$ref": "#/definitions/ExecutionStats"
+        }
+      },
+      "required": ["simulationId", "timestamp", "configuration", "pattern", "predictions"],
+      "additionalProperties": false
+    },
+    "PerformancePredictions": {
+      "type": "object",
+      "description": "Performance predictions from simulation",
+      "properties": {
+        "summary": {
+          "$ref": "#/definitions/PerformanceSummary"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TimeSeriesPoint"
+          },
+          "description": "Time series performance data"
+        },
+        "distributions": {
+          "$ref": "#/definitions/LatencyDistributions"
+        },
+        "systemStability": {
+          "$ref": "#/definitions/StabilityAnalysis"
+        }
+      },
+      "required": ["summary"],
+      "additionalProperties": false
+    },
+    "PerformanceSummary": {
+      "type": "object",
+      "description": "Summary performance metrics",
+      "properties": {
+        "avgThroughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average throughput in jobs per second"
+        },
+        "avgLatency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average latency in seconds"
+        },
+        "avgQueueLength": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average queue length"
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "System utilization (0-1)"
+        },
+        "p50Latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "50th percentile latency"
+        },
+        "p95Latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "95th percentile latency"
+        },
+        "p99Latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99th percentile latency"
+        },
+        "maxQueueLength": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum observed queue length"
+        },
+        "steadyStateTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time to reach steady state"
+        }
+      },
+      "required": ["avgThroughput", "avgLatency", "avgQueueLength", "utilization"],
+      "additionalProperties": false
+    },
+    "TimeSeriesPoint": {
+      "type": "object",
+      "description": "Single point in time series data",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for this data point"
+        },
+        "throughput": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Instantaneous throughput"
+        },
+        "latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Instantaneous latency"
+        },
+        "queueLength": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Queue length at this time"
+        },
+        "utilization": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "System utilization at this time"
+        },
+        "arrivalRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Arrival rate at this time"
+        }
+      },
+      "required": ["timestamp", "throughput", "latency", "queueLength", "utilization"],
+      "additionalProperties": false
+    },
+    "LatencyDistributions": {
+      "type": "object",
+      "description": "Latency distribution data",
+      "properties": {
+        "histogram": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HistogramBucket"
+          },
+          "description": "Latency histogram buckets"
+        },
+        "percentiles": {
+          "type": "object",
+          "patternProperties": {
+            "^p[0-9]{1,2}$": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "description": "Percentile values (e.g., p50, p95, p99)"
+        },
+        "mean": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Mean latency"
+        },
+        "stddev": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Standard deviation of latency"
+        }
+      },
+      "required": ["histogram", "percentiles", "mean", "stddev"],
+      "additionalProperties": false
+    },
+    "HistogramBucket": {
+      "type": "object",
+      "description": "Single histogram bucket",
+      "properties": {
+        "lowerBound": {
+          "type": "number",
+          "description": "Lower bound of bucket"
+        },
+        "upperBound": {
+          "type": "number",
+          "description": "Upper bound of bucket"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of observations in bucket"
+        },
+        "frequency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Frequency (count / total)"
+        }
+      },
+      "required": ["lowerBound", "upperBound", "count", "frequency"],
+      "additionalProperties": false
+    },
+    "StabilityAnalysis": {
+      "type": "object",
+      "description": "System stability analysis",
+      "properties": {
+        "isStable": {
+          "type": "boolean",
+          "description": "Whether the system is stable"
+        },
+        "stabilityMargin": {
+          "type": "number",
+          "description": "Margin before instability (utilization)"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Risk level assessment"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Stability recommendations"
+        }
+      },
+      "required": ["isStable", "stabilityMargin", "riskLevel"],
+      "additionalProperties": false
+    },
+    "ModelMetadata": {
+      "type": "object",
+      "description": "Metadata about the simulation model",
+      "properties": {
+        "modelType": {
+          "type": "string",
+          "enum": ["mm1", "mmc", "mg1", "priority"],
+          "description": "Type of queueing model used"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Model assumptions and limitations"
+        },
+        "accuracyBounds": {
+          "$ref": "#/definitions/AccuracyBounds"
+        },
+        "computationTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Time taken to compute simulation"
+        }
+      },
+      "required": ["modelType", "assumptions"],
+      "additionalProperties": false
+    },
+    "AccuracyBounds": {
+      "type": "object",
+      "description": "Accuracy bounds for model predictions",
+      "properties": {
+        "utilizationRange": {
+          "$ref": "#/definitions/AccuracyRange"
+        },
+        "latencyAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Expected latency prediction accuracy"
+        },
+        "throughputAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Expected throughput prediction accuracy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccuracyRange": {
+      "type": "object",
+      "description": "Accuracy range for a metric",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "Minimum value for accurate predictions"
+        },
+        "max": {
+          "type": "number",
+          "description": "Maximum value for accurate predictions"
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Expected accuracy in this range"
+        }
+      },
+      "required": ["min", "max", "accuracy"],
+      "additionalProperties": false
+    },
+    "ConfidenceInterval": {
+      "type": "object",
+      "description": "Confidence intervals for predictions",
+      "properties": {
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence level (e.g., 0.95 for 95%)"
+        },
+        "throughput": {
+          "$ref": "#/definitions/Interval"
+        },
+        "latency": {
+          "$ref": "#/definitions/Interval"
+        },
+        "queueLength": {
+          "$ref": "#/definitions/Interval"
+        }
+      },
+      "required": ["level"],
+      "additionalProperties": false
+    },
+    "Interval": {
+      "type": "object",
+      "description": "Confidence interval bounds",
+      "properties": {
+        "lower": {
+          "type": "number",
+          "description": "Lower bound"
+        },
+        "upper": {
+          "type": "number",
+          "description": "Upper bound"
+        }
+      },
+      "required": ["lower", "upper"],
+      "additionalProperties": false
+    },
+    "ValidationWarning": {
+      "type": "object",
+      "description": "Validation warning from simulation",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Warning code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable warning message"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"],
+          "description": "Warning severity level"
+        },
+        "field": {
+          "type": "string",
+          "description": "Field that caused the warning"
+        }
+      },
+      "required": ["code", "message", "severity"],
+      "additionalProperties": false
+    },
+    "ExecutionStats": {
+      "type": "object",
+      "description": "Statistics about simulation execution",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Simulation start time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Simulation end time"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Execution duration in seconds"
+        },
+        "memoryUsage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Peak memory usage in bytes"
+        },
+        "cpuUsage": {
+          "type": "number",
+          "minimum": 0,
+          "description": "CPU usage percentage"
+        },
+        "cacheHits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of cache hits"
+        },
+        "cacheMisses": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of cache misses"
+        }
+      },
+      "required": ["startTime", "endTime", "duration"],
+      "additionalProperties": false
+    },
+    "PolicyChangeRequest": {
+      "type": "object",
+      "description": "Request to apply policy changes",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique request identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User making the request"
+        },
+        "simulationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Simulation that validated these changes"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PolicyChange"
+          },
+          "minItems": 1,
+          "description": "List of policy changes to apply"
+        },
+        "applyStrategy": {
+          "$ref": "#/definitions/ApplyStrategy"
+        },
+        "rollbackPlan": {
+          "$ref": "#/definitions/RollbackPlan"
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional comment for audit trail"
+        }
+      },
+      "required": ["requestId", "userId", "simulationId", "changes", "applyStrategy"],
+      "additionalProperties": false
+    },
+    "PolicyChange": {
+      "type": "object",
+      "description": "Individual policy change",
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "Target queue name or 'global'"
+        },
+        "policyType": {
+          "type": "string",
+          "enum": ["rate_limit", "retry", "concurrency", "priority", "circuit_breaker", "timeout"],
+          "description": "Type of policy being changed"
+        },
+        "field": {
+          "type": "string",
+          "description": "Specific field being changed"
+        },
+        "oldValue": {
+          "description": "Previous value (any type)"
+        },
+        "newValue": {
+          "description": "New value (any type)"
+        },
+        "validationHash": {
+          "type": "string",
+          "description": "Hash to ensure change matches simulation"
+        }
+      },
+      "required": ["target", "policyType", "field", "oldValue", "newValue", "validationHash"],
+      "additionalProperties": false
+    },
+    "ApplyStrategy": {
+      "type": "object",
+      "description": "Strategy for applying policy changes",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["immediate", "staged", "canary"],
+          "description": "Application mode"
+        },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Batch size for staged deployments"
+        },
+        "delayBetweenBatches": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Delay between batches"
+        },
+        "canaryPercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage for canary deployment"
+        },
+        "rollbackOnFailure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to auto-rollback on failure"
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "RollbackPlan": {
+      "type": "object",
+      "description": "Plan for rolling back policy changes",
+      "properties": {
+        "automatic": {
+          "type": "boolean",
+          "description": "Whether rollback is automatic"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RollbackCondition"
+          },
+          "description": "Conditions that trigger rollback"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Timeout for automatic rollback"
+        },
+        "notificationTargets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Notification targets for rollback events"
+        }
+      },
+      "required": ["automatic"],
+      "additionalProperties": false
+    },
+    "RollbackCondition": {
+      "type": "object",
+      "description": "Condition that triggers rollback",
+      "properties": {
+        "metric": {
+          "type": "string",
+          "enum": ["error_rate", "latency", "throughput", "queue_length"],
+          "description": "Metric to monitor"
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["greater_than", "less_than", "equals"],
+          "description": "Comparison operator"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Threshold value"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "description": "Duration threshold must be exceeded"
+        }
+      },
+      "required": ["metric", "operator", "threshold", "duration"],
+      "additionalProperties": false
+    },
+    "ApplicationResult": {
+      "type": "object",
+      "description": "Result of policy application",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request identifier"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "partial_success", "failure", "rolled_back"],
+          "description": "Application status"
+        },
+        "appliedChanges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PolicyChange"
+          },
+          "description": "Changes that were successfully applied"
+        },
+        "failedChanges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FailedChange"
+          },
+          "description": "Changes that failed to apply"
+        },
+        "rollbackPoint": {
+          "type": "string",
+          "description": "Rollback point identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Application timestamp"
+        },
+        "metrics": {
+          "$ref": "#/definitions/ApplicationMetrics"
+        }
+      },
+      "required": ["requestId", "status", "timestamp"],
+      "additionalProperties": false
+    },
+    "FailedChange": {
+      "type": "object",
+      "description": "Policy change that failed to apply",
+      "properties": {
+        "change": {
+          "$ref": "#/definitions/PolicyChange"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "errorCode": {
+          "type": "string",
+          "description": "Error code"
+        }
+      },
+      "required": ["change", "error"],
+      "additionalProperties": false
+    },
+    "ApplicationMetrics": {
+      "type": "object",
+      "description": "Metrics from policy application",
+      "properties": {
+        "totalChanges": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of changes requested"
+        },
+        "successfulChanges": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of successful changes"
+        },
+        "failedChanges": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of failed changes"
+        },
+        "executionTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total execution time in seconds"
+        },
+        "rollbackTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Rollback time if applicable"
+        }
+      },
+      "required": ["totalChanges", "successfulChanges", "failedChanges", "executionTime"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,1335 @@
+openapi: 3.0.3
+info:
+  title: Advanced Rate Limiting API
+  description: |
+    Enterprise-grade rate limiting system with token bucket algorithm, priority fairness,
+    and per-tenant isolation. Provides comprehensive rate limiting controls for
+    multi-tenant queue systems.
+
+    ## Features
+    - Token bucket rate limiting with burst capacity
+    - Priority-based fair queuing
+    - Per-tenant and per-queue rate limits
+    - Global capacity controls
+    - Dynamic configuration updates
+    - Real-time metrics and monitoring
+
+    ## Authentication
+    All endpoints require API key authentication via the `X-API-Key` header.
+
+    ## Rate Limiting Scopes
+    Rate limiting operates on hierarchical scopes:
+    - Global: System-wide limits
+    - Tenant: Per-tenant limits (e.g., "tenant-123")
+    - Queue: Per-queue limits (e.g., "tenant-123:email-queue")
+    - Priority: Per-priority limits (e.g., "tenant-123:email-queue:high")
+
+  version: 1.0.0
+  contact:
+    name: API Support
+    url: https://example.com/support
+    email: api-support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - ApiKey: []
+
+tags:
+  - name: Rate Limiting
+    description: Core rate limiting operations
+  - name: Configuration
+    description: Rate limit configuration management
+  - name: Monitoring
+    description: Metrics and monitoring endpoints
+  - name: Administration
+    description: Administrative operations
+
+paths:
+  /rate-limit/check:
+    post:
+      tags:
+        - Rate Limiting
+      summary: Check rate limit for a scope
+      description: |
+        Performs an atomic check and consume operation on the token bucket
+        for the specified scope. Returns whether the request is allowed and
+        provides metadata about the current bucket state.
+      operationId: checkRateLimit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateLimitCheckRequest'
+            examples:
+              basic_check:
+                summary: Basic rate limit check
+                value:
+                  scope: "tenant-123:email-queue:high"
+                  tokens: 1
+              burst_check:
+                summary: Burst request
+                value:
+                  scope: "tenant-456:sms-queue:medium"
+                  tokens: 10
+                  metadata:
+                    request_id: "req-789"
+                    user_agent: "producer-v2.1"
+      responses:
+        '200':
+          description: Rate limit check successful (request allowed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitDecision'
+              examples:
+                allowed:
+                  summary: Request allowed
+                  value:
+                    allowed: true
+                    tokens_consumed: 1
+                    tokens_remaining: 49.5
+                    wait_time_ms: 0
+                    bucket_capacity: 50
+                    refill_rate: 100
+                    scope: "tenant-123:email-queue:high"
+                    timestamp: "2025-09-14T19:45:30.125Z"
+        '429':
+          description: Rate limit exceeded (request denied)
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitDecision'
+              examples:
+                denied:
+                  summary: Request denied
+                  value:
+                    allowed: false
+                    tokens_consumed: 0
+                    tokens_remaining: 0
+                    wait_time_ms: 15000
+                    bucket_capacity: 50
+                    refill_rate: 100
+                    scope: "tenant-123:email-queue:high"
+                    timestamp: "2025-09-14T19:45:30.125Z"
+                    error:
+                      code: "RATE_LIMIT_EXCEEDED"
+                      message: "Rate limit exceeded for scope tenant-123:email-queue:high"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/check-batch:
+    post:
+      tags:
+        - Rate Limiting
+      summary: Check rate limits for multiple scopes
+      description: |
+        Performs rate limit checks for multiple scopes in a single atomic operation.
+        Useful for checking limits across different priority levels or queues.
+      operationId: checkRateLimitBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateLimitBatchRequest'
+            examples:
+              multi_priority:
+                summary: Check multiple priorities
+                value:
+                  checks:
+                    - scope: "tenant-123:email-queue:high"
+                      tokens: 1
+                    - scope: "tenant-123:email-queue:medium"
+                      tokens: 2
+                    - scope: "tenant-123:email-queue:low"
+                      tokens: 5
+      responses:
+        '200':
+          description: Batch rate limit check successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/config/{scope}:
+    get:
+      tags:
+        - Configuration
+      summary: Get rate limit configuration for scope
+      description: Retrieves the current rate limiting configuration for the specified scope
+      operationId: getRateLimitConfig
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketConfig'
+              examples:
+                tenant_config:
+                  summary: Tenant configuration
+                  value:
+                    scope: "tenant-123"
+                    rate_per_second: 500
+                    burst_capacity: 100
+                    priority_weights:
+                      high: 3
+                      medium: 2
+                      low: 1
+                    enabled: true
+                    created_at: "2025-09-14T10:00:00.000Z"
+                    updated_at: "2025-09-14T15:30:00.000Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Configuration
+      summary: Update rate limit configuration for scope
+      description: |
+        Updates the rate limiting configuration for the specified scope.
+        Changes take effect immediately for new requests.
+      operationId: updateRateLimitConfig
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+        - name: dry-run
+          in: query
+          description: Preview configuration changes without applying them
+          required: false
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+            examples:
+              increase_limits:
+                summary: Increase rate limits
+                value:
+                  rate_per_second: 1000
+                  burst_capacity: 200
+                  priority_weights:
+                    high: 4
+                    medium: 2
+                    low: 1
+              disable_scope:
+                summary: Disable rate limiting
+                value:
+                  enabled: false
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketConfig'
+        '200 ':
+          description: Dry-run preview (when dry-run=true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Configuration
+      summary: Delete rate limit configuration for scope
+      description: |
+        Removes the rate limiting configuration for the specified scope.
+        The scope will fall back to default or parent configurations.
+      operationId: deleteRateLimitConfig
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+      responses:
+        '204':
+          description: Configuration deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/config:
+    get:
+      tags:
+        - Configuration
+      summary: List all rate limit configurations
+      description: Retrieves all configured rate limit scopes with pagination
+      operationId: listRateLimitConfigs
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tenant_filter
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: enabled_only
+          in: query
+          description: Only return enabled configurations
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Configurations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/status/{scope}:
+    get:
+      tags:
+        - Monitoring
+      summary: Get current status of rate limit bucket
+      description: |
+        Retrieves the current state of the token bucket for the specified scope,
+        including current token count, utilization, and recent activity.
+      operationId: getRateLimitStatus
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/metrics/{scope}:
+    get:
+      tags:
+        - Monitoring
+      summary: Get rate limiting metrics for scope
+      description: |
+        Retrieves historical metrics and statistics for the specified scope,
+        including request rates, denial rates, and performance data.
+      operationId: getRateLimitMetrics
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+        - name: start_time
+          in: query
+          description: Start time for metrics (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for metrics (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: resolution
+          in: query
+          description: Metrics resolution
+          required: false
+          schema:
+            type: string
+            enum: [minute, hour, day]
+            default: minute
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitMetrics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/debug/{scope}:
+    get:
+      tags:
+        - Administration
+      summary: Get debugging information for scope
+      description: |
+        Retrieves detailed debugging information for the specified scope,
+        including Redis key information, Lua script state, and configuration hierarchy.
+        This endpoint is intended for troubleshooting and should be used carefully.
+      operationId: getRateLimitDebug
+      parameters:
+        - $ref: '#/components/parameters/ScopeParam'
+      responses:
+        '200':
+          description: Debug information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebugInfo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rate-limit/health:
+    get:
+      tags:
+        - Administration
+      summary: Health check for rate limiting system
+      description: |
+        Performs a health check of the rate limiting system, including
+        Redis connectivity, Lua script availability, and basic functionality.
+      operationId: getRateLimitHealth
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /rate-limit/global-config:
+    get:
+      tags:
+        - Administration
+      summary: Get global rate limiting configuration
+      description: Retrieves the global rate limiting configuration and defaults
+      operationId: getGlobalConfig
+      responses:
+        '200':
+          description: Global configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Administration
+      summary: Update global rate limiting configuration
+      description: |
+        Updates the global rate limiting configuration. This affects
+        default values and system-wide limits.
+      operationId: updateGlobalConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GlobalConfigUpdate'
+      responses:
+        '200':
+          description: Global configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+  parameters:
+    ScopeParam:
+      name: scope
+      in: path
+      description: |
+        Rate limiting scope identifier. Can be hierarchical:
+        - "global" - System-wide limits
+        - "tenant-123" - Tenant-specific limits
+        - "tenant-123:email-queue" - Queue-specific limits
+        - "tenant-123:email-queue:high" - Priority-specific limits
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9][a-zA-Z0-9-_:]*[a-zA-Z0-9]$'
+        minLength: 1
+        maxLength: 255
+      examples:
+        global:
+          value: "global"
+          summary: Global scope
+        tenant:
+          value: "tenant-123"
+          summary: Tenant scope
+        queue:
+          value: "tenant-123:email-queue"
+          summary: Queue scope
+        priority:
+          value: "tenant-123:email-queue:high"
+          summary: Priority scope
+
+  schemas:
+    RateLimitCheckRequest:
+      type: object
+      required:
+        - scope
+        - tokens
+      properties:
+        scope:
+          type: string
+          description: Rate limiting scope identifier
+          pattern: '^[a-zA-Z0-9][a-zA-Z0-9-_:]*[a-zA-Z0-9]$'
+          minLength: 1
+          maxLength: 255
+          example: "tenant-123:email-queue:high"
+        tokens:
+          type: number
+          description: Number of tokens to consume
+          minimum: 0.1
+          maximum: 10000
+          example: 1
+        metadata:
+          type: object
+          description: Optional metadata for request tracking
+          properties:
+            request_id:
+              type: string
+              description: Unique identifier for the request
+              example: "req-456"
+            user_agent:
+              type: string
+              description: Client user agent
+              example: "producer-v1.0"
+            source_ip:
+              type: string
+              description: Source IP address
+              format: ipv4
+              example: "192.168.1.100"
+          additionalProperties: true
+
+    RateLimitBatchRequest:
+      type: object
+      required:
+        - checks
+      properties:
+        checks:
+          type: array
+          description: Array of rate limit checks to perform
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            required:
+              - scope
+              - tokens
+            properties:
+              scope:
+                type: string
+                description: Rate limiting scope identifier
+                pattern: '^[a-zA-Z0-9][a-zA-Z0-9-_:]*[a-zA-Z0-9]$'
+              tokens:
+                type: number
+                description: Number of tokens to consume
+                minimum: 0.1
+                maximum: 10000
+
+    RateLimitDecision:
+      type: object
+      required:
+        - allowed
+        - tokens_consumed
+        - tokens_remaining
+        - wait_time_ms
+        - bucket_capacity
+        - refill_rate
+        - scope
+        - timestamp
+      properties:
+        allowed:
+          type: boolean
+          description: Whether the request is allowed
+          example: true
+        tokens_consumed:
+          type: number
+          description: Number of tokens consumed
+          example: 1
+        tokens_remaining:
+          type: number
+          description: Number of tokens remaining in bucket
+          example: 49.5
+        wait_time_ms:
+          type: integer
+          description: Milliseconds to wait before retry (if denied)
+          minimum: 0
+          example: 0
+        bucket_capacity:
+          type: number
+          description: Maximum bucket capacity
+          example: 50
+        refill_rate:
+          type: number
+          description: Token refill rate per second
+          example: 100
+        scope:
+          type: string
+          description: The scope that was checked
+          example: "tenant-123:email-queue:high"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the decision
+          example: "2025-09-14T19:45:30.125Z"
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+
+    RateLimitBatchResponse:
+      type: object
+      required:
+        - results
+        - timestamp
+      properties:
+        results:
+          type: array
+          description: Results for each check in the batch
+          items:
+            $ref: '#/components/schemas/RateLimitDecision'
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the batch operation
+          example: "2025-09-14T19:45:30.125Z"
+
+    BucketConfig:
+      type: object
+      required:
+        - scope
+        - rate_per_second
+        - burst_capacity
+        - enabled
+      properties:
+        scope:
+          type: string
+          description: Rate limiting scope identifier
+          example: "tenant-123:email-queue"
+        rate_per_second:
+          type: number
+          description: Token refill rate per second
+          minimum: 0.01
+          maximum: 1000000
+          example: 100
+        burst_capacity:
+          type: number
+          description: Maximum number of tokens in bucket
+          minimum: 1
+          maximum: 1000000
+          example: 50
+        priority_weights:
+          type: object
+          description: Priority weights for fair queuing
+          properties:
+            critical:
+              type: integer
+              minimum: 1
+              maximum: 10
+            high:
+              type: integer
+              minimum: 1
+              maximum: 10
+            medium:
+              type: integer
+              minimum: 1
+              maximum: 10
+            low:
+              type: integer
+              minimum: 1
+              maximum: 10
+          example:
+            high: 3
+            medium: 2
+            low: 1
+        enabled:
+          type: boolean
+          description: Whether rate limiting is enabled for this scope
+          example: true
+        ttl_seconds:
+          type: integer
+          description: TTL for inactive buckets in seconds
+          minimum: 60
+          maximum: 86400
+          default: 3600
+        created_at:
+          type: string
+          format: date-time
+          description: Configuration creation timestamp
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          description: Configuration last update timestamp
+          readOnly: true
+
+    BucketConfigUpdate:
+      type: object
+      properties:
+        rate_per_second:
+          type: number
+          description: Token refill rate per second
+          minimum: 0.01
+          maximum: 1000000
+        burst_capacity:
+          type: number
+          description: Maximum number of tokens in bucket
+          minimum: 1
+          maximum: 1000000
+        priority_weights:
+          type: object
+          description: Priority weights for fair queuing
+          properties:
+            critical:
+              type: integer
+              minimum: 1
+              maximum: 10
+            high:
+              type: integer
+              minimum: 1
+              maximum: 10
+            medium:
+              type: integer
+              minimum: 1
+              maximum: 10
+            low:
+              type: integer
+              minimum: 1
+              maximum: 10
+        enabled:
+          type: boolean
+          description: Whether rate limiting is enabled for this scope
+        ttl_seconds:
+          type: integer
+          description: TTL for inactive buckets in seconds
+          minimum: 60
+          maximum: 86400
+
+    ConfigPreview:
+      type: object
+      required:
+        - current
+        - proposed
+        - impact_analysis
+      properties:
+        current:
+          $ref: '#/components/schemas/BucketConfig'
+        proposed:
+          $ref: '#/components/schemas/BucketConfig'
+        impact_analysis:
+          type: object
+          properties:
+            rate_change_percent:
+              type: number
+              description: Percentage change in rate limit
+            capacity_change_percent:
+              type: number
+              description: Percentage change in burst capacity
+            estimated_impact:
+              type: string
+              enum: [low, medium, high, critical]
+              description: Estimated impact of the change
+            warnings:
+              type: array
+              items:
+                type: string
+              description: Warnings about the proposed changes
+
+    ConfigList:
+      type: object
+      required:
+        - configs
+        - pagination
+      properties:
+        configs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BucketConfig'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    BucketStatus:
+      type: object
+      required:
+        - scope
+        - current_tokens
+        - bucket_capacity
+        - refill_rate
+        - last_refill_time
+        - utilization
+      properties:
+        scope:
+          type: string
+          description: Rate limiting scope identifier
+          example: "tenant-123:email-queue:high"
+        current_tokens:
+          type: number
+          description: Current number of tokens in bucket
+          example: 45.7
+        bucket_capacity:
+          type: number
+          description: Maximum bucket capacity
+          example: 50
+        refill_rate:
+          type: number
+          description: Token refill rate per second
+          example: 100
+        last_refill_time:
+          type: string
+          format: date-time
+          description: Last time tokens were refilled
+          example: "2025-09-14T19:45:30.123Z"
+        utilization:
+          type: number
+          description: Bucket utilization percentage (0-1)
+          minimum: 0
+          maximum: 1
+          example: 0.914
+        total_requests:
+          type: integer
+          description: Total requests processed
+          example: 15647
+        allowed_requests:
+          type: integer
+          description: Total allowed requests
+          example: 14892
+        denied_requests:
+          type: integer
+          description: Total denied requests
+          example: 755
+        created_at:
+          type: string
+          format: date-time
+          description: Bucket creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Bucket last update timestamp
+
+    RateLimitMetrics:
+      type: object
+      required:
+        - scope
+        - time_range
+        - metrics
+      properties:
+        scope:
+          type: string
+          description: Rate limiting scope identifier
+        time_range:
+          type: object
+          required:
+            - start_time
+            - end_time
+          properties:
+            start_time:
+              type: string
+              format: date-time
+            end_time:
+              type: string
+              format: date-time
+        metrics:
+          type: object
+          required:
+            - requests_per_second
+            - allowed_per_second
+            - denied_per_second
+            - average_tokens
+            - bucket_utilization
+          properties:
+            requests_per_second:
+              type: number
+              description: Average requests per second
+              example: 85.3
+            allowed_per_second:
+              type: number
+              description: Average allowed requests per second
+              example: 82.1
+            denied_per_second:
+              type: number
+              description: Average denied requests per second
+              example: 3.2
+            average_tokens:
+              type: number
+              description: Average token count in bucket
+              example: 23.5
+            bucket_utilization:
+              type: number
+              description: Average bucket utilization
+              minimum: 0
+              maximum: 1
+              example: 0.47
+            wait_time_p50:
+              type: number
+              description: 50th percentile wait time (ms)
+              example: 0
+            wait_time_p95:
+              type: number
+              description: 95th percentile wait time (ms)
+              example: 15
+            wait_time_p99:
+              type: number
+              description: 99th percentile wait time (ms)
+              example: 45
+        priority_breakdown:
+          type: object
+          description: Metrics broken down by priority
+          additionalProperties:
+            type: object
+            properties:
+              requests:
+                type: integer
+              allowed:
+                type: integer
+              denied:
+                type: integer
+              average_wait_ms:
+                type: number
+
+    DebugInfo:
+      type: object
+      required:
+        - scope
+        - redis_keys
+        - bucket_state
+        - config_hierarchy
+      properties:
+        scope:
+          type: string
+          description: Rate limiting scope identifier
+        redis_keys:
+          type: object
+          description: Redis keys and their states
+          properties:
+            bucket_key:
+              type: string
+              description: Redis key for bucket state
+            config_key:
+              type: string
+              description: Redis key for configuration
+            exists:
+              type: boolean
+              description: Whether the keys exist in Redis
+            ttl:
+              type: integer
+              description: TTL remaining on keys
+        bucket_state:
+          type: object
+          description: Raw bucket state from Redis
+          additionalProperties: true
+        config_hierarchy:
+          type: array
+          description: Configuration hierarchy for scope resolution
+          items:
+            type: object
+            properties:
+              scope:
+                type: string
+              source:
+                type: string
+                enum: [explicit, inherited, default]
+              config:
+                $ref: '#/components/schemas/BucketConfig'
+        lua_script_info:
+          type: object
+          description: Information about Lua scripts
+          properties:
+            script_hash:
+              type: string
+              description: SHA1 hash of loaded Lua script
+            loaded:
+              type: boolean
+              description: Whether the script is loaded in Redis
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+        checks:
+          type: object
+          description: Individual health check results
+          properties:
+            redis_connectivity:
+              $ref: '#/components/schemas/HealthCheck'
+            lua_scripts:
+              $ref: '#/components/schemas/HealthCheck'
+            basic_functionality:
+              $ref: '#/components/schemas/HealthCheck'
+
+    HealthCheck:
+      type: object
+      required:
+        - status
+        - duration_ms
+      properties:
+        status:
+          type: string
+          enum: [pass, fail]
+          description: Health check status
+        duration_ms:
+          type: number
+          description: Check duration in milliseconds
+        message:
+          type: string
+          description: Additional information about the check
+        error:
+          type: string
+          description: Error message if check failed
+
+    GlobalConfig:
+      type: object
+      required:
+        - global_limits
+        - default_configs
+        - priority_weights
+      properties:
+        global_limits:
+          type: object
+          description: System-wide rate limits
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            rate_per_second:
+              type: number
+              example: 10000
+            burst_capacity:
+              type: number
+              example: 2000
+        default_configs:
+          type: object
+          description: Default configurations for different tenant tiers
+          properties:
+            enterprise:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+            pro:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+            basic:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+        priority_weights:
+          type: object
+          description: Default priority weights
+          properties:
+            critical:
+              type: integer
+              example: 4
+            high:
+              type: integer
+              example: 3
+            medium:
+              type: integer
+              example: 2
+            low:
+              type: integer
+              example: 1
+        cache_settings:
+          type: object
+          description: Caching configuration
+          properties:
+            decision_ttl_seconds:
+              type: integer
+              example: 30
+            config_ttl_seconds:
+              type: integer
+              example: 300
+
+    GlobalConfigUpdate:
+      type: object
+      properties:
+        global_limits:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            rate_per_second:
+              type: number
+              minimum: 1
+            burst_capacity:
+              type: number
+              minimum: 1
+        default_configs:
+          type: object
+          properties:
+            enterprise:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+            pro:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+            basic:
+              $ref: '#/components/schemas/BucketConfigUpdate'
+        priority_weights:
+          type: object
+          properties:
+            critical:
+              type: integer
+              minimum: 1
+              maximum: 10
+            high:
+              type: integer
+              minimum: 1
+              maximum: 10
+            medium:
+              type: integer
+              minimum: 1
+              maximum: 10
+            low:
+              type: integer
+              minimum: 1
+              maximum: 10
+        cache_settings:
+          type: object
+          properties:
+            decision_ttl_seconds:
+              type: integer
+              minimum: 1
+              maximum: 3600
+            config_ttl_seconds:
+              type: integer
+              minimum: 10
+              maximum: 7200
+
+    Pagination:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_items
+        - total_pages
+      properties:
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        page_size:
+          type: integer
+          description: Items per page
+          example: 20
+        total_items:
+          type: integer
+          description: Total number of items
+          example: 150
+        total_pages:
+          type: integer
+          description: Total number of pages
+          example: 8
+        has_next:
+          type: boolean
+          description: Whether there is a next page
+          example: true
+        has_previous:
+          type: boolean
+          description: Whether there is a previous page
+          example: false
+
+    ErrorDetails:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: "RATE_LIMIT_EXCEEDED"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Rate limit exceeded for scope tenant-123:email-queue:high"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Trace ID for debugging
+          example: "trace-789"
+
+    Error:
+      type: object
+      required:
+        - error
+        - timestamp
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        request_id:
+          type: string
+          description: Request ID for tracking
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters or request body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid_scope:
+              summary: Invalid scope format
+              value:
+                error:
+                  code: "INVALID_SCOPE"
+                  message: "Scope must match pattern: ^[a-zA-Z0-9][a-zA-Z0-9-_:]*[a-zA-Z0-9]$"
+                timestamp: "2025-09-14T19:45:30.125Z"
+                request_id: "req-456"
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing_api_key:
+              summary: Missing API key
+              value:
+                error:
+                  code: "MISSING_API_KEY"
+                  message: "API key is required"
+                timestamp: "2025-09-14T19:45:30.125Z"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            scope_not_found:
+              summary: Scope not found
+              value:
+                error:
+                  code: "SCOPE_NOT_FOUND"
+                  message: "Rate limit configuration not found for scope: tenant-999"
+                timestamp: "2025-09-14T19:45:30.125Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            redis_error:
+              summary: Redis connection error
+              value:
+                error:
+                  code: "REDIS_CONNECTION_ERROR"
+                  message: "Unable to connect to Redis cluster"
+                  details:
+                    redis_hosts: ["redis-1:6379", "redis-2:6379"]
+                timestamp: "2025-09-14T19:45:30.125Z"
+                request_id: "req-456"

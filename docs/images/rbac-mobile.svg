@@ -1,0 +1,123 @@
+<svg width="400" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .text { fill: #f0f6fc; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 12px; }
+      .text-small { fill: #8b949e; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 10px; }
+      .text-title { fill: #f0f6fc; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 16px; font-weight: bold; }
+      .success { fill: #39d353; }
+      .warning { fill: #ffa657; }
+      .error { fill: #f85149; }
+      .primary { fill: #58a6ff; }
+      .btn-primary { fill: #238636; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .btn-secondary { fill: #30363d; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .tab-active { fill: #1f2937; stroke: #58a6ff; stroke-width: 2; }
+      .tab-inactive { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .input { fill: #0d1117; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .border { stroke: #30363d; stroke-width: 1; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="800" class="bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="50" class="panel"/>
+  <text x="20" y="30" class="text-title">RBAC Management</text>
+  <text x="300" y="25" class="success">admin</text>
+  <text x="300" y="38" class="text-small">Super</text>
+
+  <!-- Tab Bar -->
+  <rect x="10" y="60" width="90" height="35" class="tab-active"/>
+  <text x="40" y="80" class="primary">Users</text>
+
+  <rect x="110" y="60" width="90" height="35" class="tab-inactive"/>
+  <text x="135" y="80" class="text">Tokens</text>
+
+  <rect x="210" y="60" width="90" height="35" class="tab-inactive"/>
+  <text x="240" y="80" class="text">Audit</text>
+
+  <rect x="310" y="60" width="80" height="35" class="tab-inactive"/>
+  <text x="335" y="80" class="text">Roles</text>
+
+  <!-- Users Tab Content -->
+  <rect x="10" y="105" width="380" height="680" class="panel"/>
+
+  <!-- Search -->
+  <rect x="20" y="115" width="360" height="30" class="input"/>
+  <text x="30" y="133" class="text-small">🔍 Search users...</text>
+
+  <!-- Quick stats -->
+  <rect x="20" y="155" width="360" height="40" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="170" class="text-small">Active Users</text>
+  <text x="30" y="185" class="text">45</text>
+  <text x="150" y="170" class="text-small">Roles</text>
+  <text x="150" y="185" class="text">4</text>
+  <text x="250" y="170" class="text-small">Tokens</text>
+  <text x="250" y="185" class="text">12</text>
+
+  <!-- User list -->
+  <text x="20" y="220" class="text">Recent Users</text>
+
+  <!-- User cards -->
+  <rect x="20" y="230" width="360" height="60" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="250" class="text">alice@company.com</text>
+  <text x="30" y="265" class="primary">Admin Role</text>
+  <text x="30" y="280" class="success">● Active • Last seen: 5 min ago</text>
+  <rect x="320" y="245" width="50" height="20" class="btn-primary"/>
+  <text x="335" y="257" class="text-small">Edit</text>
+
+  <rect x="20" y="300" width="360" height="60" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="320" class="text">bob@company.com</text>
+  <text x="30" y="335" class="text">Operator Role</text>
+  <text x="30" y="350" class="success">● Active • Last seen: 2 hours ago</text>
+  <rect x="320" y="315" width="50" height="20" class="btn-secondary"/>
+  <text x="335" y="327" class="text-small">Edit</text>
+
+  <rect x="20" y="370" width="360" height="60" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="390" class="text">charlie@company.com</text>
+  <text x="30" y="405" class="text">Viewer Role</text>
+  <text x="30" y="420" class="warning">● Suspended • Token expired</text>
+  <rect x="320" y="385" width="50" height="20" class="btn-secondary"/>
+  <text x="335" y="397" class="text-small">Edit</text>
+
+  <!-- Role permissions preview -->
+  <text x="20" y="460" class="text">Role Permissions</text>
+
+  <rect x="20" y="470" width="360" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="490" class="text-small">Admin Role Scopes:</text>
+  <text x="30" y="505" class="success">✓ stats:read, stats:write</text>
+  <text x="30" y="520" class="success">✓ queues:list, queues:create, queues:delete</text>
+  <text x="30" y="535" class="success">✓ jobs:enqueue, jobs:dequeue, jobs:retry</text>
+  <text x="30" y="550" class="success">✓ dlq:read, dlq:purge, dlq:retry</text>
+  <text x="30" y="565" class="success">✓ audit:read, audit:export</text>
+  <text x="30" y="580" class="error">✗ admin:users, admin:roles</text>
+
+  <!-- Quick actions -->
+  <rect x="20" y="610" width="170" height="35" class="btn-primary"/>
+  <text x="85" y="630" class="text">+ Add User</text>
+
+  <rect x="210" y="610" width="170" height="35" class="btn-secondary"/>
+  <text x="270" y="630" class="text">Bulk Actions</text>
+
+  <!-- Recent activity -->
+  <text x="20" y="670" class="text">Recent Activity</text>
+
+  <rect x="20" y="680" width="360" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="30" y="695" class="success">TOKEN_CREATED</text>
+  <text x="30" y="708" class="text-small">alice@company.com • 5 min ago</text>
+
+  <text x="30" y="725" class="warning">ACCESS_DENIED</text>
+  <text x="30" y="738" class="text-small">charlie@company.com • 2 hours ago</text>
+
+  <text x="30" y="755" class="primary">ROLE_UPDATED</text>
+  <text x="30" y="768" class="text-small">bob@company.com • 1 day ago</text>
+
+  <!-- Bottom navigation hints -->
+  <rect x="0" y="785" width="400" height="15" fill="#1f2937"/>
+  <text x="10" y="795" class="text-small">TAB: Next tab | /: Search | ESC: Exit</text>
+
+  <!-- Panel border -->
+  <rect x="10" y="105" width="380" height="680" class="border"/>
+</svg>

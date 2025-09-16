@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - work-queue-net
+
+  admin-api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.admin-api
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=debug
+      # RBAC Configuration
+      - RBAC_ENABLED=true
+      - RBAC_KEY_ROTATION_INTERVAL=720h  # 30 days
+      - RBAC_TOKEN_DEFAULT_TTL=24h
+      - RBAC_TOKEN_MAX_TTL=168h  # 7 days
+      - RBAC_AUDIT_ENABLED=true
+      - RBAC_AUDIT_LOG_PATH=/app/audit/rbac-audit.log
+      - RBAC_ROLES_FILE=/app/configs/roles.yaml
+      - RBAC_RESOURCES_FILE=/app/configs/resources.yaml
+      # Legacy token support for gradual migration
+      - API_TOKEN_1=local-dev-token
+      - API_TOKEN_2=local-readonly-token
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./rbac-configs:/app/rbac:ro
+      - audit-logs:/app/audit
+      - rbac-keys:/app/keys
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - work-queue-net
+
+  rbac-token-service:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.rbac-token-service
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=info
+      - TOKEN_SERVICE_PORT=8081
+      - KEY_STORAGE_PATH=/app/keys
+      - AUDIT_LOG_PATH=/app/audit/token-service-audit.log
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./rbac-configs:/app/configs:ro
+      - rbac-keys:/app/keys
+      - audit-logs:/app/audit
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - work-queue-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - work-queue-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - work-queue-net
+
+volumes:
+  redis-data:
+  audit-logs:
+  rbac-keys:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  work-queue-net:
+    driver: bridge

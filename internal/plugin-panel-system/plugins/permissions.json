@@ -1,0 +1,21 @@
+[
+  {
+    "plugin_id": "test-plugin",
+    "capability": "read_stats",
+    "granted": true,
+    "granted_at": "2025-09-14T18:49:43.698659-07:00",
+    "granted_by": "system",
+    "usage_count": 0,
+    "revoked": false
+  },
+  {
+    "plugin_id": "test-plugin",
+    "capability": "enqueue",
+    "granted": true,
+    "granted_at": "2025-09-15T02:17:20.596286-07:00",
+    "granted_by": "user",
+    "usage_count": 0,
+    "revoked": true,
+    "revoked_at": "2025-09-15T02:17:20.596747-07:00"
+  }
+]

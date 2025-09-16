@@ -1,0 +1,18 @@
+# CODEOWNERS maps file patterns to required reviewers.
+# Patterns the people will be automatically requested for review.
+# See: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for entire repository
+* @flyingrobots
+
+# CI/CD and workflows
+.github/** @flyingrobots
+
+# Helm chart and deployment assets
+deploy/** @flyingrobots
+
+# Go source
+cmd/** @flyingrobots
+internal/** @flyingrobots
+test/** @flyingrobots
+

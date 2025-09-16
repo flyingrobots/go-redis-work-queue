@@ -1,0 +1,822 @@
+openapi: 3.0.3
+info:
+  title: Go Redis Work Queue - Distributed Tracing API
+  description: API specification for distributed tracing integration in the go-redis-work-queue system
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.workqueue.example.com/v1
+    description: Production server
+
+tags:
+  - name: tracing
+    description: Tracing configuration and management
+  - name: spans
+    description: Span data and queries
+  - name: jobs
+    description: Job tracing operations
+
+paths:
+  /tracing/config:
+    get:
+      tags:
+        - tracing
+      summary: Get current tracing configuration
+      description: Returns the current tracing configuration including sampling rates and exporter settings
+      operationId: getTracingConfig
+      responses:
+        '200':
+          description: Current tracing configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TracingConfig'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - tracing
+      summary: Update tracing configuration
+      description: Updates the tracing configuration dynamically without restart
+      operationId: updateTracingConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TracingConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tracing/status:
+    get:
+      tags:
+        - tracing
+      summary: Get tracing system status
+      description: Returns the current status of the tracing system including export statistics
+      operationId: getTracingStatus
+      responses:
+        '200':
+          description: Tracing system status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TracingStatus'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tracing/sampling:
+    get:
+      tags:
+        - tracing
+      summary: Get sampling configuration
+      description: Returns detailed sampling configuration including per-queue and per-operation rates
+      operationId: getSamplingConfig
+      responses:
+        '200':
+          description: Sampling configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplingConfig'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - tracing
+      summary: Update sampling rates
+      description: Updates sampling rates for specific queues or operations
+      operationId: updateSamplingRates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SamplingUpdate'
+      responses:
+        '200':
+          description: Sampling rates updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /jobs/{jobId}/trace:
+    get:
+      tags:
+        - jobs
+      summary: Get trace information for a job
+      description: Returns trace context and span information for a specific job
+      operationId: getJobTrace
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique job identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job trace information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobTraceInfo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /jobs/{jobId}/spans:
+    get:
+      tags:
+        - jobs
+        - spans
+      summary: Get all spans for a job
+      description: Returns all spans associated with a job's execution
+      operationId: getJobSpans
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique job identifier
+          schema:
+            type: string
+        - name: includeChildren
+          in: query
+          required: false
+          description: Include child spans from downstream services
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of spans for the job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Span'
+                  total:
+                    type: integer
+                    description: Total number of spans
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /spans/search:
+    post:
+      tags:
+        - spans
+      summary: Search for spans
+      description: Search for spans based on various criteria
+      operationId: searchSpans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpanSearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpanSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /queues/{queueName}/tracing:
+    get:
+      tags:
+        - tracing
+      summary: Get queue-specific tracing configuration
+      description: Returns tracing configuration for a specific queue
+      operationId: getQueueTracingConfig
+      parameters:
+        - name: queueName
+          in: path
+          required: true
+          description: Queue name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Queue tracing configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueTracingConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - tracing
+      summary: Update queue-specific tracing configuration
+      description: Updates tracing settings for a specific queue
+      operationId: updateQueueTracingConfig
+      parameters:
+        - name: queueName
+          in: path
+          required: true
+          description: Queue name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueTracingUpdate'
+      responses:
+        '200':
+          description: Queue configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tracing/export/metrics:
+    get:
+      tags:
+        - tracing
+      summary: Get export metrics
+      description: Returns metrics about span export performance
+      operationId: getExportMetrics
+      parameters:
+        - name: period
+          in: query
+          required: false
+          description: Time period for metrics (e.g., 1h, 24h, 7d)
+          schema:
+            type: string
+            default: "1h"
+      responses:
+        '200':
+          description: Export metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportMetrics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    TracingConfig:
+      type: object
+      required:
+        - enabled
+        - serviceName
+      properties:
+        enabled:
+          type: boolean
+          description: Whether tracing is enabled
+        serviceName:
+          type: string
+          description: Service name for traces
+        endpoint:
+          type: string
+          description: OTLP endpoint URL
+          example: "localhost:4317"
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers to send with OTLP requests
+        sampling:
+          $ref: '#/components/schemas/SamplingConfig'
+        attributeFilter:
+          $ref: '#/components/schemas/AttributeFilter'
+        exportTimeout:
+          type: integer
+          description: Export timeout in milliseconds
+          default: 10000
+        exportBatchSize:
+          type: integer
+          description: Maximum batch size for export
+          default: 512
+        insecure:
+          type: boolean
+          description: Use insecure connection (no TLS)
+          default: false
+
+    SamplingConfig:
+      type: object
+      properties:
+        defaultRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Default sampling rate (0.0 to 1.0)
+          example: 0.1
+        queueRates:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+          description: Per-queue sampling rates
+        operationRates:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+          description: Per-operation sampling rates
+        tailSampling:
+          $ref: '#/components/schemas/TailSamplingConfig'
+
+    TailSamplingConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Enable tail sampling
+        errorRate:
+          type: number
+          format: float
+          description: Sampling rate for error traces
+          default: 1.0
+        slowThresholdMs:
+          type: integer
+          description: Threshold for slow trace sampling
+          default: 5000
+        slowRate:
+          type: number
+          format: float
+          description: Sampling rate for slow traces
+          default: 1.0
+
+    AttributeFilter:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Enable attribute filtering
+        allowlist:
+          type: array
+          items:
+            type: string
+          description: Allowed attribute names
+        redactPatterns:
+          type: array
+          items:
+            type: string
+          description: Regex patterns for PII redaction
+        maxAttributeLength:
+          type: integer
+          description: Maximum length for attribute values
+          default: 1024
+
+    TracingStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Whether tracing is currently active
+        serviceName:
+          type: string
+          description: Current service name
+        exporterStatus:
+          type: string
+          enum: [connected, disconnected, error]
+          description: Status of the exporter connection
+        statistics:
+          $ref: '#/components/schemas/TracingStatistics'
+        lastError:
+          type: string
+          description: Last error message if any
+        lastErrorTime:
+          type: string
+          format: date-time
+          description: Timestamp of last error
+
+    TracingStatistics:
+      type: object
+      properties:
+        spansCreated:
+          type: integer
+          format: int64
+          description: Total spans created
+        spansExported:
+          type: integer
+          format: int64
+          description: Total spans exported
+        spansDropped:
+          type: integer
+          format: int64
+          description: Total spans dropped
+        exportErrors:
+          type: integer
+          format: int64
+          description: Total export errors
+        avgExportLatencyMs:
+          type: number
+          format: float
+          description: Average export latency in milliseconds
+        lastExportTime:
+          type: string
+          format: date-time
+          description: Timestamp of last successful export
+
+    JobTraceInfo:
+      type: object
+      properties:
+        jobId:
+          type: string
+          description: Job identifier
+        traceId:
+          type: string
+          description: Trace ID in hex format
+        spanId:
+          type: string
+          description: Root span ID for this job
+        parentSpanId:
+          type: string
+          description: Parent span ID if job was triggered by another operation
+        traceUrl:
+          type: string
+          description: URL to view trace in backend UI
+        startTime:
+          type: string
+          format: date-time
+          description: Job start time
+        endTime:
+          type: string
+          format: date-time
+          description: Job end time
+        duration:
+          type: integer
+          description: Total duration in milliseconds
+        status:
+          type: string
+          enum: [success, failure, retry, pending]
+          description: Job execution status
+        spanCount:
+          type: integer
+          description: Number of spans associated with this job
+
+    Span:
+      type: object
+      properties:
+        traceId:
+          type: string
+          description: Trace ID in hex format
+        spanId:
+          type: string
+          description: Span ID in hex format
+        parentSpanId:
+          type: string
+          description: Parent span ID
+        operationName:
+          type: string
+          description: Operation name
+        startTime:
+          type: string
+          format: date-time
+          description: Span start time
+        endTime:
+          type: string
+          format: date-time
+          description: Span end time
+        duration:
+          type: integer
+          description: Duration in microseconds
+        status:
+          $ref: '#/components/schemas/SpanStatus'
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Span attributes
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpanEvent'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpanLink'
+
+    SpanStatus:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [UNSET, OK, ERROR]
+          description: Status code
+        message:
+          type: string
+          description: Status message
+
+    SpanEvent:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          type: string
+          description: Event name
+        attributes:
+          type: object
+          additionalProperties: true
+
+    SpanLink:
+      type: object
+      properties:
+        traceId:
+          type: string
+          description: Linked trace ID
+        spanId:
+          type: string
+          description: Linked span ID
+        attributes:
+          type: object
+          additionalProperties: true
+
+    SpanSearchRequest:
+      type: object
+      properties:
+        traceId:
+          type: string
+          description: Filter by trace ID
+        serviceName:
+          type: string
+          description: Filter by service name
+        operationName:
+          type: string
+          description: Filter by operation name
+        queueName:
+          type: string
+          description: Filter by queue name
+        minDuration:
+          type: integer
+          description: Minimum duration in microseconds
+        maxDuration:
+          type: integer
+          description: Maximum duration in microseconds
+        status:
+          type: string
+          enum: [OK, ERROR]
+          description: Filter by status
+        startTime:
+          type: string
+          format: date-time
+          description: Start time range begin
+        endTime:
+          type: string
+          format: date-time
+          description: Start time range end
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Filter by attributes
+        limit:
+          type: integer
+          default: 100
+          maximum: 1000
+          description: Maximum results to return
+        offset:
+          type: integer
+          default: 0
+          description: Offset for pagination
+
+    SpanSearchResponse:
+      type: object
+      properties:
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Span'
+        total:
+          type: integer
+          description: Total matching spans
+        hasMore:
+          type: boolean
+          description: Whether more results are available
+
+    QueueTracingConfig:
+      type: object
+      properties:
+        queueName:
+          type: string
+          description: Queue name
+        enabled:
+          type: boolean
+          description: Whether tracing is enabled for this queue
+        samplingRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Queue-specific sampling rate
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional attributes to add to spans for this queue
+
+    QueueTracingUpdate:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Enable/disable tracing for queue
+        samplingRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: New sampling rate
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional attributes
+
+    SamplingUpdate:
+      type: object
+      properties:
+        defaultRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: New default rate
+        queueRates:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+          description: Updated queue rates
+        operationRates:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+          description: Updated operation rates
+
+    ExportMetrics:
+      type: object
+      properties:
+        period:
+          type: string
+          description: Metrics period
+        successCount:
+          type: integer
+          format: int64
+          description: Successful exports
+        failureCount:
+          type: integer
+          format: int64
+          description: Failed exports
+        droppedSpans:
+          type: integer
+          format: int64
+          description: Dropped spans
+        avgBatchSize:
+          type: number
+          format: float
+          description: Average batch size
+        avgLatencyMs:
+          type: number
+          format: float
+          description: Average export latency
+        p95LatencyMs:
+          type: number
+          format: float
+          description: 95th percentile latency
+        p99LatencyMs:
+          type: number
+          format: float
+          description: 99th percentile latency
+        throughput:
+          type: number
+          format: float
+          description: Spans per second
+
+    ConfigUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether update was successful
+        message:
+          type: string
+          description: Status message
+        timestamp:
+          type: string
+          format: date-time
+          description: Update timestamp
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "BAD_REQUEST"
+            message: "Invalid request parameters"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "NOT_FOUND"
+            message: "Resource not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "INTERNAL_ERROR"
+            message: "An internal error occurred"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []

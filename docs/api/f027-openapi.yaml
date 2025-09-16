@@ -1,0 +1,1126 @@
+openapi: 3.0.3
+info:
+  title: Trace Drilldown Log Tail API
+  description: API for integrating distributed tracing and real-time log streaming with queue management
+  version: 1.0.0
+  contact:
+    name: Queue Management Team
+    email: team@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.example.com/v1
+    description: Production server
+
+paths:
+  /jobs/{job_id}/trace:
+    get:
+      summary: Get trace information for a job
+      description: Retrieves trace context and metadata associated with a specific job
+      operationId: getJobTrace
+      tags:
+        - Trace Integration
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          description: Unique identifier for the job
+          schema:
+            type: string
+            example: "job_12345"
+      responses:
+        '200':
+          description: Trace information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobTraceInfo'
+        '404':
+          description: Job or trace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /traces/{trace_id}/summary:
+    get:
+      summary: Get trace summary
+      description: Retrieves a summary of spans and critical path for a trace
+      operationId: getTraceSummary
+      tags:
+        - Trace Integration
+      parameters:
+        - name: trace_id
+          in: path
+          required: true
+          description: Trace identifier in hex format
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{32}$'
+            example: "4bf92f3577b34da6a3ce929d0e0e4736"
+        - name: include_logs
+          in: query
+          description: Include span logs in the response
+          schema:
+            type: boolean
+            default: false
+        - name: max_spans
+          in: query
+          description: Maximum number of spans to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+      responses:
+        '200':
+          description: Trace summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceSummary'
+        '400':
+          description: Invalid trace ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Trace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /traces/{trace_id}/spans:
+    get:
+      summary: Get detailed span information
+      description: Retrieves detailed information for all spans in a trace
+      operationId: getTraceSpans
+      tags:
+        - Trace Integration
+      parameters:
+        - name: trace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{32}$'
+        - name: span_id
+          in: query
+          description: Filter to specific span
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{16}$'
+        - name: service
+          in: query
+          description: Filter spans by service name
+          schema:
+            type: string
+        - name: operation
+          in: query
+          description: Filter spans by operation name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Span details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace_id:
+                    type: string
+                  spans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TraceSpan'
+
+  /logs/streams:
+    post:
+      summary: Create a new log stream
+      description: Creates a new real-time log stream with specified filters
+      operationId: createLogStream
+      tags:
+        - Log Streaming
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLogStreamRequest'
+      responses:
+        '201':
+          description: Log stream created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogStreamInfo'
+        '400':
+          description: Invalid stream configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many active streams
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List active log streams
+      description: Retrieves a list of active log streams for the current user
+      operationId: listLogStreams
+      tags:
+        - Log Streaming
+      parameters:
+        - name: status
+          in: query
+          description: Filter streams by status
+          schema:
+            type: string
+            enum: [active, paused, rate_limited, closed]
+        - name: limit
+          in: query
+          description: Maximum number of streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Stream list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogStreamInfo'
+                  total:
+                    type: integer
+                  has_more:
+                    type: boolean
+
+  /logs/streams/{stream_id}:
+    get:
+      summary: Get log stream details
+      description: Retrieves detailed information about a specific log stream
+      operationId: getLogStream
+      tags:
+        - Log Streaming
+      parameters:
+        - name: stream_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogStreamInfo'
+        '404':
+          description: Stream not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      summary: Update log stream configuration
+      description: Updates filters or options for an existing log stream
+      operationId: updateLogStream
+      tags:
+        - Log Streaming
+      parameters:
+        - name: stream_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLogStreamRequest'
+      responses:
+        '200':
+          description: Stream updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogStreamInfo'
+        '400':
+          description: Invalid update parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Close a log stream
+      description: Closes and removes a log stream
+      operationId: closeLogStream
+      tags:
+        - Log Streaming
+      parameters:
+        - name: stream_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Stream closed successfully
+        '404':
+          description: Stream not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /logs/streams/{stream_id}/ws:
+    get:
+      summary: WebSocket connection for log streaming
+      description: Establishes a WebSocket connection for real-time log streaming
+      operationId: connectLogStream
+      tags:
+        - Log Streaming
+      parameters:
+        - name: stream_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '101':
+          description: WebSocket connection established
+        '404':
+          description: Stream not found
+        '403':
+          description: Access denied
+
+  /logs/history:
+    get:
+      summary: Search historical logs
+      description: Searches through historical log data with filters
+      operationId: searchLogs
+      tags:
+        - Log Streaming
+      parameters:
+        - name: query
+          in: query
+          description: Text search query
+          schema:
+            type: string
+        - name: job_id
+          in: query
+          schema:
+            type: string
+        - name: worker_id
+          in: query
+          schema:
+            type: string
+        - name: trace_id
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Minimum log level
+          schema:
+            type: string
+            enum: [trace, debug, info, warn, error, fatal]
+        - name: since
+          in: query
+          description: Start time for search
+          schema:
+            type: string
+            format: date-time
+        - name: until
+          in: query
+          description: End time for search
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Log search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogEntry'
+                  total:
+                    type: integer
+                  has_more:
+                    type: boolean
+                  search_time_ms:
+                    type: integer
+
+  /correlation/{job_id}:
+    get:
+      summary: Get correlated trace and log data
+      description: Retrieves all trace and log data correlated with a specific job
+      operationId: getJobCorrelation
+      tags:
+        - Correlation
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: include_related
+          in: query
+          description: Include related jobs and traces
+          schema:
+            type: boolean
+            default: false
+        - name: time_window
+          in: query
+          description: Time window around job execution (minutes)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1440
+            default: 60
+      responses:
+        '200':
+          description: Correlation data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrelationIndex'
+
+  /config/tracing:
+    get:
+      summary: Get tracing configuration
+      description: Retrieves current tracing system configuration
+      operationId: getTracingConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TracingConfig'
+
+    put:
+      summary: Update tracing configuration
+      description: Updates tracing system configuration
+      operationId: updateTracingConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TracingConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TracingConfig'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/logging:
+    get:
+      summary: Get logging configuration
+      description: Retrieves current logging system configuration
+      operationId: getLoggingConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoggingConfig'
+
+    put:
+      summary: Update logging configuration
+      description: Updates logging system configuration
+      operationId: updateLoggingConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoggingConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoggingConfig'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /health/tracing:
+    get:
+      summary: Check tracing system health
+      description: Checks connectivity and health of configured tracing systems
+      operationId: checkTracingHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  systems:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        endpoint:
+                          type: string
+                        status:
+                          type: string
+                          enum: [healthy, degraded, unhealthy]
+                        response_time_ms:
+                          type: integer
+                        last_check:
+                          type: string
+                          format: date-time
+                        error:
+                          type: string
+
+  /health/logging:
+    get:
+      summary: Check logging system health
+      description: Checks connectivity and health of configured log sources
+      operationId: checkLoggingHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sources:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        type:
+                          type: string
+                        status:
+                          type: string
+                          enum: [connected, disconnected, error]
+                        messages_per_second:
+                          type: number
+                        last_message:
+                          type: string
+                          format: date-time
+
+components:
+  schemas:
+    JobTraceInfo:
+      type: object
+      properties:
+        job_id:
+          type: string
+          example: "job_12345"
+        trace_id:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "4bf92f3577b34da6a3ce929d0e0e4736"
+        span_id:
+          type: string
+          pattern: '^[a-f0-9]{16}$'
+          example: "00f067aa0ba902b7"
+        parent_span_id:
+          type: string
+          pattern: '^[a-f0-9]{16}$'
+          example: "00f067aa0ba902b6"
+        trace_url:
+          type: string
+          format: uri
+          example: "http://jaeger:16686/trace/4bf92f3577b34da6a3ce929d0e0e4736"
+        spans_count:
+          type: integer
+          example: 15
+        duration_ms:
+          type: integer
+          example: 2340
+        status:
+          type: string
+          enum: [completed, error, timeout, cancelled]
+          example: "completed"
+        errors:
+          type: integer
+          example: 0
+        extracted_at:
+          type: string
+          format: date-time
+        extraction_method:
+          type: string
+          enum: [headers, payload, metadata]
+      required:
+        - job_id
+        - trace_id
+        - span_id
+
+    TraceSummary:
+      type: object
+      properties:
+        trace_id:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+        root_span:
+          $ref: '#/components/schemas/TraceSpan'
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceSpan'
+        critical_path:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-f0-9]{16}$'
+        error_spans:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-f0-9]{16}$'
+        services:
+          type: array
+          items:
+            type: string
+        total_duration_ms:
+          type: integer
+        span_count:
+          type: integer
+      required:
+        - trace_id
+        - spans
+
+    TraceSpan:
+      type: object
+      properties:
+        trace_id:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+        span_id:
+          type: string
+          pattern: '^[a-f0-9]{16}$'
+        parent_span_id:
+          type: string
+          pattern: '^[a-f0-9]{16}$'
+        operation_name:
+          type: string
+          example: "process_job"
+        service_name:
+          type: string
+          example: "queue-worker"
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        duration_ms:
+          type: integer
+        status:
+          type: string
+          enum: [ok, error, timeout, cancelled]
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            component: "queue"
+            job.id: "job_12345"
+            worker.id: "worker_3"
+        logs:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              level:
+                type: string
+                enum: [trace, debug, info, warn, error, fatal]
+              message:
+                type: string
+              fields:
+                type: object
+                additionalProperties: true
+      required:
+        - trace_id
+        - span_id
+        - operation_name
+        - start_time
+
+    CreateLogStreamRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          properties:
+            job_id:
+              type: string
+            worker_id:
+              type: string
+            queue_name:
+              type: string
+            log_level:
+              type: array
+              items:
+                type: string
+                enum: [trace, debug, info, warn, error, fatal]
+            service:
+              type: string
+            trace_id:
+              type: string
+            since:
+              type: string
+              format: date-time
+            until:
+              type: string
+              format: date-time
+        options:
+          type: object
+          properties:
+            follow:
+              type: boolean
+              default: true
+            tail_lines:
+              type: integer
+              minimum: 0
+              maximum: 10000
+              default: 100
+            rate_limit:
+              type: integer
+              minimum: 1
+              maximum: 10000
+              default: 1000
+            buffer_size:
+              type: integer
+              minimum: 1000
+              maximum: 100000
+              default: 10000
+      required:
+        - filters
+
+    UpdateLogStreamRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          properties:
+            job_id:
+              type: string
+            worker_id:
+              type: string
+            log_level:
+              type: array
+              items:
+                type: string
+                enum: [trace, debug, info, warn, error, fatal]
+        options:
+          type: object
+          properties:
+            rate_limit:
+              type: integer
+              minimum: 1
+              maximum: 10000
+            buffer_size:
+              type: integer
+              minimum: 1000
+              maximum: 100000
+
+    LogStreamInfo:
+      type: object
+      properties:
+        stream_id:
+          type: string
+          example: "stream_001"
+        user_id:
+          type: string
+        filters:
+          type: object
+          properties:
+            job_id:
+              type: string
+            worker_id:
+              type: string
+            queue_name:
+              type: string
+            log_level:
+              type: array
+              items:
+                type: string
+            service:
+              type: string
+            trace_id:
+              type: string
+            since:
+              type: string
+              format: date-time
+            until:
+              type: string
+              format: date-time
+        options:
+          type: object
+          properties:
+            follow:
+              type: boolean
+            tail_lines:
+              type: integer
+            rate_limit:
+              type: integer
+            buffer_size:
+              type: integer
+        status:
+          type: string
+          enum: [active, paused, rate_limited, closed]
+        stats:
+          type: object
+          properties:
+            lines_streamed:
+              type: integer
+            lines_filtered:
+              type: integer
+            current_rate:
+              type: number
+            buffer_usage:
+              type: number
+              minimum: 0
+              maximum: 1
+        websocket_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      required:
+        - stream_id
+        - filters
+        - status
+
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [trace, debug, info, warn, error, fatal]
+        service:
+          type: string
+        component:
+          type: string
+        job_id:
+          type: string
+        worker_id:
+          type: string
+        queue_name:
+          type: string
+        trace_id:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+        span_id:
+          type: string
+          pattern: '^[a-f0-9]{16}$'
+        message:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        source:
+          type: object
+          properties:
+            host:
+              type: string
+            container:
+              type: string
+            file:
+              type: string
+            line:
+              type: integer
+      required:
+        - timestamp
+        - level
+        - message
+
+    CorrelationIndex:
+      type: object
+      properties:
+        job_id:
+          type: string
+        trace_contexts:
+          type: array
+          items:
+            type: object
+            properties:
+              trace_id:
+                type: string
+              span_id:
+                type: string
+              extracted_from:
+                type: string
+                enum: [headers, payload, metadata]
+        log_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              type:
+                type: string
+                enum: [span, log, event]
+              data:
+                type: object
+        relationships:
+          type: object
+          properties:
+            parent_jobs:
+              type: array
+              items:
+                type: string
+            child_jobs:
+              type: array
+              items:
+                type: string
+            related_traces:
+              type: array
+              items:
+                type: string
+      required:
+        - job_id
+
+    TracingConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        backends:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+                enum: [jaeger, zipkin, opentelemetry]
+              endpoint:
+                type: string
+                format: uri
+              url_template:
+                type: string
+                description: Template for trace URLs with {trace_id} placeholder
+              auth:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [none, basic, bearer, api_key]
+                  credentials:
+                    type: object
+        extraction:
+          type: object
+          properties:
+            headers:
+              type: array
+              items:
+                type: string
+              example: ["X-Trace-Id", "X-B3-TraceId"]
+            payload_fields:
+              type: array
+              items:
+                type: string
+              example: ["trace_id", "tracing.trace_id"]
+        sample_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.1
+      required:
+        - enabled
+
+    LoggingConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+                enum: [docker, file, syslog, journald, http]
+              endpoint:
+                type: string
+              filters:
+                type: array
+                items:
+                  type: string
+              format:
+                type: string
+                enum: [json, plain, syslog]
+        rate_limiting:
+          type: object
+          properties:
+            max_lines_per_second:
+              type: integer
+              default: 1000
+            burst_limit:
+              type: integer
+              default: 5000
+            backoff_strategy:
+              type: string
+              enum: [linear, exponential]
+              default: exponential
+        retention:
+          type: object
+          properties:
+            buffer_size:
+              type: integer
+              default: 100000
+            max_age_minutes:
+              type: integer
+              default: 60
+        redaction:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            patterns:
+              type: array
+              items:
+                type: string
+              example: ["password", "token", "api_key"]
+      required:
+        - enabled
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+        trace_id:
+          type: string
+          description: Request trace ID for debugging
+      required:
+        - error
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+tags:
+  - name: Trace Integration
+    description: Operations for integrating with distributed tracing systems
+  - name: Log Streaming
+    description: Real-time log streaming and filtering
+  - name: Correlation
+    description: Correlated trace and log data for jobs
+  - name: Configuration
+    description: System configuration management
+  - name: Health
+    description: Health checks for external systems

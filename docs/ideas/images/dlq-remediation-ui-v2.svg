@@ -1,0 +1,117 @@
+<svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="600" fill="#1a1b26"/>
+
+  <!-- Compact Header with Critical Info -->
+  <rect x="0" y="0" width="400" height="25" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <text x="5" y="16" fill="#f7768e" font-family="monospace" font-size="10" font-weight="bold">✗ DLQ</text>
+  <circle cx="45" cy="12" r="8" fill="#f7768e"/>
+  <text x="39" y="16" fill="#1a1b26" font-family="monospace" font-size="9" font-weight="bold">127</text>
+  <text x="320" y="16" fill="#e0af68" font-family="monospace" font-size="8">↑47/h</text>
+  <text x="365" y="16" fill="#565f89" font-family="monospace" font-size="8">↻5s</text>
+
+  <!-- Single-Line Filter Bar -->
+  <rect x="5" y="30" width="390" height="30" fill="#1a1b26"/>
+
+  <rect x="10" y="35" width="150" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="15" y="47" fill="#565f89" font-family="monospace" font-size="8">Filter...</text>
+
+  <rect x="165" y="35" width="50" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="170" y="47" fill="#c0caf5" font-family="monospace" font-size="8">1 hour</text>
+
+  <rect x="220" y="35" width="50" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="225" y="47" fill="#c0caf5" font-family="monospace" font-size="8">All</text>
+
+  <!-- Bulk Actions (always visible) -->
+  <rect x="275" y="35" width="55" height="20" fill="#3b4261" stroke="#9ece6a" stroke-width="1" rx="2"/>
+  <text x="285" y="47" fill="#9ece6a" font-family="monospace" font-size="8">↻ Retry</text>
+
+  <rect x="335" y="35" width="55" height="20" fill="#3b4261" stroke="#f7768e" stroke-width="1" rx="2"/>
+  <text x="350" y="47" fill="#f7768e" font-family="monospace" font-size="8">Purge</text>
+
+  <!-- Main Content: Scrollable List -->
+  <rect x="5" y="65" width="390" height="400" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <!-- Smart Summary Bar (replaces pattern analysis) -->
+  <rect x="5" y="65" width="390" height="35" fill="#24283b" rx="4 4 0 0"/>
+  <text x="10" y="80" fill="#f7768e" font-family="monospace" font-size="9">⚠ Connection Timeout (68%)</text>
+  <text x="10" y="93" fill="#565f89" font-family="monospace" font-size="8">API gateway issue - 847 jobs affected</text>
+  <text x="310" y="85" fill="#9ece6a" font-family="monospace" font-size="8">[Quick Fix →]</text>
+
+  <!-- Simplified Job List (bigger touch targets) -->
+  <!-- Header -->
+  <rect x="5" y="100" width="390" height="20" fill="#2a2e3f"/>
+  <rect x="10" y="103" width="14" height="14" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="12" y="112" fill="#7aa2f7" font-family="monospace" font-size="8">✓</text>
+  <text x="30" y="112" fill="#565f89" font-family="monospace" font-size="8">Job ID</text>
+  <text x="120" y="112" fill="#565f89" font-family="monospace" font-size="8">Type</text>
+  <text x="220" y="112" fill="#565f89" font-family="monospace" font-size="8">Error</text>
+  <text x="340" y="112" fill="#565f89" font-family="monospace" font-size="8">Time</text>
+
+  <!-- Job Row 1 (selected, bigger) -->
+  <rect x="5" y="120" width="390" height="35" fill="#3b4261"/>
+  <rect x="10" y="128" width="14" height="14" fill="#7aa2f7" rx="2"/>
+  <text x="12" y="137" fill="#1a1b26" font-family="monospace" font-size="8" font-weight="bold">✓</text>
+  <text x="30" y="135" fill="#c0caf5" font-family="monospace" font-size="9">job_98765</text>
+  <text x="120" y="135" fill="#9ece6a" font-family="monospace" font-size="9">payment</text>
+  <text x="220" y="135" fill="#f7768e" font-family="monospace" font-size="9">Timeout</text>
+  <text x="340" y="135" fill="#565f89" font-family="monospace" font-size="9">2m</text>
+  <text x="30" y="147" fill="#565f89" font-family="monospace" font-size="7">Retries: 3/3 | Priority: high</text>
+
+  <!-- Job Row 2 (selected) -->
+  <rect x="5" y="155" width="390" height="35" fill="#3b4261"/>
+  <rect x="10" y="163" width="14" height="14" fill="#7aa2f7" rx="2"/>
+  <text x="12" y="172" fill="#1a1b26" font-family="monospace" font-size="8" font-weight="bold">✓</text>
+  <text x="30" y="170" fill="#c0caf5" font-family="monospace" font-size="9">job_98764</text>
+  <text x="120" y="170" fill="#9ece6a" font-family="monospace" font-size="9">payment</text>
+  <text x="220" y="170" fill="#f7768e" font-family="monospace" font-size="9">Timeout</text>
+  <text x="340" y="170" fill="#565f89" font-family="monospace" font-size="9">3m</text>
+  <text x="30" y="182" fill="#565f89" font-family="monospace" font-size="7">Retries: 3/3 | Priority: high</text>
+
+  <!-- Job Row 3 -->
+  <rect x="5" y="190" width="390" height="35" fill="#2a2e3f"/>
+  <rect x="10" y="198" width="14" height="14" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="30" y="205" fill="#c0caf5" font-family="monospace" font-size="9">job_98763</text>
+  <text x="120" y="205" fill="#7aa2f7" font-family="monospace" font-size="9">email</text>
+  <text x="220" y="205" fill="#f7768e" font-family="monospace" font-size="9">Invalid</text>
+  <text x="340" y="205" fill="#565f89" font-family="monospace" font-size="9">5m</text>
+  <text x="30" y="217" fill="#565f89" font-family="monospace" font-size="7">Retries: 3/3 | Priority: normal</text>
+
+  <!-- Scroll indicator -->
+  <rect x="385" y="230" width="5" height="200" fill="#24283b" rx="2"/>
+  <rect x="385" y="230" width="5" height="40" fill="#414868" rx="2"/>
+
+  <!-- Load more indicator -->
+  <text x="170" y="420" fill="#565f89" font-family="monospace" font-size="9">... 120 more ...</text>
+  <text x="160" y="435" fill="#7aa2f7" font-family="monospace" font-size="8">[Load More]</text>
+
+  <!-- Bottom Sheet: Quick Actions (swipe up to expand) -->
+  <rect x="5" y="470" width="390" height="125" fill="#24283b" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <!-- Swipe handle -->
+  <rect x="180" y="475" width="40" height="3" fill="#565f89" rx="1"/>
+
+  <!-- Selection Info -->
+  <text x="10" y="490" fill="#7aa2f7" font-family="monospace" font-size="9" font-weight="bold">2 jobs selected</text>
+  <text x="320" y="490" fill="#565f89" font-family="monospace" font-size="8">[Clear]</text>
+
+  <!-- Common Properties (condensed) -->
+  <text x="10" y="505" fill="#565f89" font-family="monospace" font-size="8">Type: payment_process | Error: Timeout</text>
+  <text x="10" y="518" fill="#565f89" font-family="monospace" font-size="8">Queue: high_priority | Failed: 2m-3m ago</text>
+
+  <!-- Action Buttons (full width, thumb-friendly) -->
+  <rect x="10" y="525" width="185" height="30" fill="#283745" stroke="#9ece6a" stroke-width="2" rx="3"/>
+  <text x="75" y="543" fill="#9ece6a" font-family="monospace" font-size="10" font-weight="bold">↻ Retry Selected</text>
+
+  <rect x="200" y="525" width="185" height="30" fill="#3b4261" stroke="#bb9af7" stroke-width="1" rx="3"/>
+  <text x="260" y="543" fill="#bb9af7" font-family="monospace" font-size="10">✎ Edit + Retry</text>
+
+  <rect x="10" y="560" width="375" height="30" fill="#3d2c2c" stroke="#f7768e" stroke-width="1" rx="3"/>
+  <text x="165" y="578" fill="#f7768e" font-family="monospace" font-size="10">✗ Purge Selected</text>
+
+  <!-- Mobile UI Hints -->
+  <g opacity="0.5">
+    <text x="150" y="455" fill="#565f89" font-family="monospace" font-size="7">↑ Swipe up for actions</text>
+    <text x="150" y="255" fill="#565f89" font-family="monospace" font-size="7">Long press for details</text>
+  </g>
+</svg>

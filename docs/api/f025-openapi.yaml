@@ -1,0 +1,1609 @@
+openapi: 3.0.3
+info:
+  title: Terminal Voice Commands API
+  description: |
+    API for the Terminal Voice Commands system that enables hands-free queue management
+    through natural language voice commands and advanced speech recognition.
+
+    This system provides accessibility support and power-user efficiency through
+    local speech processing with Whisper.cpp and intelligent command parsing.
+  version: 1.0.0
+  contact:
+    name: Accessibility Team
+    email: accessibility@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.queue.company.com/v1
+    description: Production server
+  - url: https://staging-api.queue.company.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /voice/session/start:
+    post:
+      summary: Start voice recognition session
+      description: |
+        Initializes a new voice recognition session with configurable
+        recognition backend and wake word settings.
+      operationId: startVoiceSession
+      tags:
+        - Voice Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+      responses:
+        '201':
+          description: Voice session started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceSession'
+        '400':
+          description: Invalid session configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Session already active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/session/{sessionId}:
+    get:
+      summary: Get voice session details
+      description: Retrieves details and statistics for an active voice session
+      operationId: getVoiceSession
+      tags:
+        - Voice Sessions
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique identifier of the voice session
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Voice session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceSession'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update voice session settings
+      description: |
+        Updates configuration for an active voice session such as
+        confidence threshold or recognition backend.
+      operationId: updateVoiceSession
+      tags:
+        - Voice Sessions
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique identifier of the voice session
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionRequest'
+      responses:
+        '200':
+          description: Session updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceSession'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Stop voice session
+      description: |
+        Stops an active voice recognition session and returns
+        final session statistics and command history.
+      operationId: stopVoiceSession
+      tags:
+        - Voice Sessions
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique identifier of the voice session
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionSummary'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/command:
+    post:
+      summary: Process voice command
+      description: |
+        Processes a single voice command either from audio data or
+        pre-transcribed text input. Supports both streaming and
+        synchronous processing modes.
+      operationId: processVoiceCommand
+      tags:
+        - Voice Commands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceCommandRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file (WAV, MP3, or OGG)
+                session_id:
+                  type: string
+                  format: uuid
+                metadata:
+                  $ref: '#/components/schemas/AudioMetadata'
+      responses:
+        '200':
+          description: Command processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCommandResult'
+        '400':
+          description: Invalid command or audio format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Command recognition failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecognitionError'
+
+  /voice/command/stream:
+    post:
+      summary: Stream voice commands
+      description: |
+        Establishes a WebSocket connection for real-time voice command
+        streaming with live transcription and command execution.
+      operationId: streamVoiceCommands
+      tags:
+        - Voice Commands
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          description: Active voice session identifier
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          description: Audio format for streaming
+          schema:
+            type: string
+            enum: [pcm16, opus, mp3]
+            default: pcm16
+      responses:
+        '101':
+          description: WebSocket connection established
+        '400':
+          description: Invalid streaming parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/recognition/test:
+    post:
+      summary: Test voice recognition
+      description: |
+        Tests voice recognition accuracy with known audio samples
+        for calibration and performance validation.
+      operationId: testVoiceRecognition
+      tags:
+        - Voice Testing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                expected_text:
+                  type: string
+                  description: Expected transcription for accuracy testing
+                test_conditions:
+                  $ref: '#/components/schemas/TestConditions'
+      responses:
+        '200':
+          description: Recognition test completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecognitionTestResult'
+
+  /voice/wake-word/train:
+    post:
+      summary: Train custom wake word
+      description: |
+        Trains a custom wake word model using provided audio samples
+        for personalized voice activation.
+      operationId: trainWakeWord
+      tags:
+        - Wake Word
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                wake_phrase:
+                  type: string
+                  description: Text of the wake phrase
+                positive_samples:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Audio samples of the wake phrase
+                negative_samples:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Background audio without wake phrase
+                training_config:
+                  $ref: '#/components/schemas/WakeWordTrainingConfig'
+      responses:
+        '201':
+          description: Wake word training started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingJob'
+        '400':
+          description: Invalid training data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/wake-word/training/{jobId}:
+    get:
+      summary: Get wake word training status
+      description: Check the status and progress of wake word training
+      operationId: getTrainingStatus
+      tags:
+        - Wake Word
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Training job identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Training status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingJob'
+        '404':
+          description: Training job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/config:
+    get:
+      summary: Get voice configuration
+      description: |
+        Retrieves current voice system configuration including
+        recognition settings, wake word configuration, and privacy settings.
+      operationId: getVoiceConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Voice configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConfig'
+
+    put:
+      summary: Update voice configuration
+      description: |
+        Updates voice system configuration with validation
+        and automatic session restart if required.
+      operationId: updateVoiceConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceConfigUpdate'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConfig'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /voice/status:
+    get:
+      summary: Get voice system status
+      description: |
+        Returns comprehensive status of the voice system including
+        component health, performance metrics, and active sessions.
+      operationId: getVoiceStatus
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Voice system status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceStatus'
+
+  /voice/health:
+    get:
+      summary: Voice system health check
+      description: |
+        Performs health check of voice recognition components
+        including audio devices, models, and processing pipeline.
+      operationId: getVoiceHealth
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: System unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /voice/metrics:
+    get:
+      summary: Get voice system metrics
+      description: |
+        Retrieves performance and usage metrics for the voice system
+        including recognition accuracy, latency, and error rates.
+      operationId: getVoiceMetrics
+      tags:
+        - Monitoring
+      parameters:
+        - name: period
+          in: query
+          description: Metrics aggregation period
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d]
+            default: 1h
+        - name: session_id
+          in: query
+          description: Filter metrics by session
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Voice metrics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceMetrics'
+
+  /voice/commands/history:
+    get:
+      summary: Get command history
+      description: |
+        Retrieves history of processed voice commands with
+        filtering and pagination support.
+      operationId: getCommandHistory
+      tags:
+        - Voice Commands
+      parameters:
+        - name: session_id
+          in: query
+          description: Filter by session
+          schema:
+            type: string
+            format: uuid
+        - name: intent
+          in: query
+          description: Filter by command intent
+          schema:
+            type: string
+            enum: [status_query, worker_control, queue_management, navigation, confirmation]
+        - name: start_time
+          in: query
+          description: Start time for history range
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: End time for history range
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of commands to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Command history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandHistory'
+
+  /voice/feedback/test:
+    post:
+      summary: Test audio feedback
+      description: |
+        Tests text-to-speech and audio feedback systems
+        with various voice settings and output formats.
+      operationId: testAudioFeedback
+      tags:
+        - Voice Testing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioFeedbackTest'
+      responses:
+        '200':
+          description: Audio feedback test completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioTestResult'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    StartSessionRequest:
+      type: object
+      required:
+        - recognition_backend
+      properties:
+        recognition_backend:
+          type: string
+          enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+          description: Speech recognition backend to use
+        wake_word:
+          type: string
+          default: "hey queue"
+          description: Wake word phrase for activation
+        language:
+          type: string
+          default: "en-US"
+          description: Language code for recognition
+        confidence_threshold:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+          default: 0.7
+          description: Minimum confidence for command acceptance
+        audio_config:
+          $ref: '#/components/schemas/AudioConfig'
+        privacy_settings:
+          $ref: '#/components/schemas/PrivacySettings'
+
+    VoiceSession:
+      type: object
+      required:
+        - session_id
+        - status
+        - started_at
+        - backend_used
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: Unique session identifier
+        status:
+          type: string
+          enum: [active, paused, stopped, error]
+          description: Current session status
+        started_at:
+          type: string
+          format: date-time
+          description: Session start timestamp
+        last_activity:
+          type: string
+          format: date-time
+          description: Last command processed timestamp
+        backend_used:
+          type: string
+          enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+          description: Recognition backend in use
+        commands_processed:
+          type: integer
+          minimum: 0
+          description: Total commands processed in session
+        average_confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Average recognition confidence
+        average_latency:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Average processing latency (ISO 8601)
+        error_count:
+          type: integer
+          minimum: 0
+          description: Number of recognition errors
+        wake_word_triggers:
+          type: integer
+          minimum: 0
+          description: Number of wake word activations
+
+    UpdateSessionRequest:
+      type: object
+      properties:
+        confidence_threshold:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+        recognition_backend:
+          type: string
+          enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+        audio_config:
+          $ref: '#/components/schemas/AudioConfig'
+        privacy_settings:
+          $ref: '#/components/schemas/PrivacySettings'
+
+    SessionSummary:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        duration:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        commands_processed:
+          type: integer
+        successful_commands:
+          type: integer
+        failed_commands:
+          type: integer
+        average_confidence:
+          type: number
+        average_latency:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        intents_used:
+          type: object
+          additionalProperties:
+            type: integer
+        top_commands:
+          type: array
+          items:
+            type: object
+            properties:
+              command:
+                type: string
+              count:
+                type: integer
+          maxItems: 10
+
+    VoiceCommandRequest:
+      type: object
+      oneOf:
+        - required: [text]
+        - required: [audio_data]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: Active session identifier
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Pre-transcribed command text
+        audio_data:
+          type: string
+          format: byte
+          description: Base64-encoded audio data
+        audio_format:
+          type: string
+          enum: [wav, mp3, ogg, pcm16]
+          default: wav
+          description: Audio format specification
+        metadata:
+          $ref: '#/components/schemas/AudioMetadata'
+        processing_options:
+          $ref: '#/components/schemas/ProcessingOptions'
+
+    VoiceCommandResult:
+      type: object
+      required:
+        - command_id
+        - recognition
+        - processing_time
+        - status
+      properties:
+        command_id:
+          type: string
+          format: uuid
+          description: Unique command identifier
+        recognition:
+          $ref: '#/components/schemas/Recognition'
+        parsed_command:
+          $ref: '#/components/schemas/ParsedCommand'
+        execution_result:
+          $ref: '#/components/schemas/ExecutionResult'
+        processing_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Total processing time
+        status:
+          type: string
+          enum: [success, recognition_failed, parsing_failed, execution_failed, permission_denied]
+
+    Recognition:
+      type: object
+      required:
+        - text
+        - confidence
+        - backend_used
+      properties:
+        text:
+          type: string
+          description: Recognized speech text
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Recognition confidence score
+        backend_used:
+          type: string
+          enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+        processing_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        alternatives:
+          type: array
+          items:
+            type: object
+            properties:
+              text:
+                type: string
+              confidence:
+                type: number
+          maxItems: 5
+          description: Alternative recognition results
+        language_detected:
+          type: string
+          description: Detected language code
+        audio_quality:
+          $ref: '#/components/schemas/AudioQuality'
+
+    ParsedCommand:
+      type: object
+      required:
+        - intent
+        - confidence
+      properties:
+        intent:
+          type: string
+          enum: [status_query, worker_control, queue_management, navigation, confirmation, cancel, unknown]
+          description: Recognized command intent
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Intent classification confidence
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entity'
+          description: Extracted entities from command
+        normalized_text:
+          type: string
+          description: Normalized command text
+        context:
+          type: object
+          additionalProperties: true
+          description: Command context and state
+
+    Entity:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          enum: [worker_id, queue_name, priority_level, action, target, count, timeframe]
+          description: Entity type
+        value:
+          type: string
+          description: Entity value
+        normalized_value:
+          type: string
+          description: Normalized entity value
+        start_position:
+          type: integer
+          minimum: 0
+          description: Start character position in text
+        end_position:
+          type: integer
+          minimum: 0
+          description: End character position in text
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Entity extraction confidence
+        alternatives:
+          type: array
+          items:
+            type: string
+          description: Alternative entity values
+
+    ExecutionResult:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum: [success, error, permission_denied, invalid_target, confirmation_required]
+        message:
+          type: string
+          description: Human-readable result message
+        execution_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        actions_performed:
+          type: array
+          items:
+            type: string
+          description: List of actions that were executed
+        side_effects:
+          type: array
+          items:
+            type: string
+          description: Side effects of the command execution
+        requires_confirmation:
+          type: boolean
+          description: Whether command requires user confirmation
+        confirmation_prompt:
+          type: string
+          description: Confirmation prompt for user
+        audio_feedback:
+          type: string
+          description: Audio response to be spoken
+
+    AudioConfig:
+      type: object
+      properties:
+        input_device:
+          type: string
+          default: "default"
+          description: Audio input device identifier
+        sample_rate:
+          type: integer
+          enum: [8000, 16000, 22050, 44100, 48000]
+          default: 16000
+          description: Audio sample rate in Hz
+        channels:
+          type: integer
+          enum: [1, 2]
+          default: 1
+          description: Number of audio channels
+        buffer_size:
+          type: integer
+          minimum: 256
+          maximum: 8192
+          default: 1024
+          description: Audio buffer size in samples
+        noise_reduction:
+          type: boolean
+          default: true
+          description: Enable noise reduction preprocessing
+        automatic_gain_control:
+          type: boolean
+          default: true
+          description: Enable automatic gain control
+
+    PrivacySettings:
+      type: object
+      properties:
+        local_only:
+          type: boolean
+          default: true
+          description: Process audio locally only
+        record_audio:
+          type: boolean
+          default: false
+          description: Save audio recordings
+        log_commands:
+          type: boolean
+          default: true
+          description: Log processed commands
+        sanitize_logs:
+          type: boolean
+          default: true
+          description: Remove sensitive data from logs
+        cloud_consent:
+          type: boolean
+          default: false
+          description: Consent for cloud processing
+        data_retention_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 30
+          description: Days to retain voice data
+
+    AudioMetadata:
+      type: object
+      properties:
+        duration:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+          description: Audio duration
+        sample_rate:
+          type: integer
+          description: Original sample rate
+        channels:
+          type: integer
+          description: Number of channels
+        bit_depth:
+          type: integer
+          description: Audio bit depth
+        codec:
+          type: string
+          description: Audio codec used
+        file_size:
+          type: integer
+          description: Audio file size in bytes
+
+    AudioQuality:
+      type: object
+      properties:
+        signal_to_noise_ratio:
+          type: number
+          description: SNR in decibels
+        clarity_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Audio clarity assessment
+        background_noise_level:
+          type: string
+          enum: [low, moderate, high]
+          description: Background noise assessment
+        volume_level:
+          type: string
+          enum: [too_low, optimal, too_high]
+          description: Volume level assessment
+        clipping_detected:
+          type: boolean
+          description: Whether audio clipping was detected
+
+    ProcessingOptions:
+      type: object
+      properties:
+        bypass_wake_word:
+          type: boolean
+          default: false
+          description: Process without wake word detection
+        enhanced_accuracy:
+          type: boolean
+          default: false
+          description: Use enhanced accuracy mode (slower)
+        context_aware:
+          type: boolean
+          default: true
+          description: Use command context for better recognition
+        alternative_count:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 3
+          description: Number of alternative recognitions to return
+
+    TestConditions:
+      type: object
+      properties:
+        background_noise:
+          type: string
+          enum: [none, low, moderate, high]
+          default: none
+        speaker_distance:
+          type: string
+          enum: [close, normal, far]
+          default: normal
+        accent:
+          type: string
+          description: Speaker accent identifier
+        speech_rate:
+          type: string
+          enum: [slow, normal, fast]
+          default: normal
+        environment:
+          type: string
+          enum: [quiet, office, noisy]
+          default: quiet
+
+    RecognitionTestResult:
+      type: object
+      properties:
+        test_id:
+          type: string
+          format: uuid
+        accuracy_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Recognition accuracy percentage
+        word_error_rate:
+          type: number
+          minimum: 0
+          description: Word error rate (WER)
+        processing_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        recognized_text:
+          type: string
+        expected_text:
+          type: string
+        confidence_score:
+          type: number
+        detailed_analysis:
+          type: object
+          properties:
+            insertions:
+              type: integer
+            deletions:
+              type: integer
+            substitutions:
+              type: integer
+            correct_words:
+              type: integer
+
+    WakeWordTrainingConfig:
+      type: object
+      properties:
+        sensitivity:
+          type: number
+          minimum: 0.1
+          maximum: 1.0
+          default: 0.8
+          description: Wake word detection sensitivity
+        false_positive_rate:
+          type: number
+          minimum: 0.001
+          maximum: 0.1
+          default: 0.01
+          description: Acceptable false positive rate
+        training_epochs:
+          type: integer
+          minimum: 10
+          maximum: 1000
+          default: 100
+          description: Number of training epochs
+        validation_split:
+          type: number
+          minimum: 0.1
+          maximum: 0.5
+          default: 0.2
+          description: Fraction of data for validation
+
+    TrainingJob:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, training, validating, completed, failed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Training progress (0-1)
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        wake_phrase:
+          type: string
+        estimated_completion:
+          type: string
+          format: date-time
+        current_accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+        validation_results:
+          type: object
+          properties:
+            precision:
+              type: number
+            recall:
+              type: number
+            f1_score:
+              type: number
+            false_positive_rate:
+              type: number
+
+    VoiceConfig:
+      type: object
+      required:
+        - enabled
+        - recognition
+        - wake_word
+        - audio
+        - feedback
+        - privacy
+      properties:
+        enabled:
+          type: boolean
+          description: Whether voice commands are enabled
+        recognition:
+          type: object
+          properties:
+            backend:
+              type: string
+              enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+            model_path:
+              type: string
+              description: Path to local model file
+            language:
+              type: string
+              default: "en-US"
+            confidence_threshold:
+              type: number
+              minimum: 0.1
+              maximum: 1.0
+            processing_timeout:
+              type: string
+              pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        wake_word:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            phrase:
+              type: string
+            model_path:
+              type: string
+            sensitivity:
+              type: number
+              minimum: 0.1
+              maximum: 1.0
+            custom_phrases:
+              type: array
+              items:
+                type: string
+        audio:
+          $ref: '#/components/schemas/AudioConfig'
+        feedback:
+          type: object
+          properties:
+            tts_enabled:
+              type: boolean
+            voice:
+              type: string
+              enum: [default, male, female, robotic]
+            speed:
+              type: number
+              minimum: 0.5
+              maximum: 2.0
+            volume:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+            confirmation_sounds:
+              type: boolean
+            error_sounds:
+              type: boolean
+        privacy:
+          $ref: '#/components/schemas/PrivacySettings'
+
+    VoiceConfigUpdate:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        recognition:
+          type: object
+          properties:
+            backend:
+              type: string
+              enum: [whisper_local, whisper_cloud, google_cloud, azure_speech]
+            language:
+              type: string
+            confidence_threshold:
+              type: number
+              minimum: 0.1
+              maximum: 1.0
+        wake_word:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            phrase:
+              type: string
+            sensitivity:
+              type: number
+              minimum: 0.1
+              maximum: 1.0
+        audio:
+          $ref: '#/components/schemas/AudioConfig'
+        feedback:
+          type: object
+          properties:
+            tts_enabled:
+              type: boolean
+            voice:
+              type: string
+              enum: [default, male, female, robotic]
+            speed:
+              type: number
+              minimum: 0.5
+              maximum: 2.0
+            volume:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+        privacy:
+          $ref: '#/components/schemas/PrivacySettings'
+
+    VoiceStatus:
+      type: object
+      required:
+        - system_status
+        - active_sessions
+        - components
+      properties:
+        system_status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        active_sessions:
+          type: integer
+          minimum: 0
+        components:
+          type: object
+          properties:
+            whisper_model:
+              $ref: '#/components/schemas/ComponentStatus'
+            wake_word_detector:
+              $ref: '#/components/schemas/ComponentStatus'
+            audio_input:
+              $ref: '#/components/schemas/ComponentStatus'
+            command_processor:
+              $ref: '#/components/schemas/ComponentStatus'
+            tts_engine:
+              $ref: '#/components/schemas/ComponentStatus'
+        performance:
+          type: object
+          properties:
+            average_recognition_latency:
+              type: string
+              pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+            recognition_accuracy:
+              type: number
+              minimum: 0
+              maximum: 1
+            commands_per_minute:
+              type: number
+            error_rate:
+              type: number
+              minimum: 0
+              maximum: 1
+        resource_usage:
+          type: object
+          properties:
+            cpu_usage:
+              type: number
+              minimum: 0
+              maximum: 100
+            memory_usage:
+              type: number
+              minimum: 0
+            model_memory:
+              type: number
+              minimum: 0
+
+    ComponentStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy, disabled]
+        last_check:
+          type: string
+          format: date-time
+        response_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        error_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+        details:
+          type: string
+          description: Additional status details
+        version:
+          type: string
+          description: Component version
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [pass, fail, warn]
+              message:
+                type: string
+              duration:
+                type: string
+                pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        recent_issues:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    VoiceMetrics:
+      type: object
+      properties:
+        period:
+          type: string
+          description: Metrics aggregation period
+        total_commands:
+          type: integer
+          minimum: 0
+        successful_commands:
+          type: integer
+          minimum: 0
+        failed_commands:
+          type: integer
+          minimum: 0
+        average_confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        average_latency:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        accuracy_by_intent:
+          type: object
+          additionalProperties:
+            type: number
+        latency_distribution:
+          type: object
+          properties:
+            p50:
+              type: string
+              pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+            p95:
+              type: string
+              pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+            p99:
+              type: string
+              pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        error_breakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        wake_word_stats:
+          type: object
+          properties:
+            total_triggers:
+              type: integer
+            false_positives:
+              type: integer
+            accuracy:
+              type: number
+
+    CommandHistory:
+      type: object
+      properties:
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoricalCommand'
+        total_count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        has_more:
+          type: boolean
+
+    HistoricalCommand:
+      type: object
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        text:
+          type: string
+        intent:
+          type: string
+        confidence:
+          type: number
+        execution_status:
+          type: string
+        processing_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        backend_used:
+          type: string
+        user_id:
+          type: string
+
+    AudioFeedbackTest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Text to synthesize and test
+        voice:
+          type: string
+          enum: [default, male, female, robotic]
+          default: default
+        speed:
+          type: number
+          minimum: 0.5
+          maximum: 2.0
+          default: 1.0
+        volume:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.8
+        format:
+          type: string
+          enum: [wav, mp3, ogg]
+          default: wav
+
+    AudioTestResult:
+      type: object
+      properties:
+        test_id:
+          type: string
+          format: uuid
+        synthesis_time:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        audio_duration:
+          type: string
+          pattern: '^P(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$'
+        file_size:
+          type: integer
+          description: Generated audio file size in bytes
+        quality_metrics:
+          type: object
+          properties:
+            clarity_score:
+              type: number
+              minimum: 0
+              maximum: 1
+            naturalness_score:
+              type: number
+              minimum: 0
+              maximum: 1
+        audio_url:
+          type: string
+          format: uri
+          description: URL to download generated audio file
+
+    RecognitionError:
+      type: object
+      required:
+        - error_type
+        - message
+      properties:
+        error_type:
+          type: string
+          enum: [low_confidence, no_speech_detected, audio_quality_poor, backend_error, timeout]
+        message:
+          type: string
+          description: Human-readable error message
+        confidence_achieved:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Highest confidence achieved
+        confidence_required:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Required confidence threshold
+        audio_quality:
+          $ref: '#/components/schemas/AudioQuality'
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Suggestions for improving recognition
+        retry_recommended:
+          type: boolean
+          description: Whether retrying is recommended
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum: [
+            "INVALID_REQUEST",
+            "VALIDATION_ERROR",
+            "SESSION_NOT_FOUND",
+            "SESSION_ALREADY_EXISTS",
+            "RECOGNITION_BACKEND_ERROR",
+            "AUDIO_PROCESSING_ERROR",
+            "INSUFFICIENT_PERMISSIONS",
+            "RATE_LIMIT_EXCEEDED",
+            "SERVICE_UNAVAILABLE",
+            "INTERNAL_ERROR",
+            "MODEL_NOT_LOADED",
+            "AUDIO_DEVICE_ERROR",
+            "WAKE_WORD_TRAINING_ERROR"
+          ]
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+        details:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          format: uuid
+        help_url:
+          type: string
+          format: uri
+
+tags:
+  - name: Voice Sessions
+    description: Voice recognition session management
+  - name: Voice Commands
+    description: Voice command processing and execution
+  - name: Wake Word
+    description: Wake word detection and training
+  - name: Configuration
+    description: Voice system configuration
+  - name: Monitoring
+    description: Voice system health and metrics
+  - name: Voice Testing
+    description: Voice recognition and feedback testing

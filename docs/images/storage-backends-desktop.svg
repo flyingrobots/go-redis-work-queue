@@ -1,0 +1,235 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel-bg { fill: #161b22; }
+      .border { stroke: #30363d; fill: none; stroke-width: 1; }
+      .text-primary { fill: #f0f6fc; font-family: 'SF Mono', Consolas, monospace; }
+      .text-secondary { fill: #8b949e; font-family: 'SF Mono', Consolas, monospace; }
+      .text-success { fill: #39d353; font-family: 'SF Mono', Consolas, monospace; }
+      .text-warning { fill: #ffa657; font-family: 'SF Mono', Consolas, monospace; }
+      .text-error { fill: #f85149; font-family: 'SF Mono', Consolas, monospace; }
+      .text-info { fill: #58a6ff; font-family: 'SF Mono', Consolas, monospace; }
+      .btn-primary { fill: #238636; stroke: #2ea043; stroke-width: 1; }
+      .btn-secondary { fill: #30363d; stroke: #484f58; stroke-width: 1; }
+      .btn-danger { fill: #da3633; stroke: #f85149; stroke-width: 1; }
+      .input-bg { fill: #0d1117; stroke: #30363d; stroke-width: 1; }
+      .progress-bg { fill: #21262d; }
+      .progress-fill { fill: #39d353; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" class="bg"/>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="0" width="1200" height="35" class="panel-bg"/>
+  <rect x="0" y="35" width="1200" height="1" class="border"/>
+
+  <rect x="10" y="6" width="120" height="23" rx="3" class="btn-secondary"/>
+  <text x="70" y="21" text-anchor="middle" class="text-primary" font-size="12">Job Queue</text>
+
+  <rect x="140" y="6" width="100" height="23" rx="3" class="btn-secondary"/>
+  <text x="190" y="21" text-anchor="middle" class="text-primary" font-size="12">Workers</text>
+
+  <rect x="250" y="6" width="120" height="23" rx="3" class="btn-secondary"/>
+  <text x="310" y="21" text-anchor="middle" class="text-primary" font-size="12">Dead Letter</text>
+
+  <rect x="380" y="6" width="100" height="23" rx="3" class="btn-primary"/>
+  <text x="430" y="21" text-anchor="middle" class="text-primary" font-size="12">Settings</text>
+
+  <!-- Header -->
+  <rect x="0" y="36" width="1200" height="40" class="panel-bg"/>
+  <rect x="0" y="76" width="1200" height="1" class="border"/>
+  <text x="20" y="60" class="text-primary" font-size="18" font-weight="bold">Storage Backends</text>
+
+  <!-- Main Layout: Two-column -->
+
+  <!-- Left Panel: Backend Configuration -->
+  <rect x="20" y="96" width="580" height="684" rx="6" class="panel-bg"/>
+  <rect x="20" y="96" width="580" height="684" rx="6" class="border"/>
+
+  <text x="40" y="120" class="text-primary" font-size="14" font-weight="bold">Configured Backends</text>
+
+  <!-- Backend Cards -->
+
+  <!-- Redis Lists Backend -->
+  <rect x="40" y="140" width="540" height="120" rx="4" class="input-bg"/>
+  <rect x="40" y="140" width="540" height="120" rx="4" class="border"/>
+
+  <text x="60" y="160" class="text-success" font-size="12" font-weight="bold">● redis-lists (default)</text>
+  <text x="60" y="180" class="text-secondary" font-size="10">Standard Redis Lists - LPUSH/BRPOP operations</text>
+
+  <text x="60" y="200" class="text-primary" font-size="10">Capabilities:</text>
+  <text x="60" y="215" class="text-success" font-size="9">✓ Transactions  ✓ Clustering  ✓ Batch Ops</text>
+  <text x="60" y="230" class="text-secondary" font-size="9">✗ Consumer Groups  ✗ Replay  ✗ Atomic ACK</text>
+
+  <text x="400" y="160" class="text-secondary" font-size="10">Performance:</text>
+  <text x="400" y="175" class="text-primary" font-size="9">50k ops/sec</text>
+  <text x="400" y="190" class="text-primary" font-size="9">2ms p99</text>
+
+  <rect x="450" y="200" width="60" height="18" rx="2" class="btn-primary"/>
+  <text x="480" y="212" text-anchor="middle" class="text-primary" font-size="9">Configure</text>
+
+  <rect x="515" y="200" width="50" height="18" rx="2" class="btn-secondary"/>
+  <text x="540" y="212" text-anchor="middle" class="text-primary" font-size="9">Migrate</text>
+
+  <!-- Redis Streams Backend -->
+  <rect x="40" y="280" width="540" height="120" rx="4" class="input-bg"/>
+  <rect x="40" y="280" width="540" height="120" rx="4" class="border"/>
+
+  <text x="60" y="300" class="text-info" font-size="12" font-weight="bold">● redis-streams</text>
+  <text x="60" y="320" class="text-secondary" font-size="10">Redis Streams with consumer groups and replay</text>
+
+  <text x="60" y="340" class="text-primary" font-size="10">Capabilities:</text>
+  <text x="60" y="355" class="text-success" font-size="9">✓ Consumer Groups  ✓ Replay  ✓ Atomic ACK</text>
+  <text x="60" y="370" class="text-success" font-size="9">✓ Transactions  ✓ Clustering  ✓ Batch Ops</text>
+
+  <text x="400" y="300" class="text-secondary" font-size="10">Performance:</text>
+  <text x="400" y="315" class="text-primary" font-size="9">35k ops/sec</text>
+  <text x="400" y="330" class="text-primary" font-size="9">3ms p99</text>
+
+  <rect x="450" y="340" width="60" height="18" rx="2" class="btn-primary"/>
+  <text x="480" y="352" text-anchor="middle" class="text-primary" font-size="9">Configure</text>
+
+  <rect x="515" y="340" width="50" height="18" rx="2" class="btn-secondary"/>
+  <text x="540" y="352" text-anchor="middle" class="text-primary" font-size="9">Migrate</text>
+
+  <!-- KeyDB Backend -->
+  <rect x="40" y="420" width="540" height="120" rx="4" class="input-bg"/>
+  <rect x="40" y="420" width="540" height="120" rx="4" class="border"/>
+
+  <text x="60" y="440" class="text-warning" font-size="12" font-weight="bold">● keydb-cluster</text>
+  <text x="60" y="460" class="text-secondary" font-size="10">Multi-threaded KeyDB for extreme performance</text>
+
+  <text x="60" y="480" class="text-primary" font-size="10">Capabilities:</text>
+  <text x="60" y="495" class="text-success" font-size="9">✓ Transactions  ✓ Clustering  ✓ Batch Ops</text>
+  <text x="60" y="510" class="text-secondary" font-size="9">✗ Consumer Groups  ✗ Replay  ✗ Atomic ACK</text>
+
+  <text x="400" y="440" class="text-secondary" font-size="10">Performance:</text>
+  <text x="400" y="455" class="text-success" font-size="9">150k ops/sec</text>
+  <text x="400" y="470" class="text-success" font-size="9">1ms p99</text>
+
+  <rect x="450" y="480" width="60" height="18" rx="2" class="btn-primary"/>
+  <text x="480" y="492" text-anchor="middle" class="text-primary" font-size="9">Configure</text>
+
+  <rect x="515" y="480" width="50" height="18" rx="2" class="btn-secondary"/>
+  <text x="540" y="492" text-anchor="middle" class="text-primary" font-size="9">Migrate</text>
+
+  <!-- Add Backend Button -->
+  <rect x="40" y="560" width="540" height="40" rx="4" stroke="#30363d" stroke-width: 2; stroke-dasharray="5,5" fill="none"/>
+  <text x="310" y="585" text-anchor="middle" class="text-info" font-size="12">+ Add New Backend</text>
+
+  <!-- Right Panel: Queue Assignments -->
+  <rect x="620" y="96" width="560" height="684" rx="6" class="panel-bg"/>
+  <rect x="620" y="96" width="560" height="684" rx="6" class="border"/>
+
+  <text x="640" y="120" class="text-primary" font-size="14" font-weight="bold">Queue Backend Assignments</text>
+
+  <!-- Queue Assignment Table Header -->
+  <rect x="640" y="140" width="520" height="25" class="input-bg"/>
+  <rect x="640" y="140" width="520" height="25" class="border"/>
+
+  <text x="660" y="157" class="text-secondary" font-size="10">Queue Name</text>
+  <text x="820" y="157" class="text-secondary" font-size="10">Backend</text>
+  <text x="980" y="157" class="text-secondary" font-size="10">Status</text>
+  <text x="1080" y="157" class="text-secondary" font-size="10">Actions</text>
+
+  <!-- Queue Assignment Rows -->
+
+  <!-- High Priority Queue -->
+  <rect x="640" y="165" width="520" height="30" class="panel-bg"/>
+  <rect x="640" y="195" width="520" height="1" class="border"/>
+
+  <text x="660" y="183" class="text-primary" font-size="11">high-priority</text>
+  <text x="820" y="183" class="text-success" font-size="10">redis-lists</text>
+  <text x="980" y="183" class="text-success" font-size="10">● Healthy</text>
+  <rect x="1080" y="175" width="30" height="16" rx="2" class="btn-secondary"/>
+  <text x="1095" y="185" text-anchor="middle" class="text-primary" font-size="8">Edit</text>
+  <rect x="1115" y="175" width="35" height="16" rx="2" class="btn-secondary"/>
+  <text x="1132" y="185" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+  <!-- Analytics Queue -->
+  <rect x="640" y="195" width="520" height="30" class="panel-bg"/>
+  <rect x="640" y="225" width="520" height="1" class="border"/>
+
+  <text x="660" y="213" class="text-primary" font-size="11">analytics</text>
+  <text x="820" y="213" class="text-info" font-size="10">redis-streams</text>
+  <text x="980" y="213" class="text-success" font-size="10">● Healthy</text>
+  <rect x="1080" y="205" width="30" height="16" rx="2" class="btn-secondary"/>
+  <text x="1095" y="215" text-anchor="middle" class="text-primary" font-size="8">Edit</text>
+  <rect x="1115" y="205" width="35" height="16" rx="2" class="btn-secondary"/>
+  <text x="1132" y="215" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+  <!-- Bulk Processing Queue -->
+  <rect x="640" y="225" width="520" height="30" class="panel-bg"/>
+  <rect x="640" y="255" width="520" height="1" class="border"/>
+
+  <text x="660" y="243" class="text-primary" font-size="11">bulk-processing</text>
+  <text x="820" y="243" class="text-warning" font-size="10">keydb-cluster</text>
+  <text x="980" y="243" class="text-warning" font-size="10">● Migrating</text>
+
+  <!-- Migration Progress Bar -->
+  <rect x="1080" y="235" width="70" height="8" rx="4" class="progress-bg"/>
+  <rect x="1080" y="235" width="42" height="8" rx="4" class="progress-fill"/>
+  <text x="1115" y="252" text-anchor="middle" class="text-secondary" font-size="8">60%</text>
+
+  <!-- Email Queue -->
+  <rect x="640" y="255" width="520" height="30" class="panel-bg"/>
+  <rect x="640" y="285" width="520" height="1" class="border"/>
+
+  <text x="660" y="273" class="text-primary" font-size="11">email</text>
+  <text x="820" y="273" class="text-success" font-size="10">redis-lists</text>
+  <text x="980" y="273" class="text-success" font-size="10">● Healthy</text>
+  <rect x="1080" y="265" width="30" height="16" rx="2" class="btn-secondary"/>
+  <text x="1095" y="275" text-anchor="middle" class="text-primary" font-size="8">Edit</text>
+  <rect x="1115" y="265" width="35" height="16" rx="2" class="btn-secondary"/>
+  <text x="1132" y="275" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+  <!-- Migration Wizard Section -->
+  <rect x="640" y="320" width="520" height="200" rx="4" class="input-bg"/>
+  <rect x="640" y="320" width="520" height="200" rx="4" class="border"/>
+
+  <text x="660" y="340" class="text-primary" font-size="12" font-weight="bold">Migration Wizard</text>
+  <text x="660" y="360" class="text-secondary" font-size="10">Migrate bulk-processing queue: redis-lists → keydb-cluster</text>
+
+  <text x="660" y="380" class="text-primary" font-size="10">Progress: 1,247 / 2,080 jobs migrated</text>
+
+  <!-- Progress Bar -->
+  <rect x="660" y="390" width="480" height="12" rx="6" class="progress-bg"/>
+  <rect x="660" y="390" width="288" height="12" rx="6" class="progress-fill"/>
+
+  <text x="660" y="420" class="text-primary" font-size="10">Status:</text>
+  <text x="660" y="435" class="text-success" font-size="9">✓ Source queue validation passed</text>
+  <text x="660" y="450" class="text-success" font-size="9">✓ Target backend connectivity verified</text>
+  <text x="660" y="465" class="text-success" font-size="9">✓ Draining source queue (no new jobs)</text>
+  <text x="660" y="480" class="text-info" font-size="9">• Migrating existing jobs (60% complete)</text>
+  <text x="660" y="495" class="text-secondary" font-size="9">• Final verification pending</text>
+
+  <rect x="1000" y="480" width="60" height="20" rx="2" class="btn-danger"/>
+  <text x="1030" y="493" text-anchor="middle" class="text-primary" font-size="9">Cancel</text>
+
+  <rect x="1065" y="480" width="70" height="20" rx="2" class="btn-secondary"/>
+  <text x="1100" y="493" text-anchor="middle" class="text-primary" font-size="9">Pause</text>
+
+  <!-- Performance Comparison -->
+  <rect x="640" y="540" width="520" height="160" rx="4" class="input-bg"/>
+  <rect x="640" y="540" width="520" height="160" rx="4" class="border"/>
+
+  <text x="660" y="560" class="text-primary" font-size="12" font-weight="bold">Performance Comparison</text>
+
+  <text x="660" y="580" class="text-secondary" font-size="10">Throughput (ops/sec)</text>
+  <text x="660" y="600" class="text-primary" font-size="10">Redis Lists:   █████████████████████████ 50,000</text>
+  <text x="660" y="620" class="text-info" font-size="10">Redis Streams: █████████████████░░░░░░░░ 35,000</text>
+  <text x="660" y="640" class="text-warning" font-size="10">KeyDB Cluster: ████████████████████████████████████████████████████████████ 150,000</text>
+
+  <text x="660" y="665" class="text-secondary" font-size="10">Latency (p99)</text>
+  <text x="660" y="685" class="text-primary" font-size="10">Redis Lists: 2.0ms  |  Streams: 3.0ms  |  KeyDB: 1.0ms</text>
+
+  <!-- Status Bar -->
+  <rect x="0" y="785" width="1200" height="15" class="panel-bg"/>
+  <rect x="0" y="784" width="1200" height="1" class="border"/>
+  <text x="20" y="796" class="text-secondary" font-size="10">Storage Backends | 4 backends configured | 1 migration active | ? for help</text>
+
+  <text x="1150" y="796" class="text-secondary" font-size="10" text-anchor="end">q: quit</text>
+</svg>

@@ -1,0 +1,1589 @@
+openapi: 3.0.3
+info:
+  title: Plugin Panel System API
+  description: |
+    API specification for the Plugin Panel System that enables extensible
+    plugins within the go-redis-work-queue TUI framework.
+
+    This API provides:
+    - Plugin lifecycle management (install, activate, deactivate, uninstall)
+    - Event subscription and delivery to plugins
+    - Capability-gated admin operations for plugins
+    - Plugin configuration and storage management
+    - Resource monitoring and security controls
+
+    The API supports both WASM and Starlark plugin runtimes with comprehensive
+    sandboxing and permission controls.
+  version: 1.0.0
+  contact:
+    name: Platform Team
+    url: https://github.com/company/go-redis-work-queue
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.queue.company.com/v1
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - PluginToken: []
+
+tags:
+  - name: Plugin Management
+    description: Plugin lifecycle operations
+  - name: Event System
+    description: Event subscription and delivery
+  - name: Admin Operations
+    description: Capability-gated queue operations
+  - name: Configuration
+    description: Plugin configuration management
+  - name: Security
+    description: Permission and security controls
+  - name: Monitoring
+    description: Plugin monitoring and metrics
+
+paths:
+  # Plugin Management
+  /plugins:
+    get:
+      tags: [Plugin Management]
+      summary: List all plugins
+      description: Retrieve a list of all installed plugins with their status
+      parameters:
+        - name: status
+          in: query
+          description: Filter plugins by status
+          schema:
+            type: string
+            enum: [active, inactive, error, loading]
+        - name: runtime
+          in: query
+          description: Filter plugins by runtime type
+          schema:
+            type: string
+            enum: [wasm, starlark]
+      responses:
+        '200':
+          description: List of plugins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plugins:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Plugin'
+                  total:
+                    type: integer
+                    description: Total number of plugins
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Plugin Management]
+      summary: Install a new plugin
+      description: Install a plugin from an uploaded bundle file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                plugin_bundle:
+                  type: string
+                  format: binary
+                  description: Plugin bundle ZIP file
+                auto_activate:
+                  type: boolean
+                  default: false
+                  description: Automatically activate after installation
+      responses:
+        '201':
+          description: Plugin installed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInstallResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Plugin already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /plugins/{plugin_id}:
+    get:
+      tags: [Plugin Management]
+      summary: Get plugin details
+      description: Retrieve detailed information about a specific plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique plugin identifier
+      responses:
+        '200':
+          description: Plugin details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Plugin Management]
+      summary: Uninstall plugin
+      description: Deactivate and remove a plugin completely
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: force
+          in: query
+          description: Force uninstall even if plugin has active subscriptions
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Plugin uninstalled successfully
+        '409':
+          description: Plugin has active dependencies or subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /plugins/{plugin_id}/activate:
+    post:
+      tags: [Plugin Management]
+      summary: Activate plugin
+      description: Activate a plugin and start its runtime
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginOperationResult'
+        '400':
+          description: Plugin cannot be activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /plugins/{plugin_id}/deactivate:
+    post:
+      tags: [Plugin Management]
+      summary: Deactivate plugin
+      description: Deactivate a plugin and stop its runtime
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginOperationResult'
+
+  /plugins/{plugin_id}/reload:
+    post:
+      tags: [Plugin Management]
+      summary: Hot reload plugin
+      description: Reload plugin code without losing state
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin reloaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginOperationResult'
+        '500':
+          description: Reload failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Event System
+  /plugins/{plugin_id}/events/subscribe:
+    post:
+      tags: [Event System]
+      summary: Subscribe to events
+      description: Create event subscriptions for a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventSubscription'
+      responses:
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResult'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /plugins/{plugin_id}/events/subscriptions:
+    get:
+      tags: [Event System]
+      summary: List plugin subscriptions
+      description: Get all event subscriptions for a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActiveSubscription'
+
+  /plugins/{plugin_id}/events/subscriptions/{subscription_id}:
+    delete:
+      tags: [Event System]
+      summary: Unsubscribe from events
+      description: Remove an event subscription
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subscription_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Subscription removed
+
+  # Admin Operations (Capability-gated)
+  /plugins/{plugin_id}/admin/queues/{queue_name}/enqueue:
+    post:
+      tags: [Admin Operations]
+      summary: Enqueue job
+      description: Enqueue a job to a specific queue (requires queue.enqueue permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: queue_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobEnqueueRequest'
+      responses:
+        '201':
+          description: Job enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobEnqueueResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /plugins/{plugin_id}/admin/queues/{queue_name}/peek:
+    get:
+      tags: [Admin Operations]
+      summary: Peek at next job
+      description: Peek at the next job in queue without dequeuing (requires queue.peek permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: queue_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Next job in queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '204':
+          description: Queue is empty
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /plugins/{plugin_id}/admin/jobs/{job_id}/requeue:
+    post:
+      tags: [Admin Operations]
+      summary: Requeue job
+      description: Requeue a failed job (requires job.requeue permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delay:
+                  type: string
+                  format: duration
+                  description: Delay before requeue (e.g., "5m", "1h")
+                priority:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  description: New priority for the job
+      responses:
+        '200':
+          description: Job requeued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOperationResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Job not found
+
+  /plugins/{plugin_id}/admin/queues/{queue_name}/purge:
+    post:
+      tags: [Admin Operations]
+      summary: Purge queue
+      description: Remove all jobs from a queue (requires queue.purge permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: queue_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: boolean
+                  description: Confirmation required for destructive operation
+                filter:
+                  type: object
+                  description: Optional filter criteria for selective purge
+                  properties:
+                    status:
+                      type: string
+                      enum: [failed, completed, pending]
+                    older_than:
+                      type: string
+                      format: duration
+      responses:
+        '200':
+          description: Queue purged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs_removed:
+                    type: integer
+                    description: Number of jobs removed
+                  queue_name:
+                    type: string
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /plugins/{plugin_id}/admin/stats/queues/{queue_name}:
+    get:
+      tags: [Admin Operations]
+      summary: Get queue statistics
+      description: Retrieve statistics for a specific queue (requires stats.read permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: queue_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          description: Time period for statistics
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+            default: hour
+      responses:
+        '200':
+          description: Queue statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStats'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /plugins/{plugin_id}/admin/stats/system:
+    get:
+      tags: [Admin Operations]
+      summary: Get system statistics
+      description: Retrieve system-wide statistics (requires system.stats permission)
+      security:
+        - PluginToken: []
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStats'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # Configuration Management
+  /plugins/{plugin_id}/config:
+    get:
+      tags: [Configuration]
+      summary: Get plugin configuration
+      description: Retrieve current plugin configuration
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginConfig'
+
+    put:
+      tags: [Configuration]
+      summary: Update plugin configuration
+      description: Update plugin configuration and trigger reload if necessary
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginConfig'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResult'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /plugins/{plugin_id}/storage:
+    get:
+      tags: [Configuration]
+      summary: Get plugin storage data
+      description: Retrieve all key-value pairs from plugin storage
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin storage data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  size:
+                    type: integer
+                    description: Storage size in bytes
+
+  /plugins/{plugin_id}/storage/{key}:
+    get:
+      tags: [Configuration]
+      summary: Get storage value
+      description: Retrieve a specific value from plugin storage
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Storage value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+        '404':
+          description: Key not found
+
+    put:
+      tags: [Configuration]
+      summary: Set storage value
+      description: Store a key-value pair in plugin storage
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+      responses:
+        '200':
+          description: Value stored successfully
+
+    delete:
+      tags: [Configuration]
+      summary: Delete storage value
+      description: Remove a key-value pair from plugin storage
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Value deleted successfully
+
+  # Security and Permissions
+  /plugins/{plugin_id}/permissions:
+    get:
+      tags: [Security]
+      summary: Get plugin permissions
+      description: Retrieve all granted permissions for a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CapabilityGrant'
+
+    post:
+      tags: [Security]
+      summary: Grant permissions
+      description: Grant additional permissions to a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionGrantRequest'
+      responses:
+        '201':
+          description: Permissions granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityGrant'
+
+  /plugins/{plugin_id}/permissions/{permission_id}/revoke:
+    post:
+      tags: [Security]
+      summary: Revoke permission
+      description: Revoke a specific permission from a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: permission_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Permission revoked successfully
+
+  # Monitoring and Metrics
+  /plugins/{plugin_id}/metrics:
+    get:
+      tags: [Monitoring]
+      summary: Get plugin metrics
+      description: Retrieve performance and usage metrics for a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          description: Time period for metrics
+          schema:
+            type: string
+            enum: [5m, 1h, 24h, 7d]
+            default: 1h
+      responses:
+        '200':
+          description: Plugin metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginMetrics'
+
+  /plugins/{plugin_id}/health:
+    get:
+      tags: [Monitoring]
+      summary: Check plugin health
+      description: Get current health status of a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginHealthStatus'
+
+  /plugins/{plugin_id}/logs:
+    get:
+      tags: [Monitoring]
+      summary: Get plugin logs
+      description: Retrieve recent log entries for a plugin
+      parameters:
+        - name: plugin_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Minimum log level
+          schema:
+            type: string
+            enum: [debug, info, warn, error]
+            default: info
+        - name: limit
+          in: query
+          description: Maximum number of log entries
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: since
+          in: query
+          description: Show logs since timestamp
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Plugin log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogEntry'
+                  total:
+                    type: integer
+
+  # System-wide endpoints
+  /plugins/marketplace:
+    get:
+      tags: [Plugin Management]
+      summary: List marketplace plugins
+      description: Browse available plugins in the marketplace
+      parameters:
+        - name: category
+          in: query
+          description: Filter by plugin category
+          schema:
+            type: string
+        - name: runtime
+          in: query
+          description: Filter by runtime type
+          schema:
+            type: string
+            enum: [wasm, starlark]
+        - name: search
+          in: query
+          description: Search plugin names and descriptions
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available marketplace plugins
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plugins:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketplacePlugin'
+
+  /plugins/system/health:
+    get:
+      tags: [Monitoring]
+      summary: Get plugin system health
+      description: Overall health status of the plugin system
+      responses:
+        '200':
+          description: Plugin system health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemHealthStatus'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+    PluginToken:
+      type: apiKey
+      in: header
+      name: X-Plugin-Token
+      description: Plugin-specific authentication token
+
+  schemas:
+    Plugin:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique plugin identifier
+        name:
+          type: string
+          description: Human-readable plugin name
+        version:
+          type: string
+          description: Plugin version (semantic versioning)
+        status:
+          type: string
+          enum: [active, inactive, error, loading]
+          description: Current plugin status
+        runtime:
+          type: string
+          enum: [wasm, starlark]
+          description: Plugin runtime type
+        permissions:
+          type: array
+          items:
+            type: string
+          description: List of granted permissions
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PluginDetails:
+      allOf:
+        - $ref: '#/components/schemas/Plugin'
+        - type: object
+          properties:
+            manifest:
+              $ref: '#/components/schemas/PluginManifest'
+            resource_usage:
+              $ref: '#/components/schemas/ResourceUsage'
+            last_active:
+              type: string
+              format: date-time
+            error_count:
+              type: integer
+            dependencies:
+              type: array
+              items:
+                type: string
+
+    PluginManifest:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        api_version:
+          type: string
+        description:
+          type: string
+        author:
+          type: string
+        license:
+          type: string
+        homepage:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        runtime:
+          type: string
+          enum: [wasm, starlark]
+        entry_point:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/ResourceLimits'
+        ui:
+          $ref: '#/components/schemas/UIConfig'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventSubscriptionConfig'
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginDependency'
+
+    ResourceLimits:
+      type: object
+      properties:
+        max_memory:
+          type: string
+          description: Maximum memory usage (e.g., "10MB")
+        max_cpu:
+          type: string
+          description: Maximum CPU usage (e.g., "5%")
+        timeout:
+          type: string
+          description: Execution timeout (e.g., "30s")
+
+    UIConfig:
+      type: object
+      properties:
+        panel_title:
+          type: string
+        min_width:
+          type: integer
+        min_height:
+          type: integer
+        resizable:
+          type: boolean
+
+    EventSubscriptionConfig:
+      type: object
+      properties:
+        type:
+          type: string
+        queues:
+          type: array
+          items:
+            type: string
+        interval:
+          type: string
+          description: Polling interval for periodic events
+
+    PluginDependency:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+          description: Version constraint (e.g., ">=1.0.0")
+        optional:
+          type: boolean
+
+    EventSubscription:
+      type: object
+      properties:
+        event_types:
+          type: array
+          items:
+            type: string
+          description: Types of events to subscribe to
+        filters:
+          type: object
+          properties:
+            queues:
+              type: array
+              items:
+                type: string
+              description: Queue name patterns (supports wildcards)
+            priorities:
+              type: array
+              items:
+                type: integer
+              description: Priority levels to include
+            job_states:
+              type: array
+              items:
+                type: string
+                enum: [pending, running, completed, failed]
+        webhook_url:
+          type: string
+          format: uri
+          description: Webhook URL for event delivery (optional)
+        batch_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 1
+          description: Number of events to batch together
+
+    ActiveSubscription:
+      allOf:
+        - $ref: '#/components/schemas/EventSubscription'
+        - type: object
+          properties:
+            id:
+              type: string
+              description: Unique subscription identifier
+            created_at:
+              type: string
+              format: date-time
+            events_delivered:
+              type: integer
+              description: Total events delivered
+            last_delivery:
+              type: string
+              format: date-time
+
+    JobEnqueueRequest:
+      type: object
+      properties:
+        payload:
+          type: object
+          description: Job payload data
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+          description: Job priority level
+        delay:
+          type: string
+          format: duration
+          description: Delay before processing (e.g., "5m", "1h")
+        max_retries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 3
+          description: Maximum retry attempts
+        timeout:
+          type: string
+          format: duration
+          description: Job execution timeout
+      required:
+        - payload
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique job identifier
+        queue:
+          type: string
+          description: Queue name
+        payload:
+          type: object
+          description: Job payload data
+        priority:
+          type: integer
+          description: Job priority
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        attempts:
+          type: integer
+          description: Number of execution attempts
+        error:
+          type: string
+          description: Error message if failed
+        worker_id:
+          type: string
+          description: ID of worker processing the job
+
+    QueueStats:
+      type: object
+      properties:
+        queue_name:
+          type: string
+        depth:
+          type: integer
+          description: Number of jobs in queue
+        throughput:
+          type: object
+          properties:
+            jobs_per_second:
+              type: number
+            jobs_per_hour:
+              type: number
+        error_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Error rate (0-1)
+        avg_processing_time:
+          type: number
+          description: Average processing time in milliseconds
+        oldest_job_age:
+          type: string
+          format: duration
+          description: Age of oldest pending job
+
+    SystemStats:
+      type: object
+      properties:
+        total_queues:
+          type: integer
+        total_jobs:
+          type: integer
+        active_workers:
+          type: integer
+        system_load:
+          type: object
+          properties:
+            cpu_percent:
+              type: number
+            memory_percent:
+              type: number
+            disk_percent:
+              type: number
+        uptime:
+          type: string
+          format: duration
+
+    CapabilityGrant:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique grant identifier
+        plugin_id:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        scope:
+          $ref: '#/components/schemas/PermissionScope'
+        expires_at:
+          type: string
+          format: date-time
+        granted_by:
+          type: string
+          description: User who granted the permission
+        granted_at:
+          type: string
+          format: date-time
+
+    PermissionScope:
+      type: object
+      properties:
+        queues:
+          type: array
+          items:
+            type: string
+          description: Specific queues or "*" for all
+        operations:
+          type: array
+          items:
+            type: string
+          description: Specific operations or "*" for all
+        resources:
+          type: array
+          items:
+            type: string
+          description: Resource limitations
+
+    PluginConfig:
+      type: object
+      properties:
+        settings:
+          type: object
+          additionalProperties: true
+          description: Plugin-specific configuration
+        ui_preferences:
+          type: object
+          properties:
+            theme:
+              type: string
+            refresh_rate:
+              type: integer
+              description: UI refresh rate in seconds
+        notifications:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            channels:
+              type: array
+              items:
+                type: string
+
+    PluginMetrics:
+      type: object
+      properties:
+        execution_time:
+          type: object
+          properties:
+            avg:
+              type: number
+              description: Average execution time in milliseconds
+            p50:
+              type: number
+            p95:
+              type: number
+            p99:
+              type: number
+        memory_usage:
+          type: object
+          properties:
+            current:
+              type: integer
+              description: Current memory usage in bytes
+            peak:
+              type: integer
+              description: Peak memory usage in bytes
+            avg:
+              type: integer
+              description: Average memory usage in bytes
+        event_processing:
+          type: object
+          properties:
+            events_processed:
+              type: integer
+            events_per_second:
+              type: number
+            processing_errors:
+              type: integer
+        api_calls:
+          type: object
+          properties:
+            total_calls:
+              type: integer
+            calls_per_second:
+              type: number
+            error_rate:
+              type: number
+
+    PluginHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        last_check:
+          type: string
+          format: date-time
+        uptime:
+          type: string
+          format: duration
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [debug, info, warn, error]
+        message:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+
+    ResourceUsage:
+      type: object
+      properties:
+        memory_bytes:
+          type: integer
+        cpu_percent:
+          type: number
+        execution_time:
+          type: number
+          description: Total execution time in milliseconds
+
+    MarketplacePlugin:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        author:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        downloads:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        verified:
+          type: boolean
+          description: Whether plugin is verified by maintainers
+
+    SystemHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        total_plugins:
+          type: integer
+        active_plugins:
+          type: integer
+        failed_plugins:
+          type: integer
+        system_load:
+          type: object
+          properties:
+            cpu_percent:
+              type: number
+            memory_percent:
+              type: number
+        last_check:
+          type: string
+          format: date-time
+
+    # Common response schemas
+    PluginInstallResult:
+      type: object
+      properties:
+        plugin_id:
+          type: string
+        status:
+          type: string
+          enum: [installed, activated]
+        permissions_required:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PluginOperationResult:
+      type: object
+      properties:
+        plugin_id:
+          type: string
+        operation:
+          type: string
+        status:
+          type: string
+          enum: [success, error]
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    SubscriptionResult:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        plugin_id:
+          type: string
+        event_types:
+          type: array
+          items:
+            type: string
+        webhook_url:
+          type: string
+          format: uri
+
+    JobEnqueueResult:
+      type: object
+      properties:
+        job_id:
+          type: string
+        queue:
+          type: string
+        status:
+          type: string
+          enum: [enqueued, scheduled]
+        scheduled_for:
+          type: string
+          format: date-time
+
+    JobOperationResult:
+      type: object
+      properties:
+        job_id:
+          type: string
+        operation:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+
+    ConfigUpdateResult:
+      type: object
+      properties:
+        plugin_id:
+          type: string
+        reload_required:
+          type: boolean
+        changes:
+          type: array
+          items:
+            type: string
+
+    PermissionGrantRequest:
+      type: object
+      properties:
+        permissions:
+          type: array
+          items:
+            type: string
+        scope:
+          $ref: '#/components/schemas/PermissionScope'
+        expires_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          description: Justification for permission grant
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type or category
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Unique request identifier for tracing
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

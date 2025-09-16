@@ -1,0 +1,227 @@
+{
+  "task_id": "P1.T003",
+  "created_at": "2025-09-14T19:39:40.942806Z",
+  "task": {
+    "id": "P1.T003",
+    "feature_id": "F001",
+    "title": "Test Admin Api",
+    "description": "Test task for Admin Api",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "~600-800 LoC tests",
+        "breakdown": "Unit (400), Integration (300), E2E (100)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "80% code coverage achieved",
+          "All test scenarios passing",
+          "Performance benchmarks validated",
+          "Security tests passing",
+          "No flaky tests",
+          "Test documentation complete"
+        ],
+        "stop_when": "All tests green; do NOT refactor code"
+      },
+      "scope": {
+        "includes": [
+          "*_test.go files",
+          "test/integration/",
+          "test/e2e/",
+          "test/fixtures/"
+        ],
+        "excludes": [
+          "production code changes"
+        ],
+        "restrictions": "Tests must be deterministic and fast"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "unit",
+          "at_percent": 40,
+          "description": "Unit tests complete"
+        },
+        {
+          "id": "integration",
+          "at_percent": 70,
+          "description": "Integration tests complete"
+        },
+        {
+          "id": "e2e",
+          "at_percent": 90,
+          "description": "E2E tests complete"
+        },
+        {
+          "id": "coverage",
+          "at_percent": 100,
+          "description": "Coverage targets met"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 512,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 1024,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "testing",
+        "golang",
+        "redis"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "high",
+      "preemptible": false,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 4,
+      "mostLikely": 8,
+      "pessimistic": 12
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 2
+        },
+        {
+          "resource": "ci_runners",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Spec published (OpenAPI and/or proto) for Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench.",
+        "script": "test_p1.t003.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Auth with deny\u2011by\u2011default; tokens verified; audit log persisted for destructive calls.",
+        "script": "test_p1.t003.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Rate limits and explicit confirmation flags for destructive actions.",
+        "script": "test_p1.t003.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Versioned paths; compat notes; structured error schema.",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Handler unit tests and integration tests pass in CI.",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/admin-api.md",
+        "excerpt": "Define a versioned, secure Admin API (HTTP/gRPC) that fronts existing admin functions, enabling TUI/web/automation with RBAC and observability.\n\n> [!note]- **\ud83d\udde3\ufe0f CLAUDE'S THOUGHTS \ud83d\udcad**\n> Smart foundatio",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "test_specification": {
+      "test_categories": [
+        {
+          "type": "unit",
+          "tests": [
+            "Unit: middleware (auth/rate/log) and handlers; fuzz path/query parsing."
+          ],
+          "priority": "high"
+        },
+        {
+          "type": "integration",
+          "tests": [
+            "Integration: dockerized Redis; golden responses; auth failure/expiry cases."
+          ],
+          "priority": "high"
+        },
+        {
+          "type": "security",
+          "tests": [
+            "Security: basic token leakage and privilege tests."
+          ],
+          "priority": "medium"
+        }
+      ],
+      "coverage_requirements": {
+        "unit": "80%",
+        "integration": "70%",
+        "e2e": "Critical paths only"
+      },
+      "test_data": [
+        "Mock data generators",
+        "Fixtures in test/fixtures/",
+        "Dockerized dependencies"
+      ]
+    }
+  },
+  "dependencies_completed": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P1.T003.json",
+    "on_failure": "Move this file to failed-tasks/P1.T003.json",
+    "on_help_needed": "Move to help-me/P1.T003.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [
+        {
+          "resource": "test_redis",
+          "quantity": 2
+        },
+        {
+          "resource": "ci_runners",
+          "quantity": 1
+        }
+      ],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

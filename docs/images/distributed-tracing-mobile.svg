@@ -1,0 +1,128 @@
+<svg width="400" height="800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="40" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="18" fill="#f0f6fc" font-family="Monaco, monospace" font-size="12" font-weight="bold">Distributed Tracing</text>
+  <text x="10" y="32" fill="#8b949e" font-family="Monaco, monospace" font-size="9">1,247 traces | 44 errors</text>
+
+  <!-- Tab Bar (Compact) -->
+  <rect x="0" y="40" width="400" height="30" fill="#0d1117"/>
+  <rect x="10" y="47" width="60" height="16" fill="#238636" rx="3"/>
+  <text x="15" y="57" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">Traces</text>
+  <rect x="80" y="47" width="50" height="16" fill="#30363d" rx="3"/>
+  <text x="85" y="57" fill="#8b949e" font-family="Monaco, monospace" font-size="9">Spans</text>
+  <rect x="140" y="47" width="50" height="16" fill="#30363d" rx="3"/>
+  <text x="145" y="57" fill="#8b949e" font-family="Monaco, monospace" font-size="9">Stats</text>
+
+  <!-- Search/Filter Compact -->
+  <rect x="10" y="80" width="380" height="20" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="15" y="92" fill="#8b949e" font-family="Monaco, monospace" font-size="8">Filter: error=true</text>
+
+  <!-- Current Trace Header -->
+  <rect x="10" y="110" width="380" height="40" fill="#f851491a" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="15" y="125" fill="#f85149" font-family="Monaco, monospace" font-size="10" font-weight="bold">SELECTED TRACE</text>
+  <text x="15" y="140" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9">user_signup | 3.2s | 4 spans</text>
+  <text x="15" y="145" fill="#8b949e" font-family="Monaco, monospace" font-size="8">ID: 6a8ca01c...b2f0</text>
+
+  <!-- Waterfall View (Stacked) -->
+  <rect x="10" y="160" width="380" height="450" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="15" y="178" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10" font-weight="bold">Trace Timeline</text>
+
+  <!-- Timeline scale -->
+  <rect x="15" y="185" width="370" height="15" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="195" fill="#8b949e" font-family="Monaco, monospace" font-size="8">0ms</text>
+  <text x="180" y="195" fill="#8b949e" font-family="Monaco, monospace" font-size="8">1.6s</text>
+  <text x="340" y="195" fill="#8b949e" font-family="Monaco, monospace" font-size="8">3.2s</text>
+
+  <!-- Spans (Stacked Vertically) -->
+  <!-- Span 1 -->
+  <rect x="20" y="210" width="15" height="15" fill="#238636" rx="2"/>
+  <text x="45" y="221" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">queue.enqueue</text>
+  <text x="320" y="221" fill="#8b949e" font-family="Monaco, monospace" font-size="8">23ms</text>
+
+  <!-- Span 2 -->
+  <rect x="45" y="235" width="12" height="15" fill="#58a6ff" rx="2"/>
+  <text x="70" y="246" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">queue.dequeue</text>
+  <text x="320" y="246" fill="#8b949e" font-family="Monaco, monospace" font-size="8">18ms</text>
+
+  <!-- Span 3 -->
+  <rect x="70" y="260" width="180" height="15" fill="#ffa657" rx="2"/>
+  <text x="75" y="271" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">job.process</text>
+  <text x="320" y="271" fill="#8b949e" font-family="Monaco, monospace" font-size="8">2.8s</text>
+
+  <!-- Span 4 (nested) -->
+  <rect x="85" y="285" width="120" height="15" fill="#39d353" rx="2"/>
+  <text x="90" y="296" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">database.query</text>
+  <text x="320" y="296" fill="#8b949e" font-family="Monaco, monospace" font-size="8">1.8s</text>
+
+  <!-- Span 5 (failed, nested) -->
+  <rect x="220" y="285" width="40" height="15" fill="#f85149" rx="2"/>
+  <text x="225" y="296" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">http.req</text>
+  <text x="320" y="296" fill="#8b949e" font-family="Monaco, monospace" font-size="8">612ms</text>
+
+  <!-- Span 6 (retry) -->
+  <rect x="270" y="310" width="60" height="15" fill="#ffa657" rx="2"/>
+  <text x="275" y="321" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">retry</text>
+  <text x="320" y="321" fill="#8b949e" font-family="Monaco, monospace" font-size="8">912ms</text>
+
+  <!-- Error Summary -->
+  <rect x="15" y="340" width="370" height="60" fill="#f851491a" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="20" y="355" fill="#f85149" font-family="Monaco, monospace" font-size="9" font-weight="bold">Error in http.request</text>
+  <text x="20" y="368" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Timeout after 500ms</text>
+  <text x="20" y="380" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">URL: api.example.com/users</text>
+  <text x="20" y="392" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Retry: 1/3</text>
+
+  <!-- Navigation Controls -->
+  <rect x="15" y="420" width="370" height="30" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <rect x="25" y="427" width="40" height="16" fill="#30363d" rx="2"/>
+  <text x="30" y="437" fill="#8b949e" font-family="Monaco, monospace" font-size="8">Prev</text>
+  <text x="180" y="437" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">1/1,247</text>
+  <rect x="330" y="427" width="40" height="16" fill="#30363d" rx="2"/>
+  <text x="335" y="437" fill="#8b949e" font-family="Monaco, monospace" font-size="8">Next</text>
+
+  <!-- Quick Actions -->
+  <rect x="15" y="470" width="370" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="20" y="488" fill="#f0f6fc" font-family="Monaco, monospace" font-size="9" font-weight="bold">Quick Actions</text>
+
+  <rect x="25" y="500" width="160" height="20" fill="#238636" rx="3"/>
+  <text x="80" y="512" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Open in APM</text>
+
+  <rect x="200" y="500" width="160" height="20" fill="#58a6ff" rx="3"/>
+  <text x="250" y="512" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Copy Trace ID</text>
+
+  <rect x="25" y="530" width="160" height="20" fill="#ffa657" rx="3"/>
+  <text x="70" y="542" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Related Jobs</text>
+
+  <rect x="200" y="530" width="160" height="20" fill="#30363d" rx="3"/>
+  <text x="250" y="542" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">Retry Job</text>
+
+  <rect x="25" y="560" width="335" height="20" fill="#f85149" rx="3"/>
+  <text x="160" y="572" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">View Error Details</text>
+
+  <!-- Recent Traces (Bottom) -->
+  <rect x="10" y="620" width="380" height="150" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="15" y="638" fill="#f0f6fc" font-family="Monaco, monospace" font-size="10" font-weight="bold">Recent Traces</text>
+
+  <!-- Compact trace list -->
+  <rect x="15" y="645" width="370" height="18" fill="#39d3531a" stroke="#39d353" stroke-width="1" rx="2"/>
+  <text x="20" y="655" fill="#39d353" font-family="Monaco, monospace" font-size="8">OK</text>
+  <text x="45" y="655" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">payment_process</text>
+  <text x="300" y="655" fill="#8b949e" font-family="Monaco, monospace" font-size="8">1.8s</text>
+
+  <rect x="15" y="668" width="370" height="18" fill="#39d3531a" stroke="#39d353" stroke-width="1" rx="2"/>
+  <text x="20" y="678" fill="#39d353" font-family="Monaco, monospace" font-size="8">OK</text>
+  <text x="45" y="678" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">email_batch</text>
+  <text x="300" y="678" fill="#8b949e" font-family="Monaco, monospace" font-size="8">0.9s</text>
+
+  <rect x="15" y="691" width="370" height="18" fill="#f851491a" stroke="#f85149" stroke-width="1" rx="2"/>
+  <text x="20" y="701" fill="#f85149" font-family="Monaco, monospace" font-size="8">ERR</text>
+  <text x="45" y="701" fill="#f0f6fc" font-family="Monaco, monospace" font-size="8">data_sync</text>
+  <text x="300" y="701" fill="#8b949e" font-family="Monaco, monospace" font-size="8">5.2s</text>
+
+  <text x="20" y="725" fill="#8b949e" font-family="Monaco, monospace" font-size="8">+ 1,244 more traces</text>
+
+  <!-- Footer -->
+  <rect x="0" y="780" width="400" height="20" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="792" fill="#8b949e" font-family="Monaco, monospace" font-size="8">↑↓:navigate | o:open | t:copy | q:quit</text>
+</svg>

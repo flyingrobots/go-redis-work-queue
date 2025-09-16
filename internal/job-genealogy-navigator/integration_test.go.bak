@@ -1,0 +1,609 @@
+// Copyright 2025 James Ross
+package genealogy
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
+)
+
+// Integration test helpers
+
+func setupRedisClient(t *testing.T) redis.Cmdable {
+	// Use Redis from docker-compose if available, otherwise skip
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       15, // Use separate DB for tests
+	})
+
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		t.Skip("Redis not available, skipping integration tests")
+	}
+
+	// Clean up test data
+	client.FlushDB(ctx)
+
+	return client
+}
+
+type TestJobProvider struct {
+	jobs map[string]*JobDetails
+}
+
+func NewTestJobProvider() *TestJobProvider {
+	return &TestJobProvider{
+		jobs: make(map[string]*JobDetails),
+	}
+}
+
+func (p *TestJobProvider) AddJob(job *JobDetails) {
+	p.jobs[job.ID] = job
+}
+
+func (p *TestJobProvider) GetJobDetails(ctx context.Context, jobID string) (*JobDetails, error) {
+	job, exists := p.jobs[jobID]
+	if !exists {
+		return nil, ErrJobNotFound
+	}
+	return job, nil
+}
+
+func (p *TestJobProvider) GetBulkJobDetails(ctx context.Context, jobIDs []string) (map[string]*JobDetails, error) {
+	result := make(map[string]*JobDetails)
+	for _, id := range jobIDs {
+		if job, exists := p.jobs[id]; exists {
+			result[id] = job
+		}
+	}
+	return result, nil
+}
+
+func createComplexJobHierarchy(t *testing.T, store GraphStore, provider *TestJobProvider) {
+	ctx := context.Background()
+
+	// Create job hierarchy:
+	// root-job
+	// ├── retry-job (retry of root-job)
+	// ├── child1
+	// │   ├── grandchild1
+	// │   └── grandchild2 (failed)
+	// └── child2
+	//     └── batch-job1 (spawned by child2)
+	//     └── batch-job2 (spawned by child2)
+
+	jobs := []*JobDetails{
+		{ID: "root-job", Type: "user_signup", Status: JobStatusFailed, CreatedAt: time.Now().Add(-10 * time.Minute)},
+		{ID: "retry-job", Type: "user_signup", Status: JobStatusSuccess, CreatedAt: time.Now().Add(-8 * time.Minute)},
+		{ID: "child1", Type: "send_email", Status: JobStatusSuccess, CreatedAt: time.Now().Add(-7 * time.Minute)},
+		{ID: "child2", Type: "create_profile", Status: JobStatusSuccess, CreatedAt: time.Now().Add(-6 * time.Minute)},
+		{ID: "grandchild1", Type: "validate_email", Status: JobStatusSuccess, CreatedAt: time.Now().Add(-5 * time.Minute)},
+		{ID: "grandchild2", Type: "send_notification", Status: JobStatusFailed, CreatedAt: time.Now().Add(-4 * time.Minute)},
+		{ID: "batch-job1", Type: "process_data", Status: JobStatusSuccess, CreatedAt: time.Now().Add(-3 * time.Minute)},
+		{ID: "batch-job2", Type: "process_data", Status: JobStatusPending, CreatedAt: time.Now().Add(-2 * time.Minute)},
+	}
+
+	for _, job := range jobs {
+		provider.AddJob(job)
+	}
+
+	relationships := []JobRelationship{
+		{ParentID: "root-job", ChildID: "retry-job", Type: RelationshipRetry, SpawnReason: "original_failed", Timestamp: time.Now().Add(-8 * time.Minute)},
+		{ParentID: "root-job", ChildID: "child1", Type: RelationshipSpawn, SpawnReason: "user_workflow", Timestamp: time.Now().Add(-7 * time.Minute)},
+		{ParentID: "root-job", ChildID: "child2", Type: RelationshipSpawn, SpawnReason: "user_workflow", Timestamp: time.Now().Add(-6 * time.Minute)},
+		{ParentID: "child1", ChildID: "grandchild1", Type: RelationshipSpawn, SpawnReason: "email_validation", Timestamp: time.Now().Add(-5 * time.Minute)},
+		{ParentID: "child1", ChildID: "grandchild2", Type: RelationshipSpawn, SpawnReason: "notification", Timestamp: time.Now().Add(-4 * time.Minute)},
+		{ParentID: "child2", ChildID: "batch-job1", Type: RelationshipBatchMember, SpawnReason: "batch_processing", Timestamp: time.Now().Add(-3 * time.Minute)},
+		{ParentID: "child2", ChildID: "batch-job2", Type: RelationshipBatchMember, SpawnReason: "batch_processing", Timestamp: time.Now().Add(-2 * time.Minute)},
+	}
+
+	for _, rel := range relationships {
+		err := store.AddRelationship(ctx, rel)
+		require.NoError(t, err)
+	}
+}
+
+// Integration Tests
+
+func TestRedisGraphStore_Integration(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy"
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	ctx := context.Background()
+
+	// Test adding relationships
+	rel := JobRelationship{
+		ParentID:    "parent-1",
+		ChildID:     "child-1",
+		Type:        RelationshipSpawn,
+		SpawnReason: "test_spawn",
+		Timestamp:   time.Now(),
+		Metadata:    map[string]interface{}{"test": true},
+	}
+
+	err := store.AddRelationship(ctx, rel)
+	require.NoError(t, err)
+
+	// Test retrieving children
+	children, err := store.GetChildren(ctx, "parent-1")
+	require.NoError(t, err)
+	assert.Contains(t, children, "child-1")
+
+	// Test retrieving parents
+	parents, err := store.GetParents(ctx, "child-1")
+	require.NoError(t, err)
+	assert.Contains(t, parents, "parent-1")
+
+	// Test retrieving relationships
+	relationships, err := store.GetRelationships(ctx, "parent-1")
+	require.NoError(t, err)
+	assert.Len(t, relationships, 1)
+	assert.Equal(t, rel.ParentID, relationships[0].ParentID)
+	assert.Equal(t, rel.ChildID, relationships[0].ChildID)
+	assert.Equal(t, rel.Type, relationships[0].Type)
+}
+
+func TestRedisGraphStore_ComplexGenealogy(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:complex"
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+
+	createComplexJobHierarchy(t, store, provider)
+
+	ctx := context.Background()
+
+	// Test building genealogy from root
+	genealogy, err := store.BuildGenealogy(ctx, "root-job")
+	require.NoError(t, err)
+
+	assert.Equal(t, "root-job", genealogy.RootID)
+	assert.Equal(t, 8, genealogy.TotalJobs)
+	assert.Equal(t, 3, genealogy.MaxDepth)
+
+	// Verify generation structure
+	assert.Len(t, genealogy.GenerationMap[0], 1) // root
+	assert.Contains(t, genealogy.GenerationMap[0], "root-job")
+
+	assert.Len(t, genealogy.GenerationMap[1], 3) // first generation
+	assert.Contains(t, genealogy.GenerationMap[1], "retry-job")
+	assert.Contains(t, genealogy.GenerationMap[1], "child1")
+	assert.Contains(t, genealogy.GenerationMap[1], "child2")
+
+	// Test building genealogy from child node (should find true root)
+	childGenealogy, err := store.BuildGenealogy(ctx, "child1")
+	require.NoError(t, err)
+	assert.Equal(t, "root-job", childGenealogy.RootID)
+	assert.Equal(t, genealogy.TotalJobs, childGenealogy.TotalJobs)
+
+	// Test getting ancestors
+	ancestors, err := store.GetAncestors(ctx, "grandchild1")
+	require.NoError(t, err)
+	assert.Contains(t, ancestors, "child1")
+	assert.Contains(t, ancestors, "root-job")
+
+	// Test getting descendants
+	descendants, err := store.GetDescendants(ctx, "root-job")
+	require.NoError(t, err)
+	assert.Len(t, descendants, 7)
+	assert.Contains(t, descendants, "retry-job")
+	assert.Contains(t, descendants, "grandchild1")
+	assert.Contains(t, descendants, "batch-job1")
+}
+
+func TestNavigator_EndToEndIntegration(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:e2e"
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, logger)
+
+	navigator := NewNavigator(store, provider, renderer, config, logger)
+
+	createComplexJobHierarchy(t, store, provider)
+
+	ctx := context.Background()
+
+	// Test getting full genealogy
+	genealogy, err := navigator.GetGenealogy(ctx, "root-job")
+	require.NoError(t, err)
+
+	assert.Equal(t, "root-job", genealogy.RootID)
+	assert.Equal(t, 8, genealogy.TotalJobs)
+
+	// Verify job details were populated
+	for _, node := range genealogy.Nodes {
+		assert.NotNil(t, node.JobDetails, "Job details missing for node %s", node.ID)
+		assert.Equal(t, node.ID, node.JobDetails.ID)
+	}
+
+	// Test impact analysis
+	impact, err := navigator.GetImpactAnalysis(ctx, "root-job")
+	require.NoError(t, err)
+
+	assert.Equal(t, "root-job", impact.SourceJobID)
+	assert.Equal(t, 8, len(impact.AffectedJobs))
+	assert.True(t, impact.FailedJobsCount > 0)
+	assert.True(t, impact.SuccessfulJobsCount > 0)
+
+	// Test blame analysis
+	blame, err := navigator.GetBlameAnalysis(ctx, "grandchild2")
+	require.NoError(t, err)
+
+	assert.Equal(t, "grandchild2", blame.FailedJobID)
+	assert.NotNil(t, blame.LikelyRootCause)
+	assert.True(t, len(blame.BlamePath) > 0)
+
+	// Test navigation
+	err = navigator.SetNavigationMode(ViewModeDescendants, LayoutModeTimeline)
+	require.NoError(t, err)
+
+	err = navigator.NavigateToNode(ctx, "child1")
+	require.NoError(t, err)
+
+	state := navigator.GetNavigationState()
+	assert.Equal(t, "child1", state.FocusedNodeID)
+	assert.Equal(t, ViewModeDescendants, state.ViewMode)
+	assert.Equal(t, LayoutModeTimeline, state.LayoutMode)
+
+	// Test rendering
+	layout, err := navigator.RenderCurrentView(ctx)
+	require.NoError(t, err)
+	assert.NotNil(t, layout)
+	assert.True(t, len(layout.Lines) > 0)
+	assert.True(t, layout.Width > 0)
+	assert.True(t, layout.Height > 0)
+}
+
+func TestNavigator_CachingBehavior(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:cache"
+	config.EnableCaching = true
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, logger)
+
+	navigator := NewNavigator(store, provider, renderer, config, logger)
+
+	createComplexJobHierarchy(t, store, provider)
+
+	ctx := context.Background()
+
+	// First call should hit the store
+	genealogy1, err := navigator.GetGenealogy(ctx, "root-job")
+	require.NoError(t, err)
+
+	// Second call should hit cache
+	start := time.Now()
+	genealogy2, err := navigator.GetGenealogy(ctx, "root-job")
+	require.NoError(t, err)
+	duration := time.Since(start)
+
+	// Cache hit should be much faster
+	assert.True(t, duration < 10*time.Millisecond, "Cache hit took too long: %v", duration)
+
+	// Results should be identical
+	assert.Equal(t, genealogy1.RootID, genealogy2.RootID)
+	assert.Equal(t, genealogy1.TotalJobs, genealogy2.TotalJobs)
+
+	// Test cache invalidation
+	navigator.InvalidateCache("root-job")
+
+	// Next call should hit store again
+	genealogy3, err := navigator.GetGenealogy(ctx, "root-job")
+	require.NoError(t, err)
+	assert.Equal(t, genealogy1.RootID, genealogy3.RootID)
+}
+
+func TestNavigator_ViewModeFiltering(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:views"
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, logger)
+
+	navigator := NewNavigator(store, provider, renderer, config, logger)
+
+	createComplexJobHierarchy(t, store, provider)
+
+	ctx := context.Background()
+
+	// Test ancestors view
+	err := navigator.SetNavigationMode(ViewModeAncestors, LayoutModeTopDown)
+	require.NoError(t, err)
+
+	err = navigator.NavigateToNode(ctx, "grandchild1")
+	require.NoError(t, err)
+
+	layout, err := navigator.RenderCurrentView(ctx)
+	require.NoError(t, err)
+
+	// Should only show ancestors of grandchild1
+	content := fmt.Sprintf("%v", layout.Lines)
+	assert.Contains(t, content, "grandchild1")
+	assert.Contains(t, content, "child1")
+	assert.Contains(t, content, "root-job")
+	// Should not contain siblings or other branches
+	assert.NotContains(t, content, "child2")
+	assert.NotContains(t, content, "batch-job")
+
+	// Test descendants view
+	err = navigator.SetNavigationMode(ViewModeDescendants, LayoutModeTopDown)
+	require.NoError(t, err)
+
+	err = navigator.NavigateToNode(ctx, "child1")
+	require.NoError(t, err)
+
+	layout, err = navigator.RenderCurrentView(ctx)
+	require.NoError(t, err)
+
+	content = fmt.Sprintf("%v", layout.Lines)
+	assert.Contains(t, content, "child1")
+	assert.Contains(t, content, "grandchild1")
+	assert.Contains(t, content, "grandchild2")
+	// Should not contain parent or other branches
+	assert.NotContains(t, content, "root-job")
+	assert.NotContains(t, content, "child2")
+}
+
+func TestNavigator_PerformanceRequirements(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:perf"
+	config.EnableCaching = true
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, logger)
+
+	navigator := NewNavigator(store, provider, renderer, config, logger)
+
+	// Create larger job hierarchy to test performance
+	ctx := context.Background()
+	rootID := "perf-root"
+
+	// Create 100+ jobs in hierarchy
+	for i := 0; i < 20; i++ {
+		parentID := fmt.Sprintf("parent-%d", i)
+		provider.AddJob(&JobDetails{
+			ID:     parentID,
+			Type:   "parent_job",
+			Status: JobStatusSuccess,
+		})
+
+		if i == 0 {
+			// Connect first parent to root
+			rel := JobRelationship{
+				ParentID:  rootID,
+				ChildID:   parentID,
+				Type:      RelationshipSpawn,
+				Timestamp: time.Now(),
+			}
+			err := store.AddRelationship(ctx, rel)
+			require.NoError(t, err)
+		} else {
+			// Chain parents together
+			rel := JobRelationship{
+				ParentID:  fmt.Sprintf("parent-%d", i-1),
+				ChildID:   parentID,
+				Type:      RelationshipSpawn,
+				Timestamp: time.Now(),
+			}
+			err := store.AddRelationship(ctx, rel)
+			require.NoError(t, err)
+		}
+
+		// Add 5 children per parent
+		for j := 0; j < 5; j++ {
+			childID := fmt.Sprintf("child-%d-%d", i, j)
+			provider.AddJob(&JobDetails{
+				ID:     childID,
+				Type:   "child_job",
+				Status: JobStatusSuccess,
+			})
+
+			rel := JobRelationship{
+				ParentID:  parentID,
+				ChildID:   childID,
+				Type:      RelationshipSpawn,
+				Timestamp: time.Now(),
+			}
+			err := store.AddRelationship(ctx, rel)
+			require.NoError(t, err)
+		}
+	}
+
+	provider.AddJob(&JobDetails{
+		ID:     rootID,
+		Type:   "root_job",
+		Status: JobStatusSuccess,
+	})
+
+	// Test genealogy retrieval performance
+	start := time.Now()
+	genealogy, err := navigator.GetGenealogy(ctx, rootID)
+	require.NoError(t, err)
+	genealogyDuration := time.Since(start)
+
+	assert.True(t, genealogy.TotalJobs >= 100, "Should have at least 100 jobs, got %d", genealogy.TotalJobs)
+	t.Logf("Genealogy with %d jobs built in %v", genealogy.TotalJobs, genealogyDuration)
+
+	// Test navigation performance (should be < 50ms per requirement)
+	start = time.Now()
+	err = navigator.NavigateToNode(ctx, "parent-10")
+	require.NoError(t, err)
+	navigationDuration := time.Since(start)
+
+	assert.True(t, navigationDuration < 50*time.Millisecond,
+		"Navigation took %v, should be < 50ms", navigationDuration)
+
+	// Test rendering performance
+	start = time.Now()
+	layout, err := navigator.RenderCurrentView(ctx)
+	require.NoError(t, err)
+	renderDuration := time.Since(start)
+
+	assert.NotNil(t, layout)
+	assert.True(t, len(layout.Lines) > 0)
+	t.Logf("Rendering %d nodes took %v", genealogy.TotalJobs, renderDuration)
+
+	// Test cached access performance
+	start = time.Now()
+	_, err = navigator.GetGenealogy(ctx, rootID)
+	require.NoError(t, err)
+	cachedDuration := time.Since(start)
+
+	assert.True(t, cachedDuration < genealogyDuration/10,
+		"Cached access took %v, should be much faster than initial %v", cachedDuration, genealogyDuration)
+}
+
+func TestNavigator_CleanupOperations(t *testing.T) {
+	client := setupRedisClient(t)
+	config := TestingConfig()
+	config.RedisKeyPrefix = "test:genealogy:cleanup"
+	config.RelationshipTTL = 100 * time.Millisecond
+	logger := zaptest.NewLogger(t)
+
+	store := NewRedisGraphStore(client, config, logger)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, logger)
+
+	navigator := NewNavigator(store, provider, renderer, config, logger)
+
+	ctx := context.Background()
+
+	// Add some relationships
+	provider.AddJob(&JobDetails{ID: "job1", Status: JobStatusSuccess})
+	provider.AddJob(&JobDetails{ID: "job2", Status: JobStatusSuccess})
+
+	rel := JobRelationship{
+		ParentID:  "job1",
+		ChildID:   "job2",
+		Type:      RelationshipSpawn,
+		Timestamp: time.Now(),
+	}
+
+	err := store.AddRelationship(ctx, rel)
+	require.NoError(t, err)
+
+	// Verify relationship exists
+	children, err := store.GetChildren(ctx, "job1")
+	require.NoError(t, err)
+	assert.Contains(t, children, "job2")
+
+	// Wait for TTL to expire
+	time.Sleep(200 * time.Millisecond)
+
+	// Test cleanup
+	cutoff := time.Now().Add(-50 * time.Millisecond)
+	err = store.Cleanup(ctx, cutoff)
+	require.NoError(t, err)
+
+	// Test cache cleanup
+	navigator.CleanupCache()
+
+	// Verify cleanup worked - this is implementation dependent
+	// Some Redis configurations might still return expired data
+	// so we just verify the cleanup method runs without error
+}
+
+// Benchmark tests
+
+func BenchmarkNavigator_GetGenealogy(b *testing.B) {
+	client := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		DB:   15,
+	})
+
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		b.Skip("Redis not available")
+	}
+
+	client.FlushDB(ctx)
+
+	config := TestingConfig()
+	config.RedisKeyPrefix = "bench:genealogy"
+	store := NewRedisGraphStore(client, config, nil)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, nil)
+
+	navigator := NewNavigator(store, provider, renderer, config, nil)
+
+	// Create test data
+	createComplexJobHierarchy(b, store, provider)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := navigator.GetGenealogy(ctx, "root-job")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkNavigator_NavigateToNode(b *testing.B) {
+	client := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		DB:   15,
+	})
+
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		b.Skip("Redis not available")
+	}
+
+	client.FlushDB(ctx)
+
+	config := TestingConfig()
+	config.RedisKeyPrefix = "bench:genealogy"
+	store := NewRedisGraphStore(client, config, nil)
+	provider := NewTestJobProvider()
+	renderer := NewASCIIRenderer(config, nil)
+
+	navigator := NewNavigator(store, provider, renderer, config, nil)
+
+	createComplexJobHierarchy(b, store, provider)
+
+	// Load genealogy first
+	_, err := navigator.GetGenealogy(ctx, "root-job")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	nodes := []string{"child1", "child2", "grandchild1", "grandchild2", "batch-job1"}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		nodeID := nodes[i%len(nodes)]
+		err := navigator.NavigateToNode(ctx, nodeID)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}

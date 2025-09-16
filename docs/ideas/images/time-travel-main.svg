@@ -1,0 +1,112 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#1a1b26"/>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="0" width="800" height="30" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <text x="20" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Jobs</text>
+  <text x="80" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Workers</text>
+  <text x="160" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">DLQ</text>
+  <rect x="210" y="5" width="100" height="20" fill="#414868" rx="2"/>
+  <text x="225" y="20" fill="#bb9af7" font-family="monospace" font-size="12" font-weight="bold">⏰ Time Travel</text>
+  <text x="330" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Settings</text>
+
+  <!-- Header -->
+  <rect x="0" y="30" width="800" height="40" fill="#24283b"/>
+  <text x="20" y="55" fill="#c0caf5" font-family="monospace" font-size="14" font-weight="bold">Time Travel Debugger - Job #12345</text>
+
+  <!-- Three Column Layout -->
+  <!-- Left: Event Timeline -->
+  <rect x="10" y="80" width="250" height="400" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="20" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Event Timeline</text>
+
+  <!-- Timeline entries -->
+  <rect x="15" y="110" width="240" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="127" fill="#9ece6a" font-family="monospace" font-size="11">00:00.000 ENQUEUED</text>
+
+  <rect x="15" y="140" width="240" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="157" fill="#7aa2f7" font-family="monospace" font-size="11">00:00.152 DEQUEUED</text>
+
+  <rect x="15" y="170" width="240" height="25" fill="#3b4261" rx="2"/>
+  <text x="20" y="187" fill="#e0af68" font-family="monospace" font-size="11">00:00.203 PROCESSING ◄</text>
+
+  <rect x="15" y="200" width="240" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="217" fill="#f7768e" font-family="monospace" font-size="11">00:01.847 ERROR</text>
+
+  <rect x="15" y="230" width="240" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="247" fill="#e0af68" font-family="monospace" font-size="11">00:02.000 RETRY_1</text>
+
+  <!-- Center: Current State -->
+  <rect x="270" y="80" width="250" height="400" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="280" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">State at 00:00.203</text>
+
+  <text x="280" y="130" fill="#9ece6a" font-family="monospace" font-size="11">Job:</text>
+  <rect x="275" y="140" width="240" height="80" fill="#24283b" rx="2"/>
+  <text x="280" y="155" fill="#c0caf5" font-family="monospace" font-size="10">
+    <tspan x="280" dy="0">{</tspan>
+    <tspan x="285" dy="12">  "id": "12345",</tspan>
+    <tspan x="285" dy="12">  "type": "process_payment",</tspan>
+    <tspan x="285" dy="12">  "amount": 99.99,</tspan>
+    <tspan x="285" dy="12">  "user_id": "usr_789"</tspan>
+    <tspan x="280" dy="12">}</tspan>
+  </text>
+
+  <text x="280" y="240" fill="#9ece6a" font-family="monospace" font-size="11">Worker:</text>
+  <rect x="275" y="250" width="240" height="50" fill="#24283b" rx="2"/>
+  <text x="280" y="265" fill="#c0caf5" font-family="monospace" font-size="10">
+    <tspan x="280" dy="0">ID: worker-1-prod</tspan>
+    <tspan x="280" dy="12">CPU: 45%</tspan>
+    <tspan x="280" dy="12">Memory: 128MB</tspan>
+  </text>
+
+  <!-- Right: Historical State / Diff -->
+  <rect x="530" y="80" width="250" height="400" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="540" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Previous State (00:00.152)</text>
+
+  <text x="540" y="130" fill="#9ece6a" font-family="monospace" font-size="11">Diff:</text>
+  <rect x="535" y="140" width="240" height="120" fill="#24283b" rx="2"/>
+  <text x="540" y="155" fill="#c0caf5" font-family="monospace" font-size="10">
+    <tspan x="540" dy="0" fill="#f7768e">- status: "queued"</tspan>
+    <tspan x="540" dy="12" fill="#9ece6a">+ status: "processing"</tspan>
+    <tspan x="540" dy="12" fill="#9ece6a">+ worker_id: "worker-1-prod"</tspan>
+    <tspan x="540" dy="12" fill="#9ece6a">+ started_at: "00:00.203"</tspan>
+    <tspan x="540" dy="24">  attempts: 0</tspan>
+    <tspan x="540" dy="12">  queue: "high_priority"</tspan>
+  </text>
+
+  <!-- Playback Controls -->
+  <rect x="10" y="490" width="770" height="80" fill="#24283b" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <!-- Timeline Scrubber -->
+  <rect x="20" y="500" width="750" height="30" fill="#1a1b26" rx="15"/>
+  <rect x="20" y="505" width="150" height="20" fill="#7aa2f7" rx="10"/>
+  <circle cx="170" cy="515" r="8" fill="#bb9af7"/>
+
+  <!-- Time markers -->
+  <text x="20" y="545" fill="#565f89" font-family="monospace" font-size="10">00:00.000</text>
+  <text x="370" y="545" fill="#565f89" font-family="monospace" font-size="10">00:01.000</text>
+  <text x="720" y="545" fill="#565f89" font-family="monospace" font-size="10">00:02.000</text>
+
+  <!-- Control Buttons -->
+  <rect x="20" y="540" width="30" height="20" fill="#414868" rx="2"/>
+  <text x="30" y="553" fill="#c0caf5" font-family="monospace" font-size="12">⏮</text>
+
+  <rect x="55" y="540" width="30" height="20" fill="#414868" rx="2"/>
+  <text x="65" y="553" fill="#c0caf5" font-family="monospace" font-size="12">◀</text>
+
+  <rect x="90" y="540" width="30" height="20" fill="#7aa2f7" rx="2"/>
+  <text x="100" y="553" fill="#1a1b26" font-family="monospace" font-size="12">▶</text>
+
+  <rect x="125" y="540" width="30" height="20" fill="#414868" rx="2"/>
+  <text x="135" y="553" fill="#c0caf5" font-family="monospace" font-size="12">▶</text>
+
+  <rect x="160" y="540" width="30" height="20" fill="#414868" rx="2"/>
+  <text x="170" y="553" fill="#c0caf5" font-family="monospace" font-size="12">⏭</text>
+
+  <!-- Speed Control -->
+  <text x="210" y="553" fill="#7aa2f7" font-family="monospace" font-size="11">Speed: 1x</text>
+
+  <!-- Export Button -->
+  <rect x="700" y="540" width="70" height="20" fill="#9ece6a" rx="2"/>
+  <text x="715" y="553" fill="#1a1b26" font-family="monospace" font-size="11">Export</text>
+</svg>

@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - admin-api-network
+
+  admin-api:
+    build:
+      context: ../..
+      dockerfile: deployments/admin-api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-development-secret-key}
+      - AUDIT_LOG_PATH=/var/log/admin-api/audit.log
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_PER_MINUTE=100
+      - CORS_ENABLED=true
+      - CORS_ALLOW_ORIGINS=http://localhost:3000,http://localhost:8080
+    volumes:
+      - ./configs:/root/configs:ro
+      - audit-logs:/var/log/admin-api
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - admin-api-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  audit-logs:
+
+networks:
+  admin-api-network:
+    driver: bridge

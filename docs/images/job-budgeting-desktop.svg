@@ -1,0 +1,206 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Title bar -->
+  <rect x="0" y="0" width="1200" height="40" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="25" fill="#f0f6fc" font-family="monospace" font-size="14">Job Budgeting & Cost Control</text>
+  <text x="1100" y="25" fill="#58a6ff" font-family="monospace" font-size="12">B - Budget</text>
+
+  <!-- Left Panel: Budget Overview -->
+  <rect x="10" y="50" width="380" height="740" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="25" y="75" fill="#f0f6fc" font-family="monospace" font-size="16">Budget Overview</text>
+
+  <!-- Current Month Budget -->
+  <rect x="25" y="90" width="350" height="120" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="35" y="110" fill="#f0f6fc" font-family="monospace" font-size="12">January 2024 - Total Budget</text>
+  <text x="35" y="130" fill="#39d353" font-family="monospace" font-size="20" font-weight="bold">$2,500.00</text>
+  <text x="35" y="150" fill="#8b949e" font-family="monospace" font-size="10">Spent: $1,847.32 (73.9%)</text>
+  <rect x="35" y="160" width="300" height="8" fill="#0d1117" rx="4"/>
+  <rect x="35" y="160" width="221" height="8" fill="#39d353" rx="4"/>
+  <text x="35" y="185" fill="#8b949e" font-family="monospace" font-size="10">Forecast: $2,284.50 (91.4%)</text>
+  <rect x="35" y="190" width="300" height="4" fill="#0d1117" rx="2"/>
+  <rect x="35" y="190" width="274" height="4" fill="#ffa657" rx="2"/>
+
+  <!-- Budget by Tenant -->
+  <text x="25" y="235" fill="#f0f6fc" font-family="monospace" font-size="14">Budget by Tenant</text>
+
+  <rect x="25" y="250" width="350" height="80" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="35" y="270" fill="#f0f6fc" font-family="monospace" font-size="11">prod-api</text>
+  <text x="320" y="270" fill="#39d353" font-family="monospace" font-size="11">$1,200</text>
+  <rect x="35" y="275" width="280" height="6" fill="#0d1117" rx="3"/>
+  <rect x="35" y="275" width="168" height="6" fill="#39d353" rx="3"/>
+  <text x="35" y="295" fill="#8b949e" font-family="monospace" font-size="9">Used: $840.50 (70.0%)</text>
+
+  <text x="35" y="315" fill="#f0f6fc" font-family="monospace" font-size="11">analytics</text>
+  <text x="320" y="315" fill="#39d353" font-family="monospace" font-size="11">$800</text>
+  <rect x="35" y="320" width="280" height="6" fill="#0d1117" rx="3"/>
+  <rect x="35" y="320" width="224" height="6" fill="#ffa657" rx="3"/>
+  <text x="35" y="340" fill="#8b949e" font-family="monospace" font-size="9">Used: $640.00 (80.0%)</text>
+
+  <!-- Cost Breakdown -->
+  <text x="25" y="365" fill="#f0f6fc" font-family="monospace" font-size="14">Cost Breakdown</text>
+
+  <rect x="25" y="380" width="350" height="140" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="35" y="400" fill="#f0f6fc" font-family="monospace" font-size="11">CPU Time</text>
+  <text x="320" y="400" fill="#f0f6fc" font-family="monospace" font-size="11">$1,124.80</text>
+  <rect x="35" y="405" width="280" height="4" fill="#58a6ff" rx="2"/>
+
+  <text x="35" y="425" fill="#f0f6fc" font-family="monospace" font-size="11">Memory Usage</text>
+  <text x="320" y="425" fill="#f0f6fc" font-family="monospace" font-size="11">$432.15</text>
+  <rect x="35" y="430" width="120" height="4" fill="#39d353" rx="2"/>
+
+  <text x="35" y="450" fill="#f0f6fc" font-family="monospace" font-size="11">Payload Size</text>
+  <text x="320" y="450" fill="#f0f6fc" font-family="monospace" font-size="11">$186.22</text>
+  <rect x="35" y="455" width="52" height="4" fill="#ffa657" rx="2"/>
+
+  <text x="35" y="475" fill="#f0f6fc" font-family="monospace" font-size="11">Redis Ops</text>
+  <text x="320" y="475" fill="#f0f6fc" font-family="monospace" font-size="11">$104.15</text>
+  <rect x="35" y="480" width="29" height="4" fill="#f85149" rx="2"/>
+
+  <!-- Alerts -->
+  <text x="25" y="545" fill="#f0f6fc" font-family="monospace" font-size="14">Alerts</text>
+
+  <rect x="25" y="560" width="350" height="60" fill="#1f2937" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="35" y="580" fill="#f85149" font-family="monospace" font-size="11">⚠ analytics tenant at 80% of budget</text>
+  <text x="35" y="600" fill="#8b949e" font-family="monospace" font-size="9">Threshold reached 2 hours ago</text>
+
+  <!-- Center Panel: Spend Chart -->
+  <rect x="400" y="50" width="480" height="370" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="415" y="75" fill="#f0f6fc" font-family="monospace" font-size="16">Daily Spend Trend</text>
+
+  <!-- Chart Area -->
+  <rect x="415" y="90" width="450" height="300" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Y-axis labels -->
+  <text x="425" y="110" fill="#8b949e" font-family="monospace" font-size="10">$200</text>
+  <text x="425" y="160" fill="#8b949e" font-family="monospace" font-size="10">$150</text>
+  <text x="425" y="210" fill="#8b949e" font-family="monospace" font-size="10">$100</text>
+  <text x="425" y="260" fill="#8b949e" font-family="monospace" font-size="10">$50</text>
+  <text x="435" y="310" fill="#8b949e" font-family="monospace" font-size="10">$0</text>
+
+  <!-- Grid lines -->
+  <line x1="455" y1="110" x2="845" y2="110" stroke="#30363d" stroke-width="1"/>
+  <line x1="455" y1="160" x2="845" y2="160" stroke="#30363d" stroke-width="1"/>
+  <line x1="455" y1="210" x2="845" y2="210" stroke="#30363d" stroke-width="1"/>
+  <line x1="455" y1="260" x2="845" y2="260" stroke="#30363d" stroke-width="1"/>
+  <line x1="455" y1="310" x2="845" y2="310" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Trend lines -->
+  <polyline points="455,280 485,260 515,240 545,220 575,200 605,185 635,170 665,165 695,160 725,155 755,150 785,148 815,146 845,145"
+           fill="none" stroke="#39d353" stroke-width="2"/>
+  <polyline points="455,290 485,275 515,265 545,250 575,235 605,225 635,215 665,210 695,205 725,200 755,195 785,192 815,190 845,188"
+           fill="none" stroke="#58a6ff" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Legend -->
+  <rect x="680" y="100" width="160" height="40" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <line x1="690" y1="115" x2="710" y2="115" stroke="#39d353" stroke-width="2"/>
+  <text x="715" y="120" fill="#f0f6fc" font-family="monospace" font-size="10">Actual Spend</text>
+  <line x1="690" y1="130" x2="710" y2="130" stroke="#58a6ff" stroke-width="2" stroke-dasharray="3,3"/>
+  <text x="715" y="135" fill="#f0f6fc" font-family="monospace" font-size="10">Budget</text>
+
+  <!-- Bottom Panel: Recent Jobs -->
+  <rect x="400" y="430" width="480" height="360" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="415" y="455" fill="#f0f6fc" font-family="monospace" font-size="16">Top Cost Drivers (Last 24h)</text>
+
+  <!-- Table Headers -->
+  <rect x="415" y="470" width="450" height="25" fill="#1f2937" stroke="#30363d" stroke-width="1"/>
+  <text x="425" y="485" fill="#f0f6fc" font-family="monospace" font-size="10">Job ID</text>
+  <text x="520" y="485" fill="#f0f6fc" font-family="monospace" font-size="10">Tenant</text>
+  <text x="600" y="485" fill="#f0f6fc" font-family="monospace" font-size="10">Queue</text>
+  <text x="720" y="485" fill="#f0f6fc" font-family="monospace" font-size="10">CPU</text>
+  <text x="780" y="485" fill="#f0f6fc" font-family="monospace" font-size="10">Cost</text>
+
+  <!-- Job rows -->
+  <rect x="415" y="495" width="450" height="20" fill="#0d1117"/>
+  <text x="425" y="508" fill="#58a6ff" font-family="monospace" font-size="9">job_12847</text>
+  <text x="520" y="508" fill="#f0f6fc" font-family="monospace" font-size="9">analytics</text>
+  <text x="600" y="508" fill="#f0f6fc" font-family="monospace" font-size="9">ml-training</text>
+  <text x="720" y="508" fill="#ffa657" font-family="monospace" font-size="9">2.4s</text>
+  <text x="780" y="508" fill="#f85149" font-family="monospace" font-size="9">$12.45</text>
+
+  <rect x="415" y="515" width="450" height="20" fill="#161b22"/>
+  <text x="425" y="528" fill="#58a6ff" font-family="monospace" font-size="9">job_12839</text>
+  <text x="520" y="528" fill="#f0f6fc" font-family="monospace" font-size="9">prod-api</text>
+  <text x="600" y="528" fill="#f0f6fc" font-family="monospace" font-size="9">image-proc</text>
+  <text x="720" y="528" fill="#ffa657" font-family="monospace" font-size="9">1.8s</text>
+  <text x="780" y="528" fill="#ffa657" font-family="monospace" font-size="9">$8.92</text>
+
+  <rect x="415" y="535" width="450" height="20" fill="#0d1117"/>
+  <text x="425" y="548" fill="#58a6ff" font-family="monospace" font-size="9">job_12821</text>
+  <text x="520" y="548" fill="#f0f6fc" font-family="monospace" font-size="9">analytics</text>
+  <text x="600" y="548" fill="#f0f6fc" font-family="monospace" font-size="9">etl-batch</text>
+  <text x="720" y="548" fill="#ffa657" font-family="monospace" font-size="9">1.2s</text>
+  <text x="780" y="548" fill="#ffa657" font-family="monospace" font-size="9">$6.78</text>
+
+  <!-- Right Panel: Controls -->
+  <rect x="890" y="50" width="300" height="740" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="905" y="75" fill="#f0f6fc" font-family="monospace" font-size="16">Budget Controls</text>
+
+  <!-- Enforcement Settings -->
+  <rect x="905" y="90" width="270" height="120" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="915" y="110" fill="#f0f6fc" font-family="monospace" font-size="12">Enforcement Ladder</text>
+
+  <text x="915" y="130" fill="#8b949e" font-family="monospace" font-size="10">Warning at: 75%</text>
+  <rect x="915" y="135" width="200" height="15" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <rect x="917" y="137" width="150" height="11" fill="#ffa657" rx="2"/>
+
+  <text x="915" y="165" fill="#8b949e" font-family="monospace" font-size="10">Throttle at: 90%</text>
+  <rect x="915" y="170" width="200" height="15" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <rect x="917" y="172" width="180" height="11" fill="#f85149" rx="2"/>
+
+  <text x="915" y="200" fill="#8b949e" font-family="monospace" font-size="10">Block at: 100%</text>
+
+  <!-- Budget Allocation -->
+  <text x="905" y="235" fill="#f0f6fc" font-family="monospace" font-size="14">Budget Allocation</text>
+
+  <rect x="905" y="250" width="270" height="200" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="915" y="270" fill="#f0f6fc" font-family="monospace" font-size="11">prod-api</text>
+  <rect x="915" y="280" width="180" height="20" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="920" y="293" fill="#f0f6fc" font-family="monospace" font-size="10">$1200</text>
+  <text x="1150" y="293" fill="#58a6ff" font-family="monospace" font-size="10">✎</text>
+
+  <text x="915" y="315" fill="#f0f6fc" font-family="monospace" font-size="11">analytics</text>
+  <rect x="915" y="325" width="180" height="20" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="920" y="338" fill="#f0f6fc" font-family="monospace" font-size="10">$800</text>
+  <text x="1150" y="338" fill="#58a6ff" font-family="monospace" font-size="10">✎</text>
+
+  <text x="915" y="360" fill="#f0f6fc" font-family="monospace" font-size="11">staging</text>
+  <rect x="915" y="370" width="180" height="20" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="920" y="383" fill="#f0f6fc" font-family="monospace" font-size="10">$300</text>
+  <text x="1150" y="383" fill="#58a6ff" font-family="monospace" font-size="10">✎</text>
+
+  <text x="915" y="405" fill="#f0f6fc" font-family="monospace" font-size="11">testing</text>
+  <rect x="915" y="415" width="180" height="20" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+  <text x="920" y="428" fill="#f0f6fc" font-family="monospace" font-size="10">$200</text>
+  <text x="1150" y="428" fill="#58a6ff" font-family="monospace" font-size="10">✎</text>
+
+  <!-- Actions -->
+  <rect x="905" y="470" width="270" height="80" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <rect x="915" y="485" width="120" height="25" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="955" y="501" fill="#f0f6fc" font-family="monospace" font-size="10">Save Changes</text>
+
+  <rect x="1045" y="485" width="120" height="25" fill="#30363d" stroke="#58a6ff" stroke-width="1" rx="4"/>
+  <text x="1080" y="501" fill="#58a6ff" font-family="monospace" font-size="10">Export Report</text>
+
+  <rect x="915" y="515" width="250" height="25" fill="#30363d" stroke="#ffa657" stroke-width="1" rx="4"/>
+  <text x="1015" y="531" fill="#ffa657" font-family="monospace" font-size="10">Reset All Budgets</text>
+
+  <!-- Forecast Panel -->
+  <text x="905" y="575" fill="#f0f6fc" font-family="monospace" font-size="14">Forecast</text>
+
+  <rect x="905" y="590" width="270" height="180" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="915" y="610" fill="#f0f6fc" font-family="monospace" font-size="11">Month End Projection</text>
+  <text x="915" y="630" fill="#ffa657" font-family="monospace" font-size="14">$2,284.50</text>
+  <text x="915" y="650" fill="#8b949e" font-family="monospace" font-size="9">(91.4% of budget)</text>
+
+  <text x="915" y="680" fill="#f0f6fc" font-family="monospace" font-size="11">Days Until Over Budget</text>
+  <text x="915" y="700" fill="#39d353" font-family="monospace" font-size="14">7 days</text>
+  <text x="915" y="720" fill="#8b949e" font-family="monospace" font-size="9">At current burn rate</text>
+
+  <text x="915" y="750" fill="#f0f6fc" font-family="monospace" font-size="11">Recommendations</text>
+  <text x="915" y="770" fill="#58a6ff" font-family="monospace" font-size="9">• Throttle analytics queue</text>
+
+  <!-- Keyboard shortcuts hint -->
+  <text x="20" y="785" fill="#8b949e" font-family="monospace" font-size="10">B - Budget | E - Enforce | F - Forecast | R - Report | ? - Help</text>
+</svg>

@@ -1,0 +1,1163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.example.com/schemas/dlq-remediation/v1",
+  "title": "DLQ Remediation Data Models",
+  "description": "JSON Schema definitions for Dead Letter Queue Remediation API data structures",
+  "type": "object",
+  "definitions": {
+    "DLQEntry": {
+      "title": "DLQ Entry",
+      "description": "A single entry in the Dead Letter Queue representing a failed job",
+      "type": "object",
+      "required": [
+        "id",
+        "job_id",
+        "queue_name",
+        "job_type",
+        "error_message",
+        "error_type",
+        "retry_count",
+        "failed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^dlq_[a-zA-Z0-9_-]+$",
+          "description": "Unique DLQ entry identifier",
+          "examples": ["dlq_12345", "dlq_abc123"]
+        },
+        "job_id": {
+          "type": "string",
+          "pattern": "^job_[a-zA-Z0-9_-]+$",
+          "description": "Original job identifier",
+          "examples": ["job_67890", "job_payment_123"]
+        },
+        "queue_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Source queue name",
+          "examples": ["payment_processing", "email_delivery", "image_processing"]
+        },
+        "job_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Job type or class name",
+          "examples": ["payment_charge", "send_email", "resize_image"]
+        },
+        "payload": {
+          "type": "object",
+          "description": "Original job payload (may be truncated for large payloads)",
+          "additionalProperties": true
+        },
+        "payload_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of the complete payload"
+        },
+        "payload_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the original payload in bytes"
+        },
+        "error_message": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Error message from failed execution",
+          "examples": [
+            "Connection timeout after 30s",
+            "Invalid email address format",
+            "Database constraint violation: duplicate key"
+          ]
+        },
+        "error_type": {
+          "type": "string",
+          "enum": [
+            "timeout",
+            "connection_error",
+            "validation_error",
+            "authorization_error",
+            "rate_limit_error",
+            "internal_error",
+            "external_service_error",
+            "data_error",
+            "configuration_error",
+            "resource_exhausted",
+            "unknown_error"
+          ],
+          "description": "Categorized error type"
+        },
+        "error_code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]+$",
+          "description": "Machine-readable error code",
+          "examples": ["TIMEOUT_001", "VALIDATION_EMAIL", "DB_CONSTRAINT_VIOLATION"]
+        },
+        "stack_trace": {
+          "type": "string",
+          "maxLength": 10000,
+          "description": "Error stack trace (if available)"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Number of retry attempts made"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum retry attempts configured for this job type"
+        },
+        "failed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when job failed (ISO 8601)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When entry was added to DLQ (ISO 8601)"
+        },
+        "enqueued_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When job was originally enqueued (ISO 8601)"
+        },
+        "first_attempted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When job was first attempted (ISO 8601)"
+        },
+        "metadata": {
+          "$ref": "#/definitions/JobMetadata"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "description": "Custom key-value tags for categorization",
+          "examples": [
+            {"priority": "high", "tenant": "customer_123"},
+            {"feature": "billing", "version": "v2.1.0"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JobMetadata": {
+      "title": "Job Metadata",
+      "description": "Additional metadata about job execution and environment",
+      "type": "object",
+      "properties": {
+        "worker_id": {
+          "type": "string",
+          "pattern": "^worker_[a-zA-Z0-9_-]+$",
+          "description": "Worker that processed the job",
+          "examples": ["worker_001", "worker_us-east-1-abc"]
+        },
+        "worker_version": {
+          "type": "string",
+          "description": "Version of the worker software",
+          "examples": ["v1.2.3", "2024.01.15-abc123"]
+        },
+        "trace_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]+$",
+          "description": "Distributed trace identifier",
+          "examples": ["trace_abc123", "550e8400-e29b-41d4-a716-446655440000"]
+        },
+        "span_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]+$",
+          "description": "Span identifier within trace",
+          "examples": ["span_def456", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"]
+        },
+        "execution_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000,
+          "description": "Job execution time before failure (milliseconds)"
+        },
+        "memory_usage_mb": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Peak memory usage during execution (MB)"
+        },
+        "cpu_usage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "CPU usage percentage during execution"
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production", "test"],
+          "description": "Execution environment"
+        },
+        "region": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Geographic region of execution",
+          "examples": ["us-east-1", "eu-west-1", "asia-pacific"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Application version",
+          "examples": ["v1.2.3", "2024.01.15-abc123"]
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Hostname of the worker machine",
+          "examples": ["worker-001.example.com", "ip-10-0-1-123"]
+        },
+        "container_id": {
+          "type": "string",
+          "description": "Container identifier (if running in containers)",
+          "examples": ["docker_abc123", "k8s_pod_xyz789"]
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Business correlation identifier",
+          "examples": ["order_12345", "user_session_abc123"]
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "ErrorPattern": {
+      "title": "Error Pattern",
+      "description": "An automatically detected pattern of similar errors",
+      "type": "object",
+      "required": [
+        "pattern_id",
+        "name",
+        "affected_count",
+        "percentage",
+        "confidence"
+      ],
+      "properties": {
+        "pattern_id": {
+          "type": "string",
+          "pattern": "^pattern_[a-zA-Z0-9_-]+$",
+          "description": "Unique pattern identifier",
+          "examples": ["pattern_timeout_cluster_1", "pattern_validation_email"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Human-readable pattern name",
+          "examples": ["Payment Timeout Cluster", "Email Validation Failures"]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Detailed pattern description",
+          "examples": [
+            "Database connection timeouts during high load periods",
+            "Invalid email format validation failures from signup form"
+          ]
+        },
+        "affected_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items matching this pattern"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of total DLQ items"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Pattern confidence score (0-1)"
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When pattern first appeared"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Most recent occurrence"
+        },
+        "match_criteria": {
+          "$ref": "#/definitions/PatternMatchCriteria"
+        },
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SuggestedAction"
+          },
+          "description": "Recommended remediation actions"
+        },
+        "affected_job_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Job types affected by this pattern"
+        },
+        "affected_queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Queues affected by this pattern"
+        },
+        "statistics": {
+          "$ref": "#/definitions/PatternStatistics"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternMatchCriteria": {
+      "title": "Pattern Match Criteria",
+      "description": "Criteria used to match items to this pattern",
+      "type": "object",
+      "properties": {
+        "error_message_regex": {
+          "type": "string",
+          "description": "Regular expression for matching error messages"
+        },
+        "error_type": {
+          "type": "string",
+          "description": "Specific error type to match"
+        },
+        "job_type_pattern": {
+          "type": "string",
+          "description": "Pattern for matching job types (supports wildcards)"
+        },
+        "time_clustering": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "string",
+              "pattern": "^[0-9]+[smhd]$",
+              "description": "Time window for clustering (e.g., '5m', '1h')"
+            },
+            "min_count": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum occurrences in window"
+            }
+          }
+        },
+        "metadata_filters": {
+          "type": "object",
+          "description": "Filters based on job metadata",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "payload_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "json_path": {
+                "type": "string",
+                "description": "JSONPath expression"
+              },
+              "expected_value": {
+                "description": "Expected value at path"
+              },
+              "condition": {
+                "type": "string",
+                "enum": ["equals", "contains", "regex", "exists", "not_exists"]
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PatternStatistics": {
+      "title": "Pattern Statistics",
+      "description": "Statistical information about the pattern",
+      "type": "object",
+      "properties": {
+        "total_occurrences": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total historical occurrences"
+        },
+        "occurrences_last_24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Occurrences in last 24 hours"
+        },
+        "average_per_hour": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average occurrences per hour"
+        },
+        "peak_hour": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Hour with most occurrences"
+        },
+        "success_rate_on_retry": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Historical success rate when retried"
+        },
+        "resolution_methods": {
+          "type": "object",
+          "description": "How this pattern has been resolved historically",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "success_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SuggestedAction": {
+      "title": "Suggested Action",
+      "description": "A recommended remediation action for a pattern",
+      "type": "object",
+      "required": [
+        "type",
+        "description",
+        "confidence"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "retry_with_backoff",
+            "retry_with_timeout_increase",
+            "retry_with_different_worker",
+            "purge",
+            "modify_payload",
+            "investigate",
+            "escalate",
+            "auto_resolve"
+          ],
+          "description": "Type of suggested action"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Human-readable action description"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Action confidence score (0-1)"
+        },
+        "estimated_success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Estimated success rate of this action"
+        },
+        "estimated_time_to_resolution": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "description": "Estimated time to resolve (e.g., '5m', '2h')"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Action-specific parameters",
+          "additionalProperties": true
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Prerequisites for this action"
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
+              }
+            }
+          },
+          "description": "Associated risks"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BulkOperation": {
+      "title": "Bulk Operation",
+      "description": "A bulk operation on multiple DLQ items",
+      "type": "object",
+      "required": [
+        "operation_id",
+        "operation_type",
+        "status",
+        "created_at",
+        "total_items"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-zA-Z0-9_-]+$",
+          "description": "Unique operation identifier"
+        },
+        "operation_type": {
+          "type": "string",
+          "enum": ["bulk_retry", "bulk_purge", "bulk_transform", "bulk_export"],
+          "description": "Type of bulk operation"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["queued", "running", "paused", "completed", "failed", "cancelled"],
+          "description": "Current operation status"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When operation was created"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When operation started execution"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When operation completed"
+        },
+        "total_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total items to process"
+        },
+        "processed_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Items processed so far"
+        },
+        "successful_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successfully processed items"
+        },
+        "failed_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed processing items"
+        },
+        "skipped_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Items skipped (e.g., already processed)"
+        },
+        "progress_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Completion percentage"
+        },
+        "estimated_time_remaining": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "description": "Estimated time to completion"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who initiated the operation"
+        },
+        "target_criteria": {
+          "$ref": "#/definitions/FilterCriteria"
+        },
+        "operation_options": {
+          "type": "object",
+          "description": "Operation-specific options",
+          "additionalProperties": true
+        },
+        "audit_trail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AuditLogEntry"
+          }
+        },
+        "error_summary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationError"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FilterCriteria": {
+      "title": "Filter Criteria",
+      "description": "Criteria for filtering DLQ items",
+      "type": "object",
+      "properties": {
+        "error_type": {
+          "type": "string",
+          "description": "Filter by error type"
+        },
+        "error_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by multiple error types"
+        },
+        "job_type": {
+          "type": "string",
+          "description": "Filter by job type (supports wildcards like 'payment_*')"
+        },
+        "job_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by multiple job types"
+        },
+        "queue_name": {
+          "type": "string",
+          "description": "Filter by queue name"
+        },
+        "queue_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by multiple queue names"
+        },
+        "failed_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by failure time (after this timestamp)"
+        },
+        "failed_before": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Filter by failure time (before this timestamp)"
+        },
+        "retry_count_min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum retry count"
+        },
+        "retry_count_max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum retry count"
+        },
+        "worker_id": {
+          "type": "string",
+          "description": "Filter by worker ID"
+        },
+        "worker_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by multiple worker IDs"
+        },
+        "has_trace": {
+          "type": "boolean",
+          "description": "Filter by presence of trace ID"
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production", "test"],
+          "description": "Filter by execution environment"
+        },
+        "payload_contains": {
+          "type": "string",
+          "description": "Search within payload (text search)"
+        },
+        "payload_json_path": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "JSONPath expression"
+            },
+            "value": {
+              "description": "Expected value"
+            },
+            "operator": {
+              "type": "string",
+              "enum": ["equals", "contains", "regex", "exists", "gt", "lt", "gte", "lte"]
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Filter by custom tags"
+        },
+        "pattern_id": {
+          "type": "string",
+          "description": "Filter by detected pattern"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Filter by correlation ID"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PayloadTransformation": {
+      "title": "Payload Transformation",
+      "description": "Instructions for transforming job payload",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["json_patch", "template", "custom", "field_mapping"],
+          "description": "Type of transformation"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JSONPatchOperation"
+          },
+          "description": "JSON Patch operations (when type=json_patch)"
+        },
+        "template_id": {
+          "type": "string",
+          "description": "Template identifier (when type=template)"
+        },
+        "template_parameters": {
+          "type": "object",
+          "description": "Parameters for template transformation",
+          "additionalProperties": true
+        },
+        "custom_script": {
+          "type": "string",
+          "description": "Custom transformation script (when type=custom)"
+        },
+        "field_mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_path": {
+                "type": "string",
+                "description": "JSONPath to source field"
+              },
+              "target_path": {
+                "type": "string",
+                "description": "JSONPath to target field"
+              },
+              "transformation": {
+                "type": "string",
+                "enum": ["copy", "move", "format", "calculate"]
+              },
+              "format_string": {
+                "type": "string",
+                "description": "Format string for transformation"
+              }
+            }
+          },
+          "description": "Field mapping instructions (when type=field_mapping)"
+        },
+        "validation_schema": {
+          "type": "object",
+          "description": "JSON schema to validate result against"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "JSONPatchOperation": {
+      "title": "JSON Patch Operation",
+      "description": "A single JSON Patch operation (RFC 6902)",
+      "type": "object",
+      "required": ["op", "path"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["add", "remove", "replace", "move", "copy", "test"],
+          "description": "JSON Patch operation type"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "JSON Pointer path (RFC 6901)"
+        },
+        "value": {
+          "description": "Value for add, replace, and test operations"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Source path for move and copy operations"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "AuditLogEntry": {
+      "title": "Audit Log Entry",
+      "description": "A single audit log entry for tracking operations",
+      "type": "object",
+      "required": [
+        "timestamp",
+        "action",
+        "user_id",
+        "status"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the action occurred"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "bulk_retry_initiated",
+            "bulk_retry_completed",
+            "bulk_purge_initiated",
+            "bulk_purge_completed",
+            "payload_transformed",
+            "item_retried",
+            "item_purged",
+            "filter_applied",
+            "export_initiated",
+            "operation_cancelled"
+          ],
+          "description": "Type of action performed"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "User who performed the action"
+        },
+        "user_ip": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "IP address of the user"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "failure", "partial"],
+          "description": "Result status of the action"
+        },
+        "affected_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of items affected by this action"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional details specific to the action",
+          "additionalProperties": true
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Request ID for correlation"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "User session ID"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "OperationError": {
+      "title": "Operation Error",
+      "description": "An error that occurred during a bulk operation",
+      "type": "object",
+      "required": [
+        "job_id",
+        "error_code",
+        "error_message",
+        "timestamp"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Job ID that caused the error"
+        },
+        "error_code": {
+          "type": "string",
+          "enum": [
+            "VALIDATION_FAILED",
+            "TRANSFORMATION_FAILED",
+            "RETRY_FAILED",
+            "PURGE_FAILED",
+            "TIMEOUT",
+            "RESOURCE_UNAVAILABLE",
+            "PERMISSION_DENIED",
+            "INVALID_STATE",
+            "EXTERNAL_SERVICE_ERROR"
+          ],
+          "description": "Standardized error code"
+        },
+        "error_message": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Human-readable error message"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the error occurred"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times this operation was retried"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details",
+          "additionalProperties": true
+        },
+        "stack_trace": {
+          "type": "string",
+          "description": "Error stack trace (if available)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ExportConfiguration": {
+      "title": "Export Configuration",
+      "description": "Configuration for exporting DLQ data",
+      "type": "object",
+      "required": ["format", "filter"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["csv", "json", "parquet", "xlsx", "xml"],
+          "description": "Export format"
+        },
+        "filter": {
+          "$ref": "#/definitions/FilterCriteria"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific fields to include (if not specified, includes all)"
+        },
+        "include_payload": {
+          "type": "boolean",
+          "description": "Include job payload in export",
+          "default": false
+        },
+        "include_metadata": {
+          "type": "boolean",
+          "description": "Include job metadata in export",
+          "default": true
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "gzip", "bzip2", "lz4"],
+          "description": "Compression algorithm",
+          "default": "gzip"
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Maximum items to export",
+          "default": 10000
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": ["failed_at", "created_at", "job_id", "error_type", "retry_count"],
+          "description": "Field to sort by",
+          "default": "failed_at"
+        },
+        "sort_order": {
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "description": "Sort order",
+          "default": "desc"
+        },
+        "filename_template": {
+          "type": "string",
+          "description": "Template for generated filename",
+          "default": "dlq_export_{timestamp}.{format}"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SecurityContext": {
+      "title": "Security Context",
+      "description": "Security context for API operations",
+      "type": "object",
+      "required": ["user_id", "roles"],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "Authenticated user identifier"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dlq_viewer",
+              "dlq_operator",
+              "dlq_admin",
+              "dlq_super_admin"
+            ]
+          },
+          "description": "User roles"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dlq:read",
+              "dlq:list",
+              "dlq:peek",
+              "dlq:retry",
+              "dlq:retry_single",
+              "dlq:bulk_retry",
+              "dlq:purge",
+              "dlq:bulk_purge",
+              "dlq:modify_payload",
+              "dlq:export_limited",
+              "dlq:export_full",
+              "dlq:audit_access",
+              "dlq:pattern_management"
+            ]
+          },
+          "description": "Specific permissions"
+        },
+        "constraints": {
+          "$ref": "#/definitions/SecurityConstraints"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SecurityConstraints": {
+      "title": "Security Constraints",
+      "description": "Security constraints applied to user operations",
+      "type": "object",
+      "properties": {
+        "queue_access": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed queues (empty means all)"
+        },
+        "job_type_access": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed job types (empty means all)"
+        },
+        "time_window_max": {
+          "type": "string",
+          "pattern": "^[0-9]+[smhd]$",
+          "description": "Maximum lookback time (e.g., '7d', '24h')"
+        },
+        "bulk_limits": {
+          "$ref": "#/definitions/BulkLimits"
+        },
+        "pii_access": {
+          "type": "boolean",
+          "description": "Can access PII fields",
+          "default": false
+        },
+        "export_limits": {
+          "type": "object",
+          "properties": {
+            "max_items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_frequency": {
+              "type": "string",
+              "pattern": "^[0-9]+/[smhd]$",
+              "description": "Max exports per time period (e.g., '5/h', '20/d')"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "BulkLimits": {
+      "title": "Bulk Operation Limits",
+      "description": "Limits applied to bulk operations",
+      "type": "object",
+      "properties": {
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum items per operation"
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent operations"
+        },
+        "rate_limit": {
+          "type": "string",
+          "pattern": "^[0-9]+/[smhd]$",
+          "description": "Rate limit (e.g., '10/h', '100/d')"
+        },
+        "require_confirmation": {
+          "type": "boolean",
+          "description": "Require explicit confirmation",
+          "default": true
+        },
+        "require_reason": {
+          "type": "boolean",
+          "description": "Require reason for audit trail",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

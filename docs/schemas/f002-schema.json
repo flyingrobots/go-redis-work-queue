@@ -1,0 +1,938 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/multi-cluster-control.json",
+  "title": "Multi-Cluster Control Data Models",
+  "description": "JSON Schema definitions for Multi-Cluster Redis Control system",
+  "definitions": {
+    "ClusterConfiguration": {
+      "$id": "#/definitions/ClusterConfiguration",
+      "type": "object",
+      "title": "Cluster Configuration",
+      "description": "Complete configuration for a Redis cluster connection",
+      "required": ["id", "name", "endpoints"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,63}$",
+          "description": "Unique cluster identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable cluster name"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "description": "Short label for UI display"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Hex color code for UI theming"
+        },
+        "endpoints": {
+          "$ref": "#/definitions/ClusterEndpoints"
+        },
+        "auth": {
+          "$ref": "#/definitions/AuthConfiguration"
+        },
+        "polling": {
+          "$ref": "#/definitions/PollingConfiguration"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,63}$"
+          },
+          "uniqueItems": true,
+          "description": "Tags for grouping and filtering"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional cluster metadata"
+        }
+      }
+    },
+    "ClusterEndpoints": {
+      "$id": "#/definitions/ClusterEndpoints",
+      "type": "object",
+      "title": "Cluster Endpoints",
+      "description": "Redis cluster connection endpoints",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^redis(s)?://",
+          "description": "Primary Redis endpoint URL"
+        },
+        "replicas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^redis(s)?://"
+          },
+          "uniqueItems": true,
+          "description": "Replica endpoint URLs"
+        },
+        "sentinels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^redis(s)?://"
+          },
+          "uniqueItems": true,
+          "description": "Sentinel endpoint URLs for HA setups"
+        }
+      }
+    },
+    "AuthConfiguration": {
+      "$id": "#/definitions/AuthConfiguration",
+      "type": "object",
+      "title": "Authentication Configuration",
+      "description": "Authentication settings for cluster connection",
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["none", "password", "tls", "acl"],
+          "description": "Authentication method"
+        },
+        "credentials": {
+          "type": "string",
+          "description": "Encrypted credentials blob"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username for ACL authentication"
+        },
+        "tlsConfig": {
+          "$ref": "#/definitions/TLSConfiguration"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "method": { "const": "password" } }
+          },
+          "then": {
+            "required": ["credentials"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "method": { "const": "tls" } }
+          },
+          "then": {
+            "required": ["tlsConfig"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "method": { "const": "acl" } }
+          },
+          "then": {
+            "required": ["username", "credentials"]
+          }
+        }
+      ]
+    },
+    "TLSConfiguration": {
+      "$id": "#/definitions/TLSConfiguration",
+      "type": "object",
+      "title": "TLS Configuration",
+      "description": "TLS/SSL configuration for secure connections",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "certFile": {
+          "type": "string",
+          "description": "Path to client certificate file"
+        },
+        "keyFile": {
+          "type": "string",
+          "description": "Path to client key file"
+        },
+        "caFile": {
+          "type": "string",
+          "description": "Path to CA certificate file"
+        },
+        "insecureSkipVerify": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip server certificate verification (dangerous)"
+        },
+        "serverName": {
+          "type": "string",
+          "description": "Expected server name for verification"
+        }
+      }
+    },
+    "PollingConfiguration": {
+      "$id": "#/definitions/PollingConfiguration",
+      "type": "object",
+      "title": "Polling Configuration",
+      "description": "Settings for metric polling and health checks",
+      "properties": {
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000,
+          "default": 5000,
+          "description": "Polling interval in milliseconds"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000,
+          "default": 2000,
+          "description": "Request timeout in milliseconds"
+        },
+        "jitterMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "default": 500,
+          "description": "Random jitter to prevent thundering herd"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3,
+          "description": "Number of retry attempts on failure"
+        },
+        "backoffMultiplier": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "default": 1.5,
+          "description": "Exponential backoff multiplier"
+        }
+      }
+    },
+    "ClusterMetrics": {
+      "$id": "#/definitions/ClusterMetrics",
+      "type": "object",
+      "title": "Cluster Metrics",
+      "description": "Runtime metrics for a Redis cluster",
+      "required": ["clusterId", "timestamp", "queues", "workers"],
+      "properties": {
+        "clusterId": {
+          "type": "string",
+          "description": "Reference to cluster configuration"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Metrics collection timestamp"
+        },
+        "queues": {
+          "$ref": "#/definitions/QueueMetrics"
+        },
+        "workers": {
+          "$ref": "#/definitions/WorkerMetrics"
+        },
+        "throughput": {
+          "$ref": "#/definitions/ThroughputMetrics"
+        },
+        "memory": {
+          "$ref": "#/definitions/MemoryMetrics"
+        },
+        "connections": {
+          "$ref": "#/definitions/ConnectionMetrics"
+        },
+        "errors": {
+          "$ref": "#/definitions/ErrorMetrics"
+        }
+      }
+    },
+    "QueueMetrics": {
+      "$id": "#/definitions/QueueMetrics",
+      "type": "object",
+      "title": "Queue Metrics",
+      "description": "Metrics related to job queues",
+      "required": ["total", "active", "delayed", "failed"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of jobs"
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Currently processing jobs"
+        },
+        "delayed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Scheduled/delayed jobs"
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed jobs in DLQ"
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successfully completed jobs"
+        },
+        "queueBreakdown": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "size": { "type": "integer", "minimum": 0 },
+              "rate": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "WorkerMetrics": {
+      "$id": "#/definitions/WorkerMetrics",
+      "type": "object",
+      "title": "Worker Metrics",
+      "description": "Metrics related to worker processes",
+      "required": ["total", "active", "idle"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total registered workers"
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Workers currently processing"
+        },
+        "idle": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Available workers"
+        },
+        "stalled": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Workers that appear stuck"
+        },
+        "avgProcessingTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average job processing time in ms"
+        }
+      }
+    },
+    "ThroughputMetrics": {
+      "$id": "#/definitions/ThroughputMetrics",
+      "type": "object",
+      "title": "Throughput Metrics",
+      "description": "Data throughput measurements",
+      "properties": {
+        "jobsPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Jobs processed per second"
+        },
+        "bytesPerSecond": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Data throughput in bytes/sec"
+        },
+        "avgLatency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average operation latency in ms"
+        },
+        "p95Latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "95th percentile latency in ms"
+        },
+        "p99Latency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "99th percentile latency in ms"
+        }
+      }
+    },
+    "MemoryMetrics": {
+      "$id": "#/definitions/MemoryMetrics",
+      "type": "object",
+      "title": "Memory Metrics",
+      "description": "Memory usage statistics",
+      "properties": {
+        "usedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current memory usage"
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum memory limit"
+        },
+        "fragmentationRatio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Memory fragmentation ratio"
+        },
+        "evictedKeys": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of evicted keys"
+        },
+        "hitRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Cache hit rate percentage"
+        }
+      }
+    },
+    "ConnectionMetrics": {
+      "$id": "#/definitions/ConnectionMetrics",
+      "type": "object",
+      "title": "Connection Metrics",
+      "description": "Network connection statistics",
+      "properties": {
+        "current": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current active connections"
+        },
+        "rejected": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rejected connection attempts"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total connections since start"
+        },
+        "maxClients": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum client limit"
+        }
+      }
+    },
+    "ErrorMetrics": {
+      "$id": "#/definitions/ErrorMetrics",
+      "type": "object",
+      "title": "Error Metrics",
+      "description": "Error and failure statistics",
+      "properties": {
+        "connectionErrors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "commandErrors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timeoutErrors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authErrors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorRate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Errors per second"
+        }
+      }
+    },
+    "ActionRequest": {
+      "$id": "#/definitions/ActionRequest",
+      "type": "object",
+      "title": "Action Request",
+      "description": "Request to execute an action on clusters",
+      "required": ["type", "targets", "confirmation"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["purge_dlq", "restart_workers", "flush_queue", "benchmark", "backup", "restore"],
+          "description": "Action type to execute"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Target cluster IDs"
+        },
+        "parameters": {
+          "$ref": "#/definitions/ActionParameters"
+        },
+        "confirmation": {
+          "$ref": "#/definitions/ActionConfirmation"
+        },
+        "options": {
+          "$ref": "#/definitions/ActionOptions"
+        }
+      }
+    },
+    "ActionParameters": {
+      "$id": "#/definitions/ActionParameters",
+      "type": "object",
+      "title": "Action Parameters",
+      "description": "Parameters for action execution",
+      "properties": {
+        "queuePattern": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9*?_-]+$",
+          "description": "Queue name pattern with wildcards"
+        },
+        "workerPattern": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9*?_-]+$",
+          "description": "Worker name pattern with wildcards"
+        },
+        "force": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force action without safety checks"
+        },
+        "dryRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Simulate action without execution"
+        },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 100,
+          "description": "Batch size for bulk operations"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 300000,
+          "description": "Action timeout in milliseconds"
+        }
+      }
+    },
+    "ActionConfirmation": {
+      "$id": "#/definitions/ActionConfirmation",
+      "type": "object",
+      "title": "Action Confirmation",
+      "description": "Confirmation details for dangerous actions",
+      "required": ["user", "timestamp"],
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "User initiating the action"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Confirmation timestamp"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 hash of action details"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Reason for executing action"
+        },
+        "approver": {
+          "type": "string",
+          "description": "Approver for two-person rule"
+        }
+      }
+    },
+    "ActionOptions": {
+      "$id": "#/definitions/ActionOptions",
+      "type": "object",
+      "title": "Action Options",
+      "description": "Execution options for actions",
+      "properties": {
+        "parallel": {
+          "type": "boolean",
+          "default": false,
+          "description": "Execute on all targets in parallel"
+        },
+        "stopOnError": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop execution on first error"
+        },
+        "retryOnFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Retry failed actions"
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        },
+        "notifyOnComplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send notification when complete"
+        }
+      }
+    },
+    "ActionResult": {
+      "$id": "#/definitions/ActionResult",
+      "type": "object",
+      "title": "Action Result",
+      "description": "Result of an executed action",
+      "required": ["actionId", "status", "startTime"],
+      "properties": {
+        "actionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique action execution ID"
+        },
+        "type": {
+          "type": "string",
+          "description": "Action type that was executed"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "cancelled", "partial"],
+          "description": "Overall action status"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Execution duration in milliseconds"
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Progress percentage"
+        },
+        "clusterResults": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ClusterActionResult"
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "successful": { "type": "integer" },
+            "failed": { "type": "integer" },
+            "skipped": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "ClusterActionResult": {
+      "$id": "#/definitions/ClusterActionResult",
+      "type": "object",
+      "title": "Cluster Action Result",
+      "description": "Result of action execution on a specific cluster",
+      "required": ["clusterId", "status"],
+      "properties": {
+        "clusterId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "failure", "skipped", "timeout"]
+        },
+        "message": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "affectedItems": {
+          "type": "integer",
+          "description": "Number of items affected"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "ComparisonRequest": {
+      "$id": "#/definitions/ComparisonRequest",
+      "type": "object",
+      "title": "Comparison Request",
+      "description": "Request to compare multiple clusters",
+      "required": ["clusterIds"],
+      "properties": {
+        "clusterIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9.]+$"
+          },
+          "description": "Specific metrics to compare"
+        },
+        "includeAnomalies": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include anomaly detection"
+        },
+        "thresholds": {
+          "$ref": "#/definitions/ComparisonThresholds"
+        }
+      }
+    },
+    "ComparisonThresholds": {
+      "$id": "#/definitions/ComparisonThresholds",
+      "type": "object",
+      "title": "Comparison Thresholds",
+      "description": "Thresholds for identifying significant differences",
+      "properties": {
+        "percentageDiff": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 10,
+          "description": "Percentage difference to flag"
+        },
+        "absoluteDiff": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Absolute difference to flag"
+        },
+        "standardDeviations": {
+          "type": "number",
+          "minimum": 0,
+          "default": 2,
+          "description": "Standard deviations for anomaly detection"
+        }
+      }
+    },
+    "ComparisonResult": {
+      "$id": "#/definitions/ComparisonResult",
+      "type": "object",
+      "title": "Comparison Result",
+      "description": "Result of cluster comparison",
+      "required": ["clusters", "timestamp", "differences"],
+      "properties": {
+        "clusters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "differences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetricDifference"
+          }
+        },
+        "anomalies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Anomaly"
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalDifferences": { "type": "integer" },
+            "criticalDifferences": { "type": "integer" },
+            "anomalyCount": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "MetricDifference": {
+      "$id": "#/definitions/MetricDifference",
+      "type": "object",
+      "title": "Metric Difference",
+      "description": "Difference in a metric across clusters",
+      "required": ["metric", "values", "severity"],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "description": "Metric path (e.g., 'queues.failed')"
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Metric values by cluster ID"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "critical"],
+          "description": "Severity of the difference"
+        },
+        "deltaPercent": {
+          "type": "number",
+          "description": "Maximum percentage difference"
+        },
+        "deltaAbsolute": {
+          "type": "number",
+          "description": "Maximum absolute difference"
+        },
+        "mean": {
+          "type": "number",
+          "description": "Mean value across clusters"
+        },
+        "stdDev": {
+          "type": "number",
+          "description": "Standard deviation"
+        }
+      }
+    },
+    "Anomaly": {
+      "$id": "#/definitions/Anomaly",
+      "type": "object",
+      "title": "Anomaly",
+      "description": "Detected anomaly in cluster metrics",
+      "required": ["cluster", "type", "severity"],
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "description": "Affected cluster ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "high_failure_rate",
+            "low_throughput",
+            "memory_pressure",
+            "connection_saturation",
+            "stalled_workers",
+            "queue_backlog"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "details": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "metric": {
+          "type": "string",
+          "description": "Related metric path"
+        },
+        "value": {
+          "type": "number",
+          "description": "Anomalous value"
+        },
+        "expected": {
+          "type": "number",
+          "description": "Expected value or range"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score"
+        }
+      }
+    },
+    "AuditEntry": {
+      "$id": "#/definitions/AuditEntry",
+      "type": "object",
+      "title": "Audit Entry",
+      "description": "Audit log entry for tracking actions",
+      "required": ["id", "timestamp", "user", "action", "result"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "user": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result": {
+          "type": "string",
+          "enum": ["success", "failure", "partial"]
+        },
+        "error": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Duration in milliseconds"
+        },
+        "ipAddress": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

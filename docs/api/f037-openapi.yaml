@@ -1,0 +1,870 @@
+openapi: 3.0.3
+info:
+  title: Right-Click Context Menus API
+  description: |
+    API specification for the right-click context menu system in the TUI application.
+    This API handles context menu registration, action management, and user interactions
+    for mouse and keyboard-driven contextual operations.
+  version: 1.0.0
+  contact:
+    name: TUI Development Team
+    email: dev@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: /api/v1/context-menu
+    description: Context Menu API endpoint
+
+paths:
+  /zones:
+    post:
+      summary: Register a new clickable zone
+      description: Register a rectangular area that can respond to right-click events
+      operationId: registerZone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneRegistration'
+      responses:
+        '201':
+          description: Zone registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneResponse'
+        '400':
+          description: Invalid zone configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Zone ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List all registered zones
+      description: Retrieve all currently registered clickable zones
+      operationId: listZones
+      parameters:
+        - name: context_type
+          in: query
+          description: Filter zones by context type
+          schema:
+            $ref: '#/components/schemas/ContextType'
+        - name: active_only
+          in: query
+          description: Only return active/enabled zones
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: List of registered zones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zones:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Zone'
+                  total:
+                    type: integer
+                    description: Total number of zones
+
+  /zones/{zone_id}:
+    get:
+      summary: Get zone details
+      description: Retrieve details for a specific zone
+      operationId: getZone
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          description: Unique zone identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Zone details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '404':
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update zone configuration
+      description: Update the bounds or context of an existing zone
+      operationId: updateZone
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          description: Unique zone identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneUpdate'
+      responses:
+        '200':
+          description: Zone updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Unregister zone
+      description: Remove a zone from the clickable areas
+      operationId: unregisterZone
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          description: Unique zone identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Zone removed successfully
+        '404':
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /actions:
+    post:
+      summary: Register a new context action
+      description: Register an action that can be performed from context menus
+      operationId: registerAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionRegistration'
+      responses:
+        '201':
+          description: Action registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          description: Invalid action configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Action ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List available actions
+      description: Retrieve all registered context actions
+      operationId: listActions
+      parameters:
+        - name: context_type
+          in: query
+          description: Filter actions by context type
+          schema:
+            $ref: '#/components/schemas/ContextType'
+        - name: permission
+          in: query
+          description: Filter actions by required permission
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of available actions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextAction'
+                  total:
+                    type: integer
+
+  /actions/{action_id}:
+    get:
+      summary: Get action details
+      description: Retrieve details for a specific action
+      operationId: getAction
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          description: Unique action identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextAction'
+        '404':
+          description: Action not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Unregister action
+      description: Remove an action from the registry
+      operationId: unregisterAction
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          description: Unique action identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Action removed successfully
+        '404':
+          description: Action not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /menu:
+    post:
+      summary: Show context menu
+      description: Display a context menu at the specified position with available actions
+      operationId: showMenu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShowMenuRequest'
+      responses:
+        '200':
+          description: Menu displayed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuResponse'
+        '400':
+          description: Invalid menu request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Hide active menu
+      description: Hide any currently displayed context menu
+      operationId: hideMenu
+      responses:
+        '204':
+          description: Menu hidden successfully
+
+  /menu/execute:
+    post:
+      summary: Execute menu action
+      description: Execute a selected action from the context menu
+      operationId: executeAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionExecutionRequest'
+      responses:
+        '200':
+          description: Action executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionExecutionResponse'
+        '400':
+          description: Invalid execution request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Action not permitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Action requires confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationRequired'
+
+  /menu/confirm:
+    post:
+      summary: Confirm destructive action
+      description: Provide confirmation for destructive actions
+      operationId: confirmAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmationRequest'
+      responses:
+        '200':
+          description: Action confirmed and executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionExecutionResponse'
+        '400':
+          description: Invalid confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '408':
+          description: Confirmation timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /input:
+    post:
+      summary: Handle input event
+      description: Process mouse click or keyboard input for context menu system
+      operationId: handleInput
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputEvent'
+      responses:
+        '200':
+          description: Input processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InputResponse'
+        '400':
+          description: Invalid input event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /permissions:
+    get:
+      summary: Get user permissions
+      description: Retrieve current user's permissions for context actions
+      operationId: getUserPermissions
+      responses:
+        '200':
+          description: User permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                  roles:
+                    type: array
+                    items:
+                      type: string
+
+components:
+  schemas:
+    ZoneRegistration:
+      type: object
+      required:
+        - id
+        - bounds
+        - context
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the zone
+          example: "queue_row_high_priority"
+        bounds:
+          $ref: '#/components/schemas/Rect'
+        context:
+          $ref: '#/components/schemas/MenuContext'
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the zone is active
+        priority:
+          type: integer
+          default: 0
+          description: Zone priority for overlapping areas
+
+    ZoneUpdate:
+      type: object
+      properties:
+        bounds:
+          $ref: '#/components/schemas/Rect'
+        context:
+          $ref: '#/components/schemas/MenuContext'
+        enabled:
+          type: boolean
+
+    Zone:
+      allOf:
+        - $ref: '#/components/schemas/ZoneRegistration'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            last_accessed:
+              type: string
+              format: date-time
+
+    ZoneResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [registered, updated]
+        message:
+          type: string
+
+    ActionRegistration:
+      type: object
+      required:
+        - id
+        - label
+        - contexts
+      properties:
+        id:
+          type: string
+          description: Unique action identifier
+          example: "queue.peek"
+        label:
+          type: string
+          description: Display label for the action
+          example: "Peek Queue"
+        description:
+          type: string
+          description: Detailed description of the action
+        icon:
+          type: string
+          description: Unicode icon or emoji
+          example: "👁"
+        accelerator:
+          type: string
+          description: Keyboard shortcut
+          example: "p"
+        contexts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContextType'
+          description: Contexts where this action is available
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Required permissions to execute this action
+        destructive:
+          type: boolean
+          default: false
+          description: Whether this action is destructive and requires confirmation
+        enabled:
+          type: boolean
+          default: true
+          description: Whether this action is currently enabled
+
+    ContextAction:
+      allOf:
+        - $ref: '#/components/schemas/ActionRegistration'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+            execution_count:
+              type: integer
+              description: Number of times this action has been executed
+
+    ActionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [registered, updated]
+        message:
+          type: string
+
+    MenuContext:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ContextType'
+        target_id:
+          type: string
+          description: ID of the target object (queue name, job ID, etc.)
+        data:
+          type: object
+          additionalProperties: true
+          description: Additional context data
+        position:
+          $ref: '#/components/schemas/Position'
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Available permissions in this context
+
+    ContextType:
+      type: string
+      enum:
+        - queue_row
+        - dlq_item
+        - worker_row
+        - job_item
+        - cluster_tab
+        - chart
+        - info_panel
+      description: Type of UI element that was right-clicked
+
+    ShowMenuRequest:
+      type: object
+      required:
+        - position
+        - context
+      properties:
+        position:
+          $ref: '#/components/schemas/Position'
+        context:
+          $ref: '#/components/schemas/MenuContext'
+        max_items:
+          type: integer
+          default: 20
+          description: Maximum number of menu items to display
+
+    MenuResponse:
+      type: object
+      properties:
+        menu_id:
+          type: string
+          description: Unique identifier for this menu instance
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+        position:
+          $ref: '#/components/schemas/Position'
+        context:
+          $ref: '#/components/schemas/MenuContext'
+
+    MenuItem:
+      type: object
+      required:
+        - id
+        - label
+      properties:
+        id:
+          type: string
+          description: Action ID or menu item identifier
+        label:
+          type: string
+          description: Display text for the menu item
+        icon:
+          type: string
+          description: Unicode icon or emoji
+        accelerator:
+          type: string
+          description: Keyboard shortcut display
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the item can be selected
+        destructive:
+          type: boolean
+          default: false
+          description: Whether this is a destructive action
+        separator:
+          type: boolean
+          default: false
+          description: Whether this is a separator line
+        submenu:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+          description: Submenu items (if any)
+        data:
+          type: object
+          additionalProperties: true
+          description: Additional data for the action
+
+    ActionExecutionRequest:
+      type: object
+      required:
+        - action_id
+        - context
+      properties:
+        action_id:
+          type: string
+          description: ID of the action to execute
+        context:
+          $ref: '#/components/schemas/MenuContext'
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Additional parameters for the action
+
+    ActionExecutionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the action executed successfully
+        message:
+          type: string
+          description: Human-readable result message
+        data:
+          type: object
+          additionalProperties: true
+          description: Action result data
+        duration_ms:
+          type: integer
+          description: Execution time in milliseconds
+
+    ConfirmationRequired:
+      type: object
+      properties:
+        confirmation_id:
+          type: string
+          description: Unique ID for this confirmation request
+        message:
+          type: string
+          description: Confirmation message to display
+        details:
+          type: string
+          description: Additional details about the action
+        timeout_seconds:
+          type: integer
+          description: How long the confirmation is valid
+        require_typing:
+          type: boolean
+          description: Whether user must type confirmation text
+        confirmation_text:
+          type: string
+          description: Text that must be typed (if require_typing is true)
+
+    ConfirmationRequest:
+      type: object
+      required:
+        - confirmation_id
+      properties:
+        confirmation_id:
+          type: string
+          description: ID from the confirmation requirement
+        confirmed:
+          type: boolean
+          description: Whether the user confirmed the action
+        typed_text:
+          type: string
+          description: Text typed by user (if required)
+
+    InputEvent:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/InputType'
+        position:
+          $ref: '#/components/schemas/Position'
+        key:
+          type: string
+          description: Key name for keyboard events
+        button:
+          type: integer
+          description: Mouse button number (1=left, 2=right, 3=middle)
+        modifiers:
+          type: array
+          items:
+            type: string
+            enum: [ctrl, alt, shift, meta]
+          description: Modifier keys pressed
+        timestamp:
+          type: string
+          format: date-time
+
+    InputType:
+      type: string
+      enum:
+        - mouse_click
+        - mouse_move
+        - key_press
+      description: Type of input event
+
+    InputResponse:
+      type: object
+      properties:
+        handled:
+          type: boolean
+          description: Whether the input was handled by the context menu system
+        action:
+          type: string
+          description: Action taken (if any)
+        zone_id:
+          type: string
+          description: Zone that handled the input (if any)
+
+    Position:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+          description: X coordinate in pixels
+          minimum: 0
+        y:
+          type: integer
+          description: Y coordinate in pixels
+          minimum: 0
+
+    Rect:
+      type: object
+      required:
+        - x
+        - y
+        - width
+        - height
+      properties:
+        x:
+          type: integer
+          description: Left edge X coordinate
+          minimum: 0
+        y:
+          type: integer
+          description: Top edge Y coordinate
+          minimum: 0
+        width:
+          type: integer
+          description: Rectangle width
+          minimum: 1
+        height:
+          type: integer
+          description: Rectangle height
+          minimum: 1
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_ZONE_BOUNDS"
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for user authentication
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+tags:
+  - name: zones
+    description: Zone management operations
+  - name: actions
+    description: Action registry operations
+  - name: menu
+    description: Context menu operations
+  - name: input
+    description: Input event handling
+  - name: permissions
+    description: Permission management

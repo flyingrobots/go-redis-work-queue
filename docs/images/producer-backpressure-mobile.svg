@@ -1,0 +1,98 @@
+<svg width="400" height="800" viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="10" y="10" width="380" height="50" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="40" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Backpressure Control</text>
+  <text x="320" y="40" fill="#58a6ff" font-family="monospace" font-size="10">Help</text>
+
+  <!-- Tab Navigation -->
+  <rect x="10" y="70" width="380" height="40" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <rect x="20" y="80" width="70" height="20" fill="#58a6ff" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="55" y="93" fill="#fff" font-family="monospace" font-size="9" text-anchor="middle">Status</text>
+  <rect x="100" y="80" width="70" height="20" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="135" y="93" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">Charts</text>
+  <rect x="180" y="80" width="70" height="20" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="215" y="93" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">Controls</text>
+  <rect x="260" y="80" width="70" height="20" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="295" y="93" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">Config</text>
+
+  <!-- Status Overview -->
+  <rect x="10" y="120" width="380" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="140" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">System Status</text>
+  <circle cx="30" cy="155" r="6" fill="#39d353"/>
+  <text x="45" y="160" fill="#39d353" font-family="monospace" font-size="10">3 active controllers</text>
+  <circle cx="200" cy="155" r="5" fill="#ffa657"/>
+  <text x="215" y="160" fill="#ffa657" font-family="monospace" font-size="10">1 throttling</text>
+  <text x="320" y="160" fill="#8b949e" font-family="monospace" font-size="9">2s ago</text>
+
+  <!-- Queue Cards Stack -->
+  <rect x="10" y="190" width="380" height="120" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="210" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Queue Health</text>
+
+  <!-- Payments Queue -->
+  <rect x="20" y="220" width="360" height="35" fill="#0d1117" stroke="#238636" stroke-width="1" rx="3"/>
+  <text x="30" y="235" fill="#f0f6fc" font-family="monospace" font-size="10">payments</text>
+  <circle cx="350" cy="237" r="6" fill="#39d353"/>
+  <text x="30" y="248" fill="#39d353" font-family="monospace" font-size="9">150 jobs | 45/min | No throttle</text>
+
+  <!-- Emails Queue -->
+  <rect x="20" y="260" width="360" height="35" fill="#0d1117" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="30" y="275" fill="#f0f6fc" font-family="monospace" font-size="10">emails</text>
+  <circle cx="350" cy="277" r="6" fill="#ffa657"/>
+  <text x="30" y="288" fill="#ffa657" font-family="monospace" font-size="9">2.1K jobs | 120/min | 750ms throttle</text>
+
+  <!-- Circuit Breaker Status -->
+  <rect x="10" y="320" width="380" height="100" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="340" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Circuit Breakers</text>
+
+  <rect x="20" y="350" width="150" height="25" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="95" y="367" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">payments: CLOSED</text>
+
+  <rect x="180" y="350" width="150" height="25" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="255" y="367" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">emails: CLOSED</text>
+
+  <rect x="20" y="380" width="150" height="25" fill="#bd4f36" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="95" y="397" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">reports: OPEN</text>
+
+  <!-- Throttle Chart -->
+  <rect x="10" y="430" width="380" height="140" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="450" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Throttle Timeline</text>
+
+  <!-- Mini chart -->
+  <rect x="20" y="460" width="360" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+
+  <!-- Chart lines -->
+  <polyline points="30,530 50,525 70,520 90,525 110,530 130,535 150,530 170,525 190,520 210,525 230,530 250,535 270,530 290,525 310,520 330,525 350,530 370,535"
+            fill="none" stroke="#39d353" stroke-width="2"/>
+  <polyline points="30,510 50,505 70,500 90,505 110,510 130,515 150,510 170,505 190,500 210,505 230,510 250,515 270,510 290,505 310,500 330,505 350,510 370,515"
+            fill="none" stroke="#ffa657" stroke-width="2"/>
+
+  <text x="20" y="555" fill="#39d353" font-family="monospace" font-size="9">■ payments (healthy)</text>
+  <text x="200" y="555" fill="#ffa657" font-family="monospace" font-size="9">■ emails (throttled)</text>
+
+  <!-- Backpressure Metrics -->
+  <rect x="10" y="580" width="380" height="100" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="600" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Producer Response</text>
+
+  <text x="20" y="620" fill="#8b949e" font-family="monospace" font-size="10">Throttle Compliance:</text>
+  <rect x="20" y="625" width="300" height="12" fill="#30363d" rx="6"/>
+  <rect x="20" y="625" width="240" height="12" fill="#39d353" rx="6"/>
+  <text x="330" y="635" fill="#39d353" font-family="monospace" font-size="10">80%</text>
+
+  <text x="20" y="655" fill="#8b949e" font-family="monospace" font-size="10">Shed Events (5min):</text>
+  <text x="20" y="670" fill="#f85149" font-family="monospace" font-size="10">reports: 47 jobs dropped</text>
+
+  <!-- Event Log -->
+  <rect x="10" y="690" width="380" height="100" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="20" y="710" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Recent Events</text>
+
+  <text x="20" y="730" fill="#ffa657" font-family="monospace" font-size="9">10:32 Throttle emails → 750ms delay</text>
+  <text x="20" y="745" fill="#f85149" font-family="monospace" font-size="9">10:28 Trip reports circuit breaker</text>
+  <text x="20" y="760" fill="#39d353" font-family="monospace" font-size="9">10:15 Recovery emails circuit</text>
+  <text x="20" y="775" fill="#58a6ff" font-family="monospace" font-size="9">10:12 Backpressure controller start</text>
+
+  <!-- Bottom Controls -->
+  <text x="20" y="795" fill="#8b949e" font-family="monospace" font-size="8">Swipe tabs • Tap for details • Hold for options</text>
+</svg>

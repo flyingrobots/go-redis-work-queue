@@ -1,0 +1,168 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="40" fill="#f0f6fc" font-size="18" font-family="Monaco, monospace">Go Redis Work Queue - Time Travel Debugger</text>
+
+  <!-- Tab bar -->
+  <rect x="20" y="70" width="1160" height="40" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <rect x="30" y="76" width="100" height="28" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="50" y="94" fill="#8b949e" font-size="12" font-family="Monaco, monospace">1: Jobs</text>
+  <rect x="140" y="76" width="120" height="28" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="160" y="94" fill="#8b949e" font-size="12" font-family="Monaco, monospace">2: Workers</text>
+  <rect x="270" y="76" width="100" height="28" fill="#1f2937" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="290" y="94" fill="#8b949e" font-size="12" font-family="Monaco, monospace">3: DLQ</text>
+  <rect x="380" y="76" width="140" height="28" fill="#58a6ff" stroke="#238636" stroke-width="2" rx="4"/>
+  <text x="400" y="94" fill="#f0f6fc" font-size="12" font-family="Monaco, monospace">4: Time Travel</text>
+
+  <!-- Main content area -->
+  <rect x="20" y="120" width="1160" height="660" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Left panel: Event Timeline -->
+  <rect x="30" y="130" width="290" height="640" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="40" y="155" fill="#f0f6fc" font-size="14" font-family="Monaco, monospace">Event Timeline</text>
+  <text x="40" y="175" fill="#8b949e" font-size="10" font-family="Monaco, monospace">Job ID: job_abc123</text>
+
+  <!-- Timeline events -->
+  <g>
+    <!-- ENQUEUED -->
+    <rect x="40" y="190" width="270" height="30" fill="#0d1117" stroke="#238636" stroke-width="1" rx="2"/>
+    <circle cx="50" cy="205" r="4" fill="#39d353"/>
+    <text x="60" y="200" fill="#39d353" font-size="10" font-family="Monaco, monospace">00:00:00.000</text>
+    <text x="60" y="212" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">ENQUEUED</text>
+
+    <!-- DEQUEUED -->
+    <rect x="40" y="225" width="270" height="30" fill="#0d1117" stroke="#58a6ff" stroke-width="1" rx="2"/>
+    <circle cx="50" cy="240" r="4" fill="#58a6ff"/>
+    <text x="60" y="235" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">00:00:05.123</text>
+    <text x="60" y="247" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">DEQUEUED</text>
+
+    <!-- PROCESSING -->
+    <rect x="40" y="260" width="270" height="30" fill="#0d1117" stroke="#58a6ff" stroke-width="1" rx="2"/>
+    <circle cx="50" cy="275" r="4" fill="#58a6ff"/>
+    <text x="60" y="270" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">00:00:05.234</text>
+    <text x="60" y="282" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">PROCESSING</text>
+
+    <!-- RETRY (highlighted as current) -->
+    <rect x="40" y="295" width="270" height="30" fill="#1f2937" stroke="#ffa657" stroke-width="2" rx="2"/>
+    <polygon points="35,310 40,305 40,315" fill="#ffa657"/>
+    <circle cx="50" cy="310" r="4" fill="#ffa657"/>
+    <text x="60" y="305" fill="#ffa657" font-size="10" font-family="Monaco, monospace">00:00:15.456</text>
+    <text x="60" y="317" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">RETRY (1/3)</text>
+
+    <!-- PROCESSING -->
+    <rect x="40" y="330" width="270" height="30" fill="#0d1117" stroke="#58a6ff" stroke-width="1" rx="2"/>
+    <circle cx="50" cy="345" r="4" fill="#58a6ff"/>
+    <text x="60" y="340" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">00:00:15.567</text>
+    <text x="60" y="352" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">PROCESSING</text>
+
+    <!-- COMPLETED -->
+    <rect x="40" y="365" width="270" height="30" fill="#0d1117" stroke="#238636" stroke-width="1" rx="2"/>
+    <circle cx="50" cy="380" r="4" fill="#39d353"/>
+    <text x="60" y="375" fill="#39d353" font-size="10" font-family="Monaco, monospace">00:00:18.789</text>
+    <text x="60" y="387" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">COMPLETED</text>
+  </g>
+
+  <!-- Center panel: Current State Viewer -->
+  <rect x="330" y="130" width="420" height="640" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="340" y="155" fill="#f0f6fc" font-size="14" font-family="Monaco, monospace">Current State @ 00:00:15.456</text>
+
+  <!-- State sections -->
+  <g>
+    <!-- Job State -->
+    <text x="340" y="180" fill="#58a6ff" font-size="12" font-family="Monaco, monospace">▼ Job State</text>
+    <rect x="345" y="190" width="395" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+    <text x="355" y="210" fill="#39d353" font-size="10" font-family="Monaco, monospace">"payload":</text>
+    <text x="415" y="210" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">{</text>
+    <text x="365" y="225" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">"user_id":</text>
+    <text x="425" y="225" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"user_12345",</text>
+    <text x="365" y="240" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">"action":</text>
+    <text x="415" y="240" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"send_welcome_email",</text>
+    <text x="365" y="255" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">"retry_count":</text>
+    <text x="445" y="255" fill="#79c0ff" font-size="10" font-family="Monaco, monospace">1,</text>
+    <text x="365" y="270" fill="#58a6ff" font-size="10" font-family="Monaco, monospace">"max_retries":</text>
+    <text x="445" y="270" fill="#79c0ff" font-size="10" font-family="Monaco, monospace">3</text>
+    <text x="355" y="285" fill="#f0f6fc" font-size="10" font-family="Monaco, monospace">}</text>
+    <text x="355" y="300" fill="#39d353" font-size="10" font-family="Monaco, monospace">"status":</text>
+    <text x="405" y="300" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"retrying"</text>
+
+    <!-- Worker State -->
+    <text x="340" y="330" fill="#58a6ff" font-size="12" font-family="Monaco, monospace">▼ Worker State</text>
+    <rect x="345" y="340" width="395" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+    <text x="355" y="360" fill="#39d353" font-size="10" font-family="Monaco, monospace">"worker_id":</text>
+    <text x="425" y="360" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"worker_003",</text>
+    <text x="355" y="375" fill="#39d353" font-size="10" font-family="Monaco, monospace">"health":</text>
+    <text x="405" y="375" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"healthy",</text>
+    <text x="355" y="390" fill="#39d353" font-size="10" font-family="Monaco, monospace">"last_heartbeat":</text>
+    <text x="465" y="390" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"2024-01-15T10:00:15Z",</text>
+    <text x="355" y="405" fill="#39d353" font-size="10" font-family="Monaco, monospace">"processing_time":</text>
+    <text x="465" y="405" fill="#79c0ff" font-size="10" font-family="Monaco, monospace">10.322</text>
+
+    <!-- Queue State -->
+    <text x="340" y="440" fill="#58a6ff" font-size="12" font-family="Monaco, monospace">▼ Queue State</text>
+    <rect x="345" y="450" width="395" height="60" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+    <text x="355" y="470" fill="#39d353" font-size="10" font-family="Monaco, monospace">"queue":</text>
+    <text x="405" y="470" fill="#ffa657" font-size="10" font-family="Monaco, monospace">"email_queue",</text>
+    <text x="355" y="485" fill="#39d353" font-size="10" font-family="Monaco, monospace">"length":</text>
+    <text x="405" y="485" fill="#79c0ff" font-size="10" font-family="Monaco, monospace">42,</text>
+    <text x="355" y="500" fill="#39d353" font-size="10" font-family="Monaco, monospace">"rate":</text>
+    <text x="395" y="500" fill="#79c0ff" font-size="10" font-family="Monaco, monospace">15.3</text>
+    <text x="435" y="500" fill="#8b949e" font-size="10" font-family="Monaco, monospace">jobs/sec</text>
+  </g>
+
+  <!-- Right panel: Diff View -->
+  <rect x="760" y="130" width="410" height="640" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="770" y="155" fill="#f0f6fc" font-size="14" font-family="Monaco, monospace">Diff vs Previous State</text>
+
+  <!-- Diff content -->
+  <g>
+    <rect x="770" y="170" width="390" height="400" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="2"/>
+
+    <!-- Added lines -->
+    <rect x="775" y="190" width="380" height="15" fill="#0d4429"/>
+    <text x="780" y="200" fill="#39d353" font-size="10" font-family="Monaco, monospace">+ "retry_count": 1,</text>
+
+    <!-- Removed lines -->
+    <rect x="775" y="210" width="380" height="15" fill="#67060c"/>
+    <text x="780" y="220" fill="#f85149" font-size="10" font-family="Monaco, monospace">- "retry_count": 0,</text>
+
+    <!-- Changed lines -->
+    <rect x="775" y="230" width="380" height="15" fill="#0d4429"/>
+    <text x="780" y="240" fill="#39d353" font-size="10" font-family="Monaco, monospace">+ "status": "retrying",</text>
+
+    <rect x="775" y="250" width="380" height="15" fill="#67060c"/>
+    <text x="780" y="260" fill="#f85149" font-size="10" font-family="Monaco, monospace">- "status": "processing",</text>
+
+    <!-- Context lines -->
+    <text x="780" y="285" fill="#8b949e" font-size="10" font-family="Monaco, monospace">  "user_id": "user_12345",</text>
+    <text x="780" y="300" fill="#8b949e" font-size="10" font-family="Monaco, monospace">  "action": "send_welcome_email",</text>
+    <text x="780" y="315" fill="#8b949e" font-size="10" font-family="Monaco, monospace">  "timestamp": "2024-01-15T10:00:00Z"</text>
+
+    <!-- Diff stats -->
+    <text x="770" y="600" fill="#39d353" font-size="10" font-family="Monaco, monospace">+2 additions</text>
+    <text x="770" y="615" fill="#f85149" font-size="10" font-family="Monaco, monospace">-2 deletions</text>
+    <text x="770" y="630" fill="#8b949e" font-size="10" font-family="Monaco, monospace">3 unchanged lines</text>
+  </g>
+
+  <!-- Playback controls bar -->
+  <rect x="20" y="780" width="1160" height="20" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Timeline scrubber -->
+  <rect x="40" y="785" width="600" height="10" fill="#30363d" rx="5"/>
+  <rect x="40" y="785" width="200" height="10" fill="#238636" rx="5"/>
+  <circle cx="240" cy="790" r="6" fill="#39d353"/>
+
+  <!-- Transport controls -->
+  <text x="660" y="795" fill="#f0f6fc" font-size="12" font-family="Monaco, monospace">⏮ ◀ ▶ ▶ ⏭</text>
+
+  <!-- Speed control -->
+  <text x="740" y="795" fill="#8b949e" font-size="10" font-family="Monaco, monospace">Speed: 1x</text>
+
+  <!-- Jump controls -->
+  <text x="820" y="795" fill="#8b949e" font-size="10" font-family="Monaco, monospace">Jump: [e]rror [r]etry [n]ext</text>
+
+  <!-- Time display -->
+  <text x="1050" y="795" fill="#58a6ff" font-size="12" font-family="Monaco, monospace">00:00:15.456 / 00:00:18.789</text>
+</svg>

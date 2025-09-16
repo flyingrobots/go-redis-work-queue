@@ -1,0 +1,1457 @@
+openapi: 3.0.3
+info:
+  title: Job Budgeting API
+  description: |
+    API for managing job cost tracking, budget allocation, and spend monitoring in the Redis Work Queue system.
+    This API provides endpoints for configuring cost models, setting budgets, monitoring spend, and receiving budget alerts.
+  version: 1.0.0
+  contact:
+    name: Redis Work Queue Team
+    email: support@workqueue.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.workqueue.com/v1
+    description: Production server
+
+paths:
+  /cost-models:
+    get:
+      summary: List cost models
+      description: Retrieve all configured cost models with their component weights and calibration data
+      tags:
+        - Cost Models
+      parameters:
+        - name: active
+          in: query
+          description: Filter by active status
+          required: false
+          schema:
+            type: boolean
+        - name: environment
+          in: query
+          description: Filter by environment
+          required: false
+          schema:
+            type: string
+            enum: [development, staging, production]
+      responses:
+        '200':
+          description: List of cost models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cost_models:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CostModel'
+                  count:
+                    type: integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create cost model
+      description: Create a new cost model with component weights and calibration settings
+      tags:
+        - Cost Models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCostModelRequest'
+      responses:
+        '201':
+          description: Cost model created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Cost model with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /cost-models/{id}:
+    get:
+      summary: Get cost model
+      description: Retrieve a specific cost model by ID
+      tags:
+        - Cost Models
+      parameters:
+        - $ref: '#/components/parameters/CostModelId'
+      responses:
+        '200':
+          description: Cost model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostModel'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update cost model
+      description: Update an existing cost model's weights and settings
+      tags:
+        - Cost Models
+      parameters:
+        - $ref: '#/components/parameters/CostModelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCostModelRequest'
+      responses:
+        '200':
+          description: Cost model updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete cost model
+      description: Delete a cost model (only if not in use by any budgets)
+      tags:
+        - Cost Models
+      parameters:
+        - $ref: '#/components/parameters/CostModelId'
+      responses:
+        '204':
+          description: Cost model deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cost model is in use and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /cost-models/{id}/calibrate:
+    post:
+      summary: Calibrate cost model
+      description: Run calibration benchmarks to optimize cost model weights
+      tags:
+        - Cost Models
+      parameters:
+        - $ref: '#/components/parameters/CostModelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalibrationRequest'
+      responses:
+        '200':
+          description: Calibration completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /budgets:
+    get:
+      summary: List budgets
+      description: Retrieve all configured budgets with current spend and status
+      tags:
+        - Budgets
+      parameters:
+        - name: tenant_id
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: queue
+          in: query
+          description: Filter by queue name
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by budget status
+          required: false
+          schema:
+            type: string
+            enum: [active, warning, limit_reached, disabled]
+        - name: period
+          in: query
+          description: Filter by period
+          required: false
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, quarterly, yearly]
+      responses:
+        '200':
+          description: List of budgets with current spend
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  budgets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BudgetWithSpend'
+                  count:
+                    type: integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create budget
+      description: Create a new budget for a tenant/queue with spending limits and alerts
+      tags:
+        - Budgets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBudgetRequest'
+      responses:
+        '201':
+          description: Budget created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Budget already exists for this tenant/queue combination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /budgets/{id}:
+    get:
+      summary: Get budget
+      description: Retrieve detailed budget information including current spend and forecast
+      tags:
+        - Budgets
+      parameters:
+        - $ref: '#/components/parameters/BudgetId'
+      responses:
+        '200':
+          description: Budget details with spend analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update budget
+      description: Update budget limits, thresholds, or enforcement settings
+      tags:
+        - Budgets
+      parameters:
+        - $ref: '#/components/parameters/BudgetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBudgetRequest'
+      responses:
+        '200':
+          description: Budget updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete budget
+      description: Delete a budget (this will disable all enforcement and alerts)
+      tags:
+        - Budgets
+      parameters:
+        - $ref: '#/components/parameters/BudgetId'
+      responses:
+        '204':
+          description: Budget deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /budgets/{id}/reset:
+    post:
+      summary: Reset budget
+      description: Reset budget spend counters and alerts for a new period
+      tags:
+        - Budgets
+      parameters:
+        - $ref: '#/components/parameters/BudgetId'
+      responses:
+        '200':
+          description: Budget reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /spend:
+    get:
+      summary: Get spend data
+      description: Retrieve spend data aggregated by various dimensions
+      tags:
+        - Spend Tracking
+      parameters:
+        - name: tenant_id
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: queue
+          in: query
+          description: Filter by queue name
+          required: false
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Start date for spend data (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End date for spend data (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: group_by
+          in: query
+          description: Group spend data by dimension
+          required: false
+          schema:
+            type: string
+            enum: [tenant, queue, day, hour, job_type]
+        - name: top_n
+          in: query
+          description: Limit to top N highest spenders
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Spend data aggregated by requested dimensions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /spend/forecast:
+    get:
+      summary: Get spend forecast
+      description: Generate spend forecasts based on historical data and trends
+      tags:
+        - Spend Tracking
+      parameters:
+        - name: tenant_id
+          in: query
+          description: Filter forecast by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: queue
+          in: query
+          description: Filter forecast by queue name
+          required: false
+          schema:
+            type: string
+        - name: horizon_days
+          in: query
+          description: Forecast horizon in days
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+        - name: confidence_level
+          in: query
+          description: Confidence level for forecast intervals
+          required: false
+          schema:
+            type: number
+            minimum: 0.5
+            maximum: 0.99
+            default: 0.95
+      responses:
+        '200':
+          description: Spend forecast with confidence intervals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendForecast'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /spend/top-drivers:
+    get:
+      summary: Get top cost drivers
+      description: Identify the highest cost contributors across different dimensions
+      tags:
+        - Spend Tracking
+      parameters:
+        - name: period
+          in: query
+          description: Time period for analysis
+          required: false
+          schema:
+            type: string
+            enum: [1h, 1d, 7d, 30d]
+            default: 7d
+        - name: dimension
+          in: query
+          description: Dimension to analyze
+          required: false
+          schema:
+            type: string
+            enum: [tenant, queue, job_type, processing_time, memory_usage]
+            default: tenant
+        - name: limit
+          in: query
+          description: Number of top drivers to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Top cost drivers analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopDrivers'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /alerts:
+    get:
+      summary: List budget alerts
+      description: Retrieve recent budget alerts and notifications
+      tags:
+        - Alerts
+      parameters:
+        - name: tenant_id
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: severity
+          in: query
+          description: Filter by alert severity
+          required: false
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - name: status
+          in: query
+          description: Filter by alert status
+          required: false
+          schema:
+            type: string
+            enum: [active, acknowledged, resolved]
+        - name: since
+          in: query
+          description: Get alerts since timestamp (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of budget alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  count:
+                    type: integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /alerts/{id}/acknowledge:
+    post:
+      summary: Acknowledge alert
+      description: Mark an alert as acknowledged by an operator
+      tags:
+        - Alerts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Alert ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert acknowledged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /enforcement/throttle:
+    post:
+      summary: Apply throttling
+      description: Manually apply throttling to specific tenants or queues
+      tags:
+        - Enforcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThrottleRequest'
+      responses:
+        '200':
+          description: Throttling applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThrottleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /enforcement/throttle/{id}:
+    delete:
+      summary: Remove throttling
+      description: Remove throttling rules for a tenant or queue
+      tags:
+        - Enforcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Throttle rule ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Throttling removed successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /reports/monthly:
+    get:
+      summary: Get monthly budget report
+      description: Generate comprehensive monthly budget and spend report
+      tags:
+        - Reports
+      parameters:
+        - name: month
+          in: query
+          description: Month in YYYY-MM format
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+        - name: tenant_id
+          in: query
+          description: Filter by tenant ID
+          required: false
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: Report format
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, pdf]
+            default: json
+      responses:
+        '200':
+          description: Monthly budget report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyReport'
+            text/csv:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    CostModelId:
+      name: id
+      in: path
+      required: true
+      description: Cost model ID
+      schema:
+        type: string
+
+    BudgetId:
+      name: id
+      in: path
+      required: true
+      description: Budget ID
+      schema:
+        type: string
+
+  schemas:
+    CostModel:
+      type: object
+      required:
+        - id
+        - name
+        - components
+        - created_at
+        - active
+      properties:
+        id:
+          type: string
+          description: Unique cost model identifier
+        name:
+          type: string
+          description: Human-readable cost model name
+        description:
+          type: string
+          description: Cost model description
+        components:
+          $ref: '#/components/schemas/CostComponents'
+        calibration:
+          $ref: '#/components/schemas/CalibrationSettings'
+        environment_multipliers:
+          type: object
+          additionalProperties:
+            type: number
+          description: Environment-specific cost multipliers
+        active:
+          type: boolean
+          description: Whether this cost model is active
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: string
+          description: Cost model version
+
+    CostComponents:
+      type: object
+      required:
+        - processing_time
+        - memory_usage
+        - payload_size
+        - redis_operations
+        - network_egress
+      properties:
+        processing_time:
+          type: object
+          properties:
+            weight:
+              type: number
+              minimum: 0
+            unit_cost:
+              type: number
+              minimum: 0
+            description:
+              type: string
+        memory_usage:
+          type: object
+          properties:
+            weight:
+              type: number
+              minimum: 0
+            unit_cost:
+              type: number
+              minimum: 0
+            description:
+              type: string
+        payload_size:
+          type: object
+          properties:
+            weight:
+              type: number
+              minimum: 0
+            unit_cost:
+              type: number
+              minimum: 0
+            description:
+              type: string
+        redis_operations:
+          type: object
+          properties:
+            weight:
+              type: number
+              minimum: 0
+            unit_cost:
+              type: number
+              minimum: 0
+            description:
+              type: string
+        network_egress:
+          type: object
+          properties:
+            weight:
+              type: number
+              minimum: 0
+            unit_cost:
+              type: number
+              minimum: 0
+            description:
+              type: string
+
+    CalibrationSettings:
+      type: object
+      properties:
+        auto_calibrate:
+          type: boolean
+          description: Enable automatic calibration
+        calibration_interval:
+          type: string
+          description: Calibration frequency (e.g., "24h", "7d")
+        benchmark_samples:
+          type: integer
+          minimum: 1
+          description: Number of benchmark samples to collect
+        target_accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Target calibration accuracy (0-1)
+        last_calibration:
+          type: string
+          format: date-time
+
+    CreateCostModelRequest:
+      type: object
+      required:
+        - name
+        - components
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        components:
+          $ref: '#/components/schemas/CostComponents'
+        calibration:
+          $ref: '#/components/schemas/CalibrationSettings'
+        environment_multipliers:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+
+    UpdateCostModelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        components:
+          $ref: '#/components/schemas/CostComponents'
+        calibration:
+          $ref: '#/components/schemas/CalibrationSettings'
+        environment_multipliers:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+        active:
+          type: boolean
+
+    CalibrationRequest:
+      type: object
+      properties:
+        benchmark_duration:
+          type: string
+          description: Duration to run benchmarks (e.g., "5m", "1h")
+          default: "5m"
+        sample_jobs:
+          type: array
+          items:
+            type: string
+          description: Specific job types to include in calibration
+
+    CalibrationResult:
+      type: object
+      properties:
+        calibration_id:
+          type: string
+        accuracy_improvement:
+          type: number
+          description: Improvement in accuracy percentage
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              component:
+                type: string
+              current_weight:
+                type: number
+              recommended_weight:
+                type: number
+              confidence:
+                type: number
+        benchmark_stats:
+          type: object
+          properties:
+            total_jobs:
+              type: integer
+            total_duration:
+              type: string
+            average_cost:
+              type: number
+
+    Budget:
+      type: object
+      required:
+        - id
+        - tenant_id
+        - period
+        - limit
+        - thresholds
+        - created_at
+        - active
+      properties:
+        id:
+          type: string
+          description: Unique budget identifier
+        tenant_id:
+          type: string
+          description: Tenant this budget applies to
+        queue:
+          type: string
+          description: Specific queue (optional, null for all queues)
+        period:
+          type: string
+          enum: [daily, weekly, monthly, quarterly, yearly]
+        limit:
+          type: number
+          minimum: 0
+          description: Budget limit in cost units
+        thresholds:
+          $ref: '#/components/schemas/BudgetThresholds'
+        enforcement:
+          $ref: '#/components/schemas/EnforcementSettings'
+        cost_model_id:
+          type: string
+          description: Cost model to use for this budget
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    BudgetThresholds:
+      type: object
+      required:
+        - warning_percent
+        - critical_percent
+      properties:
+        warning_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Warning threshold percentage
+        critical_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Critical threshold percentage
+        notification_channels:
+          type: array
+          items:
+            type: string
+          description: Channels to send notifications (email, slack, webhook)
+
+    EnforcementSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Enable budget enforcement
+        strategy:
+          type: string
+          enum: [warn_only, throttle, block]
+          description: Enforcement strategy when budget is exceeded
+        throttle_config:
+          type: object
+          properties:
+            reduction_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+            apply_to_priority:
+              type: string
+              enum: [all, low, medium]
+        grace_period:
+          type: string
+          description: Grace period before enforcement kicks in
+        exemptions:
+          type: array
+          items:
+            type: string
+          description: Job types exempt from enforcement
+
+    BudgetWithSpend:
+      allOf:
+        - $ref: '#/components/schemas/Budget'
+        - type: object
+          properties:
+            current_spend:
+              type: number
+              description: Current period spend
+            spend_percentage:
+              type: number
+              description: Spend as percentage of budget
+            status:
+              type: string
+              enum: [active, warning, critical, exceeded]
+            forecast:
+              type: number
+              description: Forecasted end-of-period spend
+            days_remaining:
+              type: integer
+              description: Days remaining in current period
+
+    BudgetDetails:
+      allOf:
+        - $ref: '#/components/schemas/BudgetWithSpend'
+        - type: object
+          properties:
+            spend_breakdown:
+              $ref: '#/components/schemas/SpendBreakdown'
+            recent_alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Alert'
+            enforcement_actions:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnforcementAction'
+
+    CreateBudgetRequest:
+      type: object
+      required:
+        - tenant_id
+        - period
+        - limit
+        - thresholds
+      properties:
+        tenant_id:
+          type: string
+          minLength: 1
+        queue:
+          type: string
+        period:
+          type: string
+          enum: [daily, weekly, monthly, quarterly, yearly]
+        limit:
+          type: number
+          minimum: 0
+        thresholds:
+          $ref: '#/components/schemas/BudgetThresholds'
+        enforcement:
+          $ref: '#/components/schemas/EnforcementSettings'
+        cost_model_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateBudgetRequest:
+      type: object
+      properties:
+        limit:
+          type: number
+          minimum: 0
+        thresholds:
+          $ref: '#/components/schemas/BudgetThresholds'
+        enforcement:
+          $ref: '#/components/schemas/EnforcementSettings'
+        active:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+
+    SpendData:
+      type: object
+      properties:
+        total_spend:
+          type: number
+        period:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              dimension:
+                type: string
+              value:
+                type: string
+              spend:
+                type: number
+              percentage:
+                type: number
+        time_series:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              spend:
+                type: number
+              job_count:
+                type: integer
+
+    SpendBreakdown:
+      type: object
+      properties:
+        by_component:
+          type: object
+          additionalProperties:
+            type: number
+        by_queue:
+          type: object
+          additionalProperties:
+            type: number
+        by_job_type:
+          type: object
+          additionalProperties:
+            type: number
+        by_day:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              spend:
+                type: number
+
+    SpendForecast:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        current_spend:
+          type: number
+        forecast:
+          type: number
+        confidence_interval:
+          type: object
+          properties:
+            lower:
+              type: number
+            upper:
+              type: number
+            confidence_level:
+              type: number
+        trend:
+          type: string
+          enum: [increasing, decreasing, stable]
+        daily_forecasts:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              forecast:
+                type: number
+              lower_bound:
+                type: number
+              upper_bound:
+                type: number
+
+    TopDrivers:
+      type: object
+      properties:
+        period:
+          type: string
+        total_spend:
+          type: number
+        drivers:
+          type: array
+          items:
+            type: object
+            properties:
+              rank:
+                type: integer
+              dimension:
+                type: string
+              value:
+                type: string
+              spend:
+                type: number
+              percentage:
+                type: number
+              trend:
+                type: string
+                enum: [up, down, stable]
+              change_percentage:
+                type: number
+
+    Alert:
+      type: object
+      required:
+        - id
+        - type
+        - severity
+        - message
+        - timestamp
+        - status
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [budget_warning, budget_critical, budget_exceeded, enforcement_applied]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        tenant_id:
+          type: string
+        budget_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+        acknowledged_by:
+          type: string
+        acknowledged_at:
+          type: string
+          format: date-time
+
+    EnforcementAction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [throttle_applied, throttle_removed, jobs_blocked]
+        tenant_id:
+          type: string
+        queue:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        duration:
+          type: string
+        impact:
+          type: object
+          properties:
+            jobs_affected:
+              type: integer
+            throughput_reduction:
+              type: number
+
+    ThrottleRequest:
+      type: object
+      required:
+        - tenant_id
+        - reduction_percent
+      properties:
+        tenant_id:
+          type: string
+        queue:
+          type: string
+        reduction_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        duration:
+          type: string
+          description: Duration to apply throttling (e.g., "1h", "24h")
+        reason:
+          type: string
+        apply_to_priority:
+          type: string
+          enum: [all, low, medium]
+
+    ThrottleResponse:
+      type: object
+      properties:
+        throttle_id:
+          type: string
+        applied_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        current_reduction:
+          type: number
+        affected_queues:
+          type: array
+          items:
+            type: string
+
+    MonthlyReport:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            year:
+              type: integer
+            month:
+              type: integer
+        summary:
+          type: object
+          properties:
+            total_spend:
+              type: number
+            total_budget:
+              type: number
+            utilization_percentage:
+              type: number
+            total_jobs:
+              type: integer
+        tenant_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              tenant_id:
+                type: string
+              spend:
+                type: number
+              budget:
+                type: number
+              utilization:
+                type: number
+              alerts_count:
+                type: integer
+        cost_trends:
+          type: object
+          properties:
+            month_over_month:
+              type: number
+            year_over_year:
+              type: number
+        top_cost_drivers:
+          $ref: '#/components/schemas/TopDrivers'
+        budget_performance:
+          type: array
+          items:
+            type: object
+            properties:
+              budget_id:
+                type: string
+              tenant_id:
+                type: string
+              target:
+                type: number
+              actual:
+                type: number
+              variance:
+                type: number
+
+    Error:
+      type: object
+      required:
+        - error
+        - status
+      properties:
+        error:
+          type: string
+          description: Error message
+        status:
+          type: integer
+          description: HTTP status code
+        details:
+          type: string
+          description: Detailed error information
+        request_id:
+          type: string
+          description: Request ID for tracking
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Cost Models
+    description: Configure and manage cost calculation models
+  - name: Budgets
+    description: Set and manage spending budgets
+  - name: Spend Tracking
+    description: Monitor and analyze spending patterns
+  - name: Alerts
+    description: Budget alerts and notifications
+  - name: Enforcement
+    description: Budget enforcement and throttling
+  - name: Reports
+    description: Budget and spend reporting

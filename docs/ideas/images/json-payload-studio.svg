@@ -1,0 +1,208 @@
+<svg viewBox="0 0 900 700" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="900" height="700" fill="#1a1b26"/>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="0" width="900" height="30" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <rect x="5" y="5" width="65" height="20" fill="#414868" rx="2"/>
+  <text x="15" y="20" fill="#9ece6a" font-family="monospace" font-size="12" font-weight="bold">✏️ Studio</text>
+  <text x="85" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Jobs</text>
+  <text x="140" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Workers</text>
+  <text x="210" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">DLQ</text>
+  <text x="260" y="20" fill="#7aa2f7" font-family="monospace" font-size="12">Settings</text>
+
+  <!-- Header -->
+  <rect x="0" y="30" width="900" height="40" fill="#24283b"/>
+  <text x="20" y="55" fill="#c0caf5" font-family="monospace" font-size="14" font-weight="bold">JSON Payload Studio</text>
+  <text x="750" y="55" fill="#565f89" font-family="monospace" font-size="11">127 jobs/min</text>
+
+  <!-- Main Layout: Three columns -->
+
+  <!-- Left: Template Browser (20%) -->
+  <rect x="10" y="80" width="170" height="570" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="20" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Templates</text>
+
+  <!-- Search box -->
+  <rect x="15" y="110" width="160" height="25" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="20" y="127" fill="#565f89" font-family="monospace" font-size="10">🔍 Filter...</text>
+
+  <!-- Template list -->
+  <rect x="15" y="145" width="160" height="25" fill="#3b4261" rx="2"/>
+  <text x="20" y="162" fill="#9ece6a" font-family="monospace" font-size="10">▶ user_signup</text>
+
+  <rect x="15" y="175" width="160" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="192" fill="#c0caf5" font-family="monospace" font-size="10">  payment_process</text>
+
+  <rect x="15" y="205" width="160" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="222" fill="#c0caf5" font-family="monospace" font-size="10">  email_send</text>
+
+  <rect x="15" y="235" width="160" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="252" fill="#c0caf5" font-family="monospace" font-size="10">  report_generate</text>
+
+  <rect x="15" y="265" width="160" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="282" fill="#c0caf5" font-family="monospace" font-size="10">  batch_import</text>
+
+  <!-- Recent section -->
+  <text x="20" y="320" fill="#565f89" font-family="monospace" font-size="10">Recent</text>
+  <line x1="15" y1="325" x2="175" y2="325" stroke="#414868" stroke-width="1"/>
+
+  <rect x="15" y="335" width="160" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="20" y="352" fill="#565f89" font-family="monospace" font-size="10">  job_12345 (2m ago)</text>
+
+  <!-- Center: JSON Editor (55%) -->
+  <rect x="190" y="80" width="490" height="450" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <!-- Editor header -->
+  <rect x="190" y="80" width="490" height="30" fill="#24283b" rx="4 4 0 0"/>
+  <text x="200" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Editor</text>
+  <text x="550" y="100" fill="#9ece6a" font-family="monospace" font-size="10">✓ Valid JSON</text>
+  <text x="630" y="100" fill="#565f89" font-family="monospace" font-size="10">user_signup.json</text>
+
+  <!-- Line numbers -->
+  <rect x="190" y="110" width="30" height="420" fill="#24283b"/>
+  <text x="195" y="130" fill="#565f89" font-family="monospace" font-size="10">
+    <tspan x="195" dy="0">1</tspan>
+    <tspan x="195" dy="14">2</tspan>
+    <tspan x="195" dy="14">3</tspan>
+    <tspan x="195" dy="14">4</tspan>
+    <tspan x="195" dy="14">5</tspan>
+    <tspan x="195" dy="14">6</tspan>
+    <tspan x="195" dy="14">7</tspan>
+    <tspan x="195" dy="14">8</tspan>
+    <tspan x="195" dy="14">9</tspan>
+    <tspan x="195" dy="14">10</tspan>
+    <tspan x="195" dy="14">11</tspan>
+    <tspan x="195" dy="14">12</tspan>
+    <tspan x="195" dy="14">13</tspan>
+    <tspan x="195" dy="14">14</tspan>
+    <tspan x="195" dy="14">15</tspan>
+  </text>
+
+  <!-- JSON content with syntax highlighting -->
+  <text x="230" y="130" font-family="monospace" font-size="11">
+    <tspan x="230" dy="0" fill="#c0caf5">{</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "type"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"user_signup"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "user"</tspan><tspan fill="#c0caf5">: {</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">    "email"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"alice@example.com"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">    "name"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"Alice Smith"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">    "plan"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"premium"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">    "referral_code"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#bb9af7">null</tspan>
+    <tspan x="230" dy="14" fill="#c0caf5">  },</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "timestamp"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"{{now()}}"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "request_id"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"{{uuid()}}"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "priority"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#ff9e64">5</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "retry_count"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#ff9e64">3</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "webhook_url"</tspan><tspan fill="#c0caf5">: </tspan><tspan fill="#9ece6a">"https://api.example.com/webhook"</tspan><tspan fill="#c0caf5">,</tspan>
+    <tspan x="230" dy="14" fill="#7aa2f7">  "metadata"</tspan><tspan fill="#c0caf5">: {}</tspan>
+    <tspan x="230" dy="14" fill="#c0caf5">}</tspan>
+  </text>
+
+  <!-- Cursor blink animation -->
+  <rect x="468" y="158" width="8" height="14" fill="#7aa2f7" opacity="0.7">
+    <animate attributeName="opacity" values="0.7;0;0.7" dur="1s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Error indicator (hidden when valid) -->
+  <!-- <rect x="195" y="240" width="480" height="20" fill="#3d2c2c" rx="2" opacity="0.8"/>
+  <text x="200" y="253" fill="#f7768e" font-family="monospace" font-size="10">⚠ Line 9: Unexpected token ','</text> -->
+
+  <!-- Enqueue Options Panel (bottom of editor) -->
+  <rect x="190" y="540" width="490" height="110" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+  <text x="200" y="560" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Enqueue Options</text>
+
+  <!-- Queue selector -->
+  <text x="200" y="580" fill="#c0caf5" font-family="monospace" font-size="10">Queue:</text>
+  <rect x="240" y="568" width="120" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="245" y="582" fill="#9ece6a" font-family="monospace" font-size="10">high_priority ▼</text>
+
+  <!-- Count -->
+  <text x="380" y="580" fill="#c0caf5" font-family="monospace" font-size="10">Count:</text>
+  <rect x="420" y="568" width="60" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="425" y="582" fill="#c0caf5" font-family="monospace" font-size="10">1</text>
+
+  <!-- Schedule -->
+  <text x="500" y="580" fill="#c0caf5" font-family="monospace" font-size="10">Schedule:</text>
+  <rect x="560" y="568" width="110" height="20" fill="#24283b" stroke="#414868" stroke-width="1" rx="2"/>
+  <text x="565" y="582" fill="#565f89" font-family="monospace" font-size="10">immediate</text>
+
+  <!-- Action buttons -->
+  <rect x="200" y="600" width="80" height="30" fill="#3b4261" stroke="#7aa2f7" stroke-width="1" rx="3"/>
+  <text x="225" y="619" fill="#7aa2f7" font-family="monospace" font-size="11" font-weight="bold">Validate</text>
+
+  <rect x="290" y="600" width="80" height="30" fill="#3b4261" stroke="#9ece6a" stroke-width="1" rx="3"/>
+  <text x="310" y="619" fill="#9ece6a" font-family="monospace" font-size="11" font-weight="bold">Test Run</text>
+
+  <rect x="380" y="600" width="80" height="30" fill="#283745" stroke="#9ece6a" stroke-width="2" rx="3"/>
+  <text x="400" y="619" fill="#9ece6a" font-family="monospace" font-size="11" font-weight="bold">Enqueue</text>
+
+  <rect x="470" y="600" width="100" height="30" fill="#3b4261" stroke="#bb9af7" stroke-width="1" rx="3"/>
+  <text x="485" y="619" fill="#bb9af7" font-family="monospace" font-size="11" font-weight="bold">Schedule...</text>
+
+  <rect x="580" y="600" width="90" height="30" fill="#3b4261" stroke="#565f89" stroke-width="1" rx="3"/>
+  <text x="600" y="619" fill="#565f89" font-family="monospace" font-size="11">Save Draft</text>
+
+  <!-- Right: Helpers Panel (25%) -->
+  <rect x="690" y="80" width="200" height="570" fill="#1a1b26" stroke="#414868" stroke-width="1" rx="4"/>
+
+  <!-- Schema Validation -->
+  <text x="700" y="100" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Schema</text>
+  <rect x="695" y="110" width="190" height="120" fill="#24283b" rx="2"/>
+  <text x="700" y="125" fill="#9ece6a" font-family="monospace" font-size="9">✓ type: string (required)</text>
+  <text x="700" y="140" fill="#9ece6a" font-family="monospace" font-size="9">✓ user: object (required)</text>
+  <text x="700" y="155" fill="#9ece6a" font-family="monospace" font-size="9">  ✓ email: string</text>
+  <text x="700" y="170" fill="#9ece6a" font-family="monospace" font-size="9">  ✓ name: string</text>
+  <text x="700" y="185" fill="#9ece6a" font-family="monospace" font-size="9">  ✓ plan: enum[free,pro,premium]</text>
+  <text x="700" y="200" fill="#9ece6a" font-family="monospace" font-size="9">✓ timestamp: string (ISO 8601)</text>
+  <text x="700" y="215" fill="#9ece6a" font-family="monospace" font-size="9">✓ priority: number (1-10)</text>
+
+  <!-- Snippets -->
+  <text x="700" y="250" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Snippets</text>
+  <rect x="695" y="260" width="190" height="150" fill="#24283b" rx="2"/>
+
+  <rect x="700" y="265" width="180" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="278" fill="#bb9af7" font-family="monospace" font-size="9">{{now()}} → 2025-09-14T10:30:00Z</text>
+
+  <rect x="700" y="290" width="180" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="303" fill="#bb9af7" font-family="monospace" font-size="9">{{uuid()}} → a7b2c3d4-e5f6...</text>
+
+  <rect x="700" y="315" width="180" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="328" fill="#bb9af7" font-family="monospace" font-size="9">{{random(1,100)}} → 42</text>
+
+  <rect x="700" y="340" width="180" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="353" fill="#bb9af7" font-family="monospace" font-size="9">{{faker.name()}} → John Doe</text>
+
+  <rect x="700" y="365" width="180" height="20" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="378" fill="#bb9af7" font-family="monospace" font-size="9">{{env.API_KEY}} → sk_test_...</text>
+
+  <text x="700" y="400" fill="#565f89" font-family="monospace" font-size="9">Type {{ to see all snippets</text>
+
+  <!-- History -->
+  <text x="700" y="430" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">History</text>
+  <rect x="695" y="440" width="190" height="120" fill="#24283b" rx="2"/>
+
+  <rect x="700" y="445" width="180" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="458" fill="#c0caf5" font-family="monospace" font-size="9">job_12345 (2m ago)</text>
+  <text x="705" y="467" fill="#9ece6a" font-family="monospace" font-size="8">✓ Completed</text>
+
+  <rect x="700" y="475" width="180" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="488" fill="#c0caf5" font-family="monospace" font-size="9">job_12344 (5m ago)</text>
+  <text x="705" y="497" fill="#f7768e" font-family="monospace" font-size="8">✗ Failed</text>
+
+  <rect x="700" y="505" width="180" height="25" fill="#2a2e3f" rx="2"/>
+  <text x="705" y="518" fill="#c0caf5" font-family="monospace" font-size="9">batch_001 (10m ago)</text>
+  <text x="705" y="527" fill="#9ece6a" font-family="monospace" font-size="8">✓ 100 jobs</text>
+
+  <text x="700" y="550" fill="#565f89" font-family="monospace" font-size="9">Press ↑/↓ to load</text>
+
+  <!-- Keyboard hints -->
+  <text x="700" y="580" fill="#7aa2f7" font-family="monospace" font-size="12" font-weight="bold">Shortcuts</text>
+  <rect x="695" y="590" width="190" height="50" fill="#24283b" rx="2"/>
+  <text x="700" y="605" fill="#565f89" font-family="monospace" font-size="9">Ctrl+Space  Autocomplete</text>
+  <text x="700" y="618" fill="#565f89" font-family="monospace" font-size="9">Ctrl+S      Save draft</text>
+  <text x="700" y="631" fill="#565f89" font-family="monospace" font-size="9">Ctrl+Enter  Quick enqueue</text>
+
+  <!-- Status Bar -->
+  <rect x="0" y="660" width="900" height="40" fill="#24283b" stroke="#414868" stroke-width="1"/>
+  <text x="20" y="680" fill="#565f89" font-family="monospace" font-size="10">JSON | UTF-8 | 15 lines | 384 bytes</text>
+  <text x="700" y="680" fill="#565f89" font-family="monospace" font-size="10">Press ? for help | ESC to exit</text>
+</svg>

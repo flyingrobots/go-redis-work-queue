@@ -1,0 +1,249 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .text { fill: #f0f6fc; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; }
+      .text-sm { font-size: 12px; }
+      .text-xs { font-size: 10px; }
+      .text-md { font-size: 14px; }
+      .text-lg { font-size: 16px; }
+      .secondary { fill: #8b949e; }
+      .primary { fill: #58a6ff; }
+      .success { fill: #39d353; }
+      .warning { fill: #ffa657; }
+      .error { fill: #f85149; }
+      .border { stroke: #30363d; stroke-width: 1; fill: none; }
+      .highlight { fill: #1f2937; }
+      .accent { fill: #ff6b9d; }
+      .button { fill: #238636; stroke: #2ea043; stroke-width: 1; rx: 4; }
+      .button-secondary { fill: #30363d; stroke: #4c5460; stroke-width: 1; rx: 4; }
+      .input { fill: #0d1117; stroke: #30363d; stroke-width: 1; rx: 4; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" class="bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" class="panel"/>
+  <text x="20" y="35" class="text text-lg">Theme Playground</text>
+  <text x="200" y="35" class="text text-sm secondary">Live preview and customize themes</text>
+
+  <!-- Breadcrumb -->
+  <text x="20" y="85" class="text text-xs secondary">Settings > Theme > Playground</text>
+
+  <!-- Left Panel: Theme Controls -->
+  <rect x="20" y="100" width="350" height="680" class="panel"/>
+  <text x="35" y="130" class="text text-md">Theme Selection</text>
+
+  <!-- Search Bar -->
+  <rect x="35" y="145" width="320" height="32" class="input"/>
+  <text x="45" y="165" class="text text-sm secondary">🔍 Search themes...</text>
+
+  <!-- Theme Categories -->
+  <text x="35" y="200" class="text text-sm secondary">BUILT-IN THEMES</text>
+
+  <!-- Theme List -->
+  <g>
+    <!-- Tokyo Night - Selected -->
+    <rect x="35" y="210" width="320" height="40" class="highlight" rx="4"/>
+    <circle cx="50" cy="230" r="8" fill="#bb9af7"/>
+    <text x="70" y="225" class="text text-sm">Tokyo Night</text>
+    <text x="70" y="238" class="text text-xs secondary">Dark purple theme</text>
+    <rect x="320" y="220" width="20" height="20" class="success" rx="2"/>
+    <text x="323" y="233" class="text text-xs">✓</text>
+
+    <!-- GitHub -->
+    <circle cx="50" cy="270" r="8" fill="#f0f6fc"/>
+    <text x="70" y="265" class="text text-sm">GitHub</text>
+    <text x="70" y="278" class="text text-xs secondary">Clean light theme</text>
+
+    <!-- One Dark -->
+    <circle cx="50" cy="310" r="8" fill="#61afef"/>
+    <text x="70" y="305" class="text text-sm">One Dark</text>
+    <text x="70" y="318" class="text text-xs secondary">Popular dark theme</text>
+
+    <!-- Dracula -->
+    <circle cx="50" cy="350" r="8" fill="#ff79c6"/>
+    <text x="70" y="345" class="text text-sm">Dracula</text>
+    <text x="70" y="358" class="text text-xs secondary">Vibrant dark theme</text>
+  </g>
+
+  <!-- Accessibility Section -->
+  <text x="35" y="395" class="text text-sm secondary">ACCESSIBILITY</text>
+
+  <!-- High Contrast -->
+  <circle cx="50" cy="415" r="8" fill="#ffffff"/>
+  <text x="70" y="410" class="text text-sm">High Contrast Dark</text>
+  <text x="70" y="423" class="text text-xs secondary">WCAG AAA compliant</text>
+  <rect x="290" y="408" width="30" height="15" class="success" rx="2"/>
+  <text x="293" y="418" class="text text-xs">AAA</text>
+
+  <!-- Monochrome -->
+  <circle cx="50" cy="455" r="8" fill="#808080"/>
+  <text x="70" y="450" class="text text-sm">Monochrome</text>
+  <text x="70" y="463" class="text text-xs secondary">Black and white only</text>
+
+  <!-- Color Customization -->
+  <text x="35" y="500" class="text text-sm secondary">CUSTOMIZATION</text>
+
+  <!-- Accent Color -->
+  <text x="35" y="525" class="text text-sm">Accent Color</text>
+  <rect x="35" y="535" width="60" height="25" class="accent" rx="4"/>
+  <text x="42" y="550" class="text text-xs">#ff6b9d</text>
+
+  <!-- Contrast Slider -->
+  <text x="35" y="580" class="text text-sm">Contrast Level</text>
+  <rect x="35" y="590" width="280" height="4" fill="#30363d" rx="2"/>
+  <rect x="35" y="590" width="180" height="4" class="primary" rx="2"/>
+  <circle cx="215" cy="592" r="8" class="primary"/>
+  <text x="325" y="597" class="text text-xs secondary">75%</text>
+
+  <!-- Actions -->
+  <g transform="translate(35, 640)">
+    <rect x="0" y="0" width="80" height="32" class="button"/>
+    <text x="25" y="20" class="text text-sm">Apply</text>
+
+    <rect x="90" y="0" width="80" height="32" class="button-secondary"/>
+    <text x="115" y="20" class="text text-sm">Reset</text>
+
+    <rect x="180" y="0" width="80" height="32" class="button-secondary"/>
+    <text x="205" y="20" class="text text-sm">Export</text>
+  </g>
+
+  <!-- Accessibility Panel -->
+  <text x="35" y="710" class="text text-sm secondary">ACCESSIBILITY CHECK</text>
+  <text x="35" y="730" class="text text-xs">Contrast Ratio: 4.8:1</text>
+  <rect x="180" y="723" width="25" height="15" class="success" rx="2"/>
+  <text x="185" y="733" class="text text-xs">AA</text>
+
+  <text x="35" y="750" class="text text-xs">Color Blind Safe: Yes</text>
+  <rect x="180" y="743" width="25" height="15" class="success" rx="2"/>
+  <text x="188" y="753" class="text text-xs">✓</text>
+
+  <!-- Right Panel: Live Preview -->
+  <rect x="390" y="100" width="790" height="680" class="panel"/>
+  <text x="405" y="130" class="text text-md">Live Preview</text>
+  <text x="650" y="130" class="text text-sm secondary">Tokyo Night Theme</text>
+
+  <!-- Preview Content Area -->
+  <rect x="405" y="145" width="760" height="620" class="bg" rx="4"/>
+
+  <!-- Mock Queue Dashboard -->
+  <g transform="translate(420, 160)">
+    <!-- Tab Bar -->
+    <rect x="0" y="0" width="730" height="35" fill="#161b22"/>
+    <rect x="0" y="0" width="80" height="35" class="highlight" rx="4"/>
+    <text x="25" y="22" class="text text-sm">Jobs</text>
+    <text x="100" y="22" class="text text-sm secondary">Workers</text>
+    <text x="180" y="22" class="text text-sm secondary">DLQ</text>
+    <text x="240" y="22" class="text text-sm secondary">Settings</text>
+
+    <!-- Mock Job Table -->
+    <g transform="translate(0, 50)">
+      <!-- Headers -->
+      <rect x="0" y="0" width="730" height="30" fill="#1f2937"/>
+      <text x="15" y="20" class="text text-xs secondary">ID</text>
+      <text x="100" y="20" class="text text-xs secondary">QUEUE</text>
+      <text x="200" y="20" class="text text-xs secondary">STATUS</text>
+      <text x="300" y="20" class="text text-xs secondary">PROGRESS</text>
+      <text x="450" y="20" class="text text-xs secondary">CREATED</text>
+      <text x="600" y="20" class="text text-xs secondary">ACTIONS</text>
+
+      <!-- Job Row 1 - Running -->
+      <rect x="0" y="30" width="730" height="35" fill="#0d1117"/>
+      <text x="15" y="50" class="text text-xs">job_12345</text>
+      <text x="100" y="50" class="text text-xs">email</text>
+      <rect x="200" y="42" width="60" height="16" class="warning" rx="8"/>
+      <text x="215" y="52" class="text text-xs">Running</text>
+      <!-- Progress bar -->
+      <rect x="300" y="45" width="120" height="6" fill="#30363d" rx="3"/>
+      <rect x="300" y="45" width="85" height="6" class="primary" rx="3"/>
+      <text x="430" y="52" class="text text-xs">71%</text>
+      <text x="450" y="50" class="text text-xs secondary">2m ago</text>
+      <rect x="600" y="40" width="50" height="18" class="button-secondary"/>
+      <text x="615" y="52" class="text text-xs">View</text>
+
+      <!-- Job Row 2 - Completed -->
+      <rect x="0" y="65" width="730" height="35" fill="#161b22"/>
+      <text x="15" y="85" class="text text-xs">job_12344</text>
+      <text x="100" y="85" class="text text-xs">payment</text>
+      <rect x="200" y="77" width="70" height="16" class="success" rx="8"/>
+      <text x="215" y="87" class="text text-xs">Completed</text>
+      <rect x="300" y="80" width="120" height="6" class="success" rx="3"/>
+      <text x="430" y="87" class="text text-xs">100%</text>
+      <text x="450" y="85" class="text text-xs secondary">5m ago</text>
+      <rect x="600" y="75" width="50" height="18" class="button-secondary"/>
+      <text x="615" y="87" class="text text-xs">Retry</text>
+
+      <!-- Job Row 3 - Failed -->
+      <rect x="0" y="100" width="730" height="35" fill="#0d1117"/>
+      <text x="15" y="120" class="text text-xs">job_12343</text>
+      <text x="100" y="120" class="text text-xs">notification</text>
+      <rect x="200" y="112" width="50" height="16" class="error" rx="8"/>
+      <text x="215" y="122" class="text text-xs">Failed</text>
+      <rect x="300" y="115" width="120" height="6" fill="#30363d" rx="3"/>
+      <rect x="300" y="115" width="30" height="6" class="error" rx="3"/>
+      <text x="430" y="122" class="text text-xs">25%</text>
+      <text x="450" y="120" class="text text-xs secondary">8m ago</text>
+      <rect x="600" y="110" width="50" height="18" class="button-secondary"/>
+      <text x="615" y="122" class="text text-xs">Debug</text>
+    </g>
+
+    <!-- Status Cards -->
+    <g transform="translate(0, 220)">
+      <rect x="0" y="0" width="175" height="80" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+      <text x="15" y="20" class="text text-xs secondary">ACTIVE JOBS</text>
+      <text x="15" y="40" class="text text-lg">1,247</text>
+      <text x="15" y="60" class="text text-xs success">+12% from yesterday</text>
+
+      <rect x="185" y="0" width="175" height="80" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+      <text x="200" y="20" class="text text-xs secondary">COMPLETED TODAY</text>
+      <text x="200" y="40" class="text text-lg">8,934</text>
+      <text x="200" y="60" class="text text-xs success">+5% from yesterday</text>
+
+      <rect x="370" y="0" width="175" height="80" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+      <text x="385" y="20" class="text text-xs secondary">FAILED JOBS</text>
+      <text x="385" y="40" class="text text-lg">23</text>
+      <text x="385" y="60" class="text text-xs error">+2 from yesterday</text>
+
+      <rect x="555" y="0" width="175" height="80" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+      <text x="570" y="20" class="text text-xs secondary">AVG PROCESSING</text>
+      <text x="570" y="40" class="text text-lg">2.4s</text>
+      <text x="570" y="60" class="text text-xs warning">-0.2s from yesterday</text>
+    </g>
+
+    <!-- Mini Chart -->
+    <g transform="translate(0, 320)">
+      <text x="0" y="15" class="text text-xs secondary">JOB VOLUME (24H)</text>
+      <rect x="0" y="25" width="730" height="120" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+      <!-- Simple chart bars -->
+      <rect x="20" y="125" width="15" height="15" class="primary"/>
+      <rect x="45" y="110" width="15" height="30" class="primary"/>
+      <rect x="70" y="100" width="15" height="40" class="primary"/>
+      <rect x="95" y="80" width="15" height="60" class="primary"/>
+      <rect x="120" y="90" width="15" height="50" class="primary"/>
+      <rect x="145" y="85" width="15" height="55" class="primary"/>
+      <rect x="170" y="75" width="15" height="65" class="primary"/>
+      <rect x="195" y="95" width="15" height="45" class="primary"/>
+    </g>
+  </g>
+
+  <!-- Theme Comparison Indicators -->
+  <g transform="translate(1050, 160)">
+    <rect x="0" y="0" width="120" height="100" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+    <text x="10" y="20" class="text text-xs secondary">THEME STATS</text>
+
+    <text x="10" y="40" class="text text-xs">Contrast: 4.8:1</text>
+    <rect x="85" y="33" width="25" height="12" class="success" rx="2"/>
+    <text x="90" y="42" class="text text-xs">AA</text>
+
+    <text x="10" y="55" class="text text-xs">Colors: 12</text>
+    <text x="10" y="70" class="text text-xs">Dark Mode: Yes</text>
+    <text x="10" y="85" class="text text-xs">Animation: Smooth</text>
+  </g>
+
+  <!-- Keyboard shortcuts hint -->
+  <text x="405" y="755" class="text text-xs secondary">Press 1-9 to switch themes, Space to preview, Enter to apply</text>
+</svg>

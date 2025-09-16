@@ -1,0 +1,167 @@
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .palette-bg { fill: #1a1b26; }
+      .overlay-bg { fill: #000000; fill-opacity: 0.7; }
+      .modal-bg { fill: #24283b; stroke: #7aa2f7; stroke-width: 2; }
+      .input-bg { fill: #1f2335; stroke: #414868; stroke-width: 1; }
+      .item-bg { fill: #24283b; }
+      .item-selected { fill: #2d3561; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 11px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 9px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 10px; }
+      .muted-text { fill: #565f89; font-family: Monaco, monospace; font-size: 9px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 9px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 9px; }
+      .shortcut-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 8px; }
+    </style>
+  </defs>
+
+  <!-- Background with overlay -->
+  <rect width="800" height="500" class="palette-bg"/>
+  <rect width="800" height="500" class="overlay-bg"/>
+
+  <!-- Command Palette Modal -->
+  <g transform="translate(150,50)">
+    <rect x="0" y="0" width="500" height="400" class="modal-bg" rx="8"/>
+
+    <!-- Header -->
+    <rect x="0" y="0" width="500" height="60" fill="#1f2335" rx="8"/>
+    <text x="20" y="20" class="accent-text">⌘ Command Palette</text>
+    <text x="20" y="35" class="secondary-text">Type to search actions • Use ↑↓ to navigate • Enter to execute</text>
+
+    <!-- Search Input -->
+    <g transform="translate(20,25)">
+      <rect x="0" y="0" width="460" height="30" class="input-bg" rx="4"/>
+      <text x="10" y="20" class="primary-text">queue health</text>
+      <!-- Cursor -->
+      <rect x="95" y="8" width="2" height="14" fill="#c0caf5"/>
+    </g>
+
+    <!-- Results List -->
+    <g transform="translate(0,70)">
+      <!-- Header -->
+      <rect x="0" y="0" width="500" height="25" fill="#16161e"/>
+      <text x="20" y="16" class="accent-text" font-size="9">📋 Queue Management (4 matches)</text>
+
+      <!-- Selected item -->
+      <rect x="0" y="25" width="500" height="35" class="item-selected"/>
+      <text x="20" y="40" class="primary-text">🏥 Show Queue Health Dashboard</text>
+      <text x="20" y="52" class="secondary-text">Display comprehensive health metrics for all queues</text>
+      <text x="450" y="45" class="shortcut-text">⌘H</text>
+
+      <!-- Regular items -->
+      <rect x="0" y="60" width="500" height="35" class="item-bg"/>
+      <text x="20" y="75" class="primary-text">📊 Queue Performance Health Check</text>
+      <text x="20" y="87" class="secondary-text">Run diagnostic on queue performance and worker efficiency</text>
+      <text x="430" y="80" class="shortcut-text">⌘⇧H</text>
+
+      <rect x="0" y="95" width="500" height="35" class="item-bg"/>
+      <text x="20" y="110" class="primary-text">🚨 Health Alert Configuration</text>
+      <text x="20" y="122" class="secondary-text">Configure thresholds and notifications for queue health alerts</text>
+
+      <rect x="0" y="130" width="500" height="35" class="item-bg"/>
+      <text x="20" y="145" class="primary-text">📈 Export Health Report</text>
+      <text x="20" y="157" class="secondary-text">Generate and export detailed health metrics report (CSV/JSON)</text>
+
+      <!-- Separator -->
+      <rect x="0" y="165" width="500" height="25" fill="#16161e"/>
+      <text x="20" y="181" class="accent-text" font-size="9">👥 Worker Management (2 matches)</text>
+
+      <rect x="0" y="190" width="500" height="35" class="item-bg"/>
+      <text x="20" y="205" class="primary-text">💓 Check Worker Health Status</text>
+      <text x="20" y="217" class="secondary-text">Display health status for all active workers</text>
+      <text x="430" y="210" class="shortcut-text">⌘W</text>
+
+      <rect x="0" y="225" width="500" height="35" class="item-bg"/>
+      <text x="20" y="240" class="primary-text">🔧 Worker Health Recovery</text>
+      <text x="20" y="252" class="secondary-text">Attempt to recover unhealthy workers automatically</text>
+
+      <!-- Separator -->
+      <rect x="0" y="260" width="500" height="25" fill="#16161e"/>
+      <text x="20" y="276" class="accent-text" font-size="9">🤖 Voice Commands (1 match)</text>
+
+      <rect x="0" y="285" width="500" height="35" class="item-bg"/>
+      <text x="20" y="300" class="primary-text">🎤 "Show queue health"</text>
+      <text x="20" y="312" class="secondary-text">Voice command to display queue health metrics</text>
+      <text x="430" y="305" class="success-text">🎤 Say</text>
+    </g>
+  </g>
+
+  <!-- Footer Help -->
+  <g transform="translate(150,460)">
+    <text x="20" y="0" class="muted-text">💡 Pro Tips: Use @ to filter by category • Use # for tags • Use > for actions</text>
+    <text x="20" y="15" class="muted-text">Recent: "bench high-priority" • "drain worker-3" • "switch staging" • "time travel ABC123"</text>
+  </g>
+
+  <!-- Side Panel: Context & Suggestions -->
+  <g transform="translate(670,50)">
+    <rect x="0" y="0" width="120" height="400" class="modal-bg" rx="8"/>
+
+    <!-- Context Header -->
+    <rect x="0" y="0" width="120" height="25" fill="#1f2335" rx="8"/>
+    <text x="10" y="16" class="accent-text" font-size="8">Context</text>
+
+    <!-- Current Context -->
+    <g transform="translate(10,35)">
+      <text x="0" y="0" class="secondary-text" font-size="8">Current Tab:</text>
+      <text x="0" y="12" class="primary-text" font-size="8">📋 Queues</text>
+
+      <text x="0" y="30" class="secondary-text" font-size="8">Selected:</text>
+      <text x="0" y="42" class="primary-text" font-size="8">high-priority</text>
+
+      <text x="0" y="60" class="secondary-text" font-size="8">Cluster:</text>
+      <text x="0" y="72" class="success-text" font-size="8">production</text>
+    </g>
+
+    <!-- Quick Suggestions -->
+    <g transform="translate(10,130)">
+      <text x="0" y="0" class="accent-text" font-size="8">Quick Actions</text>
+
+      <rect x="0" y="10" width="100" height="15" class="item-bg" rx="2"/>
+      <text x="5" y="21" class="secondary-text" font-size="7">Peek Selected</text>
+
+      <rect x="0" y="30" width="100" height="15" class="item-bg" rx="2"/>
+      <text x="5" y="41" class="secondary-text" font-size="7">Benchmark</text>
+
+      <rect x="0" y="50" width="100" height="15" class="item-bg" rx="2"/>
+      <text x="5" y="61" class="secondary-text" font-size="7">Enqueue Jobs</text>
+
+      <rect x="0" y="70" width="100" height="15" class="item-bg" rx="2"/>
+      <text x="5" y="81" class="danger-text" font-size="7">Drain Queue</text>
+    </g>
+
+    <!-- Recently Used -->
+    <g transform="translate(10,220)">
+      <text x="0" y="0" class="accent-text" font-size="8">Recent</text>
+
+      <text x="0" y="15" class="muted-text" font-size="7">• bench normal</text>
+      <text x="0" y="27" class="muted-text" font-size="7">• switch staging</text>
+      <text x="0" y="39" class="muted-text" font-size="7">• worker status</text>
+      <text x="0" y="51" class="muted-text" font-size="7">• dlq purge</text>
+      <text x="0" y="63" class="muted-text" font-size="7">• time travel</text>
+    </g>
+
+    <!-- Keyboard Shortcuts -->
+    <g transform="translate(10,300)">
+      <text x="0" y="0" class="accent-text" font-size="8">Shortcuts</text>
+
+      <text x="0" y="15" class="muted-text" font-size="7">⌘P - Command</text>
+      <text x="0" y="27" class="muted-text" font-size="7">⌘K - Quick Nav</text>
+      <text x="0" y="39" class="muted-text" font-size="7">⌘/ - Search</text>
+      <text x="0" y="51" class="muted-text" font-size="7">⌘? - Help</text>
+      <text x="0" y="63" class="muted-text" font-size="7">Esc - Close</text>
+    </g>
+  </g>
+
+  <!-- Advanced Search Syntax Examples -->
+  <g transform="translate(20,450)">
+    <text x="0" y="0" class="accent-text" font-size="8">Search Syntax Examples:</text>
+    <text x="0" y="15" class="secondary-text" font-size="8">@queue health</text>
+    <text x="80" y="15" class="muted-text" font-size="8">Filter by queue category</text>
+    <text x="0" y="27" class="secondary-text" font-size="8">#production</text>
+    <text x="80" y="27" class="muted-text" font-size="8">Filter by production tag</text>
+    <text x="0" y="39" class="secondary-text" font-size="8">>benchmark</text>
+    <text x="80" y="39" class="muted-text" font-size="8">Filter by actions only</text>
+  </g>
+</svg>

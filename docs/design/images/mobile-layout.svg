@@ -1,0 +1,123 @@
+<svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .mobile-bg { fill: #1a1b26; }
+      .card-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .header-bg { fill: #1f2335; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 12px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 10px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 10px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 10px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 10px; }
+      .nav-active { fill: #7aa2f7; }
+      .nav-inactive { fill: #565f89; }
+      .button { fill: #414868; stroke: #7aa2f7; stroke-width: 1; rx: 4; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="600" class="mobile-bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="60" class="header-bg"/>
+  <text x="200" y="25" text-anchor="middle" class="primary-text">🚀 Redis Queue</text>
+  <text x="200" y="45" text-anchor="middle" class="secondary-text">3 active • 127 jobs/min</text>
+
+  <!-- Voice Command Button -->
+  <rect x="20" y="15" width="40" height="30" class="button"/>
+  <text x="40" y="33" text-anchor="middle" class="accent-text">🎤</text>
+
+  <!-- Menu Button -->
+  <rect x="340" y="15" width="40" height="30" class="button"/>
+  <text x="360" y="33" text-anchor="middle" class="primary-text">☰</text>
+
+  <!-- Queue Overview Cards -->
+  <g transform="translate(0,70)">
+    <!-- High Priority Card -->
+    <rect x="20" y="0" width="360" height="80" class="card-bg" rx="8"/>
+    <text x="30" y="20" class="accent-text">High Priority Queue</text>
+    <text x="30" y="35" class="primary-text">█████████░ 451 jobs</text>
+    <text x="30" y="50" class="success-text">↗ +23/min</text>
+    <text x="300" y="50" class="secondary-text">3 workers</text>
+    <rect x="320" y="55" width="50" height="20" class="button"/>
+    <text x="345" y="67" text-anchor="middle" class="secondary-text">VIEW</text>
+
+    <!-- Normal Priority Card -->
+    <rect x="20" y="90" width="360" height="80" class="card-bg" rx="8"/>
+    <text x="30" y="110" class="secondary-text">Normal Priority Queue</text>
+    <text x="30" y="125" class="primary-text">████░░░░░░ 127 jobs</text>
+    <text x="30" y="140" class="success-text">↗ +12/min</text>
+    <text x="300" y="140" class="secondary-text">5 workers</text>
+    <rect x="320" y="145" width="50" height="20" class="button"/>
+    <text x="345" y="157" text-anchor="middle" class="secondary-text">VIEW</text>
+
+    <!-- Low Priority Card -->
+    <rect x="20" y="180" width="360" height="80" class="card-bg" rx="8"/>
+    <text x="30" y="200" class="secondary-text">Low Priority Queue</text>
+    <text x="30" y="215" class="primary-text">██░░░░░░░░ 89 jobs</text>
+    <text x="30" y="230" class="success-text">→ +2/min</text>
+    <text x="300" y="230" class="secondary-text">2 workers</text>
+    <rect x="320" y="235" width="50" height="20" class="button"/>
+    <text x="345" y="247" text-anchor="middle" class="secondary-text">VIEW</text>
+  </g>
+
+  <!-- Alert Card -->
+  <g transform="translate(0,340)">
+    <rect x="20" y="0" width="360" height="60" class="card-bg" rx="8" stroke="#f7768e"/>
+    <text x="30" y="20" class="danger-text">⚠ DLQ Alert</text>
+    <text x="30" y="35" class="primary-text">23 failed jobs need attention</text>
+    <rect x="250" y="40" width="60" height="20" class="button"/>
+    <text x="280" y="52" text-anchor="middle" class="danger-text">RESOLVE</text>
+  </g>
+
+  <!-- Quick Actions -->
+  <g transform="translate(0,420)">
+    <text x="30" y="20" class="accent-text">Quick Actions</text>
+    <rect x="20" y="30" width="110" height="40" class="button"/>
+    <text x="75" y="52" text-anchor="middle" class="primary-text">📊 Stats</text>
+
+    <rect x="145" y="30" width="110" height="40" class="button"/>
+    <text x="200" y="52" text-anchor="middle" class="primary-text">👥 Workers</text>
+
+    <rect x="270" y="30" width="110" height="40" class="button"/>
+    <text x="325" y="52" text-anchor="middle" class="primary-text">⚙ Settings</text>
+  </g>
+
+  <!-- Bottom Navigation -->
+  <g transform="translate(0,540)">
+    <rect x="0" y="0" width="400" height="60" class="header-bg"/>
+    <!-- Queues (active) -->
+    <g transform="translate(20,10)">
+      <rect x="0" y="0" width="60" height="40" class="nav-active" rx="6"/>
+      <text x="30" y="25" text-anchor="middle" class="primary-text">📋</text>
+      <text x="30" y="35" text-anchor="middle" class="primary-text" font-size="8">Queues</text>
+    </g>
+
+    <!-- Workers -->
+    <g transform="translate(100,10)">
+      <text x="30" y="25" text-anchor="middle" class="nav-inactive">👥</text>
+      <text x="30" y="35" text-anchor="middle" class="nav-inactive" font-size="8">Workers</text>
+    </g>
+
+    <!-- DLQ -->
+    <g transform="translate(180,10)">
+      <text x="30" y="25" text-anchor="middle" class="nav-inactive">💀</text>
+      <text x="30" y="35" text-anchor="middle" class="nav-inactive" font-size="8">DLQ</text>
+      <!-- Badge -->
+      <circle cx="45" cy="15" r="8" fill="#f7768e"/>
+      <text x="45" y="19" text-anchor="middle" class="primary-text" font-size="8">23</text>
+    </g>
+
+    <!-- Time Travel -->
+    <g transform="translate(260,10)">
+      <text x="30" y="25" text-anchor="middle" class="nav-inactive">⏰</text>
+      <text x="30" y="35" text-anchor="middle" class="nav-inactive" font-size="8">Debug</text>
+    </g>
+
+    <!-- More -->
+    <g transform="translate(340,10)">
+      <text x="30" y="25" text-anchor="middle" class="nav-inactive">⋯</text>
+      <text x="30" y="35" text-anchor="middle" class="nav-inactive" font-size="8">More</text>
+    </g>
+  </g>
+</svg>

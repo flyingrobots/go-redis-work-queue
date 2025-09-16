@@ -1,0 +1,99 @@
+<svg width="400" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Top bar -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="30" font-family="monospace" font-size="12" fill="#f0f6fc">Event Hooks</text>
+  <text x="320" y="30" font-family="monospace" font-size="10" fill="#58a6ff">? Help</text>
+
+  <!-- Tab Navigation -->
+  <rect x="0" y="50" width="400" height="35" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <rect x="5" y="55" width="80" height="25" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="30" y="70" font-family="monospace" font-size="10" fill="#f0f6fc">📡 Hooks</text>
+
+  <rect x="90" y="55" width="80" height="25" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="110" y="70" font-family="monospace" font-size="10" fill="#8b949e">⚙️ Config</text>
+
+  <rect x="175" y="55" width="80" height="25" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="200" y="70" font-family="monospace" font-size="10" fill="#8b949e">📊 Stats</text>
+
+  <rect x="260" y="55" width="80" height="25" fill="#30363d" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="285" y="70" font-family="monospace" font-size="10" fill="#8b949e">📜 Logs</text>
+
+  <rect x="345" y="55" width="50" height="25" fill="#58a6ff" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="365" y="70" font-family="monospace" font-size="10" fill="#f0f6fc">+ New</text>
+
+  <!-- Main Content: Subscriptions List -->
+  <rect x="10" y="95" width="380" height="690" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Search bar -->
+  <rect x="20" y="105" width="360" height="30" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="25" y="123" font-family="monospace" font-size="10" fill="#8b949e">🔍 Search webhooks, queues, events...</text>
+
+  <!-- Summary cards -->
+  <rect x="20" y="145" width="175" height="60" fill="#1f2937" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="25" y="165" font-family="monospace" font-size="11" fill="#39d353" font-weight="bold">✅ ACTIVE</text>
+  <text x="25" y="180" font-family="monospace" font-size="18" fill="#39d353" font-weight="bold">6</text>
+  <text x="25" y="195" font-family="monospace" font-size="10" fill="#8b949e">webhooks</text>
+
+  <rect x="205" y="145" width="175" height="60" fill="#1f2937" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="210" y="165" font-family="monospace" font-size="11" fill="#f85149" font-weight="bold">❌ FAILING</text>
+  <text x="210" y="180" font-family="monospace" font-size="18" fill="#f85149" font-weight="bold">2</text>
+  <text x="210" y="195" font-family="monospace" font-size="10" fill="#8b949e">need attention</text>
+
+  <!-- Webhook entries -->
+  <rect x="20" y="220" width="360" height="75" fill="#0d1117" stroke="#39d353" stroke-width="2" rx="3"/>
+  <text x="25" y="240" font-family="monospace" font-size="12" fill="#39d353" font-weight="bold">payments-webhook</text>
+  <text x="320" y="240" font-family="monospace" font-size="11" fill="#39d353">99.2%</text>
+  <text x="25" y="255" font-family="monospace" font-size="10" fill="#8b949e">https://api.payments.com/webhook</text>
+  <text x="25" y="270" font-family="monospace" font-size="10" fill="#8b949e">Queue: payments | Events: failed,succeeded</text>
+  <text x="25" y="285" font-family="monospace" font-size="10" fill="#39d353">✅ Last delivery: 2m ago (142ms)</text>
+
+  <rect x="20" y="305" width="360" height="75" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="25" y="325" font-family="monospace" font-size="12" fill="#f0f6fc" font-weight="bold">slack-notifications</text>
+  <text x="320" y="325" font-family="monospace" font-size="11" fill="#39d353">100%</text>
+  <text x="25" y="340" font-family="monospace" font-size="10" fill="#8b949e">https://hooks.slack.com/services/...</text>
+  <text x="25" y="355" font-family="monospace" font-size="10" fill="#8b949e">Queue: * | Events: job_failed</text>
+  <text x="25" y="370" font-family="monospace" font-size="10" fill="#39d353">✅ Last delivery: 5m ago (89ms)</text>
+
+  <rect x="20" y="390" width="360" height="75" fill="#0d1117" stroke="#f85149" stroke-width="2" rx="3"/>
+  <text x="25" y="410" font-family="monospace" font-size="12" fill="#f85149" font-weight="bold">analytics-pipeline</text>
+  <text x="320" y="410" font-family="monospace" font-size="11" fill="#f85149">45.8%</text>
+  <text x="25" y="425" font-family="monospace" font-size="10" fill="#8b949e">https://analytics.internal/webhook</text>
+  <text x="25" y="440" font-family="monospace" font-size="10" fill="#8b949e">Queue: user_events | Events: *</text>
+  <text x="25" y="455" font-family="monospace" font-size="10" fill="#f85149">❌ Failing 500: 4/5 retries • Next: 2m</text>
+
+  <rect x="20" y="475" width="360" height="75" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="3"/>
+  <text x="25" y="495" font-family="monospace" font-size="12" fill="#f0f6fc" font-weight="bold">audit-logger</text>
+  <text x="320" y="495" font-family="monospace" font-size="11" fill="#39d353">98.1%</text>
+  <text x="25" y="510" font-family="monospace" font-size="10" fill="#8b949e">https://audit.company.com/events</text>
+  <text x="25" y="525" font-family="monospace" font-size="10" fill="#8b949e">Queue: * | Events: enqueued,dlq</text>
+  <text x="25" y="540" font-family="monospace" font-size="10" fill="#39d353">✅ Last delivery: 1m ago (67ms)</text>
+
+  <rect x="20" y="560" width="360" height="75" fill="#0d1117" stroke="#ffa657" stroke-width="1" rx="3"/>
+  <text x="25" y="580" font-family="monospace" font-size="12" fill="#ffa657" font-weight="bold">dev-notifications</text>
+  <text x="320" y="580" font-family="monospace" font-size="11" fill="#ffa657">92.3%</text>
+  <text x="25" y="595" font-family="monospace" font-size="10" fill="#8b949e">https://dev.company.com/alerts</text>
+  <text x="25" y="610" font-family="monospace" font-size="10" fill="#8b949e">Queue: dev_* | Events: failed</text>
+  <text x="25" y="625" font-family="monospace" font-size="10" fill="#ffa657">⚠️ Rate limited: 429 • Backing off</text>
+
+  <!-- Dead Letter Hook section -->
+  <rect x="20" y="650" width="360" height="80" fill="#1f2937" stroke="#f85149" stroke-width="1" rx="3"/>
+  <text x="25" y="670" font-family="monospace" font-size="11" fill="#f85149" font-weight="bold">📨 DEAD LETTER HOOKS</text>
+  <text x="25" y="690" font-family="monospace" font-size="10" fill="#8b949e">12 failed webhooks in DLH queue</text>
+  <text x="25" y="705" font-family="monospace" font-size="10" fill="#8b949e">• analytics-pipeline: 8 hooks</text>
+  <text x="25" y="720" font-family="monospace" font-size="10" fill="#8b949e">• legacy-system: 4 hooks</text>
+
+  <!-- Action buttons -->
+  <rect x="250" y="680" width="60" height="22" fill="#58a6ff" stroke="#58a6ff" stroke-width="1" rx="3"/>
+  <text x="268" y="693" font-family="monospace" font-size="9" fill="#f0f6fc">🔄 Retry</text>
+
+  <rect x="315" y="680" width="60" height="22" fill="#238636" stroke="#39d353" stroke-width="1" rx="3"/>
+  <text x="330" y="693" font-family="monospace" font-size="9" fill="#f0f6fc">↩️ Replay</text>
+
+  <!-- Bottom nav/help -->
+  <rect x="0" y="750" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="770" font-family="monospace" font-size="9" fill="#8b949e">↕️ Scroll | Enter: Edit | Space: Toggle</text>
+  <text x="10" y="785" font-family="monospace" font-size="9" fill="#8b949e">t: Test | r: Retry | d: Delete | Tab: Next tab</text>
+</svg>

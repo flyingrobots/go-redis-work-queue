@@ -1,0 +1,209 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="60" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="20" y="35" fill="#f0f6fc" font-family="monospace" font-size="18" font-weight="bold">Exactly-Once Processing Control Center</text>
+  <text x="1020" y="35" fill="#8b949e" font-family="monospace" font-size="12">🔒 Idempotency Mode: Active</text>
+
+  <!-- Left Panel - Dedup Stats -->
+  <rect x="20" y="80" width="350" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="40" y="110" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Deduplication Statistics</text>
+
+  <!-- Hit Rate Gauge -->
+  <circle cx="195" cy="180" r="60" fill="none" stroke="#30363d" stroke-width="8"/>
+  <path d="M 135 180 A 60 60 0 1 1 240 150" fill="none" stroke="#39d353" stroke-width="8"/>
+  <text x="185" y="185" fill="#39d353" font-family="monospace" font-size="14" font-weight="bold">87.3%</text>
+  <text x="165" y="200" fill="#8b949e" font-family="monospace" font-size="10">Hit Rate</text>
+
+  <!-- Dedup Metrics -->
+  <rect x="40" y="260" width="310" height="140" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="60" y="285" fill="#8b949e" font-family="monospace" font-size="12">Recent Activity (24h)</text>
+
+  <text x="60" y="310" fill="#f0f6fc" font-family="monospace" font-size="12">Total Processed:</text>
+  <text x="280" y="310" fill="#39d353" font-family="monospace" font-size="12" font-weight="bold">15,847</text>
+
+  <text x="60" y="330" fill="#f0f6fc" font-family="monospace" font-size="12">Duplicates Blocked:</text>
+  <text x="280" y="330" fill="#f85149" font-family="monospace" font-size="12" font-weight="bold">2,073</text>
+
+  <text x="60" y="350" fill="#f0f6fc" font-family="monospace" font-size="12">Unique Jobs:</text>
+  <text x="280" y="350" fill="#58a6ff" font-family="monospace" font-size="12" font-weight="bold">13,774</text>
+
+  <text x="60" y="370" fill="#f0f6fc" font-family="monospace" font-size="12">Storage Size:</text>
+  <text x="280" y="370" fill="#ffa657" font-family="monospace" font-size="12" font-weight="bold">2.4MB</text>
+
+  <text x="60" y="390" fill="#f0f6fc" font-family="monospace" font-size="12">TTL Avg:</text>
+  <text x="280" y="390" fill="#8b949e" font-family="monospace" font-size="12">6.2h</text>
+
+  <!-- Recent Duplicates -->
+  <text x="40" y="440" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Recent Duplicates Blocked</text>
+
+  <rect x="40" y="460" width="310" height="300" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Duplicate entries -->
+  <rect x="50" y="470" width="290" height="25" fill="#1f2937" rx="2"/>
+  <text x="60" y="487" fill="#f85149" font-family="monospace" font-size="10">❌ payment_process_abc123</text>
+  <text x="320" y="487" fill="#8b949e" font-family="monospace" font-size="9">2s ago</text>
+
+  <rect x="50" y="500" width="290" height="25" fill="#1f2937" rx="2"/>
+  <text x="60" y="517" fill="#f85149" font-family="monospace" font-size="10">❌ user_signup_def456</text>
+  <text x="320" y="517" fill="#8b949e" font-family="monospace" font-size="9">7s ago</text>
+
+  <rect x="50" y="530" width="290" height="25" fill="#1f2937" rx="2"/>
+  <text x="60" y="547" fill="#f85149" font-family="monospace" font-size="10">❌ email_batch_ghi789</text>
+  <text x="320" y="547" fill="#8b949e" font-family="monospace" font-size="9">15s ago</text>
+
+  <rect x="50" y="560" width="290" height="25" fill="#1f2937" rx="2"/>
+  <text x="60" y="577" fill="#f85149" font-family="monospace" font-size="10">❌ data_export_jkl012</text>
+  <text x="320" y="577" fill="#8b949e" font-family="monospace" font-size="9">23s ago</text>
+
+  <rect x="50" y="590" width="290" height="25" fill="#1f2937" rx="2"/>
+  <text x="60" y="607" fill="#f85149" font-family="monospace" font-size="10">❌ order_process_mno345</text>
+  <text x="320" y="607" fill="#8b949e" font-family="monospace" font-size="9">41s ago</text>
+
+  <!-- Center Panel - Idempotency Manager -->
+  <rect x="390" y="80" width="420" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="410" y="110" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Idempotency Key Manager</text>
+
+  <!-- Key Generation Section -->
+  <rect x="410" y="130" width="380" height="120" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="430" y="155" fill="#8b949e" font-family="monospace" font-size="12">Key Generation Strategy</text>
+
+  <rect x="430" y="170" width="160" height="30" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="450" y="190" fill="#f0f6fc" font-family="monospace" font-size="12">✓ Auto (UUID)</text>
+
+  <rect x="610" y="170" width="160" height="30" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="650" y="190" fill="#8b949e" font-family="monospace" font-size="12">Content Hash</text>
+
+  <text x="430" y="225" fill="#f0f6fc" font-family="monospace" font-size="11">Sample Key: job_2024-01-15_uuid_abc123def456</text>
+  <text x="430" y="240" fill="#8b949e" font-family="monospace" font-size="10">TTL: 24h | Namespace: prod.payments</text>
+
+  <!-- Active Idempotency Keys -->
+  <text x="410" y="280" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Active Idempotency Keys</text>
+
+  <rect x="410" y="300" width="380" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <!-- Header row -->
+  <rect x="420" y="310" width="360" height="25" fill="#1f2937" rx="2"/>
+  <text x="430" y="327" fill="#8b949e" font-family="monospace" font-size="10" font-weight="bold">Key</text>
+  <text x="620" y="327" fill="#8b949e" font-family="monospace" font-size="10" font-weight="bold">Queue</text>
+  <text x="720" y="327" fill="#8b949e" font-family="monospace" font-size="10" font-weight="bold">TTL</text>
+
+  <!-- Key entries -->
+  <text x="430" y="352" fill="#58a6ff" font-family="monospace" font-size="9">pay_abc123...def456</text>
+  <text x="620" y="352" fill="#f0f6fc" font-family="monospace" font-size="9">payments</text>
+  <text x="720" y="352" fill="#39d353" font-family="monospace" font-size="9">23h 14m</text>
+
+  <text x="430" y="372" fill="#58a6ff" font-family="monospace" font-size="9">usr_def456...ghi789</text>
+  <text x="620" y="372" fill="#f0f6fc" font-family="monospace" font-size="9">users</text>
+  <text x="720" y="372" fill="#39d353" font-family="monospace" font-size="9">22h 57m</text>
+
+  <text x="430" y="392" fill="#58a6ff" font-family="monospace" font-size="9">eml_ghi789...jkl012</text>
+  <text x="620" y="392" fill="#f0f6fc" font-family="monospace" font-size="9">emails</text>
+  <text x="720" y="392" fill="#39d353" font-family="monospace" font-size="9">18h 03m</text>
+
+  <text x="430" y="412" fill="#58a6ff" font-family="monospace" font-size="9">exp_jkl012...mno345</text>
+  <text x="620" y="412" fill="#f0f6fc" font-family="monospace" font-size="9">exports</text>
+  <text x="720" y="412" fill="#ffa657" font-family="monospace" font-size="9">4h 12m</text>
+
+  <text x="430" y="432" fill="#58a6ff" font-family="monospace" font-size="9">ord_mno345...pqr678</text>
+  <text x="620" y="432" fill="#f0f6fc" font-family="monospace" font-size="9">orders</text>
+  <text x="720" y="432" fill="#f85149" font-family="monospace" font-size="9">1h 47m</text>
+
+  <!-- Outbox Pattern Status -->
+  <text x="410" y="540" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Transactional Outbox</text>
+
+  <rect x="410" y="560" width="380" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="430" y="585" fill="#8b949e" font-family="monospace" font-size="12">Outbox Relay Status</text>
+
+  <!-- Status indicators -->
+  <circle cx="440" cy="610" r="6" fill="#39d353"/>
+  <text x="455" y="615" fill="#f0f6fc" font-family="monospace" font-size="11">Database Connection: Healthy</text>
+
+  <circle cx="440" cy="635" r="6" fill="#39d353"/>
+  <text x="455" y="640" fill="#f0f6fc" font-family="monospace" font-size="11">Outbox Processing: Active</text>
+
+  <circle cx="440" cy="660" r="6" fill="#ffa657"/>
+  <text x="455" y="665" fill="#f0f6fc" font-family="monospace" font-size="11">Pending Events: 12</text>
+
+  <text x="430" y="690" fill="#8b949e" font-family="monospace" font-size="10">Last Processed: 2024-01-15 10:30:15 UTC</text>
+  <text x="430" y="705" fill="#8b949e" font-family="monospace" font-size="10">Processing Rate: 847 events/min</text>
+  <text x="430" y="720" fill="#8b949e" font-family="monospace" font-size="10">Error Rate: 0.03% (2/6,847)</text>
+
+  <!-- Right Panel - Configuration -->
+  <rect x="830" y="80" width="350" height="700" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+  <text x="850" y="110" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Configuration & Tuning</text>
+
+  <!-- Queue-specific settings -->
+  <rect x="850" y="130" width="310" height="200" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="870" y="155" fill="#8b949e" font-family="monospace" font-size="12">Per-Queue Settings</text>
+
+  <text x="870" y="180" fill="#f0f6fc" font-family="monospace" font-size="11">payments:</text>
+  <text x="1000" y="180" fill="#39d353" font-family="monospace" font-size="11">Enabled</text>
+  <text x="890" y="195" fill="#8b949e" font-family="monospace" font-size="9">TTL: 24h | Strategy: UUID</text>
+
+  <text x="870" y="215" fill="#f0f6fc" font-family="monospace" font-size="11">users:</text>
+  <text x="1000" y="215" fill="#39d353" font-family="monospace" font-size="11">Enabled</text>
+  <text x="890" y="230" fill="#8b949e" font-family="monospace" font-size="9">TTL: 12h | Strategy: Content Hash</text>
+
+  <text x="870" y="250" fill="#f0f6fc" font-family="monospace" font-size="11">emails:</text>
+  <text x="1000" y="250" fill="#ffa657" font-family="monospace" font-size="11">Monitoring</text>
+  <text x="890" y="265" fill="#8b949e" font-family="monospace" font-size="9">TTL: 6h | Strategy: Hybrid</text>
+
+  <text x="870" y="285" fill="#f0f6fc" font-family="monospace" font-size="11">exports:</text>
+  <text x="1000" y="285" fill="#8b949e" font-family="monospace" font-size="11">Disabled</text>
+  <text x="890" y="300" fill="#8b949e" font-family="monospace" font-size="9">High-volume, no dedup needed</text>
+
+  <!-- Global settings -->
+  <text x="850" y="370" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Global Settings</text>
+
+  <rect x="850" y="390" width="310" height="160" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+
+  <text x="870" y="415" fill="#f0f6fc" font-family="monospace" font-size="11">Default TTL:</text>
+  <text x="1000" y="415" fill="#58a6ff" font-family="monospace" font-size="11">24 hours</text>
+
+  <text x="870" y="435" fill="#f0f6fc" font-family="monospace" font-size="11">Max Key Size:</text>
+  <text x="1000" y="435" fill="#58a6ff" font-family="monospace" font-size="11">256 bytes</text>
+
+  <text x="870" y="455" fill="#f0f6fc" font-family="monospace" font-size="11">Storage Backend:</text>
+  <text x="1000" y="455" fill="#58a6ff" font-family="monospace" font-size="11">Redis Cluster</text>
+
+  <text x="870" y="475" fill="#f0f6fc" font-family="monospace" font-size="11">Cleanup Interval:</text>
+  <text x="1000" y="475" fill="#58a6ff" font-family="monospace" font-size="11">5 minutes</text>
+
+  <text x="870" y="495" fill="#f0f6fc" font-family="monospace" font-size="11">Memory Limit:</text>
+  <text x="1000" y="495" fill="#ffa657" font-family="monospace" font-size="11">100MB (78% used)</text>
+
+  <text x="870" y="515" fill="#f0f6fc" font-family="monospace" font-size="11">Alerting:</text>
+  <text x="1000" y="515" fill="#39d353" font-family="monospace" font-size="11">Enabled</text>
+
+  <text x="870" y="535" fill="#f0f6fc" font-family="monospace" font-size="11">Metrics Export:</text>
+  <text x="1000" y="535" fill="#39d353" font-family="monospace" font-size="11">Prometheus</text>
+
+  <!-- Action buttons -->
+  <text x="850" y="580" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Actions</text>
+
+  <rect x="850" y="600" width="145" height="35" fill="#238636" stroke="#39d353" stroke-width="1" rx="4"/>
+  <text x="910" y="622" fill="#f0f6fc" font-family="monospace" font-size="12">✓ Force Cleanup</text>
+
+  <rect x="1015" y="600" width="145" height="35" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="1065" y="622" fill="#8b949e" font-family="monospace" font-size="12">Export Keys</text>
+
+  <rect x="850" y="650" width="145" height="35" fill="#30363d" stroke="#8b949e" stroke-width="1" rx="4"/>
+  <text x="895" y="672" fill="#8b949e" font-family="monospace" font-size="12">View Metrics</text>
+
+  <rect x="1015" y="650" width="145" height="35" fill="#f85149" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="1065" y="672" fill="#f0f6fc" font-family="monospace" font-size="12">Clear All</text>
+
+  <!-- Performance chart -->
+  <text x="850" y="720" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Performance Graph</text>
+
+  <rect x="850" y="740" width="310" height="30" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="870" y="760" fill="#8b949e" font-family="monospace" font-size="10">Last 24h hit rate trend: ▁▂▃▅▆▇█▇▆▅▄▃▂▁</text>
+
+  <!-- Bottom status bar -->
+  <rect x="0" y="790" width="1200" height="10" fill="#161b22"/>
+  <text x="20" y="805" fill="#8b949e" font-family="monospace" font-size="10">Press 'h' for help | 'r' to refresh | 'c' to configure | 'q' to quit</text>
+</svg>

@@ -1,0 +1,878 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/james/go-redis-work-queue/schemas/f014-event-hooks",
+  "title": "Event Hooks Schema Definitions",
+  "description": "JSON Schema definitions for the Event Hooks system",
+  "definitions": {
+    "EventType": {
+      "type": "string",
+      "enum": [
+        "job_enqueued",
+        "job_started",
+        "job_succeeded",
+        "job_failed",
+        "job_retried",
+        "job_dlq",
+        "queue_created",
+        "queue_paused",
+        "queue_resumed",
+        "queue_deleted"
+      ],
+      "description": "Types of events that can be emitted by the system"
+    },
+    "JobPriority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "critical"],
+      "description": "Job priority levels"
+    },
+    "JobStatus": {
+      "type": "string",
+      "enum": ["pending", "running", "succeeded", "failed", "retrying", "dlq"],
+      "description": "Job execution status"
+    },
+    "TransportType": {
+      "type": "string",
+      "enum": ["webhook", "nats"],
+      "description": "Event delivery transport types"
+    },
+    "EventPayload": {
+      "type": "object",
+      "required": ["event_id", "event_type", "timestamp", "queue", "job"],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this event"
+        },
+        "event_type": {
+          "$ref": "#/definitions/EventType"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the event occurred"
+        },
+        "queue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Name of the queue where the job resides"
+        },
+        "job": {
+          "$ref": "#/definitions/JobInfo"
+        },
+        "metadata": {
+          "$ref": "#/definitions/EventMetadata"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation ID for tracing requests across services"
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Distributed tracing identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JobInfo": {
+      "type": "object",
+      "required": ["id", "type", "priority", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "type": {
+          "type": "string",
+          "description": "Job type/handler name"
+        },
+        "priority": {
+          "$ref": "#/definitions/JobPriority"
+        },
+        "status": {
+          "$ref": "#/definitions/JobStatus"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Job payload data (filtered based on subscription settings)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job was created"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job started executing"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job completed (success or failure)"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of retry attempts made"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of retries allowed"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if job failed (redacted based on subscription settings)"
+        },
+        "result": {
+          "type": "object",
+          "description": "Job result data (filtered based on subscription settings)"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Job tags for categorization"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventMetadata": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Environment where the event originated (dev, staging, prod)"
+        },
+        "version": {
+          "type": "string",
+          "description": "API version that generated the event"
+        },
+        "source": {
+          "type": "string",
+          "description": "Service or component that generated the event"
+        },
+        "region": {
+          "type": "string",
+          "description": "Geographic region where event occurred"
+        },
+        "tenant_id": {
+          "type": "string",
+          "description": "Multi-tenant identifier if applicable"
+        }
+      },
+      "additionalProperties": true
+    },
+    "WebhookSubscription": {
+      "type": "object",
+      "required": ["id", "name", "endpoint", "event_types", "transport"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique subscription identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable subscription name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional description of the subscription purpose"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL endpoint"
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventType"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Event types this subscription listens for"
+        },
+        "transport": {
+          "$ref": "#/definitions/TransportConfig"
+        },
+        "filters": {
+          "$ref": "#/definitions/EventFilters"
+        },
+        "security": {
+          "$ref": "#/definitions/SecurityConfig"
+        },
+        "delivery": {
+          "$ref": "#/definitions/DeliveryConfig"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the subscription is active"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the subscription was created"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who created the subscription"
+        },
+        "last_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the subscription was last modified"
+        },
+        "last_modified_by": {
+          "type": "string",
+          "description": "User who last modified the subscription"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NatsSubscription": {
+      "type": "object",
+      "required": ["id", "name", "subject_pattern", "event_types", "transport"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique subscription identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable subscription name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional description of the subscription purpose"
+        },
+        "subject_pattern": {
+          "type": "string",
+          "description": "NATS subject pattern (e.g., 'events.{queue}.{event_type}')"
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EventType"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Event types this subscription listens for"
+        },
+        "transport": {
+          "$ref": "#/definitions/TransportConfig"
+        },
+        "filters": {
+          "$ref": "#/definitions/EventFilters"
+        },
+        "delivery": {
+          "$ref": "#/definitions/DeliveryConfig"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the subscription is active"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the subscription was created"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "User who created the subscription"
+        },
+        "last_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the subscription was last modified"
+        },
+        "last_modified_by": {
+          "type": "string",
+          "description": "User who last modified the subscription"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransportConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/TransportType"
+        },
+        "webhook": {
+          "$ref": "#/definitions/WebhookTransportConfig"
+        },
+        "nats": {
+          "$ref": "#/definitions/NatsTransportConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WebhookTransportConfig": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["POST", "PUT"],
+          "default": "POST",
+          "description": "HTTP method to use"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional HTTP headers to send"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 30,
+          "description": "Request timeout in seconds"
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "Custom User-Agent header"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NatsTransportConfig": {
+      "type": "object",
+      "properties": {
+        "connection_name": {
+          "type": "string",
+          "description": "NATS connection identifier"
+        },
+        "max_payload": {
+          "type": "integer",
+          "minimum": 1024,
+          "description": "Maximum payload size in bytes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventFilters": {
+      "type": "object",
+      "properties": {
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only include events from these queues (empty = all queues)"
+        },
+        "job_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only include events for these job types (empty = all types)"
+        },
+        "priorities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobPriority"
+          },
+          "description": "Only include events for these priorities (empty = all priorities)"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only include jobs with these tags (empty = all jobs)"
+        },
+        "result_filter": {
+          "type": "string",
+          "enum": ["all", "success_only", "failure_only"],
+          "default": "all",
+          "description": "Filter events by job result"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityConfig": {
+      "type": "object",
+      "properties": {
+        "hmac_secret": {
+          "type": "string",
+          "minLength": 32,
+          "description": "HMAC secret for payload signing (stored encrypted)"
+        },
+        "signature_header": {
+          "type": "string",
+          "default": "X-Event-Signature",
+          "description": "HTTP header name for HMAC signature"
+        },
+        "timestamp_header": {
+          "type": "string",
+          "default": "X-Event-Timestamp",
+          "description": "HTTP header name for timestamp"
+        },
+        "signature_algorithm": {
+          "type": "string",
+          "enum": ["hmac-sha256", "hmac-sha512"],
+          "default": "hmac-sha256",
+          "description": "HMAC signature algorithm"
+        },
+        "mtls_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use mutual TLS"
+        },
+        "client_cert": {
+          "type": "string",
+          "description": "Client certificate for mTLS (PEM format)"
+        },
+        "redaction_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regex patterns for redacting sensitive data from payloads"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeliveryConfig": {
+      "type": "object",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "Maximum delivery attempts before sending to DLH"
+        },
+        "initial_delay_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 60000,
+          "default": 1000,
+          "description": "Initial delay before first retry in milliseconds"
+        },
+        "backoff_multiplier": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 10.0,
+          "default": 2.0,
+          "description": "Exponential backoff multiplier"
+        },
+        "max_delay_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 300000,
+          "description": "Maximum delay between retries in milliseconds"
+        },
+        "jitter_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to add random jitter to retry delays"
+        },
+        "circuit_breaker": {
+          "$ref": "#/definitions/CircuitBreakerConfig"
+        },
+        "rate_limit": {
+          "$ref": "#/definitions/RateLimitConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CircuitBreakerConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether circuit breaker is enabled"
+        },
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Number of failures before opening circuit"
+        },
+        "recovery_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 60000,
+          "description": "Time to wait before attempting recovery"
+        },
+        "success_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Consecutive successes needed to close circuit"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RateLimitConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether rate limiting is enabled"
+        },
+        "requests_per_second": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Maximum requests per second"
+        },
+        "burst_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Burst capacity (defaults to requests_per_second * 2)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeliveryAttempt": {
+      "type": "object",
+      "required": ["id", "subscription_id", "event_id", "attempt_number", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique delivery attempt identifier"
+        },
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the subscription"
+        },
+        "event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the event being delivered"
+        },
+        "attempt_number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Delivery attempt number (1-based)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "success", "failure", "timeout", "circuit_open"],
+          "description": "Delivery attempt status"
+        },
+        "attempted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the delivery was attempted"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the delivery completed"
+        },
+        "response_status": {
+          "type": "integer",
+          "description": "HTTP response status code (for webhooks)"
+        },
+        "response_headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "HTTP response headers (for webhooks)"
+        },
+        "response_body": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "HTTP response body (truncated, for webhooks)"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if delivery failed"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delivery attempt duration in milliseconds"
+        },
+        "next_retry_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the next retry is scheduled (if applicable)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeadLetterHook": {
+      "type": "object",
+      "required": ["id", "subscription_id", "event_id", "created_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique dead letter hook identifier"
+        },
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the subscription that failed"
+        },
+        "subscription_name": {
+          "type": "string",
+          "description": "Name of the subscription for easier identification"
+        },
+        "event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the event that couldn't be delivered"
+        },
+        "event_payload": {
+          "$ref": "#/definitions/EventPayload",
+          "description": "Original event payload"
+        },
+        "failure_reason": {
+          "type": "string",
+          "enum": ["max_attempts_exceeded", "circuit_breaker_open", "permanent_failure", "subscription_disabled"],
+          "description": "Why the delivery was moved to dead letter queue"
+        },
+        "total_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of delivery attempts made"
+        },
+        "last_attempt": {
+          "$ref": "#/definitions/DeliveryAttempt",
+          "description": "Details of the last delivery attempt"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the DLH entry was created"
+        },
+        "replayed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the DLH entry was replayed (if applicable)"
+        },
+        "replayed_by": {
+          "type": "string",
+          "description": "User who initiated the replay"
+        },
+        "archived_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the DLH entry was archived"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubscriptionHealth": {
+      "type": "object",
+      "required": ["subscription_id", "status"],
+      "properties": {
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the subscription"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "failed", "circuit_open"],
+          "description": "Overall health status"
+        },
+        "last_successful_delivery": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last successful delivery"
+        },
+        "last_failed_delivery": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last failed delivery"
+        },
+        "success_rate_24h": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Success rate over last 24 hours (0.0-1.0)"
+        },
+        "total_deliveries_24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total delivery attempts in last 24 hours"
+        },
+        "failed_deliveries_24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed delivery attempts in last 24 hours"
+        },
+        "average_response_time_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average response time over last 24 hours"
+        },
+        "circuit_breaker_state": {
+          "type": "string",
+          "enum": ["closed", "open", "half_open"],
+          "description": "Current circuit breaker state"
+        },
+        "dead_letter_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of events in dead letter queue"
+        },
+        "last_health_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When health was last calculated"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TestDeliveryRequest": {
+      "type": "object",
+      "required": ["subscription_id"],
+      "properties": {
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of subscription to test"
+        },
+        "event_type": {
+          "$ref": "#/definitions/EventType",
+          "description": "Event type for test payload (defaults to job_enqueued)"
+        },
+        "custom_payload": {
+          "$ref": "#/definitions/EventPayload",
+          "description": "Custom test payload (optional)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TestDeliveryResult": {
+      "type": "object",
+      "required": ["subscription_id", "test_id", "success"],
+      "properties": {
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of tested subscription"
+        },
+        "test_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique test delivery identifier"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether test delivery succeeded"
+        },
+        "response_status": {
+          "type": "integer",
+          "description": "HTTP response status code"
+        },
+        "response_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Response time in milliseconds"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message if test failed"
+        },
+        "performed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the test was performed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReplayRequest": {
+      "type": "object",
+      "required": ["dead_letter_hook_ids"],
+      "properties": {
+        "dead_letter_hook_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "description": "IDs of dead letter hooks to replay"
+        },
+        "subscription_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional: replay to different subscription"
+        },
+        "force_replay": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force replay even if subscription is unhealthy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReplayResult": {
+      "type": "object",
+      "required": ["replay_id", "requested_count", "accepted_count"],
+      "properties": {
+        "replay_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique replay operation identifier"
+        },
+        "requested_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of DLHs requested for replay"
+        },
+        "accepted_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of DLHs accepted for replay"
+        },
+        "rejected_dlhs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dlh_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": ["dlh_id", "reason"]
+          },
+          "description": "DLHs that were rejected and why"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the replay was started"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

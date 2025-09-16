@@ -1,0 +1,231 @@
+resources:
+  # Queue resources
+  queues:
+    patterns:
+      - name: "all_queues"
+        pattern: "*"
+        description: "All queues in the system"
+      - name: "production_queues"
+        pattern: "prod-*"
+        description: "Production queue prefix"
+      - name: "staging_queues"
+        pattern: "staging-*"
+        description: "Staging queue prefix"
+      - name: "test_queues"
+        pattern: "test-*"
+        description: "Test queue prefix"
+      - name: "payment_queues"
+        pattern: "payment-*"
+        description: "Payment processing queues"
+      - name: "email_queues"
+        pattern: "email-*"
+        description: "Email processing queues"
+      - name: "high_priority"
+        pattern: "*-high"
+        description: "High priority queues"
+
+  # Environment resources
+  environments:
+    patterns:
+      - name: "all_environments"
+        pattern: "*"
+        description: "All environments"
+      - name: "production"
+        pattern: "production"
+        description: "Production environment only"
+      - name: "non_production"
+        pattern: "staging|development|test"
+        description: "Non-production environments"
+
+  # Time-based resources
+  schedules:
+    patterns:
+      - name: "always"
+        pattern: "*"
+        description: "24/7 access"
+      - name: "business_hours"
+        pattern: "weekdays:09:00-17:00"
+        description: "Monday-Friday 9am-5pm"
+      - name: "after_hours"
+        pattern: "weekdays:17:01-08:59|weekends:*"
+        description: "After business hours and weekends"
+      - name: "emergency_only"
+        pattern: "incident:declared"
+        description: "Only during declared incidents"
+
+  # Job-specific resources
+  jobs:
+    patterns:
+      - name: "all_jobs"
+        pattern: "*"
+        description: "All jobs"
+      - name: "high_priority_jobs"
+        pattern: "priority:high"
+        description: "High priority jobs only"
+      - name: "user_jobs"
+        pattern: "user:{user_id}"
+        description: "Jobs owned by specific user"
+
+# Resource constraints that can be applied
+constraints:
+  rate_limits:
+    - resource: "jobs:enqueue"
+      limit: 1000
+      window: "1h"
+      description: "Maximum 1000 job enqueues per hour"
+    - resource: "dlq:purge"
+      limit: 10
+      window: "1d"
+      description: "Maximum 10 DLQ purges per day"
+
+  size_limits:
+    - resource: "jobs:enqueue"
+      max_payload_size: "10MB"
+      description: "Maximum job payload size"
+
+  concurrency_limits:
+    - resource: "bench:run"
+      max_concurrent: 1
+      description: "Only one benchmark can run at a time"
+
+# Action definitions
+actions:
+  # Stats operations
+  "stats:read":
+    description: "Read queue statistics and metrics"
+    risk_level: "low"
+    audit_required: false
+
+  "stats:export":
+    description: "Export statistics data"
+    risk_level: "low"
+    audit_required: true
+
+  # Queue operations
+  "queues:read":
+    description: "View queue contents"
+    risk_level: "low"
+    audit_required: false
+
+  "queues:create":
+    description: "Create new queues"
+    risk_level: "medium"
+    audit_required: true
+
+  "queues:delete":
+    description: "Delete queues"
+    risk_level: "high"
+    audit_required: true
+
+  # Job operations
+  "jobs:read":
+    description: "View job details"
+    risk_level: "low"
+    audit_required: false
+
+  "jobs:enqueue":
+    description: "Submit new jobs"
+    risk_level: "low"
+    audit_required: false
+
+  "jobs:cancel":
+    description: "Cancel pending jobs"
+    risk_level: "medium"
+    audit_required: true
+
+  "jobs:retry":
+    description: "Retry failed jobs"
+    risk_level: "medium"
+    audit_required: true
+
+  "jobs:priority":
+    description: "Change job priority"
+    risk_level: "medium"
+    audit_required: true
+
+  # DLQ operations
+  "dlq:read":
+    description: "View dead letter queue contents"
+    risk_level: "low"
+    audit_required: false
+
+  "dlq:retry":
+    description: "Retry jobs from DLQ"
+    risk_level: "medium"
+    audit_required: true
+
+  "dlq:purge":
+    description: "Permanently delete DLQ jobs"
+    risk_level: "high"
+    audit_required: true
+
+  "dlq:export":
+    description: "Export DLQ contents"
+    risk_level: "medium"
+    audit_required: true
+
+  # Worker operations
+  "workers:read":
+    description: "View worker status"
+    risk_level: "low"
+    audit_required: false
+
+  "workers:manage":
+    description: "Start/stop workers"
+    risk_level: "high"
+    audit_required: true
+
+  # Admin operations
+  "admin:users":
+    description: "Manage users and roles"
+    risk_level: "high"
+    audit_required: true
+
+  "admin:tokens":
+    description: "Manage API tokens"
+    risk_level: "high"
+    audit_required: true
+
+  "admin:audit":
+    description: "Access audit logs"
+    risk_level: "medium"
+    audit_required: true
+
+  "admin:system":
+    description: "System configuration"
+    risk_level: "high"
+    audit_required: true
+
+  # Benchmark operations
+  "bench:run":
+    description: "Run performance benchmarks"
+    risk_level: "medium"
+    audit_required: true
+
+# Endpoint mappings
+endpoints:
+  "GET /api/v1/stats": ["stats:read"]
+  "GET /api/v1/stats/keys": ["stats:read"]
+  "GET /api/v1/stats/export": ["stats:export"]
+  "GET /api/v1/queues": ["queues:read"]
+  "GET /api/v1/queues/*/peek": ["queues:read"]
+  "POST /api/v1/queues": ["queues:create"]
+  "DELETE /api/v1/queues/*": ["queues:delete"]
+  "DELETE /api/v1/queues/dlq": ["dlq:purge"]
+  "DELETE /api/v1/queues/all": ["queues:delete", "admin:system"]
+  "POST /api/v1/jobs": ["jobs:enqueue"]
+  "DELETE /api/v1/jobs/*": ["jobs:cancel"]
+  "PUT /api/v1/jobs/*/retry": ["jobs:retry"]
+  "PUT /api/v1/jobs/*/priority": ["jobs:priority"]
+  "GET /api/v1/dlq": ["dlq:read"]
+  "POST /api/v1/dlq/retry": ["dlq:retry"]
+  "DELETE /api/v1/dlq": ["dlq:purge"]
+  "GET /api/v1/workers": ["workers:read"]
+  "POST /api/v1/workers/*/stop": ["workers:manage"]
+  "POST /api/v1/bench": ["bench:run"]
+  "GET /api/v1/admin/users": ["admin:users"]
+  "POST /api/v1/admin/users": ["admin:users"]
+  "GET /api/v1/admin/tokens": ["admin:tokens"]
+  "POST /api/v1/admin/tokens": ["admin:tokens"]
+  "DELETE /api/v1/admin/tokens/*": ["admin:tokens"]
+  "GET /api/v1/admin/audit": ["admin:audit"]

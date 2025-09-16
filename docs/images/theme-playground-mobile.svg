@@ -1,0 +1,220 @@
+<svg width="400" height="800" viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel { fill: #161b22; stroke: #30363d; stroke-width: 1; }
+      .text { fill: #f0f6fc; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; }
+      .text-sm { font-size: 12px; }
+      .text-xs { font-size: 10px; }
+      .text-md { font-size: 14px; }
+      .text-lg { font-size: 16px; }
+      .secondary { fill: #8b949e; }
+      .primary { fill: #58a6ff; }
+      .success { fill: #39d353; }
+      .warning { fill: #ffa657; }
+      .error { fill: #f85149; }
+      .border { stroke: #30363d; stroke-width: 1; fill: none; }
+      .highlight { fill: #1f2937; }
+      .accent { fill: #ff6b9d; }
+      .button { fill: #238636; stroke: #2ea043; stroke-width: 1; rx: 4; }
+      .button-secondary { fill: #30363d; stroke: #4c5460; stroke-width: 1; rx: 4; }
+      .input { fill: #0d1117; stroke: #30363d; stroke-width: 1; rx: 4; }
+      .fab { fill: #58a6ff; stroke: #7c3aed; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="800" class="bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="400" height="50" class="panel"/>
+  <text x="15" y="30" class="text text-md">Theme Playground</text>
+  <text x="15" y="45" class="text text-xs secondary">Settings > Theme > Playground</text>
+
+  <!-- Theme Selection Section -->
+  <rect x="10" y="60" width="380" height="280" class="panel"/>
+  <text x="20" y="85" class="text text-sm">Select Theme</text>
+
+  <!-- Search Bar -->
+  <rect x="20" y="95" width="360" height="28" class="input"/>
+  <text x="30" y="113" class="text text-xs secondary">🔍 Search themes...</text>
+
+  <!-- Compact Theme Grid -->
+  <g transform="translate(20, 135)">
+    <!-- Row 1 -->
+    <!-- Tokyo Night - Selected -->
+    <g>
+      <rect x="0" y="0" width="110" height="60" class="highlight" stroke="#ff6b9d" stroke-width="2" rx="4"/>
+      <circle cx="15" cy="15" r="6" fill="#bb9af7"/>
+      <text x="15" y="35" class="text text-xs">Tokyo Night</text>
+      <text x="15" y="45" class="text text-xs secondary">Dark</text>
+      <rect x="85" y="5" width="15" height="10" class="success" rx="2"/>
+      <text x="87" y="12" class="text text-xs">✓</text>
+    </g>
+
+    <!-- GitHub -->
+    <g transform="translate(120, 0)">
+      <rect x="0" y="0" width="110" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+      <circle cx="15" cy="15" r="6" fill="#f0f6fc"/>
+      <text x="15" y="35" class="text text-xs">GitHub</text>
+      <text x="15" y="45" class="text text-xs secondary">Light</text>
+    </g>
+
+    <!-- One Dark -->
+    <g transform="translate(240, 0)">
+      <rect x="0" y="0" width="110" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+      <circle cx="15" cy="15" r="6" fill="#61afef"/>
+      <text x="15" y="35" class="text text-xs">One Dark</text>
+      <text x="15" y="45" class="text text-xs secondary">Dark</text>
+    </g>
+
+    <!-- Row 2 -->
+    <!-- Dracula -->
+    <g transform="translate(0, 70)">
+      <rect x="0" y="0" width="110" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+      <circle cx="15" cy="15" r="6" fill="#ff79c6"/>
+      <text x="15" y="35" class="text text-xs">Dracula</text>
+      <text x="15" y="45" class="text text-xs secondary">Dark</text>
+    </g>
+
+    <!-- High Contrast -->
+    <g transform="translate(120, 70)">
+      <rect x="0" y="0" width="110" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" rx="4"/>
+      <circle cx="15" cy="15" r="6" fill="#ffffff"/>
+      <text x="15" y="35" class="text text-xs">High Contrast</text>
+      <text x="15" y="45" class="text text-xs secondary">A11y</text>
+      <rect x="75" y="5" width="25" height="10" class="success" rx="2"/>
+      <text x="78" y="12" class="text text-xs">AAA</text>
+    </g>
+
+    <!-- More Button -->
+    <g transform="translate(240, 70)">
+      <rect x="0" y="0" width="110" height="60" fill="#161b22" stroke="#30363d" stroke-width="1" stroke-dasharray="3,3" rx="4"/>
+      <text x="25" y="35" class="text text-xs secondary">+7 more</text>
+      <text x="25" y="45" class="text text-xs secondary">themes</text>
+    </g>
+  </g>
+
+  <!-- Customization Section -->
+  <g transform="translate(10, 360)">
+    <rect x="0" y="0" width="380" height="140" class="panel"/>
+    <text x="15" y="25" class="text text-sm">Customization</text>
+
+    <!-- Accent Color -->
+    <text x="15" y="45" class="text text-xs secondary">ACCENT COLOR</text>
+    <rect x="15" y="50" width="50" height="20" class="accent" rx="4"/>
+    <text x="20" y="62" class="text text-xs">#ff6b9d</text>
+
+    <!-- Color palette -->
+    <g transform="translate(80, 50)">
+      <rect x="0" y="0" width="20" height="20" fill="#e74c3c" rx="2"/>
+      <rect x="25" y="0" width="20" height="20" fill="#f39c12" rx="2"/>
+      <rect x="50" y="0" width="20" height="20" fill="#2ecc71" rx="2"/>
+      <rect x="75" y="0" width="20" height="20" fill="#3498db" rx="2"/>
+      <rect x="100" y="0" width="20" height="20" fill="#9b59b6" rx="2"/>
+    </g>
+
+    <!-- Contrast Slider -->
+    <text x="15" y="90" class="text text-xs secondary">CONTRAST LEVEL</text>
+    <rect x="15" y="95" width="250" height="3" fill="#30363d" rx="2"/>
+    <rect x="15" y="95" width="160" height="3" class="primary" rx="2"/>
+    <circle cx="175" cy="96.5" r="6" class="primary"/>
+    <text x="280" y="100" class="text text-xs secondary">75%</text>
+
+    <!-- Accessibility Info -->
+    <text x="15" y="120" class="text text-xs">Contrast: 4.8:1</text>
+    <rect x="100" y="113" width="20" height="12" class="success" rx="2"/>
+    <text x="103" y="121" class="text text-xs">AA</text>
+
+    <text x="140" y="120" class="text text-xs">Color Blind Safe</text>
+    <rect x="240" y="113" width="15" height="12" class="success" rx="2"/>
+    <text x="244" y="121" class="text text-xs">✓</text>
+  </g>
+
+  <!-- Live Preview Section -->
+  <rect x="10" y="510" width="380" height="230" class="panel"/>
+  <text x="20" y="535" class="text text-sm">Live Preview</text>
+  <text x="150" y="535" class="text text-xs secondary">Tokyo Night Theme</text>
+
+  <!-- Preview Content -->
+  <g transform="translate(20, 545)">
+    <rect x="0" y="0" width="360" height="180" class="bg" rx="4"/>
+
+    <!-- Mini Tab Bar -->
+    <rect x="10" y="10" width="340" height="25" fill="#161b22"/>
+    <rect x="10" y="10" width="50" height="25" class="highlight" rx="2"/>
+    <text x="25" y="25" class="text text-xs">Jobs</text>
+    <text x="70" y="25" class="text text-xs secondary">Workers</text>
+    <text x="120" y="25" class="text text-xs secondary">DLQ</text>
+
+    <!-- Mini Job Cards -->
+    <g transform="translate(10, 45)">
+      <!-- Job 1 -->
+      <rect x="0" y="0" width="340" height="25" fill="#161b22" rx="2"/>
+      <text x="10" y="15" class="text text-xs">job_12345</text>
+      <rect x="100" y="5" width="40" height="12" class="warning" rx="6"/>
+      <text x="110" y="13" class="text text-xs">Running</text>
+      <!-- Progress bar -->
+      <rect x="150" y="8" width="80" height="4" fill="#30363d" rx="2"/>
+      <rect x="150" y="8" width="55" height="4" class="primary" rx="2"/>
+      <text x="240" y="13" class="text text-xs secondary">69%</text>
+
+      <!-- Job 2 -->
+      <rect x="0" y="30" width="340" height="25" fill="#0d1117" rx="2"/>
+      <text x="10" y="45" class="text text-xs">job_12344</text>
+      <rect x="100" y="35" width="50" height="12" class="success" rx="6"/>
+      <text x="110" y="43" class="text text-xs">Complete</text>
+      <rect x="150" y="38" width="80" height="4" class="success" rx="2"/>
+      <text x="240" y="43" class="text text-xs secondary">100%</text>
+
+      <!-- Job 3 -->
+      <rect x="0" y="60" width="340" height="25" fill="#161b22" rx="2"/>
+      <text x="10" y="75" class="text text-xs">job_12343</text>
+      <rect x="100" y="65" width="35" height="12" class="error" rx="6"/>
+      <text x="110" y="73" class="text text-xs">Failed</text>
+      <rect x="150" y="68" width="80" height="4" fill="#30363d" rx="2"/>
+      <rect x="150" y="68" width="20" height="4" class="error" rx="2"/>
+      <text x="240" y="73" class="text text-xs secondary">25%</text>
+    </g>
+
+    <!-- Mini Stats -->
+    <g transform="translate(10, 125)">
+      <rect x="0" y="0" width="110" height="40" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+      <text x="5" y="12" class="text text-xs secondary">ACTIVE</text>
+      <text x="5" y="25" class="text text-sm">1,247</text>
+      <text x="5" y="35" class="text text-xs success">+12%</text>
+
+      <rect x="115" y="0" width="110" height="40" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+      <text x="120" y="12" class="text text-xs secondary">COMPLETED</text>
+      <text x="120" y="25" class="text text-sm">8,934</text>
+      <text x="120" y="35" class="text text-xs success">+5%</text>
+
+      <rect x="230" y="0" width="110" height="40" fill="#161b22" stroke="#30363d" stroke-width="1" rx="3"/>
+      <text x="235" y="12" class="text text-xs secondary">FAILED</text>
+      <text x="235" y="25" class="text text-sm">23</text>
+      <text x="235" y="35" class="text text-xs error">+2</text>
+    </g>
+  </g>
+
+  <!-- Action Buttons -->
+  <g transform="translate(10, 750)">
+    <rect x="0" y="0" width="115" height="35" class="button"/>
+    <text x="35" y="22" class="text text-sm">Apply</text>
+
+    <rect x="125" y="0" width="115" height="35" class="button-secondary"/>
+    <text x="165" y="22" class="text text-sm">Reset</text>
+
+    <rect x="250" y="0" width="115" height="35" class="button-secondary"/>
+    <text x="285" y="22" class="text text-sm">Export</text>
+
+    <rect x="370" y="0" width="25" height="35" class="button-secondary"/>
+    <text x="377" y="22" class="text text-sm">?</text>
+  </g>
+
+  <!-- Floating Action Button for Quick Theme Switch -->
+  <circle cx="350" cy="450" r="25" class="fab"/>
+  <text x="342" y="456" class="text text-md">🎨</text>
+
+  <!-- Keyboard shortcut hint -->
+  <text x="15" y="795" class="text text-xs secondary">Tap themes to preview • Long press to customize</text>
+</svg>

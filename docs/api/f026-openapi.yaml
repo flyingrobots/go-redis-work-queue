@@ -1,0 +1,2171 @@
+openapi: 3.0.3
+info:
+  title: Theme Playground API
+  description: |
+    API for managing themes, accessibility validation, and user customization in the Theme Playground system.
+
+    This API provides comprehensive theme management capabilities including:
+    - Theme discovery and browsing
+    - Live theme preview and application
+    - Accessibility compliance validation
+    - Custom theme creation and modification
+    - Theme import/export functionality
+    - User preference management
+
+    The API is designed with accessibility-first principles and includes real-time WCAG compliance checking.
+  version: 1.0.0
+  contact:
+    name: Theme System Team
+    email: themes@go-redis-wq.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.go-redis-wq.com/v1
+    description: Production server
+  - url: https://staging-api.go-redis-wq.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /themes:
+    get:
+      summary: List available themes
+      description: |
+        Retrieve a paginated list of available themes with optional filtering by category,
+        accessibility compliance, and search terms. Includes theme metadata and accessibility information.
+      operationId: listThemes
+      tags:
+        - Themes
+      parameters:
+        - name: category
+          in: query
+          description: Filter themes by category
+          required: false
+          schema:
+            $ref: '#/components/schemas/ThemeCategory'
+        - name: accessibility
+          in: query
+          description: Filter by accessibility compliance level
+          required: false
+          schema:
+            type: string
+            enum: [A, AA, AAA]
+        - name: search
+          in: query
+          description: Search themes by name, description, or tags
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: tags
+          in: query
+          description: Filter by specific tags (comma-separated)
+          required: false
+          schema:
+            type: string
+        - name: author
+          in: query
+          description: Filter themes by author
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: color_blind_safe
+          in: query
+          description: Filter themes that are color blind safe
+          required: false
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Number of themes to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of themes to skip for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sort
+          in: query
+          description: Sort order for themes
+          required: false
+          schema:
+            type: string
+            enum: [name, popularity, created_at, updated_at, accessibility_score]
+            default: name
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Successfully retrieved theme list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create a new custom theme
+      description: |
+        Create a new custom theme based on an existing theme or from scratch.
+        The theme will be validated for structure and accessibility compliance.
+      operationId: createTheme
+      tags:
+        - Themes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThemeRequest'
+      responses:
+        '201':
+          description: Theme created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeResponse'
+        '400':
+          description: Invalid theme data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Theme name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Theme validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /themes/{themeId}:
+    get:
+      summary: Get theme details
+      description: Retrieve complete theme definition including all style components and accessibility information
+      operationId: getTheme
+      tags:
+        - Themes
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+        - name: include_accessibility
+          in: query
+          description: Include accessibility analysis in response
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: include_preview
+          in: query
+          description: Include preview data
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Theme details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeDetailResponse'
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update custom theme
+      description: |
+        Update an existing custom theme. Only the theme owner or administrators can modify themes.
+        System themes cannot be modified.
+      operationId: updateTheme
+      tags:
+        - Themes
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateThemeRequest'
+      responses:
+        '200':
+          description: Theme updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeResponse'
+        '400':
+          description: Invalid theme data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '403':
+          description: Not authorized to modify this theme
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete custom theme
+      description: |
+        Delete a custom theme. Only the theme owner or administrators can delete themes.
+        System themes cannot be deleted.
+      operationId: deleteTheme
+      tags:
+        - Themes
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        '204':
+          description: Theme deleted successfully
+        '403':
+          description: Not authorized to delete this theme
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cannot delete theme that is currently in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /themes/{themeId}/apply:
+    post:
+      summary: Apply theme to current session
+      description: |
+        Apply a theme to the current user session. Optionally persist the choice
+        and validate accessibility compliance before application.
+      operationId: applyTheme
+      tags:
+        - Theme Application
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyThemeRequest'
+      responses:
+        '200':
+          description: Theme applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyThemeResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Theme fails accessibility requirements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibilityErrorResponse'
+
+  /themes/{themeId}/preview:
+    post:
+      summary: Preview theme without applying
+      description: |
+        Temporarily preview a theme without persisting the change. Returns rendered
+        component examples and accessibility analysis.
+      operationId: previewTheme
+      tags:
+        - Theme Application
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewThemeRequest'
+      responses:
+        '200':
+          description: Theme preview generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemePreviewResponse'
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /themes/current:
+    get:
+      summary: Get currently applied theme
+      description: Retrieve information about the theme currently applied to the user session
+      operationId: getCurrentTheme
+      tags:
+        - Theme Application
+      responses:
+        '200':
+          description: Current theme information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentThemeResponse'
+
+  /themes/{themeId}/validate:
+    post:
+      summary: Validate theme accessibility
+      description: |
+        Perform comprehensive accessibility validation on a theme including
+        WCAG compliance checking, color blindness simulation, and contrast analysis.
+      operationId: validateThemeAccessibility
+      tags:
+        - Accessibility
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessibilityValidationRequest'
+      responses:
+        '200':
+          description: Accessibility validation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibilityReportResponse'
+
+  /themes/{themeId}/export:
+    get:
+      summary: Export theme in various formats
+      description: |
+        Export a theme in different formats for use in other applications or for sharing.
+        Supports JSON, YAML, CSS, and Lip Gloss formats.
+      operationId: exportTheme
+      tags:
+        - Import/Export
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+        - name: format
+          in: query
+          description: Export format
+          required: false
+          schema:
+            type: string
+            enum: [json, yaml, css, lipgloss]
+            default: json
+        - name: include_metadata
+          in: query
+          description: Include theme metadata in export
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: minify
+          in: query
+          description: Minify exported content
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Theme exported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+            application/yaml:
+              schema:
+                type: string
+            text/css:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /themes/import:
+    post:
+      summary: Import theme from external source
+      description: |
+        Import a theme from a URL, file upload, or raw JSON data.
+        The imported theme will be validated and can be saved as a custom theme.
+      operationId: importTheme
+      tags:
+        - Import/Export
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportThemeRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Theme file to upload
+                validate:
+                  type: boolean
+                  default: true
+                save_as:
+                  type: string
+                  description: Name to save imported theme as
+      responses:
+        '201':
+          description: Theme imported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportThemeResponse'
+        '400':
+          description: Invalid import data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '422':
+          description: Theme validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /accessibility/requirements:
+    get:
+      summary: Get accessibility requirements and guidelines
+      description: |
+        Retrieve current accessibility requirements, WCAG guidelines,
+        and best practices for theme creation.
+      operationId: getAccessibilityRequirements
+      tags:
+        - Accessibility
+      responses:
+        '200':
+          description: Accessibility requirements retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibilityRequirementsResponse'
+
+  /accessibility/simulate:
+    post:
+      summary: Simulate color vision deficiencies
+      description: |
+        Simulate how colors appear to users with various types of color vision deficiencies.
+        Useful for testing theme accessibility.
+      operationId: simulateColorVisionDeficiency
+      tags:
+        - Accessibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ColorVisionSimulationRequest'
+      responses:
+        '200':
+          description: Color vision simulation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColorVisionSimulationResponse'
+
+  /user/preferences:
+    get:
+      summary: Get user theme preferences
+      description: Retrieve the current user's theme preferences and settings
+      operationId: getUserThemePreferences
+      tags:
+        - User Preferences
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserThemePreferencesResponse'
+
+    put:
+      summary: Update user theme preferences
+      description: Update the current user's theme preferences and settings
+      operationId: updateUserThemePreferences
+      tags:
+        - User Preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserThemePreferencesRequest'
+      responses:
+        '200':
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserThemePreferencesResponse'
+        '400':
+          description: Invalid preference data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /user/themes:
+    get:
+      summary: Get user's custom themes
+      description: Retrieve themes created or favorited by the current user
+      operationId: getUserThemes
+      tags:
+        - User Themes
+      parameters:
+        - name: type
+          in: query
+          description: Filter by theme relationship to user
+          required: false
+          schema:
+            type: string
+            enum: [created, favorited, recent, all]
+            default: all
+        - name: limit
+          in: query
+          description: Number of themes to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of themes to skip for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: User themes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserThemesResponse'
+
+  /user/themes/{themeId}/favorite:
+    post:
+      summary: Add theme to favorites
+      description: Add a theme to the user's favorites list
+      operationId: favoriteTheme
+      tags:
+        - User Themes
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        '204':
+          description: Theme added to favorites
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Remove theme from favorites
+      description: Remove a theme from the user's favorites list
+      operationId: unfavoriteTheme
+      tags:
+        - User Themes
+      parameters:
+        - name: themeId
+          in: path
+          description: Theme identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        '204':
+          description: Theme removed from favorites
+        '404':
+          description: Theme not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /collections:
+    get:
+      summary: Get theme collections
+      description: |
+        Retrieve curated collections of themes organized by purpose, style, or accessibility features.
+      operationId: getThemeCollections
+      tags:
+        - Collections
+      responses:
+        '200':
+          description: Theme collections retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeCollectionsResponse'
+
+  /collections/{collectionId}:
+    get:
+      summary: Get themes in a collection
+      description: Retrieve all themes in a specific collection
+      operationId: getThemeCollection
+      tags:
+        - Collections
+      parameters:
+        - name: collectionId
+          in: path
+          description: Collection identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        '200':
+          description: Collection themes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeCollectionResponse'
+        '404':
+          description: Collection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /analytics/themes:
+    get:
+      summary: Get theme usage analytics
+      description: |
+        Retrieve analytics data about theme usage, popularity, and trends.
+        Requires admin privileges.
+      operationId: getThemeAnalytics
+      tags:
+        - Analytics
+      security:
+        - BearerAuth: [admin]
+      parameters:
+        - name: period
+          in: query
+          description: Time period for analytics
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, quarter, year]
+            default: week
+        - name: metric
+          in: query
+          description: Specific metric to retrieve
+          required: false
+          schema:
+            type: string
+            enum: [usage, popularity, creation, accessibility_scores]
+      responses:
+        '200':
+          description: Analytics data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeAnalyticsResponse'
+        '403':
+          description: Admin privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    # Core Theme Schemas
+    Theme:
+      type: object
+      required:
+        - metadata
+        - palette
+        - components
+      properties:
+        metadata:
+          $ref: '#/components/schemas/ThemeMetadata'
+        palette:
+          $ref: '#/components/schemas/ColorPalette'
+        components:
+          $ref: '#/components/schemas/ComponentStyles'
+        typography:
+          $ref: '#/components/schemas/Typography'
+        animations:
+          $ref: '#/components/schemas/AnimationConfig'
+        accessibility:
+          $ref: '#/components/schemas/AccessibilityInfo'
+
+    ThemeMetadata:
+      type: object
+      required:
+        - name
+        - version
+        - category
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 1
+          maxLength: 50
+          description: Unique theme identifier
+        version:
+          type: string
+          pattern: '^\\d+\\.\\d+\\.\\d+$'
+          description: Semantic version number
+        description:
+          type: string
+          maxLength: 200
+          description: Human-readable theme description
+        author:
+          type: string
+          maxLength: 100
+          description: Theme author name
+        category:
+          $ref: '#/components/schemas/ThemeCategory'
+        created_at:
+          type: string
+          format: date-time
+          description: Theme creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        based_on:
+          type: string
+          description: Parent theme this theme is derived from
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 10
+          description: Searchable tags for theme categorization
+        preview_url:
+          type: string
+          format: uri
+          description: URL to theme preview image
+        popularity_score:
+          type: number
+          minimum: 0
+          maximum: 10
+          description: Theme popularity rating
+
+    ThemeCategory:
+      type: string
+      enum:
+        - standard
+        - accessibility
+        - specialty
+        - custom
+      description: Theme category classification
+
+    ColorPalette:
+      type: object
+      required:
+        - background
+        - surface
+        - primary
+        - secondary
+        - accent
+        - success
+        - warning
+        - error
+        - info
+        - text_primary
+        - text_secondary
+        - border
+      properties:
+        # Base colors
+        background:
+          $ref: '#/components/schemas/Color'
+        surface:
+          $ref: '#/components/schemas/Color'
+        surface_variant:
+          $ref: '#/components/schemas/Color'
+        primary:
+          $ref: '#/components/schemas/Color'
+        primary_variant:
+          $ref: '#/components/schemas/Color'
+        secondary:
+          $ref: '#/components/schemas/Color'
+        secondary_variant:
+          $ref: '#/components/schemas/Color'
+        accent:
+          $ref: '#/components/schemas/Color'
+        # Semantic colors
+        success:
+          $ref: '#/components/schemas/Color'
+        warning:
+          $ref: '#/components/schemas/Color'
+        error:
+          $ref: '#/components/schemas/Color'
+        info:
+          $ref: '#/components/schemas/Color'
+        # Text hierarchy
+        text_primary:
+          $ref: '#/components/schemas/Color'
+        text_secondary:
+          $ref: '#/components/schemas/Color'
+        text_tertiary:
+          $ref: '#/components/schemas/Color'
+        text_disabled:
+          $ref: '#/components/schemas/Color'
+        text_inverse:
+          $ref: '#/components/schemas/Color'
+        # Interactive elements
+        border:
+          $ref: '#/components/schemas/Color'
+        border_focus:
+          $ref: '#/components/schemas/Color'
+        border_error:
+          $ref: '#/components/schemas/Color'
+        divider:
+          $ref: '#/components/schemas/Color'
+        shadow:
+          $ref: '#/components/schemas/Color'
+        overlay:
+          $ref: '#/components/schemas/Color'
+        # Status colors
+        status_pending:
+          $ref: '#/components/schemas/Color'
+        status_running:
+          $ref: '#/components/schemas/Color'
+        status_completed:
+          $ref: '#/components/schemas/Color'
+        status_failed:
+          $ref: '#/components/schemas/Color'
+        status_retry:
+          $ref: '#/components/schemas/Color'
+
+    Color:
+      type: object
+      required:
+        - hex
+      properties:
+        hex:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Hexadecimal color value
+        rgb:
+          $ref: '#/components/schemas/RGB'
+        hsl:
+          $ref: '#/components/schemas/HSL'
+        alpha:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 1
+          description: Alpha transparency value
+        adaptive:
+          type: boolean
+          default: false
+          description: Whether color adapts to terminal dark/light mode
+
+    RGB:
+      type: object
+      required:
+        - r
+        - g
+        - b
+      properties:
+        r:
+          type: integer
+          minimum: 0
+          maximum: 255
+        g:
+          type: integer
+          minimum: 0
+          maximum: 255
+        b:
+          type: integer
+          minimum: 0
+          maximum: 255
+
+    HSL:
+      type: object
+      required:
+        - h
+        - s
+        - l
+      properties:
+        h:
+          type: number
+          minimum: 0
+          maximum: 360
+          description: Hue in degrees
+        s:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Saturation percentage
+        l:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Lightness percentage
+
+    ComponentStyles:
+      type: object
+      properties:
+        button:
+          $ref: '#/components/schemas/ButtonStyles'
+        input:
+          $ref: '#/components/schemas/InputStyles'
+        table:
+          $ref: '#/components/schemas/TableStyles'
+        card:
+          $ref: '#/components/schemas/CardStyles'
+        modal:
+          $ref: '#/components/schemas/ModalStyles'
+        navigation:
+          $ref: '#/components/schemas/NavigationStyles'
+        status:
+          $ref: '#/components/schemas/StatusStyles'
+        chart:
+          $ref: '#/components/schemas/ChartStyles'
+
+    ButtonStyles:
+      type: object
+      properties:
+        primary:
+          $ref: '#/components/schemas/ComponentStyle'
+        secondary:
+          $ref: '#/components/schemas/ComponentStyle'
+        accent:
+          $ref: '#/components/schemas/ComponentStyle'
+        danger:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    InputStyles:
+      type: object
+      properties:
+        default:
+          $ref: '#/components/schemas/ComponentStyle'
+        focused:
+          $ref: '#/components/schemas/ComponentStyle'
+        error:
+          $ref: '#/components/schemas/ComponentStyle'
+        disabled:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    TableStyles:
+      type: object
+      properties:
+        header:
+          $ref: '#/components/schemas/ComponentStyle'
+        row:
+          $ref: '#/components/schemas/ComponentStyle'
+        row_alt:
+          $ref: '#/components/schemas/ComponentStyle'
+        row_selected:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    CardStyles:
+      type: object
+      properties:
+        default:
+          $ref: '#/components/schemas/ComponentStyle'
+        elevated:
+          $ref: '#/components/schemas/ComponentStyle'
+        outlined:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    ModalStyles:
+      type: object
+      properties:
+        backdrop:
+          $ref: '#/components/schemas/ComponentStyle'
+        container:
+          $ref: '#/components/schemas/ComponentStyle'
+        header:
+          $ref: '#/components/schemas/ComponentStyle'
+        footer:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    NavigationStyles:
+      type: object
+      properties:
+        tab:
+          $ref: '#/components/schemas/ComponentStyle'
+        tab_active:
+          $ref: '#/components/schemas/ComponentStyle'
+        breadcrumb:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    StatusStyles:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/ComponentStyle'
+        warning:
+          $ref: '#/components/schemas/ComponentStyle'
+        error:
+          $ref: '#/components/schemas/ComponentStyle'
+        info:
+          $ref: '#/components/schemas/ComponentStyle'
+        pending:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    ChartStyles:
+      type: object
+      properties:
+        line:
+          $ref: '#/components/schemas/ComponentStyle'
+        bar:
+          $ref: '#/components/schemas/ComponentStyle'
+        area:
+          $ref: '#/components/schemas/ComponentStyle'
+
+    ComponentStyle:
+      type: object
+      properties:
+        background:
+          type: string
+          description: Background color reference
+        foreground:
+          type: string
+          description: Foreground/text color reference
+        border:
+          type: string
+          description: Border color reference
+        border_style:
+          type: string
+          enum: [solid, dashed, dotted, double, none]
+        border_width:
+          type: integer
+          minimum: 0
+          maximum: 5
+        padding:
+          $ref: '#/components/schemas/Spacing'
+        margin:
+          $ref: '#/components/schemas/Spacing'
+        font_weight:
+          type: string
+          enum: [normal, bold, light]
+        font_style:
+          type: string
+          enum: [normal, italic, underline]
+
+    Spacing:
+      type: object
+      properties:
+        top:
+          type: integer
+          minimum: 0
+        right:
+          type: integer
+          minimum: 0
+        bottom:
+          type: integer
+          minimum: 0
+        left:
+          type: integer
+          minimum: 0
+
+    Typography:
+      type: object
+      properties:
+        font_family:
+          type: string
+          description: Primary font family
+        font_size_base:
+          type: integer
+          minimum: 8
+          maximum: 24
+          description: Base font size in points
+        line_height:
+          type: number
+          minimum: 1.0
+          maximum: 3.0
+          description: Line height multiplier
+        letter_spacing:
+          type: number
+          description: Letter spacing adjustment
+
+    AnimationConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        duration_fast:
+          type: integer
+          minimum: 50
+          maximum: 500
+          description: Fast animation duration in milliseconds
+        duration_normal:
+          type: integer
+          minimum: 100
+          maximum: 1000
+          description: Normal animation duration in milliseconds
+        duration_slow:
+          type: integer
+          minimum: 200
+          maximum: 2000
+          description: Slow animation duration in milliseconds
+        easing:
+          type: string
+          enum: [linear, ease, ease-in, ease-out, ease-in-out]
+
+    AccessibilityInfo:
+      type: object
+      properties:
+        wcag_level:
+          $ref: '#/components/schemas/WCAGLevel'
+        contrast_ratio:
+          type: number
+          minimum: 1
+          maximum: 21
+          description: Overall contrast ratio score
+        color_blind_safe:
+          type: boolean
+          description: Safe for color blind users
+        motion_safe:
+          type: boolean
+          description: Respects motion sensitivity preferences
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Accessibility warnings
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Accessibility improvement recommendations
+
+    WCAGLevel:
+      type: string
+      enum:
+        - A
+        - AA
+        - AAA
+        - FAIL
+      description: WCAG compliance level
+
+    # Request/Response Schemas
+    ThemeListResponse:
+      type: object
+      required:
+        - themes
+        - total
+        - categories
+      properties:
+        themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of themes matching filters
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemeCategory'
+        collections:
+          type: array
+          items:
+            type: string
+          description: Available theme collections
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ThemeSummary:
+      type: object
+      required:
+        - name
+        - metadata
+      properties:
+        name:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ThemeMetadata'
+        accessibility:
+          $ref: '#/components/schemas/AccessibilityInfo'
+        preview_colors:
+          type: array
+          items:
+            type: string
+          maxItems: 5
+          description: Sample colors for quick preview
+        user_data:
+          $ref: '#/components/schemas/UserThemeData'
+
+    UserThemeData:
+      type: object
+      properties:
+        is_favorite:
+          type: boolean
+        last_used:
+          type: string
+          format: date-time
+        use_count:
+          type: integer
+          minimum: 0
+
+    ThemeDetailResponse:
+      type: object
+      required:
+        - theme
+      properties:
+        theme:
+          $ref: '#/components/schemas/Theme'
+        accessibility_report:
+          $ref: '#/components/schemas/AccessibilityReport'
+        preview_data:
+          $ref: '#/components/schemas/ThemePreviewData'
+        usage_analytics:
+          $ref: '#/components/schemas/ThemeUsageAnalytics'
+
+    ThemeResponse:
+      type: object
+      required:
+        - theme
+      properties:
+        theme:
+          $ref: '#/components/schemas/Theme'
+        validation_warnings:
+          type: array
+          items:
+            type: string
+
+    CreateThemeRequest:
+      type: object
+      required:
+        - name
+        - palette
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        based_on:
+          type: string
+          description: Existing theme to use as base
+        palette:
+          $ref: '#/components/schemas/ColorPalette'
+        components:
+          $ref: '#/components/schemas/ComponentStyles'
+        typography:
+          $ref: '#/components/schemas/Typography'
+        animations:
+          $ref: '#/components/schemas/AnimationConfig'
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 10
+        validate_accessibility:
+          type: boolean
+          default: true
+
+    UpdateThemeRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 200
+        palette:
+          $ref: '#/components/schemas/ColorPalette'
+        components:
+          $ref: '#/components/schemas/ComponentStyles'
+        typography:
+          $ref: '#/components/schemas/Typography'
+        animations:
+          $ref: '#/components/schemas/AnimationConfig'
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+          maxItems: 10
+
+    ApplyThemeRequest:
+      type: object
+      properties:
+        persist:
+          type: boolean
+          default: true
+          description: Save theme preference for future sessions
+        validate_accessibility:
+          type: boolean
+          default: false
+          description: Validate accessibility before applying
+        force:
+          type: boolean
+          default: false
+          description: Apply even if accessibility validation fails
+
+    ApplyThemeResponse:
+      type: object
+      required:
+        - applied
+        - theme
+      properties:
+        applied:
+          type: boolean
+        theme:
+          type: string
+        previous_theme:
+          type: string
+        accessibility_report:
+          $ref: '#/components/schemas/AccessibilityReport'
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PreviewThemeRequest:
+      type: object
+      properties:
+        components:
+          type: array
+          items:
+            type: string
+          description: Specific components to include in preview
+        include_accessibility:
+          type: boolean
+          default: true
+
+    ThemePreviewResponse:
+      type: object
+      required:
+        - theme
+        - preview_data
+      properties:
+        theme:
+          type: string
+        preview_data:
+          $ref: '#/components/schemas/ThemePreviewData'
+        accessibility_report:
+          $ref: '#/components/schemas/AccessibilityReport'
+
+    ThemePreviewData:
+      type: object
+      properties:
+        components:
+          type: object
+          additionalProperties:
+            type: string
+          description: Rendered component examples
+        color_swatches:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColorSwatch'
+        typography_samples:
+          type: object
+          additionalProperties:
+            type: string
+
+    ColorSwatch:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+        color:
+          $ref: '#/components/schemas/Color'
+        usage:
+          type: string
+          description: Primary usage context
+
+    CurrentThemeResponse:
+      type: object
+      required:
+        - theme
+      properties:
+        theme:
+          $ref: '#/components/schemas/ThemeSummary'
+        applied_at:
+          type: string
+          format: date-time
+        session_duration:
+          type: string
+          description: How long theme has been active this session
+
+    AccessibilityValidationRequest:
+      type: object
+      properties:
+        wcag_level:
+          $ref: '#/components/schemas/WCAGLevel'
+          default: AA
+        check_color_blindness:
+          type: boolean
+          default: true
+        check_motion_sensitivity:
+          type: boolean
+          default: true
+        custom_requirements:
+          type: object
+          properties:
+            min_contrast_ratio:
+              type: number
+              minimum: 1
+              maximum: 21
+
+    AccessibilityReportResponse:
+      type: object
+      required:
+        - report
+      properties:
+        report:
+          $ref: '#/components/schemas/AccessibilityReport'
+
+    AccessibilityReport:
+      type: object
+      required:
+        - theme_name
+        - overall_score
+        - wcag_level
+      properties:
+        theme_name:
+          type: string
+        overall_score:
+          type: number
+          minimum: 0
+          maximum: 10
+        wcag_level:
+          $ref: '#/components/schemas/WCAGLevel'
+        color_blind_safe:
+          type: boolean
+        motion_safe:
+          type: boolean
+        contrast_tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContrastTest'
+        recommendations:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessibilityWarning'
+
+    ContrastTest:
+      type: object
+      required:
+        - name
+        - ratio
+        - passed
+      properties:
+        name:
+          type: string
+        foreground:
+          $ref: '#/components/schemas/Color'
+        background:
+          $ref: '#/components/schemas/Color'
+        ratio:
+          type: number
+          minimum: 1
+          maximum: 21
+        required_ratio:
+          type: number
+          minimum: 1
+          maximum: 21
+        passed:
+          type: boolean
+        level:
+          $ref: '#/components/schemas/WCAGLevel'
+        critical:
+          type: boolean
+          description: Whether this is a critical accessibility issue
+
+    AccessibilityWarning:
+      type: object
+      required:
+        - severity
+        - message
+      properties:
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        message:
+          type: string
+        component:
+          type: string
+        suggestion:
+          type: string
+
+    ImportThemeRequest:
+      oneOf:
+        - type: object
+          required:
+            - source
+            - url
+          properties:
+            source:
+              type: string
+              enum: [url]
+            url:
+              type: string
+              format: uri
+        - type: object
+          required:
+            - source
+            - data
+          properties:
+            source:
+              type: string
+              enum: [json]
+            data:
+              type: object
+      properties:
+        validate:
+          type: boolean
+          default: true
+        save_as:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          description: Name to save imported theme as
+
+    ImportThemeResponse:
+      type: object
+      required:
+        - imported
+        - theme
+      properties:
+        imported:
+          type: boolean
+        theme:
+          $ref: '#/components/schemas/Theme'
+        validation_report:
+          $ref: '#/components/schemas/ValidationReport'
+        accessibility_report:
+          $ref: '#/components/schemas/AccessibilityReport'
+
+    ExportResponse:
+      type: object
+      required:
+        - format
+        - data
+      properties:
+        format:
+          type: string
+          enum: [json, yaml, css, lipgloss]
+        data:
+          type: string
+        metadata:
+          type: object
+          properties:
+            theme_name:
+              type: string
+            exported_at:
+              type: string
+              format: date-time
+            version:
+              type: string
+
+    UserThemePreferencesResponse:
+      type: object
+      required:
+        - preferences
+      properties:
+        preferences:
+          $ref: '#/components/schemas/UserThemePreferences'
+
+    UserThemePreferences:
+      type: object
+      properties:
+        active_theme:
+          type: string
+        auto_detect_terminal:
+          type: boolean
+          default: true
+        respect_no_color:
+          type: boolean
+          default: true
+        sync_enabled:
+          type: boolean
+          default: false
+        accessibility_mode:
+          type: boolean
+          default: false
+        animation_enabled:
+          type: boolean
+          default: true
+        preview_mode:
+          type: string
+          enum: [live, static, minimal]
+          default: live
+        favorite_themes:
+          type: array
+          items:
+            type: string
+        recently_used:
+          type: array
+          items:
+            type: string
+        custom_settings:
+          type: object
+          properties:
+            accent_preference:
+              type: string
+            contrast_level:
+              type: string
+              enum: [standard, high, maximum]
+
+    UpdateUserThemePreferencesRequest:
+      type: object
+      properties:
+        active_theme:
+          type: string
+        auto_detect_terminal:
+          type: boolean
+        respect_no_color:
+          type: boolean
+        sync_enabled:
+          type: boolean
+        accessibility_mode:
+          type: boolean
+        animation_enabled:
+          type: boolean
+        preview_mode:
+          type: string
+          enum: [live, static, minimal]
+        custom_settings:
+          type: object
+
+    AccessibilityRequirementsResponse:
+      type: object
+      required:
+        - requirements
+        - guidelines
+      properties:
+        requirements:
+          $ref: '#/components/schemas/AccessibilityRequirements'
+        guidelines:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessibilityGuideline'
+
+    AccessibilityRequirements:
+      type: object
+      properties:
+        wcag_version:
+          type: string
+        min_contrast_aa:
+          type: number
+        min_contrast_aaa:
+          type: number
+        color_blind_requirements:
+          type: array
+          items:
+            type: string
+        motion_requirements:
+          type: object
+
+    AccessibilityGuideline:
+      type: object
+      required:
+        - id
+        - title
+        - description
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        level:
+          $ref: '#/components/schemas/WCAGLevel'
+        examples:
+          type: array
+          items:
+            type: string
+
+    ColorVisionSimulationRequest:
+      type: object
+      required:
+        - colors
+        - simulation_type
+      properties:
+        colors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Color'
+        simulation_type:
+          type: string
+          enum: [deuteranopia, protanopia, tritanopia, achromatopsia]
+
+    ColorVisionSimulationResponse:
+      type: object
+      required:
+        - simulation_type
+        - results
+      properties:
+        simulation_type:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColorSimulationResult'
+
+    ColorSimulationResult:
+      type: object
+      required:
+        - original
+        - simulated
+      properties:
+        original:
+          $ref: '#/components/schemas/Color'
+        simulated:
+          $ref: '#/components/schemas/Color'
+        difference_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: How different the colors appear (0 = identical, 1 = completely different)
+
+    # Collection Schemas
+    ThemeCollectionsResponse:
+      type: object
+      required:
+        - collections
+      properties:
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemeCollection'
+
+    ThemeCollection:
+      type: object
+      required:
+        - id
+        - name
+        - themes
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        themes:
+          type: array
+          items:
+            type: string
+        category:
+          $ref: '#/components/schemas/ThemeCategory'
+        curated_by:
+          type: string
+
+    ThemeCollectionResponse:
+      type: object
+      required:
+        - collection
+        - themes
+      properties:
+        collection:
+          $ref: '#/components/schemas/ThemeCollection'
+        themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+
+    UserThemesResponse:
+      type: object
+      required:
+        - themes
+      properties:
+        themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # Analytics Schemas
+    ThemeAnalyticsResponse:
+      type: object
+      required:
+        - period
+        - metrics
+      properties:
+        period:
+          type: string
+        metrics:
+          $ref: '#/components/schemas/ThemeMetrics'
+
+    ThemeMetrics:
+      type: object
+      properties:
+        usage:
+          $ref: '#/components/schemas/UsageMetrics'
+        popularity:
+          $ref: '#/components/schemas/PopularityMetrics'
+        accessibility:
+          $ref: '#/components/schemas/AccessibilityMetrics'
+        performance:
+          $ref: '#/components/schemas/PerformanceMetrics'
+
+    UsageMetrics:
+      type: object
+      properties:
+        total_applications:
+          type: integer
+        unique_users:
+          type: integer
+        session_duration_avg:
+          type: string
+        most_active_hours:
+          type: array
+          items:
+            type: integer
+
+    PopularityMetrics:
+      type: object
+      properties:
+        top_themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemePopularity'
+        trending_themes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThemePopularity'
+
+    ThemePopularity:
+      type: object
+      required:
+        - theme
+        - usage_count
+      properties:
+        theme:
+          type: string
+        usage_count:
+          type: integer
+        growth_rate:
+          type: number
+        user_rating:
+          type: number
+          minimum: 0
+          maximum: 5
+
+    AccessibilityMetrics:
+      type: object
+      properties:
+        compliance_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        high_contrast_usage:
+          type: number
+        accessibility_mode_adoption:
+          type: number
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        avg_application_time:
+          type: number
+        cache_hit_rate:
+          type: number
+        error_rate:
+          type: number
+
+    ThemeUsageAnalytics:
+      type: object
+      properties:
+        usage_count:
+          type: integer
+        last_used:
+          type: string
+          format: date-time
+        average_session_duration:
+          type: string
+        user_rating:
+          type: number
+          minimum: 0
+          maximum: 5
+
+    # Common Schemas
+    PaginationInfo:
+      type: object
+      required:
+        - limit
+        - offset
+        - total
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    ValidationReport:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationWarning'
+
+    ValidationError:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+    ValidationWarning:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        suggestion:
+          type: string
+
+    # Error Response Schemas
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        request_id:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - validation_errors
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        validation_errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        request_id:
+          type: string
+
+    AccessibilityErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - accessibility_report
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        accessibility_report:
+          $ref: '#/components/schemas/AccessibilityReport'
+        request_id:
+          type: string
+
+tags:
+  - name: Themes
+    description: Core theme management operations
+  - name: Theme Application
+    description: Apply and preview themes
+  - name: Accessibility
+    description: Accessibility validation and compliance
+  - name: Import/Export
+    description: Theme import and export functionality
+  - name: User Preferences
+    description: User theme preferences and settings
+  - name: User Themes
+    description: User-specific theme operations
+  - name: Collections
+    description: Curated theme collections
+  - name: Analytics
+    description: Theme usage analytics and metrics

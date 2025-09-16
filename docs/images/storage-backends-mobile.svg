@@ -1,0 +1,147 @@
+<svg viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .panel-bg { fill: #161b22; }
+      .border { stroke: #30363d; fill: none; stroke-width: 1; }
+      .text-primary { fill: #f0f6fc; font-family: 'SF Mono', Consolas, monospace; }
+      .text-secondary { fill: #8b949e; font-family: 'SF Mono', Consolas, monospace; }
+      .text-success { fill: #39d353; font-family: 'SF Mono', Consolas, monospace; }
+      .text-warning { fill: #ffa657; font-family: 'SF Mono', Consolas, monospace; }
+      .text-error { fill: #f85149; font-family: 'SF Mono', Consolas, monospace; }
+      .text-info { fill: #58a6ff; font-family: 'SF Mono', Consolas, monospace; }
+      .btn-primary { fill: #238636; stroke: #2ea043; stroke-width: 1; }
+      .btn-secondary { fill: #30363d; stroke: #484f58; stroke-width: 1; }
+      .btn-danger { fill: #da3633; stroke: #f85149; stroke-width: 1; }
+      .input-bg { fill: #0d1117; stroke: #30363d; stroke-width: 1; }
+      .progress-bg { fill: #21262d; }
+      .progress-fill { fill: #39d353; }
+      .card-shadow { fill: #0d1117; opacity: 0.3; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="800" class="bg"/>
+
+  <!-- Tab Bar -->
+  <rect x="0" y="0" width="400" height="30" class="panel-bg"/>
+  <rect x="0" y="30" width="400" height="1" class="border"/>
+
+  <rect x="10" y="5" width="60" height="20" rx="2" class="btn-secondary"/>
+  <text x="40" y="17" text-anchor="middle" class="text-primary" font-size="10">Jobs</text>
+
+  <rect x="80" y="5" width="60" height="20" rx="2" class="btn-secondary"/>
+  <text x="110" y="17" text-anchor="middle" class="text-primary" font-size="10">Workers</text>
+
+  <rect x="150" y="5" width="60" height="20" rx="2" class="btn-secondary"/>
+  <text x="180" y="17" text-anchor="middle" class="text-primary" font-size="10">DLQ</text>
+
+  <rect x="220" y="5" width="70" height="20" rx="2" class="btn-primary"/>
+  <text x="255" y="17" text-anchor="middle" class="text-primary" font-size="10">Settings</text>
+
+  <!-- Header -->
+  <rect x="0" y="31" width="400" height="35" class="panel-bg"/>
+  <rect x="0" y="66" width="400" height="1" class="border"/>
+  <text x="15" y="52" class="text-primary" font-size="14" font-weight="bold">Storage Backends</text>
+
+  <!-- Scrollable Content Area -->
+  <g transform="translate(0, 67)">
+
+    <!-- Backend Cards Stack -->
+
+    <!-- Redis Lists Card -->
+    <rect x="15" y="15" width="370" height="140" rx="6" class="panel-bg"/>
+    <rect x="15" y="15" width="370" height="140" rx="6" class="border"/>
+
+    <text x="25" y="35" class="text-success" font-size="12" font-weight="bold">● redis-lists</text>
+    <text x="25" y="50" class="text-secondary" font-size="9">Default Redis Lists backend</text>
+
+    <text x="25" y="70" class="text-primary" font-size="9">Performance: 50k ops/sec, 2ms p99</text>
+    <text x="25" y="85" class="text-success" font-size="8">✓ Transactions  ✓ Clustering  ✓ Batch</text>
+    <text x="25" y="100" class="text-secondary" font-size="8">✗ Consumer Groups  ✗ Replay</text>
+
+    <text x="25" y="120" class="text-primary" font-size="9">Queues: high-priority, email</text>
+
+    <rect x="300" y="25" width="40" height="16" rx="2" class="btn-primary"/>
+    <text x="320" y="35" text-anchor="middle" class="text-primary" font-size="8">Config</text>
+
+    <rect x="345" y="25" width="35" height="16" rx="2" class="btn-secondary"/>
+    <text x="362" y="35" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+    <!-- Redis Streams Card -->
+    <rect x="15" y="170" width="370" height="140" rx="6" class="panel-bg"/>
+    <rect x="15" y="170" width="370" height="140" rx="6" class="border"/>
+
+    <text x="25" y="190" class="text-info" font-size="12" font-weight="bold">● redis-streams</text>
+    <text x="25" y="205" class="text-secondary" font-size="9">Advanced Redis Streams with consumer groups</text>
+
+    <text x="25" y="225" class="text-primary" font-size="9">Performance: 35k ops/sec, 3ms p99</text>
+    <text x="25" y="240" class="text-success" font-size="8">✓ Consumer Groups  ✓ Replay  ✓ Atomic ACK</text>
+    <text x="25" y="255" class="text-success" font-size="8">✓ Transactions  ✓ Clustering</text>
+
+    <text x="25" y="275" class="text-primary" font-size="9">Queues: analytics</text>
+
+    <rect x="300" y="180" width="40" height="16" rx="2" class="btn-primary"/>
+    <text x="320" y="190" text-anchor="middle" class="text-primary" font-size="8">Config</text>
+
+    <rect x="345" y="180" width="35" height="16" rx="2" class="btn-secondary"/>
+    <text x="362" y="190" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+    <!-- KeyDB Card -->
+    <rect x="15" y="325" width="370" height="140" rx="6" class="panel-bg"/>
+    <rect x="15" y="325" width="370" height="140" rx="6" class="border"/>
+
+    <text x="25" y="345" class="text-warning" font-size="12" font-weight="bold">● keydb-cluster</text>
+    <text x="25" y="360" class="text-secondary" font-size="9">High-performance multi-threaded KeyDB</text>
+
+    <text x="25" y="380" class="text-success" font-size="9">Performance: 150k ops/sec, 1ms p99</text>
+    <text x="25" y="395" class="text-success" font-size="8">✓ Transactions  ✓ Clustering  ✓ Batch</text>
+    <text x="25" y="410" class="text-secondary" font-size="8">✗ Consumer Groups  ✗ Replay</text>
+
+    <text x="25" y="430" class="text-warning" font-size="9">Queues: bulk-processing (migrating...)</text>
+
+    <!-- Migration Progress -->
+    <rect x="25" y="440" width="280" height="6" rx="3" class="progress-bg"/>
+    <rect x="25" y="440" width="168" height="6" rx="3" class="progress-fill"/>
+    <text x="320" y="450" class="text-secondary" font-size="8">60%</text>
+
+    <rect x="300" y="335" width="40" height="16" rx="2" class="btn-primary"/>
+    <text x="320" y="345" text-anchor="middle" class="text-primary" font-size="8">Config</text>
+
+    <rect x="345" y="335" width="35" height="16" rx="2" class="btn-secondary"/>
+    <text x="362" y="345" text-anchor="middle" class="text-primary" font-size="8">Migrate</text>
+
+    <!-- Add Backend Card -->
+    <rect x="15" y="480" width="370" height="80" rx="6" stroke="#30363d" stroke-width="2" stroke-dasharray="4,4" fill="none"/>
+    <text x="200" y="510" text-anchor="middle" class="text-info" font-size="12">+ Add New Backend</text>
+    <text x="200" y="530" text-anchor="middle" class="text-secondary" font-size="9">Dragonfly, PostgreSQL, DynamoDB...</text>
+
+    <!-- Migration Status Panel -->
+    <rect x="15" y="575" width="370" height="120" rx="6" class="input-bg"/>
+    <rect x="15" y="575" width="370" height="120" rx="6" class="border"/>
+
+    <text x="25" y="595" class="text-primary" font-size="11" font-weight="bold">Active Migration</text>
+    <text x="25" y="610" class="text-secondary" font-size="9">bulk-processing: redis-lists → keydb-cluster</text>
+
+    <text x="25" y="630" class="text-primary" font-size="9">Progress: 1,247 / 2,080 jobs (60%)</text>
+
+    <rect x="25" y="640" width="290" height="8" rx="4" class="progress-bg"/>
+    <rect x="25" y="640" width="174" height="8" rx="4" class="progress-fill"/>
+
+    <text x="25" y="665" class="text-success" font-size="8">✓ Source validation  ✓ Target connectivity</text>
+    <text x="25" y="680" class="text-info" font-size="8">• Migrating jobs  ETA: 5 min</text>
+
+    <rect x="270" y="655" width="40" height="18" rx="2" class="btn-danger"/>
+    <text x="290" y="666" text-anchor="middle" class="text-primary" font-size="8">Cancel</text>
+
+    <rect x="315" y="655" width="35" height="18" rx="2" class="btn-secondary"/>
+    <text x="332" y="666" text-anchor="middle" class="text-primary" font-size="8">Pause</text>
+
+  </g>
+
+  <!-- Status Bar -->
+  <rect x="0" y="785" width="400" height="15" class="panel-bg"/>
+  <rect x="0" y="784" width="400" height="1" class="border"/>
+  <text x="10" y="795" class="text-secondary" font-size="9">4 backends | 1 migrating</text>
+  <text x="390" y="795" class="text-secondary" font-size="9" text-anchor="end">? help</text>
+</svg>

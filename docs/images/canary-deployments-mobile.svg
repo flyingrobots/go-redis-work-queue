@@ -1,0 +1,100 @@
+<svg width="400" height="800" xmlns="http://www.w3.org/2000/svg" style="font-family: 'SF Mono', 'Monaco', monospace;">
+  <!-- Background -->
+  <rect width="400" height="800" fill="#0d1117"/>
+
+  <!-- Header Bar -->
+  <rect x="0" y="0" width="400" height="50" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="30" fill="#f0f6fc" font-size="14" font-weight="bold">Canary Control</text>
+  <text x="280" y="30" fill="#ffa657" font-size="12">15% Active</text>
+
+  <!-- Tab Bar -->
+  <rect x="10" y="60" width="380" height="35" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <rect x="15" y="65" width="90" height="25" fill="#238636" rx="4"/>
+  <text x="60" y="80" fill="#ffffff" font-size="11" text-anchor="middle">Control</text>
+
+  <rect x="110" y="65" width="90" height="25" fill="#30363d" rx="4"/>
+  <text x="155" y="80" fill="#8b949e" font-size="11" text-anchor="middle">Metrics</text>
+
+  <rect x="205" y="65" width="90" height="25" fill="#30363d" rx="4"/>
+  <text x="250" y="80" fill="#8b949e" font-size="11" text-anchor="middle">Workers</text>
+
+  <rect x="300" y="65" width="85" height="25" fill="#30363d" rx="4"/>
+  <text x="342" y="80" fill="#8b949e" font-size="11" text-anchor="middle">Events</text>
+
+  <!-- Main Content Panel -->
+  <rect x="10" y="110" width="380" height="650" fill="#161b22" stroke="#30363d" stroke-width="1" rx="6"/>
+
+  <!-- Current Deployment Info -->
+  <text x="25" y="135" fill="#f0f6fc" font-size="13" font-weight="bold">payments-processor</text>
+  <text x="25" y="150" fill="#8b949e" font-size="11">v2.1.4 → v2.1.5</text>
+
+  <!-- Status Badge -->
+  <rect x="270" y="125" width="110" height="20" fill="#ffa657" rx="10"/>
+  <text x="325" y="137" fill="#ffffff" font-size="10" text-anchor="middle">15% CANARY</text>
+
+  <!-- Traffic Split Visual (Vertical) -->
+  <text x="25" y="180" fill="#8b949e" font-size="12">Traffic Distribution</text>
+
+  <!-- Stable Bar -->
+  <rect x="25" y="190" width="350" height="25" fill="#21262d" rx="4"/>
+  <rect x="25" y="190" width="297" height="25" fill="#39d353" rx="4"/>
+  <text x="35" y="207" fill="#ffffff" font-size="11" font-weight="bold">Stable v2.1.4</text>
+  <text x="335" y="207" fill="#f0f6fc" font-size="11" font-weight="bold">85%</text>
+
+  <!-- Canary Bar -->
+  <rect x="25" y="225" width="350" height="25" fill="#21262d" rx="4"/>
+  <rect x="25" y="225" width="53" height="25" fill="#ffa657" rx="4"/>
+  <text x="35" y="242" fill="#ffffff" font-size="11" font-weight="bold">Canary v2.1.5</text>
+  <text x="335" y="242" fill="#f0f6fc" font-size="11" font-weight="bold">15%</text>
+
+  <!-- Quick Metrics -->
+  <text x="25" y="280" fill="#f0f6fc" font-size="13" font-weight="bold">Key Metrics</text>
+
+  <rect x="25" y="295" width="165" height="70" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="35" y="315" fill="#8b949e" font-size="10">P95 Latency</text>
+  <text x="35" y="330" fill="#39d353" font-size="12">Stable: 43ms</text>
+  <text x="35" y="345" fill="#ffa657" font-size="12">Canary: 45ms</text>
+  <text x="35" y="357" fill="#f85149" font-size="9">+4.7%</text>
+
+  <rect x="210" y="295" width="165" height="70" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="220" y="315" fill="#8b949e" font-size="10">Error Rate</text>
+  <text x="220" y="330" fill="#39d353" font-size="12">Stable: 0.12%</text>
+  <text x="220" y="345" fill="#39d353" font-size="12">Canary: 0.08%</text>
+  <text x="220" y="357" fill="#39d353" font-size="9">-33%</text>
+
+  <!-- Mini Chart -->
+  <text x="25" y="390" fill="#f0f6fc" font-size="13" font-weight="bold">Request Rate (10min)</text>
+
+  <rect x="25" y="405" width="350" height="80" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <!-- Simple sparkline -->
+  <path d="M 35 450 L 55 445 L 75 440 L 95 435 L 115 430 L 135 425 L 155 430 L 175 435 L 195 425 L 215 420 L 235 425 L 255 430 L 275 425 L 295 420 L 315 422 L 335 425 L 355 430 L 365 435"
+        stroke="#39d353" stroke-width="2" fill="none"/>
+  <path d="M 35 465 L 55 463 L 75 460 L 95 455 L 115 453 L 135 450 L 155 455 L 175 460 L 195 450 L 215 445 L 235 447 L 255 450 L 275 447 L 295 442 L 315 444 L 335 447 L 355 452 L 365 457"
+        stroke="#ffa657" stroke-width="2" fill="none"/>
+  <text x="35" y="475" fill="#39d353" font-size="9">■ Stable: 1.24k/s</text>
+  <text x="200" y="475" fill="#ffa657" font-size="9">■ Canary: 218/s</text>
+
+  <!-- Promotion Rules Status -->
+  <text x="25" y="515" fill="#f0f6fc" font-size="13" font-weight="bold">Auto-Promotion</text>
+
+  <rect x="25" y="530" width="350" height="100" fill="#0d1117" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="35" y="550" fill="#39d353" font-size="11">✓ Error rate OK</text>
+  <text x="35" y="565" fill="#39d353" font-size="11">✓ Latency within bounds</text>
+  <text x="35" y="580" fill="#ffa657" font-size="11">⏳ Duration: 18/30 min</text>
+  <text x="35" y="595" fill="#8b949e" font-size="11">○ Manual approval needed</text>
+  <text x="35" y="615" fill="#8b949e" font-size="9">Will auto-promote when ready</text>
+
+  <!-- Control Buttons (Stacked) -->
+  <rect x="25" y="650" width="350" height="35" fill="#238636" stroke="#238636" stroke-width="1" rx="4"/>
+  <text x="200" y="670" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">Promote Now</text>
+
+  <rect x="25" y="695" width="170" height="35" fill="#f85149" stroke="#f85149" stroke-width="1" rx="4"/>
+  <text x="110" y="715" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">Rollback</text>
+
+  <rect x="205" y="695" width="170" height="35" fill="#30363d" stroke="#30363d" stroke-width="1" rx="4"/>
+  <text x="290" y="715" fill="#f0f6fc" font-size="12" font-weight="bold" text-anchor="middle">Configure</text>
+
+  <!-- Status Bar -->
+  <rect x="0" y="780" width="400" height="20" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="10" y="793" fill="#8b949e" font-size="9">Tab: Switch | P: Promote | R: Rollback | ?: Help</text>
+</svg>

@@ -1,0 +1,1201 @@
+openapi: 3.0.3
+info:
+  title: Go Redis Work Queue - Visual DAG Builder API
+  description: API specification for the Visual DAG Builder and workflow orchestration system
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.workqueue.example.com/v1
+    description: Production server
+
+tags:
+  - name: workflows
+    description: Workflow definition management
+  - name: runs
+    description: Workflow execution and monitoring
+  - name: nodes
+    description: Workflow node operations
+  - name: versions
+    description: Workflow versioning
+
+paths:
+  /workflows:
+    get:
+      tags:
+        - workflows
+      summary: List workflows
+      description: Returns a list of workflow definitions with optional filtering
+      operationId: listWorkflows
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: Filter by workflow name (partial match)
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: Filter by workflow status
+          schema:
+            type: string
+            enum: [draft, published, deprecated]
+        - name: tag
+          in: query
+          required: false
+          description: Filter by tags
+          schema:
+            type: array
+            items:
+              type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowSummary'
+                  total:
+                    type: integer
+                    description: Total number of workflows
+                  hasMore:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - workflows
+      summary: Create workflow
+      description: Creates a new workflow definition
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowSpec'
+      responses:
+        '201':
+          description: Workflow created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workflows/{workflowId}:
+    get:
+      tags:
+        - workflows
+      summary: Get workflow
+      description: Returns a specific workflow definition
+      operationId: getWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - workflows
+      summary: Update workflow
+      description: Updates an existing workflow definition
+      operationId: updateWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowSpec'
+      responses:
+        '200':
+          description: Workflow updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - workflows
+      summary: Delete workflow
+      description: Deletes a workflow definition
+      operationId: deleteWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+        - name: force
+          in: query
+          required: false
+          description: Force delete even if runs exist
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Workflow deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workflows/{workflowId}/validate:
+    post:
+      tags:
+        - workflows
+      summary: Validate workflow
+      description: Validates a workflow definition for correctness
+      operationId: validateWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workflows/{workflowId}/versions:
+    get:
+      tags:
+        - versions
+      summary: List workflow versions
+      description: Returns version history for a workflow
+      operationId: listWorkflowVersions
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of workflow versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowVersion'
+                  total:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - versions
+      summary: Create workflow version
+      description: Creates a new version of a workflow
+      operationId: createWorkflowVersion
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowSpec'
+      responses:
+        '201':
+          description: Version created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /workflows/{workflowId}/runs:
+    get:
+      tags:
+        - runs
+      summary: List workflow runs
+      description: Returns execution history for a workflow
+      operationId: listWorkflowRuns
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: Filter by run status
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: startTime
+          in: query
+          required: false
+          description: Filter by start time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of workflow runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowRunSummary'
+                  total:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - runs
+      summary: Start workflow run
+      description: Starts a new execution of a workflow
+      operationId: startWorkflowRun
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: Workflow identifier
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunParameters'
+      responses:
+        '201':
+          description: Run started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}:
+    get:
+      tags:
+        - runs
+      summary: Get workflow run
+      description: Returns details of a specific workflow run
+      operationId: getWorkflowRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - runs
+      summary: Cancel workflow run
+      description: Cancels a running workflow execution
+      operationId: cancelWorkflowRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Run cancelled successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}/retry:
+    post:
+      tags:
+        - runs
+      summary: Retry workflow run
+      description: Retries a failed workflow execution
+      operationId: retryWorkflowRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryOptions'
+      responses:
+        '201':
+          description: Retry started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}/nodes:
+    get:
+      tags:
+        - nodes
+        - runs
+      summary: Get node statuses
+      description: Returns status of all nodes in a workflow run
+      operationId: getNodeStatuses
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NodeStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}/nodes/{nodeId}:
+    get:
+      tags:
+        - nodes
+        - runs
+      summary: Get node status
+      description: Returns status of a specific node in a workflow run
+      operationId: getNodeStatus
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+        - name: nodeId
+          in: path
+          required: true
+          description: Node identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}/nodes/{nodeId}/retry:
+    post:
+      tags:
+        - nodes
+        - runs
+      summary: Retry node execution
+      description: Retries execution of a specific failed node
+      operationId: retryNode
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+        - name: nodeId
+          in: path
+          required: true
+          description: Node identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node retry started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /runs/{runId}/events:
+    get:
+      tags:
+        - runs
+      summary: Stream run events
+      description: Returns a stream of events for a workflow run
+      operationId: streamRunEvents
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          description: Run identifier
+          schema:
+            type: string
+        - name: since
+          in: query
+          required: false
+          description: Return events after this timestamp
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunEvent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    WorkflowSpec:
+      type: object
+      required:
+        - name
+        - nodes
+        - edges
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Workflow name
+        description:
+          type: string
+          maxLength: 1024
+          description: Workflow description
+        tags:
+          type: array
+          items:
+            type: string
+          description: Workflow tags for categorization
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+          minItems: 1
+          description: Workflow nodes
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Edge'
+          description: Connections between nodes
+        parameters:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Parameter'
+          description: Workflow input parameters
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata
+        config:
+          $ref: '#/components/schemas/WorkflowConfig'
+
+    Workflow:
+      allOf:
+        - $ref: '#/components/schemas/WorkflowSpec'
+        - type: object
+          required:
+            - id
+            - version
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              description: Unique workflow identifier
+            version:
+              type: integer
+              description: Current version number
+            status:
+              type: string
+              enum: [draft, published, deprecated]
+              description: Workflow status
+            createdAt:
+              type: string
+              format: date-time
+              description: Creation timestamp
+            updatedAt:
+              type: string
+              format: date-time
+              description: Last update timestamp
+            createdBy:
+              type: string
+              description: Creator user ID
+            updatedBy:
+              type: string
+              description: Last updater user ID
+
+    WorkflowSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, deprecated]
+        version:
+          type: integer
+        nodeCount:
+          type: integer
+        edgeCount:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkflowVersion:
+      type: object
+      properties:
+        version:
+          type: integer
+          description: Version number
+        workflowId:
+          type: string
+          description: Parent workflow ID
+        spec:
+          $ref: '#/components/schemas/WorkflowSpec'
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        changeLog:
+          type: string
+          description: Version change description
+
+    Node:
+      type: object
+      required:
+        - id
+        - type
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique node identifier
+        type:
+          type: string
+          enum: [task, decision, delay, parallel, exclusive, compensation]
+          description: Node type
+        name:
+          type: string
+          description: Node display name
+        description:
+          type: string
+          description: Node description
+        position:
+          $ref: '#/components/schemas/Position'
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/TaskNodeConfig'
+            - $ref: '#/components/schemas/DecisionNodeConfig'
+            - $ref: '#/components/schemas/DelayNodeConfig'
+            - $ref: '#/components/schemas/GatewayNodeConfig'
+            - $ref: '#/components/schemas/CompensationNodeConfig'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    TaskNodeConfig:
+      type: object
+      properties:
+        handler:
+          type: string
+          description: Task handler function name
+        timeout:
+          type: integer
+          description: Timeout in seconds
+        retries:
+          type: integer
+          description: Maximum retry attempts
+        retryBackoff:
+          $ref: '#/components/schemas/BackoffConfig'
+        compensationNode:
+          type: string
+          description: ID of compensation node
+
+    DecisionNodeConfig:
+      type: object
+      properties:
+        condition:
+          type: string
+          description: Decision condition expression
+        branches:
+          type: array
+          items:
+            type: object
+            properties:
+              condition:
+                type: string
+              targetNode:
+                type: string
+
+    DelayNodeConfig:
+      type: object
+      properties:
+        duration:
+          type: integer
+          description: Delay duration in seconds
+        cron:
+          type: string
+          description: Cron expression for scheduled execution
+
+    GatewayNodeConfig:
+      type: object
+      properties:
+        gatewayType:
+          type: string
+          enum: [parallel, exclusive]
+        joinStrategy:
+          type: string
+          enum: [all, any, n_of_m]
+        joinCount:
+          type: integer
+          description: Number of branches to wait for (n_of_m)
+
+    CompensationNodeConfig:
+      type: object
+      properties:
+        compensates:
+          type: string
+          description: ID of node being compensated
+        strategy:
+          type: string
+          enum: [immediate, deferred, manual]
+        handler:
+          type: string
+          description: Compensation handler function
+
+    Edge:
+      type: object
+      required:
+        - id
+        - source
+        - target
+      properties:
+        id:
+          type: string
+          description: Unique edge identifier
+        source:
+          type: string
+          description: Source node ID
+        target:
+          type: string
+          description: Target node ID
+        condition:
+          type: string
+          description: Edge condition expression
+        label:
+          type: string
+          description: Edge label
+
+    Position:
+      type: object
+      properties:
+        x:
+          type: number
+          description: X coordinate
+        y:
+          type: number
+          description: Y coordinate
+
+    Parameter:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [string, number, boolean, object, array]
+        required:
+          type: boolean
+        default:
+          description: Default value
+        description:
+          type: string
+        validation:
+          type: string
+          description: Validation expression
+
+    WorkflowConfig:
+      type: object
+      properties:
+        maxExecutionTime:
+          type: integer
+          description: Maximum execution time in seconds
+        maxRetries:
+          type: integer
+          description: Global max retries
+        compensationStrategy:
+          type: string
+          enum: [saga, none, manual]
+        concurrencyLimit:
+          type: integer
+          description: Max concurrent node executions
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 10
+
+    BackoffConfig:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [fixed, linear, exponential]
+        initialInterval:
+          type: integer
+          description: Initial interval in seconds
+        maxInterval:
+          type: integer
+          description: Maximum interval in seconds
+        multiplier:
+          type: number
+          description: Backoff multiplier
+
+    RunParameters:
+      type: object
+      properties:
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Input parameters for the workflow
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 10
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    WorkflowRun:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique run identifier
+        workflowId:
+          type: string
+          description: Workflow identifier
+        workflowVersion:
+          type: integer
+          description: Workflow version used
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Duration in milliseconds
+        parameters:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+          description: Error message if failed
+        nodeStatuses:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NodeStatus'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    WorkflowRunSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        workflowId:
+          type: string
+        workflowName:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+        completedNodes:
+          type: integer
+        totalNodes:
+          type: integer
+
+    NodeStatus:
+      type: object
+      properties:
+        nodeId:
+          type: string
+        nodeName:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, skipped, compensated]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+        attempts:
+          type: integer
+        input:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+        lastError:
+          type: string
+
+    RunEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [run_started, run_completed, run_failed, node_started, node_completed, node_failed, node_retrying]
+        runId:
+          type: string
+        nodeId:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+
+    RetryOptions:
+      type: object
+      properties:
+        fromNode:
+          type: string
+          description: Retry from specific node
+        skipNodes:
+          type: array
+          items:
+            type: string
+          description: Nodes to skip
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Override parameters
+
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationWarning'
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        nodeId:
+          type: string
+        edgeId:
+          type: string
+        path:
+          type: string
+
+    ValidationWarning:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        nodeId:
+          type: string
+        suggestion:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []

@@ -1,0 +1,207 @@
+{
+  "task_id": "P2.T005",
+  "created_at": "2025-09-14T19:41:47.124590Z",
+  "task": {
+    "id": "P2.T005",
+    "feature_id": "F002",
+    "title": "Design Multi Cluster Control",
+    "description": "Design task for Multi Cluster Control",
+    "boundaries": {
+      "expected_complexity": {
+        "value": "1 design doc, ~800-1200 lines",
+        "breakdown": "Architecture (400), API spec (300), Data model (200), Diagrams (300)"
+      },
+      "definition_of_done": {
+        "criteria": [
+          "Architecture documented with Mermaid diagrams",
+          "API endpoints specified in OpenAPI 3.0 format",
+          "Data models defined with JSON Schema",
+          "Integration points identified and documented",
+          "Security threat model completed",
+          "Performance requirements specified",
+          "Testing strategy defined"
+        ],
+        "stop_when": "Design approved by architect; do NOT start implementation"
+      },
+      "scope": {
+        "includes": [
+          "docs/design/f002-design.md",
+          "docs/api/f002-openapi.yaml",
+          "docs/schemas/f002-schema.json"
+        ],
+        "excludes": [
+          "implementation code",
+          "tests",
+          "deployment configs"
+        ],
+        "restrictions": "Must follow company design template"
+      }
+    },
+    "execution_guidance": {
+      "logging": {
+        "format": "JSON Lines (JSONL)",
+        "required_fields": [
+          "timestamp",
+          "task_id",
+          "step",
+          "status",
+          "message"
+        ],
+        "optional_fields": [
+          "percent",
+          "data",
+          "checkpoint"
+        ],
+        "status_values": [
+          "start",
+          "progress",
+          "done",
+          "error",
+          "checkpoint"
+        ]
+      },
+      "checkpoints": [
+        {
+          "id": "cp1",
+          "at_percent": 25,
+          "description": "Architecture draft complete"
+        },
+        {
+          "id": "cp2",
+          "at_percent": 50,
+          "description": "API specification complete"
+        },
+        {
+          "id": "cp3",
+          "at_percent": 75,
+          "description": "Data models and diagrams complete"
+        },
+        {
+          "id": "cp4",
+          "at_percent": 100,
+          "description": "Review and approval"
+        }
+      ],
+      "monitoring": {
+        "metrics_to_track": [],
+        "alerts": []
+      }
+    },
+    "resource_requirements": {
+      "estimated": {
+        "cpu_cores": 1,
+        "memory_mb": 512,
+        "disk_io_mbps": 10
+      },
+      "peak": {
+        "cpu_cores": 2,
+        "memory_mb": 1024,
+        "disk_io_mbps": 50,
+        "during": "compilation or testing"
+      },
+      "worker_capabilities_required": [
+        "documentation",
+        "architecture",
+        "api_design"
+      ]
+    },
+    "scheduling_hints": {
+      "priority": "medium",
+      "preemptible": true,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "checkpoint_capable": true
+    },
+    "duration": {
+      "optimistic": 4,
+      "mostLikely": 8,
+      "pessimistic": 16
+    },
+    "shared_resources": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    },
+    "acceptance_checks": [
+      {
+        "type": "automated",
+        "description": "Multiple clusters configured with labels and colors.",
+        "script": "test_p2.t005.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Side\u2011by\u2011side compare mode exists for Jobs and Workers.",
+        "script": "test_p2.t005.sh"
+      },
+      {
+        "type": "automated",
+        "description": "Multi\u2011apply actions require explicit selection and confirmation listing targets.",
+        "script": "test_p2.t005.sh"
+      },
+      {
+        "type": "manual",
+        "description": "Multi\u2011endpoint config + tabs",
+        "script": null
+      },
+      {
+        "type": "manual",
+        "description": "Side\u2011by\u2011side compare views",
+        "script": null
+      }
+    ],
+    "evidence": [
+      {
+        "type": "plan",
+        "source": "docs/ideas/multi-cluster-control.md",
+        "excerpt": "Manage multiple Redis clusters from a single TUI: quick switch tabs, side\u2011by\u2011side compare, and optionally propagate admin actions across clusters with confirmations.\n\n> [!note]- **\ud83d\udde3\ufe0f CLAUDE'S THOUGHTS",
+        "confidence": 1.0,
+        "rationale": "Primary feature specification"
+      }
+    ],
+    "implementation_spec": {
+      "design_sections": [
+        "Executive Summary",
+        "System Architecture",
+        "API Specification",
+        "Data Models",
+        "Security Model",
+        "Performance Requirements",
+        "Testing Strategy",
+        "Deployment Plan"
+      ],
+      "deliverables": [
+        "Architecture document (Markdown + Mermaid)",
+        "OpenAPI 3.0 specification",
+        "JSON Schema definitions",
+        "Security threat model",
+        "Performance benchmarks"
+      ],
+      "technical_approach": [
+        "Config: accept multiple Redis endpoints with labels; hot\u2011switch via `1..9` or mouse tabs.",
+        "Compare view: render side\u2011by\u2011side key stats; highlight deltas and anomalies.",
+        "Propagate actions: opt\u2011in multi\u2011select clusters for actions (PurgeDLQ, Bench) with explicit confirm.",
+        "Caching: per\u2011cluster polling with jitter; summarized health in tab bar.",
+        "Observability: cluster\u2011qualified metrics and logs."
+      ],
+      "user_stories": [
+        "I can switch clusters instantly and keep filters/focus.",
+        "I can compare queue health across clusters.",
+        "I can run an action on selected clusters with clear confirmation."
+      ]
+    }
+  },
+  "dependencies": [],
+  "instructions": {
+    "on_complete": "Move this file to finished-tasks/P2.T005.json",
+    "on_failure": "Move this file to failed-tasks/P2.T005.json",
+    "on_help_needed": "Move to help-me/P2.T005.json",
+    "note": "READ THE FULL TASK SPECIFICATION! All details are in the task field.",
+    "resource_locks": {
+      "exclusive_locks": [],
+      "shared_limited": [],
+      "creates": [],
+      "modifies": []
+    }
+  }
+}

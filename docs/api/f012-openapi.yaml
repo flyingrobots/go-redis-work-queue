@@ -1,0 +1,1466 @@
+openapi: 3.0.3
+info:
+  title: Kubernetes Operator API
+  description: |
+    API specification for the Go Redis Work Queue Kubernetes Operator.
+
+    This operator manages queues and workers declaratively through Custom Resource Definitions (CRDs).
+    It provides intelligent autoscaling, safe rolling updates, and comprehensive observability
+    for production workloads.
+
+    **Key Features:**
+    - Queue CRD for declarative queue management
+    - WorkerPool CRD with intelligent autoscaling
+    - Policy CRD for global configuration
+    - Safe rolling updates with drain/ready hooks
+    - Prometheus metrics integration
+    - Event-driven reconciliation
+
+    **Security:**
+    - RBAC integration
+    - Namespace-scoped by default
+    - Admission webhooks for validation
+    - Resource limits enforcement
+  version: 1.0.0
+  contact:
+    name: Go Redis Work Queue Team
+    url: https://github.com/flyingrobots/go-redis-work-queue
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://k8s-operator.example.com/api/v1
+    description: Production Kubernetes Operator API
+  - url: https://staging-k8s-operator.example.com/api/v1
+    description: Staging Kubernetes Operator API
+
+paths:
+  # Queue Management
+  /queues:
+    get:
+      summary: List all queues
+      description: Retrieve all Queue resources across namespaces (cluster-scoped) or within namespace
+      operationId: listQueues
+      tags:
+        - Queue Management
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace (omit for all namespaces)
+          schema:
+            type: string
+        - name: labelSelector
+          in: query
+          description: Kubernetes label selector
+          schema:
+            type: string
+        - name: fieldSelector
+          in: query
+          description: Kubernetes field selector
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of Queue resources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      summary: Create a new queue
+      description: Create a new Queue Custom Resource
+      operationId: createQueue
+      tags:
+        - Queue Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+      responses:
+        '201':
+          description: Queue created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /queues/{name}:
+    get:
+      summary: Get queue by name
+      description: Retrieve a specific Queue resource
+      operationId: getQueue
+      tags:
+        - Queue Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Queue resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Update queue
+      description: Update an existing Queue resource
+      operationId: updateQueue
+      tags:
+        - Queue Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Queue'
+      responses:
+        '200':
+          description: Queue updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Delete queue
+      description: Delete a Queue resource (with finalizer-based cleanup)
+      operationId: deleteQueue
+      tags:
+        - Queue Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Queue deletion initiated
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /queues/{name}/status:
+    get:
+      summary: Get queue status
+      description: Retrieve queue status and conditions
+      operationId: getQueueStatus
+      tags:
+        - Queue Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # WorkerPool Management
+  /workerpools:
+    get:
+      summary: List all worker pools
+      description: Retrieve all WorkerPool resources
+      operationId: listWorkerPools
+      tags:
+        - WorkerPool Management
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          schema:
+            type: string
+        - name: labelSelector
+          in: query
+          description: Kubernetes label selector
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of WorkerPool resources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPoolList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create worker pool
+      description: Create a new WorkerPool Custom Resource
+      operationId: createWorkerPool
+      tags:
+        - WorkerPool Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerPool'
+      responses:
+        '201':
+          description: WorkerPool created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /workerpools/{name}:
+    get:
+      summary: Get worker pool by name
+      description: Retrieve a specific WorkerPool resource
+      operationId: getWorkerPool
+      tags:
+        - WorkerPool Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: WorkerPool resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update worker pool
+      description: Update an existing WorkerPool resource
+      operationId: updateWorkerPool
+      tags:
+        - WorkerPool Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerPool'
+      responses:
+        '200':
+          description: WorkerPool updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete worker pool
+      description: Delete a WorkerPool resource (with graceful draining)
+      operationId: deleteWorkerPool
+      tags:
+        - WorkerPool Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: WorkerPool deletion initiated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workerpools/{name}/scale:
+    post:
+      summary: Manual scale worker pool
+      description: Manually scale a WorkerPool (overrides autoscaling temporarily)
+      operationId: scaleWorkerPool
+      tags:
+        - WorkerPool Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleRequest'
+      responses:
+        '200':
+          description: Scaling initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScaleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workerpools/{name}/drain:
+    post:
+      summary: Drain worker pool
+      description: Gracefully drain workers in preparation for updates or deletion
+      operationId: drainWorkerPool
+      tags:
+        - WorkerPool Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrainRequest'
+      responses:
+        '200':
+          description: Drain initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DrainResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Policy Management
+  /policies:
+    get:
+      summary: List all policies
+      description: Retrieve all Policy resources
+      operationId: listPolicies
+      tags:
+        - Policy Management
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of Policy resources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyList'
+    post:
+      summary: Create policy
+      description: Create a new Policy Custom Resource
+      operationId: createPolicy
+      tags:
+        - Policy Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Policy'
+      responses:
+        '201':
+          description: Policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /policies/{name}:
+    get:
+      summary: Get policy by name
+      description: Retrieve a specific Policy resource
+      operationId: getPolicy
+      tags:
+        - Policy Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Policy resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update policy
+      description: Update an existing Policy resource
+      operationId: updatePolicy
+      tags:
+        - Policy Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Policy'
+      responses:
+        '200':
+          description: Policy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete policy
+      description: Delete a Policy resource
+      operationId: deletePolicy
+      tags:
+        - Policy Management
+      parameters:
+        - $ref: '#/components/parameters/ResourceName'
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Policy deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Metrics and Monitoring
+  /metrics:
+    get:
+      summary: Get operator metrics
+      description: Retrieve Prometheus-format metrics from the operator
+      operationId: getMetrics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP queue_operator_reconcile_total Total number of reconciliations
+                  # TYPE queue_operator_reconcile_total counter
+                  queue_operator_reconcile_total{controller="queue"} 42
+                  queue_operator_reconcile_total{controller="workerpool"} 18
+
+  /metrics/autoscaling:
+    get:
+      summary: Get autoscaling metrics
+      description: Retrieve metrics used for autoscaling decisions
+      operationId: getAutoscalingMetrics
+      tags:
+        - Monitoring
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          schema:
+            type: string
+        - name: workerpool
+          in: query
+          description: Filter by WorkerPool name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Autoscaling metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoscalingMetrics'
+
+  # Health and Status
+  /health:
+    get:
+      summary: Operator health check
+      description: Get the health status of the operator
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Operator is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Operator is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /readiness:
+    get:
+      summary: Operator readiness check
+      description: Check if the operator is ready to serve requests
+      operationId: getReadiness
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Operator is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '503':
+          description: Operator is not ready
+
+  # Events and Audit
+  /events:
+    get:
+      summary: Get operator events
+      description: Retrieve Kubernetes events generated by the operator
+      operationId: getEvents
+      tags:
+        - Events
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          schema:
+            type: string
+        - name: involvedObject.name
+          in: query
+          description: Filter by involved object name
+          schema:
+            type: string
+        - name: since
+          in: query
+          description: Only show events after this timestamp
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+
+components:
+  parameters:
+    ResourceName:
+      name: name
+      in: path
+      required: true
+      description: Name of the Kubernetes resource
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        maxLength: 63
+
+    Namespace:
+      name: namespace
+      in: query
+      description: Kubernetes namespace (defaults to 'default')
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        maxLength: 63
+        default: default
+
+  schemas:
+    # Core CRD Schemas
+    Queue:
+      type: object
+      required:
+        - apiVersion
+        - kind
+        - metadata
+        - spec
+      properties:
+        apiVersion:
+          type: string
+          enum:
+            - workqueue.io/v1
+        kind:
+          type: string
+          enum:
+            - Queue
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          $ref: '#/components/schemas/QueueSpec'
+        status:
+          $ref: '#/components/schemas/QueueStatus'
+
+    QueueSpec:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Queue name in Redis
+          pattern: '^[a-zA-Z0-9]([a-zA-Z0-9\-_]*[a-zA-Z0-9])?$'
+          maxLength: 255
+        priorities:
+          type: array
+          description: Priority levels for the queue
+          items:
+            type: integer
+            minimum: 0
+            maximum: 100
+          default: [0]
+        rateLimit:
+          $ref: '#/components/schemas/RateLimit'
+        deadLetterQueue:
+          $ref: '#/components/schemas/DeadLetterQueueConfig'
+        retention:
+          $ref: '#/components/schemas/RetentionPolicy'
+        monitoring:
+          $ref: '#/components/schemas/MonitoringConfig'
+        redis:
+          $ref: '#/components/schemas/RedisConfig'
+
+    QueueStatus:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum:
+            - Pending
+            - Ready
+            - Error
+            - Terminating
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        metrics:
+          $ref: '#/components/schemas/QueueMetrics'
+        lastReconcileTime:
+          type: string
+          format: date-time
+
+    WorkerPool:
+      type: object
+      required:
+        - apiVersion
+        - kind
+        - metadata
+        - spec
+      properties:
+        apiVersion:
+          type: string
+          enum:
+            - workqueue.io/v1
+        kind:
+          type: string
+          enum:
+            - WorkerPool
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          $ref: '#/components/schemas/WorkerPoolSpec'
+        status:
+          $ref: '#/components/schemas/WorkerPoolStatus'
+
+    WorkerPoolSpec:
+      type: object
+      required:
+        - queues
+        - template
+      properties:
+        queues:
+          type: array
+          description: Queues this worker pool processes
+          items:
+            type: string
+          minItems: 1
+        template:
+          $ref: '#/components/schemas/PodTemplateSpec'
+        replicas:
+          type: integer
+          description: Desired number of worker replicas
+          minimum: 0
+          maximum: 1000
+          default: 1
+        autoscaling:
+          $ref: '#/components/schemas/AutoscalingSpec'
+        updateStrategy:
+          $ref: '#/components/schemas/UpdateStrategy'
+        drainPolicy:
+          $ref: '#/components/schemas/DrainPolicy'
+
+    WorkerPoolStatus:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum:
+            - Pending
+            - Scaling
+            - Ready
+            - Updating
+            - Draining
+            - Error
+        replicas:
+          type: integer
+          description: Current number of replicas
+        readyReplicas:
+          type: integer
+          description: Number of ready replicas
+        updatedReplicas:
+          type: integer
+          description: Number of updated replicas
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        autoscalingStatus:
+          $ref: '#/components/schemas/AutoscalingStatus'
+        lastScaleTime:
+          type: string
+          format: date-time
+
+    Policy:
+      type: object
+      required:
+        - apiVersion
+        - kind
+        - metadata
+        - spec
+      properties:
+        apiVersion:
+          type: string
+          enum:
+            - workqueue.io/v1
+        kind:
+          type: string
+          enum:
+            - Policy
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          $ref: '#/components/schemas/PolicySpec'
+        status:
+          $ref: '#/components/schemas/PolicyStatus'
+
+    PolicySpec:
+      type: object
+      properties:
+        circuitBreaker:
+          $ref: '#/components/schemas/CircuitBreakerConfig'
+        retry:
+          $ref: '#/components/schemas/RetryConfig'
+        timeout:
+          $ref: '#/components/schemas/TimeoutConfig'
+        security:
+          $ref: '#/components/schemas/SecurityConfig'
+        monitoring:
+          $ref: '#/components/schemas/MonitoringConfig'
+
+    # Supporting Schemas
+    RateLimit:
+      type: object
+      properties:
+        requestsPerSecond:
+          type: number
+          minimum: 0
+          maximum: 10000
+        burstSize:
+          type: integer
+          minimum: 1
+          maximum: 1000
+
+    DeadLetterQueueConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        maxRetries:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 3
+        retryDelay:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '1m'
+
+    RetentionPolicy:
+      type: object
+      properties:
+        maxAge:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h|d)$'
+          default: '7d'
+        maxSize:
+          type: string
+          pattern: '^[0-9]+[KMGT]?B$'
+          default: '1GB'
+
+    AutoscalingSpec:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        minReplicas:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          default: 1
+        maxReplicas:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 10
+        targetBacklogSize:
+          type: integer
+          description: Target queue backlog size per replica
+          minimum: 1
+          default: 10
+        targetLatencyP95:
+          type: string
+          description: Target 95th percentile latency
+          pattern: '^[0-9]+(ns|us|�s|ms|s)$'
+          default: '100ms'
+        scaleUpCooldown:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '3m'
+        scaleDownCooldown:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '5m'
+
+    UpdateStrategy:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - RollingUpdate
+            - Recreate
+          default: RollingUpdate
+        rollingUpdate:
+          type: object
+          properties:
+            maxUnavailable:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: string
+                  pattern: '^[0-9]+%$'
+              default: '25%'
+            maxSurge:
+              oneOf:
+                - type: integer
+                  minimum: 0
+                - type: string
+                  pattern: '^[0-9]+%$'
+              default: '25%'
+
+    DrainPolicy:
+      type: object
+      properties:
+        gracePeriodSeconds:
+          type: integer
+          minimum: 0
+          maximum: 3600
+          default: 300
+        forceAfter:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '10m'
+
+    # Operational Schemas
+    ScaleRequest:
+      type: object
+      required:
+        - replicas
+      properties:
+        replicas:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        reason:
+          type: string
+          description: Reason for manual scaling
+
+    ScaleResponse:
+      type: object
+      properties:
+        previousReplicas:
+          type: integer
+        targetReplicas:
+          type: integer
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+
+    DrainRequest:
+      type: object
+      properties:
+        gracePeriodSeconds:
+          type: integer
+          minimum: 0
+          maximum: 3600
+        reason:
+          type: string
+
+    DrainResponse:
+      type: object
+      properties:
+        drainStartTime:
+          type: string
+          format: date-time
+        estimatedDrainTime:
+          type: string
+          format: date-time
+        affectedReplicas:
+          type: integer
+
+    # Monitoring Schemas
+    QueueMetrics:
+      type: object
+      properties:
+        backlogSize:
+          type: integer
+          description: Current number of pending messages
+        throughputPerSecond:
+          type: number
+          description: Messages processed per second
+        averageLatency:
+          type: string
+          description: Average processing latency
+        p95Latency:
+          type: string
+          description: 95th percentile latency
+        errorRate:
+          type: number
+          description: Error rate as percentage
+
+    AutoscalingMetrics:
+      type: object
+      properties:
+        queues:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              backlogSize:
+                type: integer
+              avgLatency:
+                type: string
+              p95Latency:
+                type: string
+        workerPools:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              currentReplicas:
+                type: integer
+              targetReplicas:
+                type: integer
+              cpuUtilization:
+                type: number
+              memoryUtilization:
+                type: number
+
+    AutoscalingStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        lastScaleTime:
+          type: string
+          format: date-time
+        lastScaleReason:
+          type: string
+        currentMetrics:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+
+    # Health Schemas
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+        timestamp:
+          type: string
+          format: date-time
+        components:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum:
+                  - healthy
+                  - unhealthy
+              message:
+                type: string
+
+    ReadinessStatus:
+      type: object
+      required:
+        - ready
+      properties:
+        ready:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              passed:
+                type: boolean
+              message:
+                type: string
+
+    # Kubernetes Common Schemas
+    ObjectMeta:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          maxLength: 63
+        namespace:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          maxLength: 63
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        creationTimestamp:
+          type: string
+          format: date-time
+        generation:
+          type: integer
+
+    Condition:
+      type: object
+      required:
+        - type
+        - status
+      properties:
+        type:
+          type: string
+        status:
+          type: string
+          enum:
+            - "True"
+            - "False"
+            - Unknown
+        lastTransitionTime:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        message:
+          type: string
+
+    PodTemplateSpec:
+      type: object
+      description: Simplified Pod template specification
+      properties:
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+          properties:
+            containers:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  image:
+                    type: string
+                  env:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+                  resources:
+                    type: object
+                    properties:
+                      requests:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      limits:
+                        type: object
+                        additionalProperties:
+                          type: string
+
+    # Configuration Schemas
+    CircuitBreakerConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        failureThreshold:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 5
+        recoveryTimeout:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '60s'
+
+    RetryConfig:
+      type: object
+      properties:
+        maxRetries:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 3
+        backoffStrategy:
+          type: string
+          enum:
+            - exponential
+            - linear
+            - fixed
+          default: exponential
+        initialDelay:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '1s'
+        maxDelay:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '30s'
+
+    TimeoutConfig:
+      type: object
+      properties:
+        jobTimeout:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '5m'
+        shutdownTimeout:
+          type: string
+          pattern: '^[0-9]+(ns|us|�s|ms|s|m|h)$'
+          default: '30s'
+
+    SecurityConfig:
+      type: object
+      properties:
+        rbacEnabled:
+          type: boolean
+          default: true
+        podSecurityContext:
+          type: object
+          properties:
+            runAsNonRoot:
+              type: boolean
+              default: true
+            runAsUser:
+              type: integer
+              default: 1000
+            fsGroup:
+              type: integer
+              default: 2000
+
+    MonitoringConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        prometheusEndpoint:
+          type: string
+          default: '/metrics'
+        metricsPort:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+          default: 8080
+
+    RedisConfig:
+      type: object
+      properties:
+        connectionString:
+          type: string
+          description: Redis connection string
+        secretRef:
+          type: object
+          properties:
+            name:
+              type: string
+            key:
+              type: string
+        tls:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            secretRef:
+              type: object
+              properties:
+                name:
+                  type: string
+
+    PolicyStatus:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum:
+            - Active
+            - Error
+        appliedToQueues:
+          type: array
+          items:
+            type: string
+        appliedToWorkerPools:
+          type: array
+          items:
+            type: string
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+
+    # List Schemas
+    QueueList:
+      type: object
+      required:
+        - items
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+          enum:
+            - QueueList
+        metadata:
+          type: object
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Queue'
+
+    WorkerPoolList:
+      type: object
+      required:
+        - items
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+          enum:
+            - WorkerPoolList
+        metadata:
+          type: object
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerPool'
+
+    PolicyList:
+      type: object
+      required:
+        - items
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+          enum:
+            - PolicyList
+        metadata:
+          type: object
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+
+    EventList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              metadata:
+                $ref: '#/components/schemas/ObjectMeta'
+              involvedObject:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+              reason:
+                type: string
+              message:
+                type: string
+              type:
+                type: string
+                enum:
+                  - Normal
+                  - Warning
+              eventTime:
+                type: string
+                format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: string
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              resource:
+                type: string
+
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              existing:
+                type: object
+
+    Forbidden:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              required_permissions:
+                type: array
+                items:
+                  type: string
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              request_id:
+                type: string
+
+  securitySchemes:
+    kubernetesAuth:
+      type: http
+      scheme: bearer
+      description: Kubernetes service account token or user token
+
+security:
+  - kubernetesAuth: []
+
+tags:
+  - name: Queue Management
+    description: Operations for managing Queue Custom Resources
+  - name: WorkerPool Management
+    description: Operations for managing WorkerPool Custom Resources
+  - name: Policy Management
+    description: Operations for managing Policy Custom Resources
+  - name: Monitoring
+    description: Metrics and monitoring endpoints
+  - name: Health
+    description: Health and readiness checks
+  - name: Events
+    description: Kubernetes events and audit logs
