@@ -40,7 +40,8 @@ def parse_all_tables(md: str) -> Tuple[List[Dict], Dict[str, List[Dict]]]:
     for i, line in enumerate(lines):
         if line.startswith("### "):
             current_group = slugify(line[4:])
-        if line.strip().startswith("| Emoji ") and "Progress %" in line:
+        s = line.strip()
+        if s.startswith("|") and ("Emoji" in s) and ("Progress %" in s):
             table_headers.append((i, current_group or "root"))
 
     all_rows: List[Dict] = []
@@ -100,7 +101,7 @@ def compute_weighted_progress(md: str):
     # [ '', ' Emoji ', ' Feature ', ' Area ', ' Spec ', ' Code ', ' Status ', ' Progress % ', ' Bar ', ' Current State ', ... ]
     # After split, leading/trailing blanks included
     # Build normalized header cells to locate column positions (from first header)
-    header_line = next((line for line in md.splitlines() if line.strip().startswith("| Emoji ") and "Progress %" in line), None)
+    header_line = next((line for line in md.splitlines() if line.strip().startswith("|") and ("Emoji" in line) and ("Progress %" in line)), None)
     if header_line is None:
         raise RuntimeError("Could not find table header for column index resolution")
     header_cells = [c.strip() for c in header_line.strip().strip('|').split('|')]
@@ -268,7 +269,8 @@ def add_or_update_kloc_column(md: str) -> str:
     i = 0
     while i < len(lines):
         line = lines[i]
-        if line.strip().startswith("| Emoji ") and "Progress %" in line:
+        s = line.strip()
+        if s.startswith('|') and ("Emoji" in s) and ("Progress %" in s):
             header_cells = [c.strip() for c in line.strip().strip('|').split('|')]
             # identify indices
             try:
