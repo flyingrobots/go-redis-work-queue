@@ -23,11 +23,12 @@ Defines our versioning scheme, changelog process, and release checklist for alph
 1) Ensure CI green; govulncheck passes; tests (unit/race/e2e) pass.
 2) Update docs (README, PRD, performance baseline) if needed.
 3) Bump version in `CHANGELOG.md` with date and summary.
-4) Tag release
+4) Ensure supply-chain artifacts present: SBOM exported, SLSA/OIDC provenance attestation stored, and release binaries/images signed with cosign.
+5) Tag release using annotated (or signed) tag
 
 ```bash
-git tag vX.Y.Z[-pre]
-git push --tags
+git tag -a vX.Y.Z[-pre] -m "Release vX.Y.Z[-pre]"
+git push origin vX.Y.Z[-pre]
 ```
 
-5) Publish GitHub Release notes, attach Docker image reference.
+6) Publish GitHub Release notes, attach Docker image reference.

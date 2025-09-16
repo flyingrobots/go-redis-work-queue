@@ -111,9 +111,13 @@ Validation rules:
 
 ### Reaper
 
-- Periodically SCAN `jobqueue:worker:*:processing`. For each list:
-  - Compose heartbeat key from worker id; if missing, `RPOP` items and `LPUSH` back to original priority queue inferred from payload.
-  - Bounded per-scan to avoid long stalls; sleep between SCAN pages.
+- Persist `origin_queue` in job metadata at enqueue time. Reaper uses this to identify the destination when re-queuing work.
+- Periodically `SCAN`/`SSCAN` `jobqueue:worker:*:processing` with `COUNT=N` (default 100) and abort each pass after ~200ms to avoid starving workers.
+- Between SCAN pages, sleep for `base_delay` plus ±50% jitter so fleets do not synchronize.
+- For each candidate job:
+  - Skip when `worker:hb:<id>` exists and is newer than `heartbeat_ttl`.
+  - Execute a Lua script that atomically verifies heartbeat absence, removes the list entry, and `LPUSH`es the payload back to `origin_queue` (or DLQ once retries exhausted).
+- Record `reaper_jobs_moved_total` and structured logs for observability, then wait `reaper_interval` with ±25% jitter before the next pass.
 
 ### Circuit Breaker
 
@@ -122,12 +126,21 @@ Validation rules:
 
 ## Metrics
 
-- `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total` (counters)
-- `job_processing_duration_seconds` (histogram)
-- `queue_length{queue}` (gauge)
-- `circuit_breaker_state` (gauge: 0 Closed, 1 HalfOpen, 2 Open)
+- Counters (labels in parentheses, capped at ≤50 values):
+  - `jobs_produced_total{queue}`
+  - `jobs_consumed_total{queue}`
+  - `jobs_completed_total{queue}`
+  - `jobs_failed_total{queue,reason}` (reason from bounded enum)
+  - `jobs_retried_total{queue}`
+  - `jobs_dead_letter_total{queue}`
+- Histogram:
+  - `job_processing_duration_seconds{queue}` (bucket unit: seconds; suffix already `_seconds`).
+- Gauges:
+  - `queue_length{queue}` (queue names validated against configured allowlist; all others map to `other`).
+  - `circuit_breaker_state{queue}` (0 Closed, 1 Half-Open, 2 Open).
+- Validation: `promtool check metrics` in CI plus unit tests ensure label sets stay bounded.
 
 ## Logging and Tracing
 
-- Logs are JSON with keys: `level`, `ts`, `msg`, `trace_id`, `span_id`, `job_id`, `queue`, `worker_id`.
-- Tracing: create a span per job processing; propagate `trace_id/span_id` if present; otherwise create new.
+- Logs are JSON with canonical keys: `level`, `ts`, `msg`, `trace_id`, `span_id`, `job_id`, `queue`, `worker_id`, `request_id`, `namespace`. Secrets, payloads, or PII are forbidden; the logging helper rejects non-allowlisted keys.
+- Tracing: create a span per job processing; propagate `trace_id/span_id` if present; otherwise create new, tagging spans with `queue`, `job_id`, and outcome. Linting enforces presence of these attributes in PR review.

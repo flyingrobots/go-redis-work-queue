@@ -36,6 +36,11 @@ This roadmap sequences the remaining work to reach v1.0.0 and beyond. Priorities
 - Performance tuning and load tests; pool sizing guidance
 - E2E tests with real Redis; chaos testing scenarios
 - RC release v0.9.0 (2025-10-24), GA v1.0.0 (2025-11-07)
+  - Release gates (see `docs/15_promotion_checklists.md` and `.github/workflows/release.yml`):
+    - CI jobs must be green: `unit`, `integration`, `e2e-with-redis`, `security-scan`, `performance-smoke`, `deploy-preview`
+    - Branch protection enabled on `main`; no bypass merges
+    - Promotion checklist signed by Release DRI and QA DRI
+    - Verify artifacts published (container image, binary bundles, Terraform module)
 - Post-1.0: Helm chart and Docker Compose examples (Dec)
 
 ### Q1 2026
@@ -46,9 +51,9 @@ This roadmap sequences the remaining work to reach v1.0.0 and beyond. Priorities
 
 ## Initiative Dependencies
 
-- Tracing propagation depends on finalized Job struct and processor API.
-- Reaper improvements depend on reliable heartbeat semantics.
-- Performance tuning depends on priority dequeue semantics and metrics completeness.
+- Tracing propagation — owner: @alice (Observability) — depends on Job struct update (PR #123) and `docs/06_technical_spec.md#job-schema` review.
+- Reaper improvements — owner: @bob (Runtime) — depends on heartbeat semantics definition (`docs/06_technical_spec.md#reaper`) and implementation PR #145.
+- Performance tuning — owner: @carol (Perf Guild) — depends on priority dequeue semantics (PR #130) and metrics completeness plan (`docs/12_performance_baseline.md`).
 
 ## Business Priorities
 

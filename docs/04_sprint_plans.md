@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-Four bi-weekly sprints lead to v1.0.0. Each sprint contains user stories with acceptance criteria, tasks, and estimates.
+Four two-week sprints lead to v1.0.0. Each sprint contains user stories with acceptance criteria, tasks, and estimates.
 
 ## Table of Contents
 

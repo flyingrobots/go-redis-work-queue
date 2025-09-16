@@ -5,7 +5,11 @@
     {
       "type": "timeseries",
       "title": "Job Processing Duration (p95)",
-      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(job_processing_duration_seconds_bucket[5m])) by (le))"}]
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(job_processing_duration_seconds_bucket[5m])))"
+        }
+      ]
     },
     {
       "type": "timeseries",
@@ -19,19 +23,66 @@
     {
       "type": "stat",
       "title": "Circuit Breaker State",
-      "targets": [{"expr": "circuit_breaker_state"}],
-      "options": {"reduceOptions": {"calcs": ["last"], "fields": ""}}
+      "targets": [
+        {"expr": "circuit_breaker_state"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "state",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {"text": "Closed (OK)"},
+                "1": {"text": "Half-Open (Warn)"},
+                "2": {"text": "Open (Alert)"}
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 2}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["last"], "fields": ""}
+      }
     },
     {
       "type": "timeseries",
       "title": "Queue Lengths",
-      "targets": [{"expr": "queue_length"}]
+      "targets": [
+        {"expr": "sum by (queue) (queue_length)"}
+      ]
     },
     {
       "type": "stat",
       "title": "Active Workers",
-      "targets": [{"expr": "worker_active"}],
-      "options": {"reduceOptions": {"calcs": ["last"], "fields": ""}}
+      "targets": [
+        {"expr": "worker_active"}
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["last"], "fields": ""}
+      }
     }
   ]
 }
