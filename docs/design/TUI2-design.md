@@ -31,6 +31,107 @@ Mouse, keyboard, and (future) voice commands all feel natural:
 - Keyboard shortcuts scale with available space
 - Voice commands for accessibility
 
+## Launch & First‑Run UX
+
+### Goals
+- Zero‑friction start, safe by default, instant value within 10 seconds.
+- Predictable CLI surface with config discovery and a friendly first‑run wizard.
+- Clear failure states with actionable recovery paths (no dead ends).
+
+### CLI Surface
+
+Binary: `tui` (current) or alias `rq tui` later if unified CLI arrives.
+
+Flags (superset; all optional):
+- `--config PATH` override config file path (default discovery below)
+- `--redis-url REDIS_URL` quick connect (`redis://[:pass@]host:port/db`)
+- `--cluster NAME` named cluster from config
+- `--namespace NS` key namespace/prefix
+- `--read-only` force read‑only mode (guardrails on)
+- `--refresh DURATION` stats refresh interval (e.g. `2s`)
+- `--metrics-addr HOST:PORT` expose Prometheus (`:9090` default)
+- `--log-level {debug,info,warn,error}`
+- `--theme {auto,dark,light,high-contrast}`
+- `--fps {60,30,15}` cap render frame rate
+- `--no-mouse` disable mouse handling (tmux/workarounds)
+
+Subcommands (optional but recommended):
+- `tui init` — interactive config bootstrap (writes discovered/defaults)
+- `tui doctor` — connectivity + permission checks with diagnostics
+- `tui demo` — launch in demo mode with seeded data (safe, local)
+- `tui bench` — run a guided benchmark against selected queue
+- `tui version` — print version/build info
+
+Environment mapping (read at startup):
+- `GRQ_CONFIG`, `GRQ_REDIS_URL`, `GRQ_CLUSTER`, `GRQ_NAMESPACE`, `GRQ_READ_ONLY`
+- `GRQ_METRICS_ADDR`, `GRQ_LOG_LEVEL`, `GRQ_THEME`, `GRQ_FPS`
+
+### Config Discovery (precedence high → low)
+1) Flag `--config`
+2) Env `GRQ_CONFIG`
+3) XDG: `~/.config/go-redis-work-queue/config.yaml` (or `~/.config/grq/config.yaml`)
+4) Project‑local: `./config/config.yaml`
+5) Built‑in defaults (localhost, db 0, namespace `rq`)
+
+If a path is found but invalid, show a modal with:
+- Error summary + first offending line/field
+- Options: `[o] Open file`, `[r] Retry`, `[d] Use defaults`, `[q] Quit`
+
+### First‑Run Flow (no config, no flags)
+1) Terminal probe: detect size → select breakpoint; print compact welcome.
+2) Show full‑screen Welcome overlay:
+   - "Quick Connect" (input Redis URL, optional auth, test connection)
+   - "Demo Mode" (seed temporary data; read‑only actions only)
+   - "Init Config" (guided wizard; choose file location)
+3) On connect success: store last used connection + cluster name in state file.
+4) Default to Read‑only ON with clear toggle; dangerous ops gated behind confirm.
+
+### Launch Sequence (happy path)
+0) Parse flags/env → resolve config → start logger
+1) Start metrics server on `:9090`; if busy, fall back to random free port and show hint in status bar
+2) Render skeleton UI immediately (tab bar, empty tables, placeholders)
+3) Show non‑blocking "Connecting to Redis…" overlay with spinner
+4) Run `admin.Stats` + `admin.StatsKeys` to hydrate initial view
+5) Fade out overlay → live polling begins; frame‑gated updates for smoothness
+
+### Error & Offline States
+- Redis unreachable: modal with last error, `Retry (r)`, `Edit (e)`, `Demo (d)`, `Quit (q)`
+- Auth failure: prompt re‑entry; support `redis://user:pass@host:port/db`
+- Network flaps: degrade to reduced polling; show toast, do not exit
+- Channel permissions (ACL) missing: label features as unavailable; link to docs
+
+### Demo Mode (instant value)
+- Seeds queues, workers, and DLQ samples via existing `Bench` helpers
+- Read‑only hard‑enforced; purge/requeue disabled
+- Clearly labeled headers and accent color so it’s unmistakable
+
+### Persistence
+- UI state file under XDG data dir: active tab, split ratio, filters, theme, last cluster
+- Last good config path and redis URL cached (never secrets in plain text; prefer URL without password or store OS‑keychain ref)
+
+### Safety Guardrails
+- Global Read‑only toggle (visible in status bar)
+- Destructive actions require confirm modal with explicit target summary
+- `--read-only` flag overrides any persisted writable state
+
+### Accessibility & Help at Launch
+- First run auto‑opens compact Help overlay with keybindings relevant to current breakpoint
+- Help includes numeric tab shortcuts (1‑4), filter (`/`), peek (`p`/Enter), bench (`b`), DLQ purge (`D`), help (`?`/`esc`)
+
+### Doctor Command Checklist
+- DNS/host reachability, TCP connect, TLS/mTLS if configured
+- Redis `PING`, role (master/replica), db index, latency sample
+- ACL check for needed commands (LLEN, XRANGE, HGETALL, etc.)
+- Keyspace probe under namespace; sample counts and sizes (capped)
+- Report and exit code suitable for CI
+
+### Cross‑Platform Notes
+- Respect `NO_COLOR`; degrade gracefully on Windows/WT without truecolor
+- tmux: advise `set -g allow-passthrough` if mouse issues; `--no-mouse` escape hatch
+- WSL/SSH detection: default to 30fps if terminal reports slow writes
+
+This launch flow aligns with the breakpoint‑driven UI while ensuring first‑time users reach an insightful dashboard quickly and safely, and returning users land exactly where they left off.
+
 ## System Architecture
 
 ### Responsive Layout Engine

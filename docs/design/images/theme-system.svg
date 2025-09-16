@@ -1,0 +1,219 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Light theme gradient -->
+    <linearGradient id="lightTheme" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f6f8fa;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Dark theme gradient -->
+    <linearGradient id="darkTheme" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#21262d;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- High contrast gradient -->
+    <linearGradient id="highContrast" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#000000;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Custom theme gradient -->
+    <linearGradient id="customTheme" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d1b69;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#11998e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="20" font-weight="bold">Adaptive Theme System</text>
+
+  <!-- Theme Showcase Grid -->
+
+  <!-- Light Theme -->
+  <g id="lightThemeDemo">
+    <rect x="50" y="60" width="160" height="120" rx="8" fill="url(#lightTheme)" stroke="#d0d7de" stroke-width="2"/>
+    <text x="130" y="85" text-anchor="middle" fill="#24292f" font-family="monospace" font-size="14" font-weight="bold">Light Theme</text>
+
+    <!-- Mock interface elements -->
+    <rect x="60" y="95" width="140" height="15" rx="3" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+    <text x="65" y="105" fill="#656d76" font-family="monospace" font-size="9">Queue: processing-jobs</text>
+
+    <rect x="60" y="115" width="50" height="12" rx="2" fill="#2da44e"/>
+    <text x="85" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Active</text>
+
+    <rect x="115" y="115" width="50" height="12" rx="2" fill="#cf222e"/>
+    <text x="140" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Failed</text>
+
+    <rect x="60" y="135" width="140" height="30" rx="3" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+    <text x="130" y="155" text-anchor="middle" fill="#656d76" font-family="monospace" font-size="10">Jobs: 1,234 | Workers: 8</text>
+
+    <text x="130" y="195" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Auto-detected</text>
+  </g>
+
+  <!-- Dark Theme -->
+  <g id="darkThemeDemo">
+    <rect x="230" y="60" width="160" height="120" rx="8" fill="url(#darkTheme)" stroke="#30363d" stroke-width="2"/>
+    <text x="310" y="85" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Dark Theme</text>
+
+    <!-- Mock interface elements -->
+    <rect x="240" y="95" width="140" height="15" rx="3" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="245" y="105" fill="#8b949e" font-family="monospace" font-size="9">Queue: processing-jobs</text>
+
+    <rect x="240" y="115" width="50" height="12" rx="2" fill="#238636"/>
+    <text x="265" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Active</text>
+
+    <rect x="295" y="115" width="50" height="12" rx="2" fill="#da3633"/>
+    <text x="320" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Failed</text>
+
+    <rect x="240" y="135" width="140" height="30" rx="3" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="310" y="155" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="10">Jobs: 1,234 | Workers: 8</text>
+
+    <text x="310" y="195" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Default</text>
+  </g>
+
+  <!-- High Contrast Theme -->
+  <g id="highContrastDemo">
+    <rect x="410" y="60" width="160" height="120" rx="8" fill="url(#highContrast)" stroke="#ffffff" stroke-width="3"/>
+    <text x="490" y="85" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="14" font-weight="bold">High Contrast</text>
+
+    <!-- Mock interface elements -->
+    <rect x="420" y="95" width="140" height="15" rx="3" fill="#000000" stroke="#ffffff" stroke-width="2"/>
+    <text x="425" y="105" fill="#ffffff" font-family="monospace" font-size="9">Queue: processing-jobs</text>
+
+    <rect x="420" y="115" width="50" height="12" rx="2" fill="#00ff00"/>
+    <text x="445" y="123" text-anchor="middle" fill="#000000" font-family="monospace" font-size="8">Active</text>
+
+    <rect x="475" y="115" width="50" height="12" rx="2" fill="#ff0000"/>
+    <text x="500" y="123" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="8">Failed</text>
+
+    <rect x="420" y="135" width="140" height="30" rx="3" fill="#000000" stroke="#ffffff" stroke-width="2"/>
+    <text x="490" y="155" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="10">Jobs: 1,234 | Workers: 8</text>
+
+    <text x="490" y="195" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Accessibility</text>
+  </g>
+
+  <!-- Custom Theme -->
+  <g id="customThemeDemo">
+    <rect x="590" y="60" width="160" height="120" rx="8" fill="url(#customTheme)" stroke="#38d9a9" stroke-width="2"/>
+    <text x="670" y="85" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="14" font-weight="bold">Custom Theme</text>
+
+    <!-- Mock interface elements -->
+    <rect x="600" y="95" width="140" height="15" rx="3" fill="#1a0833" stroke="#38d9a9" stroke-width="1"/>
+    <text x="605" y="105" fill="#a78bfa" font-family="monospace" font-size="9">Queue: processing-jobs</text>
+
+    <rect x="600" y="115" width="50" height="12" rx="2" fill="#10b981"/>
+    <text x="625" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Active</text>
+
+    <rect x="655" y="115" width="50" height="12" rx="2" fill="#f59e0b"/>
+    <text x="680" y="123" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Failed</text>
+
+    <rect x="600" y="135" width="140" height="30" rx="3" fill="#0f172a" stroke="#38d9a9" stroke-width="1"/>
+    <text x="670" y="155" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="10">Jobs: 1,234 | Workers: 8</text>
+
+    <text x="670" y="195" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">User-created</text>
+  </g>
+
+  <!-- Theme Playground Interface -->
+  <rect x="50" y="220" width="700" height="220" rx="12" fill="#21262d" stroke="#58a6ff" stroke-width="2"/>
+  <text x="400" y="245" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Theme Playground</text>
+
+  <!-- Color Palette Builder -->
+  <rect x="70" y="260" width="300" height="160" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="220" y="280" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Color Palette</text>
+
+  <!-- Color swatches -->
+  <g id="colorPalette">
+    <!-- Primary colors -->
+    <rect x="80" y="295" width="25" height="20" fill="#58a6ff" stroke="#30363d" stroke-width="1"/>
+    <text x="110" y="308" fill="#b1bac4" font-family="monospace" font-size="10">Primary</text>
+
+    <rect x="80" y="320" width="25" height="20" fill="#238636" stroke="#30363d" stroke-width="1"/>
+    <text x="110" y="333" fill="#b1bac4" font-family="monospace" font-size="10">Success</text>
+
+    <rect x="80" y="345" width="25" height="20" fill="#da3633" stroke="#30363d" stroke-width="1"/>
+    <text x="110" y="358" fill="#b1bac4" font-family="monospace" font-size="10">Error</text>
+
+    <rect x="80" y="370" width="25" height="20" fill="#f9e71e" stroke="#30363d" stroke-width="1"/>
+    <text x="110" y="383" fill="#b1bac4" font-family="monospace" font-size="10">Warning</text>
+
+    <!-- Background colors -->
+    <rect x="200" y="295" width="25" height="20" fill="#0d1117" stroke="#58a6ff" stroke-width="1"/>
+    <text x="230" y="308" fill="#b1bac4" font-family="monospace" font-size="10">Background</text>
+
+    <rect x="200" y="320" width="25" height="20" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+    <text x="230" y="333" fill="#b1bac4" font-family="monospace" font-size="10">Surface</text>
+
+    <rect x="200" y="345" width="25" height="20" fill="#f0f6fc" stroke="#30363d" stroke-width="1"/>
+    <text x="230" y="358" fill="#b1bac4" font-family="monospace" font-size="10">Text</text>
+
+    <rect x="200" y="370" width="25" height="20" fill="#8b949e" stroke="#30363d" stroke-width="1"/>
+    <text x="230" y="383" fill="#b1bac4" font-family="monospace" font-size="10">Muted</text>
+  </g>
+
+  <!-- Breakpoint Variations -->
+  <rect x="390" y="260" width="340" height="160" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="560" y="280" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Breakpoint Variations</text>
+
+  <!-- Mobile theme variant -->
+  <rect x="400" y="295" width="60" height="40" rx="4" fill="#21262d" stroke="#f9e71e" stroke-width="1"/>
+  <text x="430" y="310" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="10">Mobile</text>
+  <text x="430" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">Minimal</text>
+
+  <!-- Tablet theme variant -->
+  <rect x="470" y="295" width="60" height="40" rx="4" fill="#21262d" stroke="#79c0ff" stroke-width="1"/>
+  <text x="500" y="310" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Tablet</text>
+  <text x="500" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">Compact</text>
+
+  <!-- Desktop theme variant -->
+  <rect x="540" y="295" width="60" height="40" rx="4" fill="#21262d" stroke="#56d364" stroke-width="1"/>
+  <text x="570" y="310" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">Desktop</text>
+  <text x="570" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">Full</text>
+
+  <!-- Ultrawide theme variant -->
+  <rect x="610" y="295" width="60" height="40" rx="4" fill="#21262d" stroke="#d2a8ff" stroke-width="1"/>
+  <text x="640" y="310" text-anchor="middle" fill="#d2a8ff" font-family="monospace" font-size="10">Ultra</text>
+  <text x="640" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">Rich</text>
+
+  <!-- Theme Features -->
+  <text x="560" y="360" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Features</text>
+  <text x="410" y="380" fill="#b1bac4" font-family="monospace" font-size="10">• Auto dark/light detection</text>
+  <text x="410" y="395" fill="#b1bac4" font-family="monospace" font-size="10">• Color blindness support</text>
+  <text x="410" y="410" fill="#b1bac4" font-family="monospace" font-size="10">• Custom theme creation</text>
+
+  <!-- Accessibility Features -->
+  <rect x="50" y="460" width="220" height="120" rx="8" fill="#21262d" stroke="#56d364" stroke-width="1"/>
+  <text x="160" y="485" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="14" font-weight="bold">Accessibility</text>
+
+  <text x="65" y="505" fill="#b1bac4" font-family="monospace" font-size="11">WCAG 2.1 AA Compliant</text>
+  <text x="65" y="520" fill="#b1bac4" font-family="monospace" font-size="11">4.5:1 Contrast Ratios</text>
+  <text x="65" y="535" fill="#b1bac4" font-family="monospace" font-size="11">Deuteranopia Support</text>
+  <text x="65" y="550" fill="#b1bac4" font-family="monospace" font-size="11">Protanopia Support</text>
+  <text x="65" y="565" fill="#56d364" font-family="monospace" font-size="10">✓ Screen reader friendly</text>
+
+  <!-- Theme Sharing -->
+  <rect x="290" y="460" width="220" height="120" rx="8" fill="#21262d" stroke="#f78166" stroke-width="1"/>
+  <text x="400" y="485" text-anchor="middle" fill="#f78166" font-family="monospace" font-size="14" font-weight="bold">Theme Sharing</text>
+
+  <text x="305" y="505" fill="#b1bac4" font-family="monospace" font-size="11">Export to JSON/YAML</text>
+  <text x="305" y="520" fill="#b1bac4" font-family="monospace" font-size="11">Import from URL</text>
+  <text x="305" y="535" fill="#b1bac4" font-family="monospace" font-size="11">Community Marketplace</text>
+  <text x="305" y="550" fill="#b1bac4" font-family="monospace" font-size="11">Git Integration</text>
+  <text x="305" y="565" fill="#f78166" font-family="monospace" font-size="10">Share with teams</text>
+
+  <!-- Live Preview -->
+  <rect x="530" y="460" width="220" height="120" rx="8" fill="#21262d" stroke="#79c0ff" stroke-width="1"/>
+  <text x="640" y="485" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="14" font-weight="bold">Live Preview</text>
+
+  <text x="545" y="505" fill="#b1bac4" font-family="monospace" font-size="11">Real-time Updates</text>
+  <text x="545" y="520" fill="#b1bac4" font-family="monospace" font-size="11">Hot Reload Themes</text>
+  <text x="545" y="535" fill="#b1bac4" font-family="monospace" font-size="11">A/B Testing</text>
+  <text x="545" y="550" fill="#b1bac4" font-family="monospace" font-size="11">Theme Validation</text>
+  <text x="545" y="565" fill="#79c0ff" font-family="monospace" font-size="10">Instant feedback</text>
+
+  <!-- Terminal Detection -->
+  <text x="400" y="595" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">Auto-detects terminal capabilities and adjusts themes accordingly</text>
+</svg>

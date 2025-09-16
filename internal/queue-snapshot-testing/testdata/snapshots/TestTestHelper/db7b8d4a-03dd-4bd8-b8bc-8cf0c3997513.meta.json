@@ -1,0 +1,10 @@
+{
+  "id": "db7b8d4a-03dd-4bd8-b8bc-8cf0c3997513",
+  "name": "test-state",
+  "description": "Test snapshot",
+  "created_at": "2025-09-15T02:17:22.340592-07:00",
+  "size_bytes": 509,
+  "tags": [
+    "test"
+  ]
+}

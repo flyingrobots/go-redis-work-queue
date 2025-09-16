@@ -1,0 +1,30 @@
+{
+  "id": "15dbb343-f57f-4ff6-b537-0917a42e8d88",
+  "name": "restore-test",
+  "description": "Test snapshot",
+  "version": "1.0.0",
+  "created_at": "2025-09-15T02:17:22.341837-07:00",
+  "created_by": "james",
+  "tags": [
+    "test"
+  ],
+  "queues": [
+    {
+      "name": "restore",
+      "type": "redis-list",
+      "length": 1,
+      "config": {}
+    },
+    {
+      "name": "test",
+      "type": "redis-list",
+      "length": 2,
+      "config": {}
+    }
+  ],
+  "jobs": [],
+  "workers": [],
+  "checksum": "fd6b83c746172785194df25e4a2ee3612be31c9f90873da0493b001b5eac3a10",
+  "compressed": false,
+  "size_bytes": 0
+}

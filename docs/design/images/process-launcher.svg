@@ -1,0 +1,433 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .launcher-bg { fill: #1a1b26; }
+      .panel-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .header-bg { fill: #1f2335; }
+      .process-running { fill: #1e441e; stroke: #9ece6a; stroke-width: 2; }
+      .process-stopped { fill: #441e1e; stroke: #f7768e; stroke-width: 2; }
+      .process-starting { fill: #443822; stroke: #e0af68; stroke-width: 2; }
+      .terminal-bg { fill: #0d0e14; stroke: #414868; stroke-width: 1; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 9px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 8px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 9px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 8px; }
+      .warning-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 8px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 8px; }
+      .terminal-text { fill: #c0caf5; font-family: 'Courier New', monospace; font-size: 8px; }
+      .log-info { fill: #7aa2f7; font-family: 'Courier New', monospace; font-size: 8px; }
+      .log-warn { fill: #e0af68; font-family: 'Courier New', monospace; font-size: 8px; }
+      .log-error { fill: #f7768e; font-family: 'Courier New', monospace; font-size: 8px; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" class="launcher-bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="50" class="header-bg"/>
+  <text x="20" y="20" class="accent-text" font-size="12">🚀 Process Launcher & Manager</text>
+  <text x="20" y="35" class="secondary-text">Launch and manage queue workers, job processors, and monitoring services from within TUI</text>
+
+  <!-- Global Controls -->
+  <g transform="translate(900,10)">
+    <rect x="0" y="0" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="40" y="16" text-anchor="middle" class="success-text" font-size="8">🚀 Quick Start</text>
+
+    <rect x="90" y="0" width="80" height="25" class="panel-bg" stroke="#f7768e" rx="3"/>
+    <text x="130" y="16" text-anchor="middle" class="danger-text" font-size="8">🛑 Stop All</text>
+
+    <rect x="180" y="0" width="100" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+    <text x="230" y="16" text-anchor="middle" class="accent-text" font-size="8">⚙ Templates</text>
+  </g>
+
+  <!-- Main Content -->
+  <g transform="translate(0,60)">
+    <!-- Left Panel: Process List -->
+    <rect x="20" y="0" width="400" height="680" class="panel-bg" rx="6"/>
+
+    <!-- Process List Header -->
+    <rect x="20" y="0" width="400" height="30" fill="#1f2335" rx="6"/>
+    <text x="30" y="20" class="accent-text" font-size="10">📋 Managed Processes</text>
+
+    <!-- Process Categories -->
+    <g transform="translate(30,40)">
+      <!-- Queue Workers -->
+      <text x="0" y="15" class="accent-text">🏃 Queue Workers</text>
+
+      <!-- Worker 1: High Priority (Running) -->
+      <g transform="translate(0,25)">
+        <rect x="0" y="0" width="370" height="45" class="process-running" rx="4"/>
+        <text x="10" y="15" class="success-text" font-size="9">worker-high-priority</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: RUNNING • PID: 12847 • CPU: 23% • Mem: 145MB</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Queue: high-priority • Jobs: 247 • Uptime: 2h 34m</text>
+
+        <!-- Action buttons -->
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#e0af68" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="warning-text" font-size="7">⏸</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#f7768e" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="danger-text" font-size="7">⏹</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 Logs</text>
+      </g>
+
+      <!-- Worker 2: Normal Priority (Running) -->
+      <g transform="translate(0,75)">
+        <rect x="0" y="0" width="370" height="45" class="process-running" rx="4"/>
+        <text x="10" y="15" class="success-text" font-size="9">worker-normal-priority</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: RUNNING • PID: 12849 • CPU: 18% • Mem: 132MB</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Queue: normal-priority • Jobs: 189 • Uptime: 2h 34m</text>
+
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#e0af68" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="warning-text" font-size="7">⏸</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#f7768e" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="danger-text" font-size="7">⏹</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 Logs</text>
+      </g>
+
+      <!-- Worker 3: Email Processor (Stopped) -->
+      <g transform="translate(0,125)">
+        <rect x="0" y="0" width="370" height="45" class="process-stopped" rx="4"/>
+        <text x="10" y="15" class="danger-text" font-size="9">worker-email-processor</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: STOPPED • Last exit: Exit code 1 • 5m ago</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Queue: email-sender • Jobs: 0 • Error: connection refused</text>
+
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#9ece6a" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="success-text" font-size="7">▶</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#bb9af7" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="accent-text" font-size="7">🔧</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 Logs</text>
+      </g>
+
+      <!-- Job Queue Services -->
+      <text x="0" y="190" class="accent-text">⚙ Queue Services</text>
+
+      <!-- Redis Server -->
+      <g transform="translate(0,205)">
+        <rect x="0" y="0" width="370" height="45" class="process-running" rx="4"/>
+        <text x="10" y="15" class="success-text" font-size="9">redis-server</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: RUNNING • PID: 12701 • CPU: 8% • Mem: 89MB</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Port: 6379 • Connections: 15 • Keys: 1,247 • Uptime: 3h 12m</text>
+
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#e0af68" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="warning-text" font-size="7">⏸</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#f7768e" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="danger-text" font-size="7">⏹</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 Monitor</text>
+      </g>
+
+      <!-- Queue Manager -->
+      <g transform="translate(0,255)">
+        <rect x="0" y="0" width="370" height="45" class="process-starting" rx="4"/>
+        <text x="10" y="15" class="warning-text" font-size="9">queue-manager</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: STARTING • PID: 13102 • Starting up...</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Admin API: localhost:8080 • Health checks initializing...</text>
+
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#565f89" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="secondary-text" font-size="7">⏸</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#565f89" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="secondary-text" font-size="7">⏹</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 Logs</text>
+      </g>
+
+      <!-- Monitoring Services -->
+      <text x="0" y="320" class="accent-text">📊 Monitoring</text>
+
+      <!-- Metrics Collector -->
+      <g transform="translate(0,335)">
+        <rect x="0" y="0" width="370" height="45" class="process-running" rx="4"/>
+        <text x="10" y="15" class="success-text" font-size="9">metrics-collector</text>
+        <text x="10" y="28" class="primary-text" font-size="8">Status: RUNNING • PID: 12923 • CPU: 3% • Mem: 45MB</text>
+        <text x="10" y="40" class="secondary-text" font-size="8">Prometheus: :9090 • Scraping: 5 targets • Uptime: 1h 23m</text>
+
+        <rect x="300" y="5" width="30" height="15" class="panel-bg" stroke="#e0af68" rx="2"/>
+        <text x="315" y="14" text-anchor="middle" class="warning-text" font-size="7">⏸</text>
+
+        <rect x="335" y="5" width="30" height="15" class="panel-bg" stroke="#f7768e" rx="2"/>
+        <text x="350" y="14" text-anchor="middle" class="danger-text" font-size="7">⏹</text>
+
+        <rect x="300" y="25" width="65" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="332" y="34" text-anchor="middle" class="secondary-text" font-size="7">📊 View</text>
+      </g>
+
+      <!-- Process Templates -->
+      <text x="0" y="400" class="accent-text">📋 Quick Launch Templates</text>
+
+      <!-- Template Buttons -->
+      <g transform="translate(0,415)">
+        <rect x="0" y="0" width="110" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+        <text x="55" y="16" text-anchor="middle" class="success-text" font-size="8">🏃 Full Worker Set</text>
+
+        <rect x="120" y="0" width="110" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+        <text x="175" y="16" text-anchor="middle" class="secondary-text" font-size="8">⚙ Core Services</text>
+
+        <rect x="240" y="0" width="110" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+        <text x="295" y="16" text-anchor="middle" class="accent-text" font-size="8">📊 Monitoring Stack</text>
+
+        <rect x="0" y="30" width="110" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+        <text x="55" y="46" text-anchor="middle" class="warning-text" font-size="8">🧪 Dev Environment</text>
+
+        <rect x="120" y="30" width="110" height="25" class="panel-bg" stroke="#f7768e" rx="3"/>
+        <text x="175" y="46" text-anchor="middle" class="danger-text" font-size="8">🛑 Stop All</text>
+
+        <rect x="240" y="30" width="110" height="25" class="panel-bg" stroke="#565f89" rx="3"/>
+        <text x="295" y="46" text-anchor="middle" class="secondary-text" font-size="8">💾 Save Config</text>
+      </g>
+
+      <!-- System Resources -->
+      <g transform="translate(0,480)">
+        <text x="0" y="15" class="accent-text">💻 System Resources</text>
+
+        <rect x="0" y="25" width="370" height="80" fill="#1f2335" stroke="#414868" rx="3"/>
+
+        <g transform="translate(10,40)">
+          <!-- CPU -->
+          <text x="0" y="0" class="secondary-text" font-size="8">CPU Usage:</text>
+          <rect x="80" y="-8" width="200" height="12" fill="#16161e" stroke="#414868" rx="6"/>
+          <rect x="80" y="-8" width="108" height="12" fill="#7aa2f7" rx="6"/>
+          <text x="290" y="0" class="secondary-text" font-size="8">54%</text>
+
+          <!-- Memory -->
+          <text x="0" y="20" class="secondary-text" font-size="8">Memory:</text>
+          <rect x="80" y="12" width="200" height="12" fill="#16161e" stroke="#414868" rx="6"/>
+          <rect x="80" y="12" width="132" height="12" fill="#9ece6a" rx="6"/>
+          <text x="290" y="20" class="success-text" font-size="8">66%</text>
+
+          <!-- Disk -->
+          <text x="0" y="40" class="secondary-text" font-size="8">Disk I/O:</text>
+          <rect x="80" y="32" width="200" height="12" fill="#16161e" stroke="#414868" rx="6"/>
+          <rect x="80" y="32" width="64" height="12" fill="#bb9af7" rx="6"/>
+          <text x="290" y="40" class="accent-text" font-size="8">32%</text>
+
+          <!-- Network -->
+          <text x="0" y="60" class="secondary-text" font-size="8">Network:</text>
+          <rect x="80" y="52" width="200" height="12" fill="#16161e" stroke="#414868" rx="6"/>
+          <rect x="80" y="52" width="40" height="12" fill="#e0af68" rx="6"/>
+          <text x="290" y="60" class="warning-text" font-size="8">20%</text>
+        </g>
+      </g>
+
+      <!-- Quick Actions -->
+      <g transform="translate(0,575)">
+        <rect x="0" y="0" width="370" height="60" fill="#1f2335" stroke="#414868" rx="3"/>
+
+        <g transform="translate(10,15)">
+          <rect x="0" y="0" width="80" height="20" class="panel-bg" stroke="#9ece6a" rx="2"/>
+          <text x="40" y="12" text-anchor="middle" class="success-text" font-size="8">🚀 Launch</text>
+
+          <rect x="90" y="0" width="80" height="20" class="panel-bg" stroke="#bb9af7" rx="2"/>
+          <text x="130" y="12" text-anchor="middle" class="accent-text" font-size="8">⚙ Configure</text>
+
+          <rect x="180" y="0" width="80" height="20" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+          <text x="220" y="12" text-anchor="middle" class="secondary-text" font-size="8">📋 Templates</text>
+
+          <rect x="270" y="0" width="80" height="20" class="panel-bg" stroke="#f7768e" rx="2"/>
+          <text x="310" y="12" text-anchor="middle" class="danger-text" font-size="8">🛑 Kill All</text>
+
+          <g transform="translate(0,25)">
+            <text x="0" y="12" class="secondary-text" font-size="8">7 processes managed • 5 running • 1 stopped • 1 starting</text>
+          </g>
+        </g>
+      </g>
+    </g>
+
+    <!-- Center Panel: Process Configuration -->
+    <rect x="440" y="0" width="380" height="680" class="panel-bg" rx="6"/>
+
+    <!-- Config Header -->
+    <rect x="440" y="0" width="380" height="30" fill="#1f2335" rx="6"/>
+    <text x="450" y="20" class="accent-text" font-size="10">⚙ Process Configuration</text>
+
+    <!-- Selected Process Config -->
+    <g transform="translate(450,40)">
+      <text x="0" y="15" class="accent-text">Selected: worker-high-priority</text>
+
+      <g transform="translate(0,25)">
+        <rect x="0" y="0" width="360" height="300" fill="#1f2335" stroke="#414868" rx="3"/>
+
+        <!-- Configuration form -->
+        <g transform="translate(10,15)">
+          <!-- Process Name -->
+          <text x="0" y="15" class="secondary-text" font-size="8">Process Name:</text>
+          <rect x="0" y="20" width="340" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="33" class="primary-text" font-size="8">worker-high-priority</text>
+
+          <!-- Command -->
+          <text x="0" y="55" class="secondary-text" font-size="8">Command:</text>
+          <rect x="0" y="60" width="340" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="73" class="primary-text" font-size="8">./bin/worker --queue=high-priority --workers=3</text>
+
+          <!-- Working Directory -->
+          <text x="0" y="95" class="secondary-text" font-size="8">Working Directory:</text>
+          <rect x="0" y="100" width="340" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="113" class="primary-text" font-size="8">/Users/james/git/go-redis-work-queue</text>
+
+          <!-- Environment Variables -->
+          <text x="0" y="135" class="secondary-text" font-size="8">Environment:</text>
+          <rect x="0" y="140" width="340" height="60" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="153" class="primary-text" font-size="8">REDIS_URL=redis://localhost:6379</text>
+          <text x="5" y="168" class="primary-text" font-size="8">LOG_LEVEL=info</text>
+          <text x="5" y="183" class="primary-text" font-size="8">WORKER_CONCURRENCY=3</text>
+          <text x="5" y="198" class="primary-text" font-size="8">PROMETHEUS_PORT=9091</text>
+
+          <!-- Restart Policy -->
+          <text x="0" y="220" class="secondary-text" font-size="8">Restart Policy:</text>
+          <rect x="0" y="225" width="340" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="238" class="primary-text" font-size="8">always (max 3 failures per hour)</text>
+
+          <!-- Health Check -->
+          <text x="0" y="260" class="secondary-text" font-size="8">Health Check:</text>
+          <rect x="0" y="265" width="340" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+          <text x="5" y="278" class="primary-text" font-size="8">HTTP GET localhost:9091/health every 30s</text>
+        </g>
+      </g>
+
+      <!-- Config Actions -->
+      <g transform="translate(0,335)">
+        <rect x="0" y="0" width="80" height="20" class="panel-bg" stroke="#9ece6a" rx="2"/>
+        <text x="40" y="12" text-anchor="middle" class="success-text" font-size="8">💾 Save</text>
+
+        <rect x="90" y="0" width="80" height="20" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+        <text x="130" y="12" text-anchor="middle" class="secondary-text" font-size="8">🔄 Reload</text>
+
+        <rect x="180" y="0" width="80" height="20" class="panel-bg" stroke="#bb9af7" rx="2"/>
+        <text x="220" y="12" text-anchor="middle" class="accent-text" font-size="8">📋 Copy</text>
+
+        <rect x="270" y="0" width="80" height="20" class="panel-bg" stroke="#e0af68" rx="2"/>
+        <text x="310" y="12" text-anchor="middle" class="warning-text" font-size="8">🗑 Delete</text>
+      </g>
+
+      <!-- Process Templates -->
+      <text x="0" y="380" class="accent-text">📋 Process Templates</text>
+
+      <g transform="translate(0,395)">
+        <rect x="0" y="0" width="360" height="120" fill="#1f2335" stroke="#414868" rx="3"/>
+
+        <!-- Template list -->
+        <g transform="translate(10,15)">
+          <rect x="0" y="0" width="340" height="20" fill="#24283b" rx="2"/>
+          <text x="10" y="13" class="success-text" font-size="8">✓ High Priority Worker</text>
+          <text x="300" y="13" class="secondary-text" font-size="8">Load</text>
+
+          <rect x="0" y="25" width="340" height="20" fill="transparent"/>
+          <text x="10" y="38" class="secondary-text" font-size="8">Normal Priority Worker</text>
+          <text x="300" y="38" class="secondary-text" font-size="8">Load</text>
+
+          <rect x="0" y="50" width="340" height="20" fill="transparent"/>
+          <text x="10" y="63" class="secondary-text" font-size="8">Email Processing Worker</text>
+          <text x="300" y="63" class="secondary-text" font-size="8">Load</text>
+
+          <rect x="0" y="75" width="340" height="20" fill="transparent"/>
+          <text x="10" y="88" class="secondary-text" font-size="8">Background Task Worker</text>
+          <text x="300" y="88" class="secondary-text" font-size="8">Load</text>
+
+          <!-- New template button -->
+          <rect x="0" y="95" width="340" height="15" class="panel-bg" stroke="#bb9af7" rx="2"/>
+          <text x="170" y="105" text-anchor="middle" class="accent-text" font-size="7">+ Create New Template</text>
+        </g>
+      </g>
+
+      <!-- Auto-Start Configuration -->
+      <text x="0" y="540" class="accent-text">🔄 Auto-Start Configuration</text>
+
+      <g transform="translate(0,555)">
+        <rect x="0" y="0" width="360" height="80" fill="#1f2335" stroke="#414868" rx="3"/>
+
+        <g transform="translate(10,15)">
+          <text x="0" y="15" class="success-text" font-size="8">✓ Start with TUI application</text>
+          <text x="0" y="30" class="success-text" font-size="8">✓ Auto-restart on failure</text>
+          <text x="0" y="45" class="secondary-text" font-size="8">⚬ Start on system boot</text>
+          <text x="0" y="60" class="secondary-text" font-size="8">⚬ Graceful shutdown on exit</text>
+
+          <rect x="250" y="35" width="100" height="15" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+          <text x="300" y="45" text-anchor="middle" class="secondary-text" font-size="7">Configure</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Right Panel: Live Logs -->
+    <rect x="840" y="0" width="340" height="680" class="terminal-bg" rx="6"/>
+
+    <!-- Logs Header -->
+    <rect x="840" y="0" width="340" height="30" fill="#0d0e14" stroke="#414868" rx="6"/>
+    <text x="850" y="20" class="accent-text" font-size="10">📊 Live Process Logs</text>
+
+    <!-- Log Controls -->
+    <g transform="translate(1050,5)">
+      <rect x="0" y="0" width="40" height="20" class="panel-bg" stroke="#7aa2f7" rx="2"/>
+      <text x="20" y="12" text-anchor="middle" class="secondary-text" font-size="7">⏸</text>
+
+      <rect x="45" y="0" width="40" height="20" class="panel-bg" stroke="#9ece6a" rx="2"/>
+      <text x="65" y="12" text-anchor="middle" class="success-text" font-size="7">🔄</text>
+
+      <rect x="90" y="0" width="40" height="20" class="panel-bg" stroke="#bb9af7" rx="2"/>
+      <text x="110" y="12" text-anchor="middle" class="accent-text" font-size="7">💾</text>
+    </g>
+
+    <!-- Process Selector -->
+    <g transform="translate(850,35)">
+      <rect x="0" y="0" width="320" height="20" fill="#16161e" stroke="#414868" rx="2"/>
+      <text x="5" y="13" class="primary-text" font-size="8">📋 worker-high-priority (PID: 12847) • Filter: INFO</text>
+    </g>
+
+    <!-- Log Output -->
+    <g transform="translate(850,65)">
+      <rect x="0" y="0" width="320" height="600" fill="#0d0e14" stroke="#414868" rx="3"/>
+
+      <!-- Log lines -->
+      <g transform="translate(5,15)" class="terminal-text">
+        <text x="0" y="0" class="log-info">[14:35:23] INFO  Starting worker for queue: high-priority</text>
+        <text x="0" y="15" class="log-info">[14:35:23] INFO  Connected to Redis: localhost:6379</text>
+        <text x="0" y="30" class="log-info">[14:35:23] INFO  Worker pool initialized with 3 workers</text>
+        <text x="0" y="45" class="log-info">[14:35:24] INFO  Health check server started on :9091</text>
+        <text x="0" y="60" class="log-info">[14:35:24] INFO  Worker ready, waiting for jobs...</text>
+        <text x="0" y="75" class="log-info">[14:35:26] INFO  Processing job: user-registration-abc123</text>
+        <text x="0" y="90" class="log-info">[14:35:28] INFO  Job completed in 1.89s</text>
+        <text x="0" y="105" class="log-info">[14:35:29] INFO  Processing job: order-validation-def456</text>
+        <text x="0" y="120" class="log-warn">[14:35:31] WARN  Job retry attempt 2/3: network timeout</text>
+        <text x="0" y="135" class="log-info">[14:35:33] INFO  Job completed in 4.12s</text>
+        <text x="0" y="150" class="log-info">[14:35:34] INFO  Processing job: email-send-ghi789</text>
+        <text x="0" y="165" class="log-info">[14:35:35] INFO  Job completed in 0.67s</text>
+        <text x="0" y="180" class="log-info">[14:35:36] INFO  Processing job: report-generate-jkl012</text>
+        <text x="0" y="195" class="log-warn">[14:35:38] WARN  High memory usage: 189MB (73% of limit)</text>
+        <text x="0" y="210" class="log-info">[14:35:40] INFO  Job completed in 3.45s</text>
+        <text x="0" y="225" class="log-info">[14:35:41] INFO  Processing job: thumbnail-gen-mno345</text>
+        <text x="0" y="240" class="log-info">[14:35:42] INFO  Job completed in 1.23s</text>
+        <text x="0" y="255" class="log-info">[14:35:44] INFO  Processing job: webhook-notify-pqr678</text>
+        <text x="0" y="270" class="log-error">[14:35:45] ERROR Failed to connect to webhook endpoint</text>
+        <text x="0" y="285" class="log-warn">[14:35:45] WARN  Job retry attempt 1/3</text>
+        <text x="0" y="300" class="log-info">[14:35:47] INFO  Webhook retry succeeded</text>
+        <text x="0" y="315" class="log-info">[14:35:47] INFO  Job completed in 3.89s</text>
+        <text x="0" y="330" class="log-info">[14:35:48] INFO  Processing job: data-sync-stu901</text>
+        <text x="0" y="345" class="log-info">[14:35:50] INFO  Job completed in 2.12s</text>
+        <text x="0" y="360" class="log-info">[14:35:51] INFO  Health check: CPU 23%, Mem 145MB, OK</text>
+        <text x="0" y="375" class="log-info">[14:35:52] INFO  Processing job: audit-log-vwx234</text>
+        <text x="0" y="390" class="log-info">[14:35:53] INFO  Job completed in 0.89s</text>
+
+        <!-- Current line indicator -->
+        <rect x="0" y="395" width="2" height="12" fill="#7aa2f7"/>
+      </g>
+
+      <!-- Log stats -->
+      <g transform="translate(5,620)">
+        <rect x="0" y="0" width="310" height="25" fill="#16161e" stroke="#414868" rx="2"/>
+        <text x="5" y="12" class="secondary-text" font-size="7">Lines: 1,247 • Errors: 3 • Warnings: 12 • Rate: 2.3/s</text>
+        <text x="5" y="22" class="secondary-text" font-size="7">Auto-scroll: ON • Buffer: 1000 lines • Filter: INFO+</text>
+      </g>
+    </g>
+  </g>
+</svg>

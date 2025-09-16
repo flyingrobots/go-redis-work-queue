@@ -1,0 +1,24 @@
+{
+  "id": "db7b8d4a-03dd-4bd8-b8bc-8cf0c3997513",
+  "name": "test-state",
+  "description": "Test snapshot",
+  "version": "1.0.0",
+  "created_at": "2025-09-15T02:17:22.340592-07:00",
+  "created_by": "james",
+  "tags": [
+    "test"
+  ],
+  "queues": [
+    {
+      "name": "test",
+      "type": "redis-list",
+      "length": 2,
+      "config": {}
+    }
+  ],
+  "jobs": [],
+  "workers": [],
+  "checksum": "c32c3ac1153be25c7f0b805e9d0322d856a73d82c044997171a47e81255add65",
+  "compressed": false,
+  "size_bytes": 0
+}

@@ -1,0 +1,99 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pluginGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="20" font-weight="bold">Plugin System Architecture</text>
+
+  <!-- Core System (Center) -->
+  <rect x="300" y="250" width="200" height="100" rx="10" fill="url(#coreGrad)" stroke="#f0f6fc" stroke-width="2"/>
+  <text x="400" y="290" text-anchor="middle" fill="white" font-family="monospace" font-size="14" font-weight="bold">Core TUI System</text>
+  <text x="400" y="310" text-anchor="middle" fill="white" font-family="monospace" font-size="12">Event Bus</text>
+  <text x="400" y="325" text-anchor="middle" fill="white" font-family="monospace" font-size="12">Plugin Manager</text>
+
+  <!-- Plugin Slots -->
+  <!-- Top Left Plugin -->
+  <rect x="50" y="100" width="180" height="80" rx="8" fill="url(#pluginGrad)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="140" y="125" text-anchor="middle" fill="white" font-family="monospace" font-size="12" font-weight="bold">Metrics Dashboard</text>
+  <text x="140" y="145" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Plugin: metrics.wasm</text>
+  <text x="140" y="160" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Status: Active</text>
+
+  <!-- Top Right Plugin -->
+  <rect x="570" y="100" width="180" height="80" rx="8" fill="url(#pluginGrad)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="660" y="125" text-anchor="middle" fill="white" font-family="monospace" font-size="12" font-weight="bold">Alert Manager</text>
+  <text x="660" y="145" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Plugin: alerts.lua</text>
+  <text x="660" y="160" text-anchor="middle" fill="#f85149" font-family="monospace" font-size="10">Status: Loading</text>
+
+  <!-- Bottom Left Plugin -->
+  <rect x="50" y="420" width="180" height="80" rx="8" fill="url(#pluginGrad)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="140" y="445" text-anchor="middle" fill="white" font-family="monospace" font-size="12" font-weight="bold">Log Analyzer</text>
+  <text x="140" y="465" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Plugin: logs.go</text>
+  <text x="140" y="480" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Status: Active</text>
+
+  <!-- Bottom Right Plugin -->
+  <rect x="570" y="420" width="180" height="80" rx="8" fill="url(#pluginGrad)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="660" y="445" text-anchor="middle" fill="white" font-family="monospace" font-size="12" font-weight="bold">Custom Workflows</text>
+  <text x="660" y="465" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Plugin: workflows.js</text>
+  <text x="660" y="480" text-anchor="middle" fill="#a5a5a5" font-family="monospace" font-size="10">Status: Disabled</text>
+
+  <!-- Connection Lines -->
+  <line x1="230" y1="140" x2="300" y2="280" stroke="#58a6ff" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="570" y1="140" x2="500" y2="280" stroke="#58a6ff" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="230" y1="460" x2="300" y2="320" stroke="#58a6ff" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="570" y1="460" x2="500" y2="320" stroke="#58a6ff" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Plugin Manager Panel -->
+  <rect x="250" y="50" width="300" height="120" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="400" y="75" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Plugin Manager</text>
+
+  <!-- Plugin List -->
+  <text x="270" y="100" fill="#79c0ff" font-family="monospace" font-size="11">• metrics.wasm    [ACTIVE]  CPU: 2%</text>
+  <text x="270" y="115" fill="#f85149" font-family="monospace" font-size="11">• alerts.lua      [LOAD]    Starting...</text>
+  <text x="270" y="130" fill="#79c0ff" font-family="monospace" font-size="11">• logs.go         [ACTIVE]  Memory: 45MB</text>
+  <text x="270" y="145" fill="#a5a5a5" font-family="monospace" font-size="11">• workflows.js    [DISABLED]</text>
+  <text x="270" y="160" fill="#56d364" font-family="monospace" font-size="11">• Available: 12 plugins in marketplace</text>
+
+  <!-- Hot Reload Indicator -->
+  <circle cx="720" cy="70" r="8" fill="#f85149"/>
+  <text x="740" y="75" fill="#f0f6fc" font-family="monospace" font-size="10">Hot Reload</text>
+
+  <!-- API Extension Points -->
+  <rect x="50" y="250" width="180" height="100" rx="8" fill="#21262d" stroke="#f78166" stroke-width="1"/>
+  <text x="140" y="275" text-anchor="middle" fill="#f78166" font-family="monospace" font-size="12" font-weight="bold">API Extensions</text>
+  <text x="140" y="295" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Custom Endpoints</text>
+  <text x="140" y="310" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Webhook Handlers</text>
+  <text x="140" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Event Listeners</text>
+
+  <!-- Sandbox Environment -->
+  <rect x="570" y="250" width="180" height="100" rx="8" fill="#21262d" stroke="#56d364" stroke-width="1"/>
+  <text x="660" y="275" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="12" font-weight="bold">Sandbox</text>
+  <text x="660" y="295" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Isolated Execution</text>
+  <text x="660" y="310" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Resource Limits</text>
+  <text x="660" y="325" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Security Boundary</text>
+
+  <!-- Connection to API -->
+  <line x1="230" y1="300" x2="300" y2="300" stroke="#f78166" stroke-width="2"/>
+
+  <!-- Connection to Sandbox -->
+  <line x1="500" y1="300" x2="570" y2="300" stroke="#56d364" stroke-width="2"/>
+
+  <!-- Plugin Development Tools -->
+  <rect x="300" y="520" width="200" height="60" rx="8" fill="#21262d" stroke="#d2a8ff" stroke-width="1"/>
+  <text x="400" y="540" text-anchor="middle" fill="#d2a8ff" font-family="monospace" font-size="12" font-weight="bold">Development Tools</text>
+  <text x="400" y="555" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Plugin SDK • Debugger • Templates</text>
+  <text x="400" y="570" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Live Reload • Testing Framework</text>
+
+  <!-- Connection to Dev Tools -->
+  <line x1="400" y1="350" x2="400" y2="520" stroke="#d2a8ff" stroke-width="2" stroke-dasharray="3,3"/>
+</svg>

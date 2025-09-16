@@ -1,0 +1,176 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="urgentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f85149;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#da3633;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="warningGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f9e71e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e5af05;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="infoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#79c0ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#58a6ff;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#56d364;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#238636;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="20" font-weight="bold">Smart Notification System</text>
+
+  <!-- Progressive Notification Levels -->
+  <text x="50" y="65" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Progressive Notification Levels</text>
+
+  <!-- Level 1: Terminal Title -->
+  <rect x="50" y="80" width="340" height="60" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="220" y="100" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Level 1: Terminal Title</text>
+  <rect x="60" y="110" width="320" height="20" rx="4" fill="#161b22" stroke="#58a6ff" stroke-width="1"/>
+  <text x="70" y="123" fill="#79c0ff" font-family="monospace" font-size="10">Redis Queue Monitor [3 Alerts] - Production Cluster</text>
+
+  <!-- Level 2: Status Bar -->
+  <rect x="410" y="80" width="340" height="60" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="580" y="100" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Level 2: Status Bar</text>
+  <rect x="420" y="110" width="320" height="20" rx="4" fill="#161b22" stroke="#f9e71e" stroke-width="1"/>
+  <circle cx="430" cy="120" r="3" fill="#f9e71e"/>
+  <text x="440" y="123" fill="#f9e71e" font-family="monospace" font-size="10">⚠ DLQ: 15 failed jobs require attention</text>
+
+  <!-- Level 3: Modal Dialogs -->
+  <rect x="50" y="160" width="340" height="100" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="220" y="180" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Level 3: Modal Dialogs</text>
+
+  <!-- Modal dialog mockup -->
+  <rect x="80" y="190" width="280" height="60" rx="6" fill="url(#urgentGrad)" stroke="#f85149" stroke-width="2"/>
+  <text x="220" y="210" text-anchor="middle" fill="white" font-family="monospace" font-size="11" font-weight="bold">CRITICAL: Redis Connection Lost</text>
+  <text x="220" y="225" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="10">All workers disconnected. Manual intervention required.</text>
+  <rect x="160" y="235" width="50" height="12" rx="2" fill="#ffffff"/>
+  <text x="185" y="243" text-anchor="middle" fill="#da3633" font-family="monospace" font-size="9">Reconnect</text>
+  <rect x="220" y="235" width="50" height="12" rx="2" fill="#21262d"/>
+  <text x="245" y="243" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="9">Dismiss</text>
+
+  <!-- Level 4: Desktop Notifications -->
+  <rect x="410" y="160" width="340" height="100" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="580" y="180" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Level 4: Desktop Notifications</text>
+
+  <!-- Desktop notification mockup -->
+  <rect x="440" y="190" width="280" height="50" rx="6" fill="#0366d6" stroke="#58a6ff" stroke-width="1"/>
+  <rect x="445" y="195" width="25" height="25" rx="3" fill="#58a6ff"/>
+  <text x="457" y="210" text-anchor="middle" fill="white" font-family="monospace" font-size="12">Q</text>
+  <text x="480" y="205" fill="white" font-family="monospace" font-size="11" font-weight="bold">Redis Queue Monitor</text>
+  <text x="480" y="220" fill="#b3d7ff" font-family="monospace" font-size="10">Job processing resumed. 89 jobs completed.</text>
+  <text x="480" y="235" fill="#79c0ff" font-family="monospace" font-size="8">2 minutes ago</text>
+
+  <!-- Notification Types -->
+  <text x="50" y="300" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Notification Categories</text>
+
+  <!-- Critical Notifications -->
+  <rect x="50" y="320" width="170" height="120" rx="8" fill="#21262d" stroke="#f85149" stroke-width="2"/>
+  <text x="135" y="340" text-anchor="middle" fill="#f85149" font-family="monospace" font-size="14" font-weight="bold">Critical</text>
+
+  <rect x="60" y="350" width="150" height="15" rx="3" fill="url(#urgentGrad)"/>
+  <text x="65" y="360" fill="white" font-family="monospace" font-size="9">Redis connection lost</text>
+
+  <rect x="60" y="370" width="150" height="15" rx="3" fill="url(#urgentGrad)"/>
+  <text x="65" y="380" fill="white" font-family="monospace" font-size="9">All workers crashed</text>
+
+  <rect x="60" y="390" width="150" height="15" rx="3" fill="url(#urgentGrad)"/>
+  <text x="65" y="400" fill="white" font-family="monospace" font-size="9">Memory exhausted</text>
+
+  <text x="135" y="425" text-anchor="middle" fill="#f85149" font-family="monospace" font-size="10">Immediate action required</text>
+
+  <!-- Warning Notifications -->
+  <rect x="240" y="320" width="170" height="120" rx="8" fill="#21262d" stroke="#f9e71e" stroke-width="2"/>
+  <text x="325" y="340" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="14" font-weight="bold">Warning</text>
+
+  <rect x="250" y="350" width="150" height="15" rx="3" fill="url(#warningGrad)"/>
+  <text x="255" y="360" fill="#21262d" font-family="monospace" font-size="9">DLQ threshold exceeded</text>
+
+  <rect x="250" y="370" width="150" height="15" rx="3" fill="url(#warningGrad)"/>
+  <text x="255" y="380" fill="#21262d" font-family="monospace" font-size="9">High memory usage</text>
+
+  <rect x="250" y="390" width="150" height="15" rx="3" fill="url(#warningGrad)"/>
+  <text x="255" y="400" fill="#21262d" font-family="monospace" font-size="9">Slow processing detected</text>
+
+  <text x="325" y="425" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="10">Attention recommended</text>
+
+  <!-- Info Notifications -->
+  <rect x="430" y="320" width="170" height="120" rx="8" fill="#21262d" stroke="#79c0ff" stroke-width="2"/>
+  <text x="515" y="340" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="14" font-weight="bold">Info</text>
+
+  <rect x="440" y="350" width="150" height="15" rx="3" fill="url(#infoGrad)"/>
+  <text x="445" y="360" fill="white" font-family="monospace" font-size="9">New worker connected</text>
+
+  <rect x="440" y="370" width="150" height="15" rx="3" fill="url(#infoGrad)"/>
+  <text x="445" y="380" fill="white" font-family="monospace" font-size="9">Queue processing resumed</text>
+
+  <rect x="440" y="390" width="150" height="15" rx="3" fill="url(#infoGrad)"/>
+  <text x="445" y="400" fill="white" font-family="monospace" font-size="9">Configuration updated</text>
+
+  <text x="515" y="425" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Informational only</text>
+
+  <!-- Success Notifications -->
+  <rect x="620" y="320" width="170" height="120" rx="8" fill="#21262d" stroke="#56d364" stroke-width="2"/>
+  <text x="705" y="340" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="14" font-weight="bold">Success</text>
+
+  <rect x="630" y="350" width="150" height="15" rx="3" fill="url(#successGrad)"/>
+  <text x="635" y="360" fill="white" font-family="monospace" font-size="9">Deployment completed</text>
+
+  <rect x="630" y="370" width="150" height="15" rx="3" fill="url(#successGrad)"/>
+  <text x="635" y="380" fill="white" font-family="monospace" font-size="9">DLQ cleared successfully</text>
+
+  <rect x="630" y="390" width="150" height="15" rx="3" fill="url(#successGrad)"/>
+  <text x="635" y="400" fill="white" font-family="monospace" font-size="9">Backup completed</text>
+
+  <text x="705" y="425" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">Operation successful</text>
+
+  <!-- Integration Options -->
+  <text x="50" y="470" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">External Integrations</text>
+
+  <!-- Slack Integration -->
+  <rect x="50" y="485" width="140" height="80" rx="6" fill="#21262d" stroke="#4a154b" stroke-width="1"/>
+  <text x="120" y="505" text-anchor="middle" fill="#4a154b" font-family="monospace" font-size="12" font-weight="bold">Slack</text>
+  <rect x="60" y="515" width="120" height="12" rx="2" fill="#4a154b"/>
+  <text x="120" y="523" text-anchor="middle" fill="white" font-family="monospace" font-size="8">#alerts channel</text>
+  <text x="60" y="540" fill="#b1bac4" font-family="monospace" font-size="9">Webhook URL</text>
+  <text x="60" y="555" fill="#56d364" font-family="monospace" font-size="9">✓ Configured</text>
+
+  <!-- Email Integration -->
+  <rect x="200" y="485" width="140" height="80" rx="6" fill="#21262d" stroke="#0366d6" stroke-width="1"/>
+  <text x="270" y="505" text-anchor="middle" fill="#0366d6" font-family="monospace" font-size="12" font-weight="bold">Email</text>
+  <rect x="210" y="515" width="120" height="12" rx="2" fill="#0366d6"/>
+  <text x="270" y="523" text-anchor="middle" fill="white" font-family="monospace" font-size="8">ops@company.com</text>
+  <text x="210" y="540" fill="#b1bac4" font-family="monospace" font-size="9">SMTP Server</text>
+  <text x="210" y="555" fill="#56d364" font-family="monospace" font-size="9">✓ Connected</text>
+
+  <!-- PagerDuty Integration -->
+  <rect x="350" y="485" width="140" height="80" rx="6" fill="#21262d" stroke="#06ac38" stroke-width="1"/>
+  <text x="420" y="505" text-anchor="middle" fill="#06ac38" font-family="monospace" font-size="12" font-weight="bold">PagerDuty</text>
+  <rect x="360" y="515" width="120" height="12" rx="2" fill="#06ac38"/>
+  <text x="420" y="523" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Critical alerts only</text>
+  <text x="360" y="540" fill="#b1bac4" font-family="monospace" font-size="9">Service Key</text>
+  <text x="360" y="555" fill="#56d364" font-family="monospace" font-size="9">✓ Active</text>
+
+  <!-- Custom Webhooks -->
+  <rect x="500" y="485" width="140" height="80" rx="6" fill="#21262d" stroke="#d2a8ff" stroke-width="1"/>
+  <text x="570" y="505" text-anchor="middle" fill="#d2a8ff" font-family="monospace" font-size="12" font-weight="bold">Custom</text>
+  <rect x="510" y="515" width="120" height="12" rx="2" fill="#d2a8ff"/>
+  <text x="570" y="523" text-anchor="middle" fill="white" font-family="monospace" font-size="8">webhooks.example.com</text>
+  <text x="510" y="540" fill="#b1bac4" font-family="monospace" font-size="9">REST/GraphQL</text>
+  <text x="510" y="555" fill="#f9e71e" font-family="monospace" font-size="9">⚠ Not configured</text>
+
+  <!-- Smart Filtering -->
+  <rect x="660" y="485" width="140" height="80" rx="6" fill="#21262d" stroke="#f78166" stroke-width="1"/>
+  <text x="730" y="505" text-anchor="middle" fill="#f78166" font-family="monospace" font-size="12" font-weight="bold">Smart Filters</text>
+  <text x="670" y="520" fill="#b1bac4" font-family="monospace" font-size="9">Rate limiting</text>
+  <text x="670" y="535" fill="#b1bac4" font-family="monospace" font-size="9">Duplicate detection</text>
+  <text x="670" y="550" fill="#b1bac4" font-family="monospace" font-size="9">Priority routing</text>
+  <text x="670" y="565" fill="#56d364" font-family="monospace" font-size="9">ML-powered</text>
+
+  <!-- Configuration Notes -->
+  <text x="400" y="590" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Configurable thresholds, escalation rules, and quiet hours support</text>
+</svg>

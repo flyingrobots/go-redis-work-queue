@@ -1,0 +1,150 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="voiceGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#56d364;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#238636;stop-opacity:0.2" />
+    </radialGradient>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#79c0ff;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#58a6ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#79c0ff;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="20" font-weight="bold">Voice Command System</text>
+
+  <!-- Main Voice Interface Panel -->
+  <rect x="50" y="60" width="700" height="120" rx="12" fill="#21262d" stroke="#56d364" stroke-width="2"/>
+
+  <!-- Microphone Icon -->
+  <circle cx="120" cy="120" r="30" fill="url(#voiceGrad)" stroke="#56d364" stroke-width="3"/>
+  <rect x="110" y="105" width="20" height="30" rx="10" fill="#0d1117"/>
+  <rect x="115" y="135" width="10" height="8" fill="#0d1117"/>
+  <rect x="105" y="143" width="30" height="4" rx="2" fill="#0d1117"/>
+
+  <!-- Voice Status -->
+  <text x="180" y="105" fill="#56d364" font-family="monospace" font-size="16" font-weight="bold">Voice Command Active</text>
+  <text x="180" y="125" fill="#b1bac4" font-family="monospace" font-size="12">Listening for commands...</text>
+
+  <!-- Current Command Display -->
+  <rect x="180" y="135" width="520" height="30" rx="6" fill="#161b22" stroke="#58a6ff" stroke-width="1"/>
+  <text x="190" y="155" fill="#79c0ff" font-family="monospace" font-size="14">"Show queue health for production cluster"</text>
+
+  <!-- Sound Wave Visualization -->
+  <g id="soundWave">
+    <rect x="200" y="195" width="4" height="20" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="20;40;20" dur="0.8s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="210" y="195" width="4" height="30" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="30;15;30" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="220" y="195" width="4" height="25" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="25;45;25" dur="0.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="230" y="195" width="4" height="35" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="35;20;35" dur="1.0s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="240" y="195" width="4" height="20" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="20;40;20" dur="0.9s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="250" y="195" width="4" height="40" fill="url(#waveGrad)" rx="2">
+      <animate attributeName="height" values="40;25;40" dur="0.7s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- Command Categories -->
+  <text x="50" y="260" fill="#f0f6fc" font-family="monospace" font-size="16" font-weight="bold">Supported Voice Commands</text>
+
+  <!-- Queue Commands -->
+  <rect x="50" y="280" width="220" height="140" rx="8" fill="#21262d" stroke="#79c0ff" stroke-width="1"/>
+  <text x="160" y="305" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="14" font-weight="bold">Queue Operations</text>
+
+  <text x="65" y="325" fill="#b1bac4" font-family="monospace" font-size="11">"Show queue health"</text>
+  <text x="65" y="340" fill="#56d364" font-family="monospace" font-size="10">→ Display queue metrics</text>
+
+  <text x="65" y="360" fill="#b1bac4" font-family="monospace" font-size="11">"Pause queue processing"</text>
+  <text x="65" y="375" fill="#56d364" font-family="monospace" font-size="10">→ Halt job consumption</text>
+
+  <text x="65" y="395" fill="#b1bac4" font-family="monospace" font-size="11">"Clear failed jobs"</text>
+  <text x="65" y="410" fill="#56d364" font-family="monospace" font-size="10">→ Clean DLQ entries</text>
+
+  <!-- Worker Commands -->
+  <rect x="290" y="280" width="220" height="140" rx="8" fill="#21262d" stroke="#f9e71e" stroke-width="1"/>
+  <text x="400" y="305" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="14" font-weight="bold">Worker Management</text>
+
+  <text x="305" y="325" fill="#b1bac4" font-family="monospace" font-size="11">"Drain worker three"</text>
+  <text x="305" y="340" fill="#56d364" font-family="monospace" font-size="10">→ Graceful worker shutdown</text>
+
+  <text x="305" y="360" fill="#b1bac4" font-family="monospace" font-size="11">"Scale workers to five"</text>
+  <text x="305" y="375" fill="#56d364" font-family="monospace" font-size="10">→ Adjust worker count</text>
+
+  <text x="305" y="395" fill="#b1bac4" font-family="monospace" font-size="11">"Show worker status"</text>
+  <text x="305" y="410" fill="#56d364" font-family="monospace" font-size="10">→ Display worker health</text>
+
+  <!-- System Commands -->
+  <rect x="530" y="280" width="220" height="140" rx="8" fill="#21262d" stroke="#d2a8ff" stroke-width="1"/>
+  <text x="640" y="305" text-anchor="middle" fill="#d2a8ff" font-family="monospace" font-size="14" font-weight="bold">System Control</text>
+
+  <text x="545" y="325" fill="#b1bac4" font-family="monospace" font-size="11">"Switch to production"</text>
+  <text x="545" y="340" fill="#56d364" font-family="monospace" font-size="10">→ Change active cluster</text>
+
+  <text x="545" y="360" fill="#b1bac4" font-family="monospace" font-size="11">"Start time travel"</text>
+  <text x="545" y="375" fill="#56d364" font-family="monospace" font-size="10">→ Open debugging mode</text>
+
+  <text x="545" y="395" fill="#b1bac4" font-family="monospace" font-size="11">"Export metrics"</text>
+  <text x="545" y="410" fill="#56d364" font-family="monospace" font-size="10">→ Generate report</text>
+
+  <!-- Language Support -->
+  <rect x="50" y="440" width="220" height="120" rx="8" fill="#21262d" stroke="#f85149" stroke-width="1"/>
+  <text x="160" y="465" text-anchor="middle" fill="#f85149" font-family="monospace" font-size="14" font-weight="bold">Language Support</text>
+
+  <text x="65" y="485" fill="#b1bac4" font-family="monospace" font-size="11">🇺🇸 English (Native)</text>
+  <text x="65" y="500" fill="#b1bac4" font-family="monospace" font-size="11">🇪🇸 Spanish</text>
+  <text x="65" y="515" fill="#b1bac4" font-family="monospace" font-size="11">🇫🇷 French</text>
+  <text x="65" y="530" fill="#b1bac4" font-family="monospace" font-size="11">🇩🇪 German</text>
+  <text x="65" y="545" fill="#56d364" font-family="monospace" font-size="10">Offline processing</text>
+
+  <!-- Accessibility Features -->
+  <rect x="290" y="440" width="220" height="120" rx="8" fill="#21262d" stroke="#56d364" stroke-width="1"/>
+  <text x="400" y="465" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="14" font-weight="bold">Accessibility</text>
+
+  <text x="305" y="485" fill="#b1bac4" font-family="monospace" font-size="11">♿ Screen reader friendly</text>
+  <text x="305" y="500" fill="#b1bac4" font-family="monospace" font-size="11">🎯 Hands-free operation</text>
+  <text x="305" y="515" fill="#b1bac4" font-family="monospace" font-size="11">🔊 Audio feedback</text>
+  <text x="305" y="530" fill="#b1bac4" font-family="monospace" font-size="11">⚡ Quick access</text>
+  <text x="305" y="545" fill="#56d364" font-family="monospace" font-size="10">WCAG 2.1 compliant</text>
+
+  <!-- Technical Implementation -->
+  <rect x="530" y="440" width="220" height="120" rx="8" fill="#21262d" stroke="#79c0ff" stroke-width="1"/>
+  <text x="640" y="465" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="14" font-weight="bold">Implementation</text>
+
+  <text x="545" y="485" fill="#b1bac4" font-family="monospace" font-size="11">🎤 WebAudio API</text>
+  <text x="545" y="500" fill="#b1bac4" font-family="monospace" font-size="11">🧠 Local NLP processing</text>
+  <text x="545" y="515" fill="#b1bac4" font-family="monospace" font-size="11">⚙️ Custom wake words</text>
+  <text x="545" y="530" fill="#b1bac4" font-family="monospace" font-size="11">🔒 Privacy-first design</text>
+  <text x="545" y="545" fill="#56d364" font-family="monospace" font-size="10">No cloud dependency</text>
+
+  <!-- Status Indicators -->
+  <g id="statusBar">
+    <rect x="600" y="190" width="150" height="60" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="675" y="210" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Voice Status</text>
+
+    <circle cx="620" cy="225" r="4" fill="#56d364"/>
+    <text x="635" y="230" fill="#b1bac4" font-family="monospace" font-size="10">Mic Active</text>
+
+    <circle cx="620" cy="240" r="4" fill="#79c0ff"/>
+    <text x="635" y="245" fill="#b1bac4" font-family="monospace" font-size="10">Processing</text>
+  </g>
+
+  <!-- Confidence Meter -->
+  <rect x="350" y="190" width="200" height="20" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <rect x="355" y="195" width="150" height="10" rx="5" fill="#56d364"/>
+  <text x="450" y="225" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="10">Confidence: 92%</text>
+
+  <!-- Hot Key Indicator -->
+  <text x="400" y="580" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="12">Press [Ctrl+V] to activate voice commands</text>
+</svg>
