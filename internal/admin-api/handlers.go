@@ -2,18 +2,18 @@
 package adminapi
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "strconv"
+    "strings"
+    "time"
 
-	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
-	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
+    "github.com/flyingrobots/go-redis-work-queue/internal/admin"
+    "github.com/flyingrobots/go-redis-work-queue/internal/config"
+    "github.com/redis/go-redis/v9"
+    "go.uber.org/zap"
 )
 
 // Handler holds the API handler dependencies
@@ -329,6 +329,148 @@ func (h *Handler) RunBenchmark(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// ListDLQ handles GET /api/v1/dlq
+func (h *Handler) ListDLQ(w http.ResponseWriter, r *http.Request) {
+    ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+    defer cancel()
+
+    ns := r.URL.Query().Get("ns")
+    cursor := r.URL.Query().Get("cursor")
+    limit := 100
+    if v := r.URL.Query().Get("limit"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 500 {
+            limit = n
+        }
+    }
+
+    items, next, err := admin.DLQList(ctx, h.cfg, h.rdb, ns, cursor, limit)
+    if err != nil {
+        h.logger.Error("Failed to list DLQ", zap.Error(err))
+        writeError(w, http.StatusInternalServerError, "DLQ_ERROR", "Failed to list DLQ")
+        return
+    }
+    out := DLQListResponse{Items: make([]DLQItem, 0, len(items)), NextCursor: next, Count: len(items), Timestamp: time.Now()}
+    for _, it := range items {
+        out.Items = append(out.Items, DLQItem{
+            ID:        it.ID,
+            Queue:     it.Queue,
+            Payload:   string(it.Payload),
+            Reason:    it.Reason,
+            Attempts:  it.Attempts,
+            FirstSeen: it.FirstSeen,
+            LastSeen:  it.LastSeen,
+        })
+    }
+    writeJSON(w, http.StatusOK, out)
+}
+
+// RequeueDLQ handles POST /api/v1/dlq/requeue
+func (h *Handler) RequeueDLQ(w http.ResponseWriter, r *http.Request) {
+    var req DLQRequeueRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+        return
+    }
+    if len(req.IDs) == 0 {
+        writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+        return
+    }
+    ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+    defer cancel()
+    n, err := admin.DLQRequeue(ctx, h.cfg, h.rdb, req.Namespace, req.IDs, req.DestQueue)
+    if err != nil {
+        h.logger.Error("Failed to requeue DLQ", zap.Error(err))
+        writeError(w, http.StatusInternalServerError, "DLQ_REQUEUE_ERROR", "Failed to requeue DLQ items")
+        return
+    }
+    // Minimal audit
+    if h.auditLog != nil {
+        entry := AuditEntry{
+            ID:        generateID(),
+            Timestamp: time.Now(),
+            Action:    "DLQ_REQUEUE",
+            Resource:  h.cfg.Worker.DeadLetterList,
+            Result:    "SUCCESS",
+            Details: map[string]interface{}{
+                "count": n,
+            },
+            IP:        getClientIP(r),
+            UserAgent: r.UserAgent(),
+        }
+        if claims, ok := r.Context().Value(contextKeyClaims).(*Claims); ok {
+            entry.User = claims.Subject
+        }
+        h.auditLog.Log(entry)
+    }
+    writeJSON(w, http.StatusOK, DLQRequeueResponse{Requeued: n, Timestamp: time.Now()})
+}
+
+// PurgeDLQItems handles POST /api/v1/dlq/purge (selected IDs)
+func (h *Handler) PurgeDLQItems(w http.ResponseWriter, r *http.Request) {
+    var req DLQPurgeSelectionRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+        return
+    }
+    if len(req.IDs) == 0 {
+        writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+        return
+    }
+    ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+    defer cancel()
+    n, err := admin.DLQPurge(ctx, h.cfg, h.rdb, req.Namespace, req.IDs)
+    if err != nil {
+        h.logger.Error("Failed to purge DLQ items", zap.Error(err))
+        writeError(w, http.StatusInternalServerError, "DLQ_PURGE_ERROR", "Failed to purge DLQ items")
+        return
+    }
+    if h.auditLog != nil {
+        entry := AuditEntry{
+            ID:        generateID(),
+            Timestamp: time.Now(),
+            Action:    "DLQ_PURGE_SELECTED",
+            Resource:  h.cfg.Worker.DeadLetterList,
+            Result:    "SUCCESS",
+            Details: map[string]interface{}{
+                "count": n,
+            },
+            IP:        getClientIP(r),
+            UserAgent: r.UserAgent(),
+        }
+        if claims, ok := r.Context().Value(contextKeyClaims).(*Claims); ok {
+            entry.User = claims.Subject
+        }
+        h.auditLog.Log(entry)
+    }
+    writeJSON(w, http.StatusOK, DLQPurgeSelectionResponse{Purged: n, Timestamp: time.Now()})
+}
+
+// GetWorkers handles GET /api/v1/workers
+func (h *Handler) GetWorkers(w http.ResponseWriter, r *http.Request) {
+    ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+    defer cancel()
+    ns := r.URL.Query().Get("ns")
+    list, err := admin.Workers(ctx, h.cfg, h.rdb, ns)
+    if err != nil {
+        h.logger.Error("Failed to get workers", zap.Error(err))
+        writeError(w, http.StatusInternalServerError, "WORKERS_ERROR", "Failed to retrieve workers")
+        return
+    }
+    out := WorkersResponse{Workers: make([]WorkerInfo, 0, len(list)), Timestamp: time.Now()}
+    for _, wi := range list {
+        out.Workers = append(out.Workers, WorkerInfo{
+            ID:            wi.ID,
+            LastHeartbeat: wi.LastHeartbeat,
+            Queue:         wi.Queue,
+            JobID:         wi.JobID,
+            StartedAt:     wi.StartedAt,
+            Version:       wi.Version,
+            Host:          wi.Host,
+        })
+    }
+    writeJSON(w, http.StatusOK, out)
 }
 
 // Helper functions

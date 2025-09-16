@@ -25,6 +25,10 @@ tags:
     description: Queue statistics and monitoring
   - name: queues
     description: Queue management operations
+  - name: dlq
+    description: Dead Letter Queue listing and remediation
+  - name: workers
+    description: Worker fleet information
   - name: benchmark
     description: Performance testing
 
@@ -430,6 +434,246 @@ components:
         p95_latency:
           type: string
           description: 95th percentile latency
+        timestamp:
+          type: string
+          format: date-time
+
+  /dlq:
+    get:
+      tags:
+        - dlq
+      summary: List DLQ items
+      description: Returns a page of DLQ items with an opaque next cursor
+      operationId: listDLQ
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Namespace/prefix
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor for pagination
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Page size
+      responses:
+        '200':
+          description: DLQ items page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/requeue:
+    post:
+      tags:
+        - dlq
+      summary: Requeue selected DLQ items
+      operationId: requeueDLQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQRequeueRequest'
+      responses:
+        '200':
+          description: Requeue summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQRequeueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/purge:
+    post:
+      tags:
+        - dlq
+      summary: Purge selected DLQ items
+      operationId: purgeDLQSelection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQPurgeSelectionRequest'
+      responses:
+        '200':
+          description: Purge summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQPurgeSelectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workers:
+    get:
+      tags:
+        - workers
+      summary: List workers
+      description: Returns summary of worker fleet
+      operationId: listWorkers
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    DLQItem:
+      type: object
+      required: [id, payload]
+      properties:
+        id:
+          type: string
+        queue:
+          type: string
+        payload:
+          type: string
+          description: Job payload as JSON string
+        reason:
+          type: string
+        attempts:
+          type: integer
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    DLQListResponse:
+      type: object
+      required: [items, count, timestamp]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DLQItem'
+        next_cursor:
+          type: string
+        count:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    DLQRequeueRequest:
+      type: object
+      required: [ids]
+      properties:
+        ns:
+          type: string
+        ids:
+          type: array
+          items:
+            type: string
+        dest_queue:
+          type: string
+
+    DLQRequeueResponse:
+      type: object
+      required: [requeued, timestamp]
+      properties:
+        requeued:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    DLQPurgeSelectionRequest:
+      type: object
+      required: [ids]
+      properties:
+        ns:
+          type: string
+        ids:
+          type: array
+          items:
+            type: string
+
+    DLQPurgeSelectionResponse:
+      type: object
+      required: [purged, timestamp]
+      properties:
+        purged:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    WorkerInfo:
+      type: object
+      required: [id, last_heartbeat]
+      properties:
+        id:
+          type: string
+        last_heartbeat:
+          type: string
+          format: date-time
+        queue:
+          type: string
+        job_id:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        version:
+          type: string
+        host:
+          type: string
+
+    WorkersResponse:
+      type: object
+      required: [workers, timestamp]
+      properties:
+        workers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerInfo'
         timestamp:
           type: string
           format: date-time

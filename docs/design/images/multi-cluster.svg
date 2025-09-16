@@ -1,0 +1,340 @@
+<svg viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .cluster-bg { fill: #1a1b26; }
+      .panel-bg { fill: #24283b; stroke: #414868; stroke-width: 1; }
+      .cluster-prod { fill: #24283b; stroke: #9ece6a; stroke-width: 2; }
+      .cluster-staging { fill: #24283b; stroke: #7aa2f7; stroke-width: 2; }
+      .cluster-dev { fill: #24283b; stroke: #e0af68; stroke-width: 2; }
+      .header-bg { fill: #1f2335; }
+      .primary-text { fill: #c0caf5; font-family: Monaco, monospace; font-size: 9px; }
+      .secondary-text { fill: #7aa2f7; font-family: Monaco, monospace; font-size: 8px; }
+      .accent-text { fill: #bb9af7; font-family: Monaco, monospace; font-size: 9px; }
+      .success-text { fill: #9ece6a; font-family: Monaco, monospace; font-size: 8px; }
+      .warning-text { fill: #e0af68; font-family: Monaco, monospace; font-size: 8px; }
+      .danger-text { fill: #f7768e; font-family: Monaco, monospace; font-size: 8px; }
+      .diff-positive { fill: #9ece6a; }
+      .diff-negative { fill: #f7768e; }
+      .diff-warning { fill: #e0af68; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="800" class="cluster-bg"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1400" height="50" class="header-bg"/>
+  <text x="20" y="20" class="accent-text" font-size="12">🌐 Multi-Cluster Control Center</text>
+  <text x="20" y="35" class="secondary-text">Production • Staging • Development • Real-time comparison and unified management</text>
+
+  <!-- Global Controls -->
+  <g transform="translate(1200,10)">
+    <rect x="0" y="0" width="60" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+    <text x="30" y="16" text-anchor="middle" class="secondary-text" font-size="8">Sync All</text>
+
+    <rect x="70" y="0" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+    <text x="110" y="16" text-anchor="middle" class="success-text" font-size="8">Compare Mode</text>
+  </g>
+
+  <!-- Cluster Tabs -->
+  <g transform="translate(20,60)">
+    <rect x="0" y="0" width="100" height="30" fill="#9ece6a" stroke="#9ece6a" rx="4"/>
+    <text x="50" y="20" text-anchor="middle" class="primary-text">🟢 Production</text>
+
+    <rect x="110" y="0" width="100" height="30" class="panel-bg" stroke="#7aa2f7" rx="4"/>
+    <text x="160" y="20" text-anchor="middle" class="secondary-text">🔵 Staging</text>
+
+    <rect x="220" y="0" width="100" height="30" class="panel-bg" stroke="#e0af68" rx="4"/>
+    <text x="270" y="20" text-anchor="middle" class="warning-text">🟡 Development</text>
+
+    <rect x="330" y="0" width="120" height="30" class="panel-bg" stroke="#bb9af7" rx="4"/>
+    <text x="390" y="20" text-anchor="middle" class="accent-text">📊 Comparison View</text>
+  </g>
+
+  <!-- Main Comparison Dashboard -->
+  <g transform="translate(0,100)">
+    <!-- Production Cluster -->
+    <rect x="20" y="0" width="450" height="650" class="cluster-prod" rx="6"/>
+
+    <!-- Production Header -->
+    <rect x="20" y="0" width="450" height="40" fill="#1e441e" rx="6"/>
+    <text x="40" y="15" class="success-text" font-size="10">🟢 Production Cluster (us-east-1)</text>
+    <text x="40" y="30" class="success-text">Status: Healthy • 15 workers • 2,847 jobs/min • 99.7% uptime</text>
+
+    <!-- Production Metrics Grid -->
+    <g transform="translate(30,50)">
+      <!-- Key Metrics -->
+      <rect x="0" y="0" width="430" height="120" fill="#1f2335" stroke="#9ece6a" rx="4"/>
+      <text x="10" y="20" class="accent-text">Key Metrics</text>
+
+      <!-- Metrics in grid -->
+      <g transform="translate(10,30)">
+        <rect x="0" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="50" y="15" text-anchor="middle" class="success-text" font-size="7">Total Jobs</text>
+        <text x="50" y="30" text-anchor="middle" class="primary-text" font-size="12">3,847</text>
+        <text x="50" y="45" text-anchor="middle" class="success-text" font-size="7">↗ +12%</text>
+
+        <rect x="110" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="160" y="15" text-anchor="middle" class="success-text" font-size="7">Active Workers</text>
+        <text x="160" y="30" text-anchor="middle" class="primary-text" font-size="12">15</text>
+        <text x="160" y="45" text-anchor="middle" class="success-text" font-size="7">All healthy</text>
+
+        <rect x="220" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="270" y="15" text-anchor="middle" class="success-text" font-size="7">Error Rate</text>
+        <text x="270" y="30" text-anchor="middle" class="primary-text" font-size="12">0.3%</text>
+        <text x="270" y="45" text-anchor="middle" class="success-text" font-size="7">Within SLA</text>
+
+        <rect x="330" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="375" y="15" text-anchor="middle" class="success-text" font-size="7">Memory</text>
+        <text x="375" y="30" text-anchor="middle" class="primary-text" font-size="12">67%</text>
+        <text x="375" y="45" text-anchor="middle" class="success-text" font-size="7">Normal</text>
+      </g>
+    </g>
+
+    <!-- Production Queue List -->
+    <g transform="translate(30,180)">
+      <rect x="0" y="0" width="430" height="200" fill="#1f2335" stroke="#9ece6a" rx="4"/>
+      <text x="10" y="20" class="accent-text">Queue Status</text>
+
+      <!-- Queue table -->
+      <g transform="translate(10,30)">
+        <text x="0" y="15" class="secondary-text" font-size="8">Queue</text>
+        <text x="150" y="15" class="secondary-text" font-size="8">Jobs</text>
+        <text x="200" y="15" class="secondary-text" font-size="8">Workers</text>
+        <text x="270" y="15" class="secondary-text" font-size="8">Rate/min</text>
+        <text x="350" y="15" class="secondary-text" font-size="8">Health</text>
+
+        <!-- Queue rows -->
+        <rect x="0" y="20" width="410" height="15" fill="#24283b" rx="2"/>
+        <text x="5" y="30" class="primary-text" font-size="8">high-priority</text>
+        <text x="150" y="30" class="primary-text" font-size="8">1,547</text>
+        <text x="200" y="30" class="success-text" font-size="8">6</text>
+        <text x="270" y="30" class="success-text" font-size="8">+187</text>
+        <text x="350" y="30" class="success-text" font-size="8">●</text>
+
+        <rect x="0" y="40" width="410" height="15" fill="transparent"/>
+        <text x="5" y="50" class="primary-text" font-size="8">normal-priority</text>
+        <text x="150" y="50" class="primary-text" font-size="8">1,234</text>
+        <text x="200" y="50" class="success-text" font-size="8">5</text>
+        <text x="270" y="50" class="success-text" font-size="8">+134</text>
+        <text x="350" y="50" class="success-text" font-size="8">●</text>
+
+        <rect x="0" y="60" width="410" height="15" fill="transparent"/>
+        <text x="5" y="70" class="primary-text" font-size="8">email-sender</text>
+        <text x="150" y="70" class="primary-text" font-size="8">456</text>
+        <text x="200" y="70" class="success-text" font-size="8">2</text>
+        <text x="270" y="70" class="success-text" font-size="8">+56</text>
+        <text x="350" y="70" class="success-text" font-size="8">●</text>
+
+        <rect x="0" y="80" width="410" height="15" fill="transparent"/>
+        <text x="5" y="90" class="primary-text" font-size="8">background-tasks</text>
+        <text x="150" y="90" class="primary-text" font-size="8">89</text>
+        <text x="200" y="90" class="success-text" font-size="8">2</text>
+        <text x="270" y="90" class="success-text" font-size="8">+23</text>
+        <text x="350" y="90" class="success-text" font-size="8">●</text>
+      </g>
+    </g>
+
+    <!-- Production Performance Chart -->
+    <g transform="translate(30,390)">
+      <rect x="0" y="0" width="430" height="150" fill="#1f2335" stroke="#9ece6a" rx="4"/>
+      <text x="10" y="20" class="accent-text">Performance (Last Hour)</text>
+
+      <g transform="translate(20,30)">
+        <rect x="0" y="0" width="390" height="100" fill="#16161e" stroke="#414868" rx="3"/>
+
+        <!-- Performance lines -->
+        <polyline points="10,80 50,70 90,65 130,60 170,55 210,50 250,45 290,40 330,35 370,30"
+                  fill="none" stroke="#9ece6a" stroke-width="2"/>
+        <polyline points="10,85 50,80 90,78 130,75 170,73 210,70 250,68 290,65 330,62 370,60"
+                  fill="none" stroke="#7aa2f7" stroke-width="2"/>
+
+        <!-- Labels -->
+        <text x="5" y="25" class="secondary-text" font-size="7">3000</text>
+        <text x="5" y="50" class="secondary-text" font-size="7">1500</text>
+        <text x="5" y="75" class="secondary-text" font-size="7">500</text>
+        <text x="5" y="95" class="secondary-text" font-size="7">0</text>
+      </g>
+    </g>
+
+    <!-- Production Actions -->
+    <g transform="translate(30,550)">
+      <rect x="0" y="0" width="430" height="80" fill="#1f2335" stroke="#9ece6a" rx="4"/>
+      <text x="10" y="20" class="accent-text">Quick Actions</text>
+
+      <g transform="translate(10,30)">
+        <rect x="0" y="0" width="80" height="25" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+        <text x="40" y="16" text-anchor="middle" class="secondary-text" font-size="8">📊 Stats</text>
+
+        <rect x="90" y="0" width="80" height="25" class="panel-bg" stroke="#9ece6a" rx="3"/>
+        <text x="130" y="16" text-anchor="middle" class="success-text" font-size="8">🧪 Benchmark</text>
+
+        <rect x="180" y="0" width="80" height="25" class="panel-bg" stroke="#e0af68" rx="3"/>
+        <text x="220" y="16" text-anchor="middle" class="warning-text" font-size="8">🔧 Drain</text>
+
+        <rect x="270" y="0" width="80" height="25" class="panel-bg" stroke="#bb9af7" rx="3"/>
+        <text x="310" y="16" text-anchor="middle" class="accent-text" font-size="8">📋 Logs</text>
+      </g>
+    </g>
+    </rect>
+
+    <!-- Staging Cluster -->
+    <rect x="490" y="0" width="450" height="650" class="cluster-staging" rx="6"/>
+
+    <!-- Staging Header -->
+    <rect x="490" y="0" width="450" height="40" fill="#1e2a44" rx="6"/>
+    <text x="510" y="15" class="secondary-text" font-size="10">🔵 Staging Cluster (us-west-2)</text>
+    <text x="510" y="30" class="secondary-text">Status: Healthy • 8 workers • 1,234 jobs/min • 97.2% uptime</text>
+
+    <!-- Staging Metrics Grid -->
+    <g transform="translate(500,50)">
+      <rect x="0" y="0" width="430" height="120" fill="#1f2335" stroke="#7aa2f7" rx="4"/>
+      <text x="10" y="20" class="accent-text">Key Metrics</text>
+
+      <g transform="translate(10,30)">
+        <rect x="0" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="50" y="15" text-anchor="middle" class="secondary-text" font-size="7">Total Jobs</text>
+        <text x="50" y="30" text-anchor="middle" class="primary-text" font-size="12">1,234</text>
+        <text x="50" y="45" text-anchor="middle" class="secondary-text" font-size="7">→ +3%</text>
+
+        <rect x="110" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="160" y="15" text-anchor="middle" class="secondary-text" font-size="7">Active Workers</text>
+        <text x="160" y="30" text-anchor="middle" class="primary-text" font-size="12">8</text>
+        <text x="160" y="45" text-anchor="middle" class="secondary-text" font-size="7">All healthy</text>
+
+        <rect x="220" y="0" width="100" height="60" fill="#24283b" rx="3"/>
+        <text x="270" y="15" text-anchor="middle" class="secondary-text" font-size="7">Error Rate</text>
+        <text x="270" y="30" text-anchor="middle" class="primary-text" font-size="12">2.1%</text>
+        <text x="270" y="45" text-anchor="middle" class="warning-text" font-size="7">Above normal</text>
+
+        <rect x="330" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="375" y="15" text-anchor="middle" class="secondary-text" font-size="7">Memory</text>
+        <text x="375" y="30" text-anchor="middle" class="primary-text" font-size="12">45%</text>
+        <text x="375" y="45" text-anchor="middle" class="secondary-text" font-size="7">Normal</text>
+      </g>
+    </g>
+
+    <!-- Development Cluster -->
+    <rect x="960" y="0" width="420" height="650" class="cluster-dev" rx="6"/>
+
+    <!-- Dev Header -->
+    <rect x="960" y="0" width="420" height="40" fill="#44361e" rx="6"/>
+    <text x="980" y="15" class="warning-text" font-size="10">🟡 Development Cluster (local)</text>
+    <text x="980" y="30" class="warning-text">Status: Unstable • 3 workers • 456 jobs/min • 89.1% uptime</text>
+
+    <!-- Dev Metrics Grid -->
+    <g transform="translate(970,50)">
+      <rect x="0" y="0" width="400" height="120" fill="#1f2335" stroke="#e0af68" rx="4"/>
+      <text x="10" y="20" class="accent-text">Key Metrics</text>
+
+      <g transform="translate(10,30)">
+        <rect x="0" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="45" y="15" text-anchor="middle" class="warning-text" font-size="7">Total Jobs</text>
+        <text x="45" y="30" text-anchor="middle" class="primary-text" font-size="12">456</text>
+        <text x="45" y="45" text-anchor="middle" class="warning-text" font-size="7">↘ -8%</text>
+
+        <rect x="100" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="145" y="15" text-anchor="middle" class="warning-text" font-size="7">Workers</text>
+        <text x="145" y="30" text-anchor="middle" class="primary-text" font-size="12">3</text>
+        <text x="145" y="45" text-anchor="middle" class="danger-text" font-size="7">1 unhealthy</text>
+
+        <rect x="200" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="245" y="15" text-anchor="middle" class="warning-text" font-size="7">Error Rate</text>
+        <text x="245" y="30" text-anchor="middle" class="primary-text" font-size="12">12.4%</text>
+        <text x="245" y="45" text-anchor="middle" class="danger-text" font-size="7">High</text>
+
+        <rect x="300" y="0" width="90" height="60" fill="#24283b" rx="3"/>
+        <text x="345" y="15" text-anchor="middle" class="warning-text" font-size="7">Memory</text>
+        <text x="345" y="30" text-anchor="middle" class="primary-text" font-size="12">78%</text>
+        <text x="345" y="45" text-anchor="middle" class="warning-text" font-size="7">High</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Comparison Panel -->
+  <g transform="translate(20,560)">
+    <rect x="0" y="0" width="1360" height="180" fill="#1f2335" stroke="#bb9af7" stroke-width="2" rx="6"/>
+    <text x="20" y="25" class="accent-text" font-size="11">📊 Cross-Cluster Comparison & Analysis</text>
+
+    <!-- Comparison Table -->
+    <g transform="translate(20,40)">
+      <text x="0" y="15" class="accent-text" font-size="8">Metric</text>
+      <text x="150" y="15" class="success-text" font-size="8">Production</text>
+      <text x="280" y="15" class="secondary-text" font-size="8">Staging</text>
+      <text x="410" y="15" class="warning-text" font-size="8">Development</text>
+      <text x="540" y="15" class="accent-text" font-size="8">Variance</text>
+      <text x="650" y="15" class="accent-text" font-size="8">Analysis</text>
+
+      <!-- Row 1: Total Jobs -->
+      <rect x="0" y="20" width="1320" height="20" fill="#24283b" rx="2"/>
+      <text x="5" y="33" class="primary-text" font-size="8">Total Jobs</text>
+      <text x="150" y="33" class="success-text" font-size="8">3,847</text>
+      <text x="280" y="33" class="secondary-text" font-size="8">1,234</text>
+      <text x="410" y="33" class="warning-text" font-size="8">456</text>
+      <rect x="540" y="22" width="60" height="16" class="diff-positive" rx="2"/>
+      <text x="570" y="32" text-anchor="middle" class="primary-text" font-size="7">+211%</text>
+      <text x="650" y="33" class="success-text" font-size="8">✓ Production scaling effectively</text>
+
+      <!-- Row 2: Error Rate -->
+      <rect x="0" y="45" width="1320" height="20" fill="transparent"/>
+      <text x="5" y="58" class="primary-text" font-size="8">Error Rate</text>
+      <text x="150" y="58" class="success-text" font-size="8">0.3%</text>
+      <text x="280" y="58" class="warning-text" font-size="8">2.1%</text>
+      <text x="410" y="58" class="danger-text" font-size="8">12.4%</text>
+      <rect x="540" y="47" width="60" height="16" class="diff-negative" rx="2"/>
+      <text x="570" y="57" text-anchor="middle" class="primary-text" font-size="7">+4000%</text>
+      <text x="650" y="58" class="danger-text" font-size="8">⚠ Dev cluster needs attention</text>
+
+      <!-- Row 3: Workers -->
+      <rect x="0" y="70" width="1320" height="20" fill="#24283b" rx="2"/>
+      <text x="5" y="83" class="primary-text" font-size="8">Active Workers</text>
+      <text x="150" y="83" class="success-text" font-size="8">15</text>
+      <text x="280" y="83" class="secondary-text" font-size="8">8</text>
+      <text x="410" y="83" class="warning-text" font-size="8">3 (1 down)</text>
+      <rect x="540" y="72" width="60" height="16" class="diff-warning" rx="2"/>
+      <text x="570" y="82" text-anchor="middle" class="primary-text" font-size="7">+400%</text>
+      <text x="650" y="83" class="warning-text" font-size="8">ℹ Resource allocation as expected</text>
+
+      <!-- Row 4: Memory -->
+      <rect x="0" y="95" width="1320" height="20" fill="transparent"/>
+      <text x="5" y="108" class="primary-text" font-size="8">Memory Usage</text>
+      <text x="150" y="108" class="success-text" font-size="8">67%</text>
+      <text x="280" y="108" class="secondary-text" font-size="8">45%</text>
+      <text x="410" y="108" class="warning-text" font-size="8">78%</text>
+      <rect x="540" y="97" width="60" height="16" class="diff-warning" rx="2"/>
+      <text x="570" y="107" text-anchor="middle" class="primary-text" font-size="7">+16%</text>
+      <text x="650" y="108" class="secondary-text" font-size="8">✓ Within acceptable ranges</text>
+    </g>
+
+    <!-- Action Buttons -->
+    <g transform="translate(900,40)">
+      <text x="0" y="15" class="accent-text" font-size="8">Cross-Cluster Actions</text>
+
+      <rect x="0" y="25" width="100" height="20" class="panel-bg" stroke="#7aa2f7" rx="3"/>
+      <text x="50" y="37" text-anchor="middle" class="secondary-text" font-size="8">🔄 Sync Configs</text>
+
+      <rect x="110" y="25" width="100" height="20" class="panel-bg" stroke="#9ece6a" rx="3"/>
+      <text x="160" y="37" text-anchor="middle" class="success-text" font-size="8">📊 Export Report</text>
+
+      <rect x="0" y="50" width="100" height="20" class="panel-bg" stroke="#e0af68" rx="3"/>
+      <text x="50" y="62" text-anchor="middle" class="warning-text" font-size="8">⚠ Health Check</text>
+
+      <rect x="110" y="50" width="100" height="20" class="panel-bg" stroke="#f7768e" rx="3"/>
+      <text x="160" y="62" text-anchor="middle" class="danger-text" font-size="8">🚨 Emergency Stop</text>
+
+      <rect x="0" y="75" width="210" height="20" class="panel-bg" stroke="#bb9af7" rx="3"/>
+      <text x="105" y="87" text-anchor="middle" class="accent-text" font-size="8">🎯 Automated Remediation</text>
+    </g>
+
+    <!-- Alerts Panel -->
+    <g transform="translate(20,130)">
+      <text x="0" y="15" class="accent-text" font-size="8">Active Cross-Cluster Alerts</text>
+
+      <rect x="0" y="20" width="800" height="15" fill="#441e1e" stroke="#f7768e" rx="2"/>
+      <text x="10" y="30" class="danger-text" font-size="7">🚨 HIGH: Development cluster error rate 40x higher than production baseline</text>
+
+      <rect x="0" y="38" width="800" height="15" fill="#443822" stroke="#e0af68" rx="2"/>
+      <text x="10" y="48" class="warning-text" font-size="7">⚠ MEDIUM: Configuration drift detected between production and staging clusters</text>
+    </g>
+  </g>
+</svg>

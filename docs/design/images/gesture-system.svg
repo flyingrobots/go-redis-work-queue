@@ -1,0 +1,167 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="touchGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#79c0ff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#1f6feb;stop-opacity:0.2" />
+    </radialGradient>
+    <linearGradient id="panelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#21262d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#30363d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#0d1117"/>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="20" font-weight="bold">Terminal Gesture System</text>
+
+  <!-- Main Terminal Frame -->
+  <rect x="150" y="80" width="500" height="350" rx="12" fill="url(#panelGrad)" stroke="#58a6ff" stroke-width="2"/>
+
+  <!-- Terminal Header -->
+  <rect x="150" y="80" width="500" height="30" rx="12" fill="#21262d" stroke="#58a6ff" stroke-width="1"/>
+  <circle cx="170" cy="95" r="5" fill="#f85149"/>
+  <circle cx="185" cy="95" r="5" fill="#f9e71e"/>
+  <circle cx="200" cy="95" r="5" fill="#56d364"/>
+  <text x="325" y="100" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="12">Redis Queue Monitor</text>
+
+  <!-- Gesture Demonstration Areas -->
+
+  <!-- Two-Finger Scroll -->
+  <g id="twoFingerScroll">
+    <rect x="180" y="130" width="200" height="80" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="280" y="150" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Queue List</text>
+
+    <!-- Simulated list items -->
+    <text x="190" y="170" fill="#79c0ff" font-family="monospace" font-size="10">job-processor-1   Running</text>
+    <text x="190" y="185" fill="#56d364" font-family="monospace" font-size="10">job-processor-2   Ready</text>
+    <text x="190" y="200" fill="#f85149" font-family="monospace" font-size="10">job-processor-3   Failed</text>
+
+    <!-- Two finger touch points -->
+    <circle cx="220" cy="160" r="15" fill="url(#touchGrad)" opacity="0.7"/>
+    <circle cx="260" cy="160" r="15" fill="url(#touchGrad)" opacity="0.7"/>
+
+    <!-- Scroll arrows -->
+    <path d="M 235 150 L 240 145 L 245 150" stroke="#79c0ff" stroke-width="2" fill="none"/>
+    <path d="M 235 170 L 240 175 L 245 170" stroke="#79c0ff" stroke-width="2" fill="none"/>
+
+    <text x="280" y="225" text-anchor="middle" fill="#79c0ff" font-family="monospace" font-size="10">Two-Finger Scroll</text>
+  </g>
+
+  <!-- Pinch to Zoom -->
+  <g id="pinchZoom">
+    <rect x="420" y="130" width="200" height="80" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="520" y="150" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Metrics Chart</text>
+
+    <!-- Chart representation -->
+    <polyline points="440,190 460,180 480,170 500,175 520,165 540,170 560,160 580,165 600,155"
+              stroke="#56d364" stroke-width="2" fill="none"/>
+
+    <!-- Pinch gesture -->
+    <circle cx="480" cy="170" r="12" fill="url(#touchGrad)" opacity="0.7"/>
+    <circle cx="560" cy="170" r="12" fill="url(#touchGrad)" opacity="0.7"/>
+
+    <!-- Pinch arrows -->
+    <path d="M 495 170 L 505 170" stroke="#f9e71e" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <path d="M 545 170 L 535 170" stroke="#f9e71e" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+    <text x="520" y="225" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="10">Pinch to Zoom</text>
+  </g>
+
+  <!-- Long Press Context Menu -->
+  <g id="longPress">
+    <rect x="180" y="250" width="200" height="80" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="280" y="270" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Worker Node</text>
+    <text x="280" y="285" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">worker-001</text>
+
+    <!-- Long press indicator -->
+    <circle cx="280" cy="300" r="20" fill="url(#touchGrad)" opacity="0.8"/>
+    <circle cx="280" cy="300" r="12" fill="#f9e71e" opacity="0.6"/>
+
+    <!-- Context menu -->
+    <rect x="320" y="260" width="100" height="60" rx="4" fill="#21262d" stroke="#58a6ff" stroke-width="1"/>
+    <text x="325" y="275" fill="#79c0ff" font-family="monospace" font-size="9">Restart</text>
+    <text x="325" y="290" fill="#f85149" font-family="monospace" font-size="9">Terminate</text>
+    <text x="325" y="305" fill="#56d364" font-family="monospace" font-size="9">View Logs</text>
+
+    <text x="280" y="345" text-anchor="middle" fill="#f9e71e" font-family="monospace" font-size="10">Long Press Menu</text>
+  </g>
+
+  <!-- Swipe Navigation -->
+  <g id="swipeNav">
+    <rect x="420" y="250" width="200" height="80" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="520" y="270" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">Panel Navigation</text>
+
+    <!-- Panel tabs -->
+    <rect x="430" y="280" width="40" height="20" rx="2" fill="#58a6ff" stroke="none"/>
+    <rect x="475" y="280" width="40" height="20" rx="2" fill="#30363d" stroke="#58a6ff" stroke-width="1"/>
+    <rect x="520" y="280" width="40" height="20" rx="2" fill="#30363d" stroke="#58a6ff" stroke-width="1"/>
+    <rect x="565" y="280" width="40" height="20" rx="2" fill="#30363d" stroke="#58a6ff" stroke-width="1"/>
+
+    <text x="450" y="292" text-anchor="middle" fill="white" font-family="monospace" font-size="8">Q</text>
+    <text x="495" y="292" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">W</text>
+    <text x="540" y="292" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">D</text>
+    <text x="585" y="292" text-anchor="middle" fill="#b1bac4" font-family="monospace" font-size="8">M</text>
+
+    <!-- Swipe gesture -->
+    <path d="M 460 310 Q 480 305 520 310" stroke="#d2a8ff" stroke-width="3" fill="none" marker-end="url(#arrowhead2)"/>
+    <circle cx="460" cy="310" r="8" fill="url(#touchGrad)" opacity="0.7"/>
+
+    <text x="520" y="345" text-anchor="middle" fill="#d2a8ff" font-family="monospace" font-size="10">Swipe Between Panels</text>
+  </g>
+
+  <!-- Double Tap Focus -->
+  <g id="doubleTap">
+    <rect x="300" y="360" width="200" height="50" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="400" y="375" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="12" font-weight="bold">DLQ Alert</text>
+    <text x="400" y="390" text-anchor="middle" fill="#f85149" font-family="monospace" font-size="10">5 failed jobs require attention</text>
+
+    <!-- Double tap indicator -->
+    <circle cx="400" cy="385" r="25" fill="url(#touchGrad)" opacity="0.3"/>
+    <circle cx="395" cy="380" r="8" fill="#56d364" opacity="0.8"/>
+    <circle cx="405" cy="390" r="8" fill="#56d364" opacity="0.8"/>
+
+    <text x="400" y="430" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">Double-Tap Focus Mode</text>
+  </g>
+
+  <!-- Gesture Legend -->
+  <rect x="50" y="460" width="700" height="120" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="400" y="485" text-anchor="middle" fill="#f0f6fc" font-family="monospace" font-size="14" font-weight="bold">Gesture Commands Reference</text>
+
+  <!-- Legend entries -->
+  <g id="legend">
+    <circle cx="80" cy="510" r="6" fill="#79c0ff" opacity="0.7"/>
+    <circle cx="95" cy="510" r="6" fill="#79c0ff" opacity="0.7"/>
+    <text x="115" y="515" fill="#b1bac4" font-family="monospace" font-size="11">Two-finger scroll: Fine navigation control</text>
+
+    <circle cx="80" cy="535" r="6" fill="#f9e71e" opacity="0.7"/>
+    <circle cx="95" cy="535" r="6" fill="#f9e71e" opacity="0.7"/>
+    <text x="115" y="540" fill="#b1bac4" font-family="monospace" font-size="11">Pinch zoom: Adjust data density</text>
+
+    <circle cx="430" cy="510" r="8" fill="#f9e71e" opacity="0.8"/>
+    <text x="450" y="515" fill="#b1bac4" font-family="monospace" font-size="11">Long press: Context menus</text>
+
+    <path d="M 430 535 Q 445 530 460 535" stroke="#d2a8ff" stroke-width="2" fill="none"/>
+    <text x="470" y="540" fill="#b1bac4" font-family="monospace" font-size="11">Swipe: Panel navigation</text>
+
+    <circle cx="80" cy="560" r="4" fill="#56d364" opacity="0.8"/>
+    <circle cx="88" cy="555" r="4" fill="#56d364" opacity="0.8"/>
+    <text x="115" y="565" fill="#b1bac4" font-family="monospace" font-size="11">Double-tap: Focus mode toggle</text>
+
+    <text x="450" y="565" fill="#79c0ff" font-family="monospace" font-size="11">All gestures work alongside keyboard shortcuts</text>
+  </g>
+
+  <!-- Mouse/Touch compatibility indicator -->
+  <text x="400" y="580" text-anchor="middle" fill="#56d364" font-family="monospace" font-size="10">✓ Touch-friendly terminal interactions</text>
+
+  <!-- Arrow markers for paths -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f9e71e"/>
+    </marker>
+    <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#d2a8ff"/>
+    </marker>
+  </defs>
+</svg>

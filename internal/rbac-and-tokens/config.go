@@ -203,12 +203,18 @@ func GetRolePermissions() map[Role][]Permission {
 
 // GetEndpointPermissions returns the required permissions for each endpoint
 func GetEndpointPermissions() map[string][]Permission {
-	return map[string][]Permission{
-		"GET /api/v1/stats":        {PermStatsRead},
-		"GET /api/v1/stats/keys":   {PermStatsRead},
-		"GET /api/v1/queues/*/peek": {PermQueueRead},
-		"DELETE /api/v1/queues/dlq": {PermQueueDelete},
-		"DELETE /api/v1/queues/all": {PermQueueDelete, PermAdminAll}, // Requires admin
-		"POST /api/v1/bench":        {PermBenchRun},
-	}
+    return map[string][]Permission{
+        "GET /api/v1/stats":        {PermStatsRead},
+        "GET /api/v1/stats/keys":   {PermStatsRead},
+        "GET /api/v1/queues/*/peek": {PermQueueRead},
+        "DELETE /api/v1/queues/dlq": {PermQueueDelete},
+        "DELETE /api/v1/queues/all": {PermQueueDelete, PermAdminAll}, // Requires admin
+        "POST /api/v1/bench":        {PermBenchRun},
+        // DLQ list/requeue/purge (selection)
+        "GET /api/v1/dlq":          {PermQueueRead},
+        "POST /api/v1/dlq/requeue":  {PermQueueWrite},
+        "POST /api/v1/dlq/purge":    {PermQueueDelete},
+        // Workers
+        "GET /api/v1/workers":      {PermWorkerRead},
+    }
 }

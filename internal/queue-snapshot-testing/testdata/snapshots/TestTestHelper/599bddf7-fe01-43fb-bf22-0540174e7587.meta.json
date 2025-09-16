@@ -1,0 +1,10 @@
+{
+  "id": "599bddf7-fe01-43fb-bf22-0540174e7587",
+  "name": "restore-test",
+  "description": "Test snapshot",
+  "created_at": "2025-09-15T02:05:04.049011-07:00",
+  "size_bytes": 615,
+  "tags": [
+    "test"
+  ]
+}

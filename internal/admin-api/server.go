@@ -94,8 +94,14 @@ func (s *Server) SetupRoutes() http.Handler {
 	})
 
 	// API v1 endpoints
-	mux.HandleFunc("/api/v1/stats", methodHandler("GET", h.GetStats))
-	mux.HandleFunc("/api/v1/stats/keys", methodHandler("GET", h.GetStatsKeys))
+    mux.HandleFunc("/api/v1/stats", methodHandler("GET", h.GetStats))
+    mux.HandleFunc("/api/v1/stats/keys", methodHandler("GET", h.GetStatsKeys))
+    // DLQ endpoints
+    mux.HandleFunc("/api/v1/dlq", methodHandler("GET", h.ListDLQ))
+    mux.HandleFunc("/api/v1/dlq/requeue", methodHandler("POST", h.RequeueDLQ))
+    mux.HandleFunc("/api/v1/dlq/purge", methodHandler("POST", h.PurgeDLQItems))
+    // Workers
+    mux.HandleFunc("/api/v1/workers", methodHandler("GET", h.GetWorkers))
 	mux.HandleFunc("/api/v1/queues/", func(w http.ResponseWriter, r *http.Request) {
 		// Route based on path suffix
 		path := r.URL.Path
@@ -113,10 +119,10 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/v1/bench", methodHandler("POST", h.RunBenchmark))
 
 	// OpenAPI spec endpoint
-	mux.HandleFunc("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-yaml")
-		w.Write([]byte(openAPISpec))
-	})
+    mux.HandleFunc("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/x-yaml")
+        w.Write([]byte(openAPISpec))
+    })
 
 	return mux
 }
