@@ -278,13 +278,15 @@ def add_or_update_kloc_column(md: str) -> str:
         line = lines[i]
         s = line.strip()
         if s.startswith('|') and ("Emoji" in s) and ("Progress %" in s):
-            header_cells = [c.strip() for c in line.strip().strip('|').split('|')]
+            header_cells = [c.strip() for c in s.strip('|').split('|')]
             # identify indices
             try:
                 code_idx = header_cells.index("Code")
             except ValueError:
                 i += 1
                 continue
+            # Prepare header used for rows; may be extended with KLoC
+            header_for_rows = header_cells[:]
             if any(c.lower().startswith("kloc") for c in header_cells):
                 # find existing kloc index
                 for idx, c in enumerate(header_cells):
@@ -301,18 +303,46 @@ def add_or_update_kloc_column(md: str) -> str:
                 if i + 1 < len(lines) and lines[i+1].strip().startswith('|'):
                     sep = "|" + "|".join([" --- "] * len(new_header_cells)) + "|"
                     lines[i+1] = sep
+                header_for_rows = new_header_cells
+            # Resolve column indices for rows
+            def idx(name: str):
+                try:
+                    return header_for_rows.index(name)
+                except ValueError:
+                    return None
+            code_i = idx("Code")
+            status_i = idx("Status")
+            emoji_i = idx("Emoji")
             # walk rows and update kloc cell
             j = i + 2
             while j < len(lines) and lines[j].strip().startswith("|"):
                 row_cells = [c.strip() for c in lines[j].strip().strip('|').split('|')]
                 # pad cells if needed
-                while len(row_cells) < len(new_header_cells):
+                while len(row_cells) < len(header_for_rows):
                     row_cells.insert(kloc_idx, "")
                 # compute kloc from code cell
-                code_cell = row_cells[code_idx]
+                code_cell = row_cells[code_i] if code_i is not None and code_i < len(row_cells) else ""
                 links = extract_links(code_cell)
                 loc = go_loc(links)
                 row_cells[kloc_idx] = f"{loc/1000.0:.1f}"
+                # Set status emoji based on Status column
+                if status_i is not None and emoji_i is not None and status_i < len(row_cells) and emoji_i < len(row_cells):
+                    status = row_cells[status_i].lower()
+                    if status.startswith('planned'):
+                        emoji = '📋'
+                    elif status.startswith('in progress'):
+                        emoji = '⏳'
+                    elif status.startswith('mvp'):
+                        emoji = '🚼'
+                    elif status.startswith('alpha'):
+                        emoji = '🅰️'
+                    elif status.startswith('beta'):
+                        emoji = '🅱️'
+                    elif status.startswith('v1') or 'v1' in status or 'shipped' in status:
+                        emoji = '✅'
+                    else:
+                        emoji = '⏳'
+                    row_cells[emoji_i] = emoji
                 lines[j] = "|" + " | ".join(row_cells) + " |"
                 j += 1
             i = j
