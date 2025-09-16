@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: changelog-${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
@@ -33,12 +37,6 @@ jobs:
           git config user.email "github-actions@github.com"
           git add CHANGELOG.md || true
           git commit -m "chore(changelog): update CHANGELOG for ${GITHUB_REF_NAME}" || echo "no changes"
-jobs:
-  changelog:
-    runs-on: ubuntu-latest
-    concurrency:
-      group: changelog-${{ github.event.repository.name }}
-      cancel-in-progress: false
-    - name: Push changes
-      run: |
-        git push origin HEAD:${{ github.event.repository.default_branch }} || echo "no push"
+      - name: Push changes
+        run: |
+          git push origin HEAD:${{ github.event.repository.default_branch }} || echo "no push"

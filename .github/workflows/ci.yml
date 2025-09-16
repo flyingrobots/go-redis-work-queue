@@ -31,6 +31,22 @@ jobs:
         run: go vet ./...
       - name: Build
         run: go build ./...
+      - name: Wait for Redis readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            if bash -lc '>/dev/tcp/127.0.0.1/6379' 2>/dev/null; then
+              echo "Redis port is open";
+              break;
+            fi
+            echo "Waiting for Redis (attempt $i/60)…";
+            sleep 1;
+          done
+          # basic ping probe using redis-cli if available
+          if command -v redis-cli >/dev/null 2>&1; then
+            redis-cli -h 127.0.0.1 -p 6379 ping || true
+          fi
       - name: Test
         env:
           E2E_REDIS_ADDR: localhost:6379

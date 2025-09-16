@@ -3,17 +3,24 @@ name: Markdown Lint
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markdownlint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         with:
           fetch-depth: 0
       - name: Run markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v17
+        uses: DavidAnson/markdownlint-cli2-action@db43aef879112c3119a410d69f66701e0d530809
         with:
           config: .markdownlint.yaml
           globs: |
