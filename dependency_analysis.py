@@ -239,5 +239,15 @@ infrastructure = {
     "metrics_system": "Prometheus metrics",
     "monitoring_system": "General monitoring",
     "auth_middleware": "Authentication middleware",
-    "audit_logging": "Audit logging system"
+    "audit_logging": "Audit logging system",
+    "plugin_runtime": "Plugin execution harness and lifecycle",
+    "event_sourcing": "Event sourcing pipeline and storage",
+    "idempotency_keys": "Idempotency key management layer",
+    "controller_runtime": "Kubernetes controller-runtime integration",
+    "k8s_api": "Core Kubernetes API interactions",
+    "service_mesh": "Service mesh configuration hooks",
+    "policy_engine": "Policy enforcement and evaluation engine",
+    "sidecar_injector": "Sidecar injector integration",
+    "ci_cd": "CI/CD automation glue",
+    "secrets_manager": "Secret management provider bindings"
 }

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 # Get list of completed implementation tasks to review
@@ -19,8 +20,15 @@ for f in os.listdir(completed_dir):
             except:
                 pass
 
-# Sort and take first 12 for review
-completed_tasks = sorted(completed_tasks)[:12]
+def _task_numeric_key(task_id: str) -> tuple[int, str]:
+    match = re.search(r"(\d+)$", task_id.replace(".json", ""))
+    if match:
+        return int(match.group(1)), task_id
+    return (0, task_id)
+
+
+# Sort and take first 12 for review using numeric ordering to keep tasks in sequence
+completed_tasks = sorted(completed_tasks, key=_task_numeric_key)[:12]
 
 # Create rigorous code review tasks
 review_tasks = []

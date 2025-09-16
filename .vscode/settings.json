@@ -7,7 +7,14 @@
     }
   },
   "gopls": {
-    "ui.semanticTokens": true
+    "ui.semanticTokens": true,
+    "staticcheck": true,
+    "analyses": {
+      "nilness": true,
+      "shadow": true,
+      "unusedparams": true,
+      "unusedwrite": true
+    }
   },
   "go.testFlags": ["-race", "-count=1"],
   "go.toolsManagement.autoUpdate": true,

@@ -1,6 +1,8 @@
 {
   "recommendations": [
-    "golang.go"
+    "golang.go",
+    "redhat.vscode-yaml",
+    "ms-azuretools.vscode-docker"
   ],
   "unwantedRecommendations": []
 }

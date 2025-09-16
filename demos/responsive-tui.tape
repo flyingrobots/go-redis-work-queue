@@ -23,6 +23,8 @@ Enter
 Type "echo 'Stack panels vertically, card-based UI'"
 Enter
 Enter
+Type "echo 'Note: COLUMNS override is cosmetic; the real TUI toggles modes via breakpoints.'"
+Enter
 Type "export COLUMNS=35"
 Enter
 Type "cat << 'EOF'"
@@ -69,7 +71,7 @@ Type "└─────────────────┘"
 Enter
 Type "EOF"
 Enter
-Sleep 3s
+Sleep 1.5s
 Clear
 
 # Tablet Mode Demo (41-80 cols)
@@ -77,6 +79,8 @@ Type "echo '📟 TABLET MODE (41-80 cols)'"
 Enter
 Type "echo 'Two-column layout with tabs'"
 Enter
+Enter
+Type "echo 'Note: COLUMNS override is cosmetic; the actual TUI reflows via breakpoints.'"
 Enter
 Type "export COLUMNS=75"
 Enter
@@ -126,7 +130,7 @@ Type "└───────────────────────�
 Enter
 Type "EOF"
 Enter
-Sleep 4s
+Sleep 2s
 Clear
 
 # Desktop Mode Demo (81-120 cols)
@@ -134,6 +138,8 @@ Type "echo '🖥️  DESKTOP MODE (81-120 cols)'"
 Enter
 Type "echo 'Multi-panel dashboard with full features'"
 Enter
+Enter
+Type "echo 'Note: Demo uses COLUMNS for visuals; desktop layout is handled by TUI breakpoints.'"
 Enter
 Type "export COLUMNS=115"
 Enter
@@ -211,7 +217,7 @@ Type "[Enter] Peek Queue • [Space] Pause/Resume • [D] Drain • [/] Filter �
 Enter
 Type "EOF"
 Enter
-Sleep 5s
+Sleep 2s
 Clear
 
 # Ultrawide Mode Demo (121+ cols)
@@ -219,6 +225,8 @@ Type "echo '🖥️🖥️ ULTRAWIDE MODE (121+ cols)'"
 Enter
 Type "echo 'Mission control layout with side-by-side multi-view'"
 Enter
+Enter
+Type "echo 'Note: COLUMNS export here is illustrative; production UI switches layouts internally.'"
 Enter
 Type "export COLUMNS=140"
 Enter

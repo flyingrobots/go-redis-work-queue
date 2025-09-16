@@ -1,7 +1,7 @@
 default: true
 
-# Allow long lines in docs where URLs and code blocks occur
-MD013: false
+# Enforce line length globally; use file/task-specific disables where required
+# via markdownlint-disable chunks near the affected sections.
 
 # Permit duplicate headings at different levels/siblings only
 MD024:
