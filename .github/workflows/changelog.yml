@@ -26,7 +26,7 @@ jobs:
         run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
       - name: Generate CHANGELOG.md
         run: |
-          $(go env GOPATH)/bin/git-chglog -o CHANGELOG.md || echo "git-chglog not configured; keeping existing CHANGELOG.md"
+          "$(go env GOPATH)"/bin/git-chglog -o CHANGELOG.md || echo "git-chglog not configured; keeping existing CHANGELOG.md"
       - name: Commit changes
         run: |
           git config user.name "github-actions"
