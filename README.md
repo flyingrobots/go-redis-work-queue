@@ -11,6 +11,11 @@ Provides producer, worker, and all-in-one modes with robust resilience, observab
 
 See `docs/` to learn more. A sample configuration is provided in `config/config.example.yaml`.
 
+Developer tools and automation: see `docs/tools/README.md` for:
+- Progress automation for the Features Ledger and README
+- Local pre-commit hook and CI auto-update
+- Script to extract CodeRabbit PR comments and “Prompt for AI Agents” sections
+
 ----
 
 ## Progress
