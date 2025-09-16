@@ -7,8 +7,8 @@ This is the canonical, grouped snapshot of features — shipped, in‑progress, 
 <!-- progress:begin -->
 ```text
 ██████████████████████▓░░░░░░░░░░░░░░░░░ 56%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 ```
 <!-- progress:end -->
 
@@ -16,8 +16,14 @@ Weighted by feature size. Updated by `python3 scripts/update_progress.py`.
 
 ## Status Model
 
-- Planned → In Progress → MVP → Alpha → V1
+- Planned → In Progress → MVP → Alpha → Beta → V1
 - We use stage names directly; “Shipped” is implied by MVP/Alpha/V1.
+
+Definitions
+- MVP: minimal viable; usable for demos/tests; rough edges allowed
+- Alpha: feature complete; internal‑ready; known limitations; needs hardening
+- Beta: feature complete; externally usable; not yet battle‑tested (needs soak/perf/chaos/coverage)
+- V1: production‑ready; strong tests/docs; battle‑tested
 
 Weighting method: For feature‑specific modules, w = 1 + log10(Go LOC + 10) / 3; minimum w = 0.5 if no resolvable code path. Overall = Σ(p_i·w_i)/Σ(w_i).
 
@@ -30,8 +36,8 @@ Update via script
 <!-- group-progress:core-platform:begin -->
 ```text
 █████████████████████████████████▓░░░░░░ 84%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 weight=8.50 features=9 kloc=16.1
 ```
 <!-- group-progress:core-platform:end -->
@@ -55,8 +61,8 @@ weight=8.50 features=9 kloc=16.1
 <!-- group-progress:tui-ux:begin -->
 ```text
 ███████████████████▓░░░░░░░░░░░░░░░░░░░░ 48%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 weight=14.12 features=12 kloc=43.0
 ```
 <!-- group-progress:tui-ux:end -->
@@ -82,8 +88,8 @@ weight=14.12 features=12 kloc=43.0
 <!-- group-progress:reliability-ops:begin -->
 ```text
 ████████████████████▓░░░░░░░░░░░░░░░░░░░ 51%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 weight=16.82 features=14 kloc=59.7
 ```
 <!-- group-progress:reliability-ops:end -->
@@ -112,8 +118,8 @@ weight=16.82 features=14 kloc=59.7
 <!-- group-progress:scale-multi-cluster:begin -->
 ```text
 ████████████████████▓░░░░░░░░░░░░░░░░░░░ 52%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 weight=3.53 features=3 kloc=10.2
 ```
 <!-- group-progress:scale-multi-cluster:end -->
@@ -130,8 +136,8 @@ weight=3.53 features=3 kloc=10.2
 <!-- group-progress:observability-analytics:begin -->
 ```text
 █████████████████████▓░░░░░░░░░░░░░░░░░░ 54%
-------------|-------------|------------|
-           MVP          Alpha    v1.0.0 
+---------|---------|---------|---------|
+        MVP      Alpha     Beta  v1.0.0 
 weight=8.06 features=7 kloc=20.2
 ```
 <!-- group-progress:observability-analytics:end -->

@@ -173,22 +173,29 @@ def render_bar(percent: float, width: int = 40) -> str:
     return f"{bar} {p:.0f}%"
 
 def render_markers(width: int = 40) -> tuple[str,str]:
-    # Markers at 1/3 and 2/3 and end
-    mvp_pos = round(width/3)
-    alpha_pos = round(2*width/3)
+    """
+    Render a fixed-width markers line and labels for MVP, Alpha, Beta, v1.0.0.
+    Markers at 1/4, 2/4, 3/4 and end.
+    """
+    q1 = round(width * 1/4)
+    q2 = round(width * 2/4)
+    q3 = round(width * 3/4)
+    positions = (q1-1, q2-1, q3-1, width-1)
     line = ["-"] * width
-    for pos in (mvp_pos-1, alpha_pos-1, width-1):
+    for pos in positions:
         if 0 <= pos < width:
             line[pos] = "|"
     line_str = "".join(line)
-    # labels
+    # labels line
     labels = [" "] * width
     def place(text: str, center: int):
         start = max(0, min(width - len(text), center - len(text)//2))
         for i,ch in enumerate(text):
-            labels[start+i] = ch
-    place("MVP", mvp_pos-1)
-    place("Alpha", alpha_pos-1)
+            if 0 <= start+i < width:
+                labels[start+i] = ch
+    place("MVP", q1-1)
+    place("Alpha", q2-1)
+    place("Beta", q3-1)
     place("v1.0.0", width-1 - (len("v1.0.0")//2))
     labels_str = "".join(labels)
     return line_str, labels_str
