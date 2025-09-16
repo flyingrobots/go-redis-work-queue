@@ -636,6 +636,41 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Add integration tests for the new endpoints.
 
 
+## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
+> [!info]- ### 2025-09-16 – Code Review Worksheet automation, CI hardening, prompt archival
+> Summary of today’s session focused on preserving review artifacts, improving CI hygiene, and preparing merges.
+>
+> Changes
+> - Added `scripts/generate_cr_worksheet.py` — one‑shot generator that scrapes CodeRabbit “Prompt for AI Agents” items for any PR via `gh` and emits a fill‑in worksheet under `docs/audits/code-reviews/PR{n}/{head_sha}.md`.
+> - Fixed prompt scraping to ignore HTML‑only artifacts (e.g., stray `</summary>`) by extracting fenced blocks following the “Prompt for AI Agents” header.
+> - Regenerated PR#3 worksheet with 300+ items and section separator (`---`) before Conclusion: `docs/audits/code-reviews/PR3/a493f9d...60f12d72.md`.
+> - Documented usage in `docs/tools/README.md` (generator options, output path, requirements).
+> - CI/workflows hardening applied per CodeRabbit prompts:
+>   - changelog: add top‑level `concurrency`, quote `$(go env GOPATH)` path.
+>   - ci: add Redis readiness gate before E2E loop.
+>   - goreleaser: set up QEMU + Buildx; quote `$GITHUB_ENV` appends.
+>   - markdownlint: least‑privilege `permissions`, `concurrency`, compact `branches`, pinned action SHAs.
+>
+> Important learnings
+> - Prefer fenced‑block extraction after the prompt header to avoid noisy HTML fragments in reviews.
+> - Serialize GitHub workflows that push to default branches; add readiness gates for external deps (Redis) to deflake CI.
+> - Quote env file writes (e.g., `$GITHUB_ENV`) and command substitutions for safety and portability.
+> - Repo still mixes `go-redis` v8 and v9; Features Ledger currently claims v9‑only — reconcile during the v9 unification pass.
+>
+> Activity log
+> - Extracted PR#3 prompts → archived at `docs/audits/coderabbit-pr3-prompts.md`.
+> - Generated Code Review Worksheet → `docs/audits/code-reviews/PR3/a493f9d...60f12d72.md`.
+> - Updated workflows (`changelog.yml`, `ci.yml`, `goreleaser.yml`, `markdownlint.yml`).
+> - Added generator script and updated tooling docs.
+> - Pushed branch `unify/chaos-main` to update PR#3 (no merge yet).
+>
+> Next steps (micro‑PR cadence)
+> - Review worksheet items; accept/reject and turn top items into issues/micro PRs.
+> - Complete Redis v9 unification (remove v8), fix imports/options, and run `go test ./...` to shake out failures.
+> - Merge PR#3 after review → then PR#2 (ledger/devx), PR#4 (redis v9), PR#1 (release), ensuring `origin/main` is always the base.
+> - Align Features Ledger “Redis Client” row with actual v9 status; run `scripts/update_progress.py` to refresh bars.
+> - Consider concurrency/min‑permissions for `update-progress.yml` to avoid redundant runs.
+
 ---
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 
