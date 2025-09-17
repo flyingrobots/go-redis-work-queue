@@ -1,0 +1,33 @@
+name: Validate Anomaly Radar OpenAPI
+
+"on":
+  pull_request:
+    paths:
+      - docs/api/anomaly-radar-openapi.yaml
+      - .github/workflows/anomaly-radar-openapi.yml
+  push:
+    branches: ['main']
+    paths:
+      - docs/api/anomaly-radar-openapi.yaml
+      - .github/workflows/anomaly-radar-openapi.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenAPI Generator CLI
+        run: npm install -g @openapitools/openapi-generator-cli
+
+      - name: Validate OpenAPI document
+        run: openapi-generator-cli validate -i docs/api/anomaly-radar-openapi.yaml
+
+      - name: Dry-run TypeScript client generation
+        run: openapi-generator-cli generate -i docs/api/anomaly-radar-openapi.yaml -g typescript-fetch -o /tmp/anomaly-radar-client

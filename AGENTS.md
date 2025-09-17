@@ -178,6 +178,9 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Docs: Add TUI design README with SVG mockups
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
+- [ ] Observability: Publish Anomaly Radar OpenAPI spec + client CI automation
+- [ ] Observability: Finalize Anomaly Radar auth/error/pagination contract and document endpoints
+- [ ] Observability: Revisit chunk_008 OpenAPI/auth review items once spec + contract land
 
 ### Finished Log
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)

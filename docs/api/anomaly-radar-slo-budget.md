@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Anomaly Radar + SLO Budget system provides real-time monitoring of queue health with Service Level Objective (SLO) tracking and error budget management. This system implements industry-standard SRE practices for proactive incident detection and reliability management.
+The Anomaly Radar + SLO Budget system provides real-time monitoring of queue health with Service Level Objective (SLO) tracking and error budget management. This system implements industry-standard SRE practices for proactive incident detection and reliability management. A draft OpenAPI specification is available at [docs/api/anomaly-radar-openapi.yaml](anomaly-radar-openapi.yaml).
 
 ## Versioning & Deprecation
 
