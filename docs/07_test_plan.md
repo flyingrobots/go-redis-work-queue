@@ -25,7 +25,16 @@ This plan defines coverage goals, scenarios, performance benchmarks, and securit
 - Unit: algorithms (breaker), backoff, job marshal/unmarshal, rate limiter math, config validation.
 - Integration: produce→consume→complete/retry/DLQ; reaper resurrection; graceful shutdown.
 - E2E: GitHub Actions job with Redis service container; real network timings.
-- Chaos: Redis unavailability, latency injection, connection resets (where feasible in CI).
+- Chaos (deterministic, automated):
+  1. **Redis SIGSTOP (30s stall):**
+     - Command: `docker exec redis pkill -STOP redis-server` followed by `sleep 30 && docker exec redis pkill -CONT redis-server`.
+     - Pass criteria: workers retry without data loss, queue depth stabilises within 60s after resume, no 5xx spike >1%.
+  2. **Latency injection (tc netem):**
+     - Command: `tc qdisc add dev eth0 root netem delay 200ms 50ms distribution normal` on the Redis container/host for 2 minutes; remove with `tc qdisc del dev eth0 root netem`.
+     - Pass criteria: p95 worker latency stays <5s, requeues remain <1%, rate limiter continues to operate.
+  3. **Connection resets (5% loss):**
+     - Command: `iptables -A OUTPUT -p tcp --dport 6379 -m statistic --mode random --probability 0.05 -j REJECT --reject-with tcp-reset`; clean up with corresponding `iptables -D`.
+     - Pass criteria: retry/backoff logic clears transient errors within 10s, breaker does not enter permanent open state, no job duplication observed.
 
 ## Critical Path Scenarios
 
