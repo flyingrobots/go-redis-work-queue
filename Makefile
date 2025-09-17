@@ -4,17 +4,20 @@ APP := job-queue-system
 PKG := github.com/flyingrobots/go-redis-work-queue
 VERSION ?= dev
 LDFLAGS := -X main.version=$(VERSION)
+GOFLAGS ?=
+
+BIN_DIR := bin
 
 .PHONY: all build test run lint tidy version clean
 
 all: build
 
-build:
-	go build -ldflags "$(LDFLAGS)" -o bin/$(APP) ./cmd/$(APP)
+build: $(BIN_DIR)
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(APP) ./cmd/$(APP)
 
 .PHONY: build-tui tui-build
-build-tui tui-build:
-	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/tui ./cmd/tui
+build-tui tui-build: $(BIN_DIR)
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/tui ./cmd/tui
 
 .PHONY: run-tui tui
 run-tui tui: build-tui
@@ -38,6 +41,9 @@ version:
 .PHONY: clean
 clean:
 	rm -rf bin dist build out coverage *.coverprofile *.out .gocache
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 .PHONY: hooks
 hooks:

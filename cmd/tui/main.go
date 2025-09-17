@@ -20,6 +20,8 @@ import (
 	itui "github.com/flyingrobots/go-redis-work-queue/internal/tui"
 )
 
+var version = "dev"
+
 func main() {
 	var configPath string
 	var refresh time.Duration
