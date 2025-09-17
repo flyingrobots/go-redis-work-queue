@@ -36,7 +36,7 @@ Working in the SLAPS environment forced me to develop several unique strategies:
 
 **The Defensive Read Pattern**: Before making any changes to a file, I learned to extensively read the surrounding context, imports, and related files. The codebase was a living, breathing entity being modified by multiple agents, so understanding the current state became crucial.
 
-**Metrics-Disabled Testing**: After encountering the Prometheus registration conflicts repeatedly, I developed a consistent pattern of disabling metrics in all test configurations. This became my go-to solution for avoiding conflicts in test environments.
+**Metrics-Disabled Testing**: After running into duplicate collector panics, I wired an explicit toggle into the test harness. Setting `METRICS_ENABLED=false` (or the YAML `observability.metrics.enabled: false`) skips the global `prometheus.MustRegister` calls and instead injects a fresh `prometheus.Registry` per test. Alternative approaches I tried: (1) wrapping registrations in a `sync.Once`, (2) using `promtest` helpers, and (3) a custom test-only registry. The per-test registry plus toggle proved cleanest; the other options either hid errors or still leaked collectors.
 
 **Progressive Verification**: Instead of making large changes all at once, I learned to make smaller, incremental changes and verify them immediately. The dynamic nature of the codebase meant that what worked five minutes ago might not work now.
 
