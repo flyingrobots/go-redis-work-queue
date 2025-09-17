@@ -381,6 +381,13 @@ if result.Allowed {
 - **Refill Overhead**: Refill calculations happen inline during consumption
 - **Benchmarks**: ~10,000 ops/sec per Redis instance (single tenant)
 
+### Redis Details
+
+1. **Script lifecycle**: Pre-load the Lua script (`SCRIPT LOAD`) at startup and cache the SHA; call `EVALSHA` on the hot path. On `NOSCRIPT`, reload the script and retry once before falling back to `EVAL`.
+2. **Cluster slotting**: When using Redis Cluster, group keys with hash tags (e.g., `{rl}:{scope}:bucket`, `{rl}:{scope}:meta`) so the script operates on a single slot. Keep auxiliary keys (locks, counters) in the same tag.
+3. **Transient error handling**: Retry `READONLY` errors triggered during failover after reconnecting to the new primary. Apply exponential backoff for timeouts (`RedisTimeoutError`) with a max of three attempts before surfacing the failure. Log each retry with scope, duration, and error type for observability.
+4. **Timeout budgets**: Set the Redis client timeout slightly above the script’s worst-case execution window (default 50ms) to avoid premature cancellations.
+
 ## Error Handling
 
 Common errors and handling:
