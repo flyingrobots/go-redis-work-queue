@@ -32,7 +32,7 @@ spec:
     rules:
     # High-level service availability
     - alert: RBACTokenServiceDown
-      expr: up{job="rbac-token-service"} == 0
+      expr: up{app="rbac-token-service"} == 0
       for: 1m
       labels:
         severity: critical
@@ -43,7 +43,7 @@ spec:
         runbook_url: "https://github.com/flyingrobots/go-redis-work-queue/blob/main/docs/original-spec/14_ops_runbook.md#rbac-token-service"
 
     - alert: RBACTokenServiceHighErrorRate
-      expr: rate(http_requests_total{job="rbac-token-service",status=~"5.."}[5m]) > 0.1
+      expr: rate(http_requests_total{app="rbac-token-service",status=~"5.."}[5m]) > 0.1
       for: 2m
       labels:
         severity: warning
@@ -54,7 +54,7 @@ spec:
 
     # Response time alerts
     - alert: RBACTokenServiceHighLatency
-      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m])) > 1.0
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="rbac-token-service"}[5m])) > 1.0
       for: 5m
       labels:
         severity: warning
@@ -64,7 +64,7 @@ spec:
         description: "95th percentile latency is {{ $value }}s"
 
     - alert: RBACTokenServiceVeryHighLatency
-      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m])) > 5.0
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="rbac-token-service"}[5m])) > 5.0
       for: 2m
       labels:
         severity: critical
@@ -73,47 +73,26 @@ spec:
         summary: "Very high latency in RBAC Token Service"
         description: "95th percentile latency is {{ $value }}s"
 
-    # Token-specific alerts
-    - alert: RBACTokenValidationErrors
-      expr: rate(rbac_token_validation_errors_total[5m]) > 0.05
-      for: 3m
-      labels:
-        severity: warning
-        service: rbac-token-service
-      annotations:
-        summary: "High token validation error rate"
-        description: "Token validation errors: {{ $value }} per second"
-
-    - alert: RBACTokenExpirationWarning
-      expr: rbac_tokens_expiring_soon_total > 100
-      for: 0m
-      labels:
-        severity: warning
-        service: rbac-token-service
-      annotations:
-        summary: "Many tokens expiring soon"
-        description: "{{ $value }} tokens will expire within the next hour"
-
     # Security alerts
     - alert: RBACUnauthorizedAccess
-      expr: rate(rbac_unauthorized_attempts_total[5m]) > 0.1
+      expr: rate(http_requests_total{app="rbac-token-service",status="401"}[5m]) > 0.1
       for: 1m
       labels:
         severity: critical
         service: rbac-token-service
       annotations:
         summary: "High rate of unauthorized access attempts"
-        description: "{{ $value }} unauthorized attempts per second"
+        description: "{{ $value }} unauthorized responses per second"
 
     - alert: RBACRateLimitHit
-      expr: rate(rbac_rate_limit_exceeded_total[5m]) > 0.01
+      expr: rate(http_requests_total{app="rbac-token-service",status="429"}[5m]) > 0.01
       for: 2m
       labels:
         severity: warning
         service: rbac-token-service
       annotations:
         summary: "Rate limiting is being triggered"
-        description: "{{ $value }} rate limit violations per second"
+        description: "{{ $value }} rate-limited responses per second"
 
     # Resource alerts
     - alert: RBACTokenServiceHighCPU
@@ -213,7 +192,7 @@ data:
             "type": "stat",
             "targets": [
               {
-                "expr": "up{job=\"rbac-token-service\"}",
+                "expr": "up{app=\"rbac-token-service\"}",
                 "legendFormat": "Service Up"
               }
             ],
@@ -238,7 +217,7 @@ data:
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job=\"rbac-token-service\"}[5m])",
+                "expr": "rate(http_requests_total{app=\"rbac-token-service\"}[5m])",
                 "legendFormat": "{{method}} {{status}}"
               }
             ],
@@ -250,47 +229,11 @@ data:
             "type": "graph",
             "targets": [
               {
-                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"rbac-token-service\"}[5m]))",
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"rbac-token-service\"}[5m]))",
                 "legendFormat": "95th percentile"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
-          },
-          {
-            "id": 4,
-            "title": "Token Operations",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "rate(rbac_token_issued_total[5m])",
-                "legendFormat": "Tokens Issued"
-              },
-              {
-                "expr": "rate(rbac_token_validated_total[5m])",
-                "legendFormat": "Tokens Validated"
-              },
-              {
-                "expr": "rate(rbac_token_validation_errors_total[5m])",
-                "legendFormat": "Validation Errors"
-              }
-            ],
-            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
-          },
-          {
-            "id": 5,
-            "title": "Security Events",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "rate(rbac_unauthorized_attempts_total[5m])",
-                "legendFormat": "Unauthorized Attempts"
-              },
-              {
-                "expr": "rate(rbac_rate_limit_exceeded_total[5m])",
-                "legendFormat": "Rate Limit Exceeded"
-              }
-            ],
-            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
           },
           {
             "id": 6,
