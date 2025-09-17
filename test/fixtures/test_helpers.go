@@ -13,7 +13,7 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -35,12 +35,12 @@ func TestTracerProvider() *sdktrace.TracerProvider {
 
 // MockOTLPCollector simulates an OTLP trace collector
 type MockOTLPCollector struct {
-	server     *httptest.Server
-	spans      []map[string]interface{}
-	requests   [][]byte
-	mutex      sync.RWMutex
-	t          *testing.T
-	CallCount  int
+	server      *httptest.Server
+	spans       []map[string]interface{}
+	requests    [][]byte
+	mutex       sync.RWMutex
+	t           *testing.T
+	CallCount   int
 	LastReqTime time.Time
 }
 
@@ -279,12 +279,12 @@ func (rh *RedisTestHelper) GetTestConfig() *config.Config {
 
 // TracingTestSuite provides a complete test suite setup
 type TracingTestSuite struct {
-	T                *testing.T
-	TracerProvider   *sdktrace.TracerProvider
-	OTLPCollector    *MockOTLPCollector
-	RedisHelper      *RedisTestHelper
-	Config           *config.Config
-	TraceValidator   *TraceValidator
+	T              *testing.T
+	TracerProvider *sdktrace.TracerProvider
+	OTLPCollector  *MockOTLPCollector
+	RedisHelper    *RedisTestHelper
+	Config         *config.Config
+	TraceValidator *TraceValidator
 }
 
 // NewTracingTestSuite creates a complete test suite

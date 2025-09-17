@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // TenantManager handles tenant operations and isolation
@@ -345,7 +345,7 @@ func (tm *TenantManager) LogAuditEvent(event *AuditEvent) error {
 
 	// Add to tenant's audit index
 	indexKey := tm.getAuditIndexKey(event.TenantID)
-	_ = tm.redis.ZAdd(tm.ctx, indexKey, &redis.Z{
+	_ = tm.redis.ZAdd(tm.ctx, indexKey, redis.Z{
 		Score:  float64(event.Timestamp.Unix()),
 		Member: eventKey,
 	})
@@ -658,7 +658,7 @@ func (rlc *RateLimitChecker) CheckRateLimit(tenantID TenantID, operation string,
 
 	// Add current request to window
 	member := fmt.Sprintf("%d:%s", now, rlc.generateRequestID())
-	_ = rlc.redis.ZAdd(rlc.ctx, key, &redis.Z{
+	_ = rlc.redis.ZAdd(rlc.ctx, key, redis.Z{
 		Score:  float64(now),
 		Member: member,
 	})

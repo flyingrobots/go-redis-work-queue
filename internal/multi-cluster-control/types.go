@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // ClusterConfig represents configuration for a single cluster
@@ -51,10 +51,10 @@ type ClusterStats struct {
 
 // CompareResult represents the result of comparing multiple clusters
 type CompareResult struct {
-	Clusters   []string                 `json:"clusters"`
-	Metrics    map[string]MetricCompare `json:"metrics"`
-	Anomalies  []Anomaly                `json:"anomalies"`
-	Timestamp  time.Time                `json:"timestamp"`
+	Clusters  []string                 `json:"clusters"`
+	Metrics   map[string]MetricCompare `json:"metrics"`
+	Anomalies []Anomaly                `json:"anomalies"`
+	Timestamp time.Time                `json:"timestamp"`
 }
 
 // MetricCompare represents a comparison of a metric across clusters
@@ -78,27 +78,27 @@ type Anomaly struct {
 
 // MultiAction represents an action to be applied across multiple clusters
 type MultiAction struct {
-	ID          string                `json:"id"`
-	Type        ActionType            `json:"type"`
-	Targets     []string              `json:"targets"`
-	Parameters  map[string]interface{} `json:"parameters"`
-	Confirmations []ActionConfirmation `json:"confirmations"`
-	Status      ActionStatus          `json:"status"`
-	Results     map[string]ActionResult `json:"results"`
-	CreatedAt   time.Time             `json:"created_at"`
-	ExecutedAt  *time.Time            `json:"executed_at,omitempty"`
+	ID            string                  `json:"id"`
+	Type          ActionType              `json:"type"`
+	Targets       []string                `json:"targets"`
+	Parameters    map[string]interface{}  `json:"parameters"`
+	Confirmations []ActionConfirmation    `json:"confirmations"`
+	Status        ActionStatus            `json:"status"`
+	Results       map[string]ActionResult `json:"results"`
+	CreatedAt     time.Time               `json:"created_at"`
+	ExecutedAt    *time.Time              `json:"executed_at,omitempty"`
 }
 
 // ActionType represents the type of multi-cluster action
 type ActionType string
 
 const (
-	ActionTypePurgeDLQ     ActionType = "purge_dlq"
-	ActionTypePauseQueue   ActionType = "pause_queue"
-	ActionTypeResumeQueue  ActionType = "resume_queue"
-	ActionTypeBenchmark    ActionType = "benchmark"
-	ActionTypeRebalance    ActionType = "rebalance"
-	ActionTypeFailover     ActionType = "failover"
+	ActionTypePurgeDLQ    ActionType = "purge_dlq"
+	ActionTypePauseQueue  ActionType = "pause_queue"
+	ActionTypeResumeQueue ActionType = "resume_queue"
+	ActionTypeBenchmark   ActionType = "benchmark"
+	ActionTypeRebalance   ActionType = "rebalance"
+	ActionTypeFailover    ActionType = "failover"
 )
 
 // ActionStatus represents the status of a multi-cluster action
@@ -144,18 +144,18 @@ type ClusterCache struct {
 
 // HealthStatus represents the health status of a cluster
 type HealthStatus struct {
-	Healthy     bool              `json:"healthy"`
-	Issues      []string          `json:"issues,omitempty"`
+	Healthy     bool               `json:"healthy"`
+	Issues      []string           `json:"issues,omitempty"`
 	Metrics     map[string]float64 `json:"metrics"`
-	LastChecked time.Time         `json:"last_checked"`
+	LastChecked time.Time          `json:"last_checked"`
 }
 
 // TabConfig represents the configuration for cluster tabs in the TUI
 type TabConfig struct {
-	Tabs         []TabInfo `json:"tabs"`
-	ActiveTab    int       `json:"active_tab"`
-	CompareMode  bool      `json:"compare_mode"`
-	CompareWith  []string  `json:"compare_with,omitempty"`
+	Tabs        []TabInfo `json:"tabs"`
+	ActiveTab   int       `json:"active_tab"`
+	CompareMode bool      `json:"compare_mode"`
+	CompareWith []string  `json:"compare_with,omitempty"`
 }
 
 // TabInfo represents information about a single tab
@@ -184,8 +184,8 @@ const (
 	EventTypeClusterConnected    EventType = "cluster_connected"
 	EventTypeClusterDisconnected EventType = "cluster_disconnected"
 	EventTypeActionExecuted      EventType = "action_executed"
-	EventTypeAnomalyDetected    EventType = "anomaly_detected"
-	EventTypeConfigChanged      EventType = "config_changed"
+	EventTypeAnomalyDetected     EventType = "anomaly_detected"
+	EventTypeConfigChanged       EventType = "config_changed"
 )
 
 // Manager interface defines the multi-cluster control operations
@@ -220,12 +220,12 @@ type Manager interface {
 
 // WorkerInfo represents information about a worker
 type WorkerInfo struct {
-	ID          string    `json:"id"`
-	ClusterName string    `json:"cluster_name"`
-	Status      string    `json:"status"`
-	JobsProcessed int64   `json:"jobs_processed"`
-	LastActivity time.Time `json:"last_activity"`
-	Queues      []string  `json:"queues"`
+	ID            string    `json:"id"`
+	ClusterName   string    `json:"cluster_name"`
+	Status        string    `json:"status"`
+	JobsProcessed int64     `json:"jobs_processed"`
+	LastActivity  time.Time `json:"last_activity"`
+	Queues        []string  `json:"queues"`
 }
 
 // JobInfo represents information about a job across clusters
@@ -242,19 +242,19 @@ type JobInfo struct {
 
 // CompareView represents the side-by-side comparison view data
 type CompareView struct {
-	Left     ClusterViewData `json:"left"`
-	Right    ClusterViewData `json:"right"`
-	Deltas   map[string]Delta `json:"deltas"`
-	Updated  time.Time       `json:"updated"`
+	Left    ClusterViewData  `json:"left"`
+	Right   ClusterViewData  `json:"right"`
+	Deltas  map[string]Delta `json:"deltas"`
+	Updated time.Time        `json:"updated"`
 }
 
 // ClusterViewData represents data for a single cluster in compare view
 type ClusterViewData struct {
-	Name            string           `json:"name"`
-	Stats           *ClusterStats    `json:"stats"`
-	Health          *HealthStatus    `json:"health"`
-	RecentJobs      []JobInfo        `json:"recent_jobs"`
-	ActiveWorkers   []WorkerInfo     `json:"active_workers"`
+	Name          string        `json:"name"`
+	Stats         *ClusterStats `json:"stats"`
+	Health        *HealthStatus `json:"health"`
+	RecentJobs    []JobInfo     `json:"recent_jobs"`
+	ActiveWorkers []WorkerInfo  `json:"active_workers"`
 }
 
 // Delta represents the difference between two values

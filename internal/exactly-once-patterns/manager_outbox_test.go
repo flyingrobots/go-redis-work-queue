@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -122,7 +122,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create redis idempotency storage", func(t *testing.T) {
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "redis"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -132,7 +132,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create memory idempotency storage", func(t *testing.T) {
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "memory"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -142,7 +142,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create database idempotency storage (fallback to redis)", func(t *testing.T) {
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "database"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -152,7 +152,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 
 	t.Run("create unknown idempotency storage (fallback to redis)", func(t *testing.T) {
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Idempotency.Storage.Type = "unknown"
 		manager := NewManager(cfg, nil, logger)
 		defer manager.Close()
@@ -171,7 +171,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 		defer rdb.Close()
 
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Outbox.Enabled = true
 		cfg.Outbox.StorageType = "redis"
 		manager := NewManager(cfg, rdb, logger)
@@ -191,7 +191,7 @@ func TestManager_CreateStorageBackends(t *testing.T) {
 		defer rdb.Close()
 
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		cfg.Outbox.Enabled = true
 		cfg.Outbox.StorageType = "database"
 		manager := NewManager(cfg, rdb, logger)
@@ -274,7 +274,7 @@ func TestManager_Close(t *testing.T) {
 
 	t.Run("close with hooks", func(t *testing.T) {
 		cfg := DefaultConfig()
-	cfg.Metrics.Enabled = false
+		cfg.Metrics.Enabled = false
 		logger := zaptest.NewLogger(t)
 		manager := NewManager(cfg, nil, logger)
 
@@ -338,7 +338,7 @@ func TestHelperFunctions(t *testing.T) {
 
 		assert.NotEmpty(t, id1)
 		assert.NotEmpty(t, id2)
-		assert.NotEqual(t, id1, id2) // Should be unique
+		assert.NotEqual(t, id1, id2)  // Should be unique
 		assert.True(t, len(id1) > 10) // Should be reasonable length
 	})
 

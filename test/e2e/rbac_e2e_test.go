@@ -21,7 +21,7 @@ import (
 	adminapi "github.com/flyingrobots/go-redis-work-queue/internal/admin-api"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	rbacandtokens "github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -366,12 +366,12 @@ func TestE2EMultiTenancy(t *testing.T) {
 // Supporting types and functions
 
 type e2eSystem struct {
-	t       *testing.T
-	server  *httptest.Server
-	config  *adminapi.Config
-	redis   *miniredis.Miniredis
-	rdb     *redis.Client
-	logger  *zap.Logger
+	t      *testing.T
+	server *httptest.Server
+	config *adminapi.Config
+	redis  *miniredis.Miniredis
+	rdb    *redis.Client
+	logger *zap.Logger
 }
 
 type e2eOperation struct {
@@ -411,16 +411,16 @@ func setupE2ESystem(t *testing.T) *e2eSystem {
 	appCfg := &config.Config{
 		Worker: config.Worker{
 			Queues: map[string]string{
-				"high":                 "jobqueue:high",
-				"medium":               "jobqueue:medium",
-				"low":                  "jobqueue:low",
-				"deployment":           "jobqueue:deployment",
-				"email":                "jobqueue:email",
-				"payment":              "jobqueue:payment",
-				"tenant-a-high":        "jobqueue:tenant-a-high",
-				"tenant-a-low":         "jobqueue:tenant-a-low",
-				"tenant-b-priority":    "jobqueue:tenant-b-priority",
-				"tenant-b-batch":       "jobqueue:tenant-b-batch",
+				"high":              "jobqueue:high",
+				"medium":            "jobqueue:medium",
+				"low":               "jobqueue:low",
+				"deployment":        "jobqueue:deployment",
+				"email":             "jobqueue:email",
+				"payment":           "jobqueue:payment",
+				"tenant-a-high":     "jobqueue:tenant-a-high",
+				"tenant-a-low":      "jobqueue:tenant-a-low",
+				"tenant-b-priority": "jobqueue:tenant-b-priority",
+				"tenant-b-batch":    "jobqueue:tenant-b-batch",
 			},
 			DeadLetterList: "jobqueue:dead_letter",
 		},

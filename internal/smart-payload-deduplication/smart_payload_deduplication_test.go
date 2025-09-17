@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -26,8 +26,8 @@ func TestRabinChunker_ChunkPayload(t *testing.T) {
 	chunker := NewRabinChunker(config, detector)
 
 	tests := []struct {
-		name     string
-		data     []byte
+		name      string
+		data      []byte
 		minChunks int
 		maxChunks int
 	}{
@@ -123,10 +123,10 @@ func TestRollingHash_Consistency(t *testing.T) {
 
 func TestZstdCompressor_CompressDecompress(t *testing.T) {
 	config := &CompressionConfig{
-		Enabled:       true,
-		Level:         3,
+		Enabled:        true,
+		Level:          3,
 		DictionarySize: 1024,
-		UseDictionary: false, // Start without dictionary
+		UseDictionary:  false, // Start without dictionary
 	}
 
 	compressor, err := NewZstdCompressor(config)
@@ -169,10 +169,10 @@ func TestZstdCompressor_CompressDecompress(t *testing.T) {
 
 func TestZstdCompressor_WithDictionary(t *testing.T) {
 	config := &CompressionConfig{
-		Enabled:       true,
-		Level:         3,
+		Enabled:        true,
+		Level:          3,
 		DictionarySize: 1024,
-		UseDictionary: true,
+		UseDictionary:  true,
 	}
 
 	compressor, err := NewZstdCompressor(config)

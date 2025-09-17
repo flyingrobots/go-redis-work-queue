@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -109,9 +109,9 @@ func (re *ReplayEngine) CreateReplaySession(recordID, userID string) (*ReplaySes
 	sessionID := re.generateSessionID()
 
 	session := &ReplaySession{
-		ID:       sessionID,
-		RecordID: recordID,
-		UserID:   userID,
+		ID:        sessionID,
+		RecordID:  recordID,
+		UserID:    userID,
 		StartTime: time.Now(),
 		CurrentPos: TimelinePosition{
 			EventIndex:  0,

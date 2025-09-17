@@ -3058,7 +3058,7 @@ appropriate.
 > `75-82`: **Unify Go and Redis client versions immediately — this will break builds.**
 > 
 > - Evidence: root go.mod sets go 1.24.0; internal/dlq-remediation-ui/go.mod sets go 1.25.0; docs/05_architecture.md still says "Go 1.21+" while README/docs advertise Go 1.25+.  
-> - Dependency mismatch: go.mod contains github.com/go-redis/redis/v8 v8.11.5 and github.com/redis/go-redis/v9 v9.14.0; code imports both (examples — v8: internal/redisclient/client.go, internal/storage-backends/redis_lists.go, internal/worker/worker.go; v9: internal/exactly-once-patterns/redis_storage.go, internal/admin-api/admin-api.go, internal/event-hooks/manager.go). BUGS.md already flags this.  
+> - Dependency mismatch: go.mod contains github.com/redis/go-redis/v9 v8.11.5 and github.com/redis/go-redis/v9 v9.14.0; code imports both (examples — v8: internal/redisclient/client.go, internal/storage-backends/redis_lists.go, internal/worker/worker.go; v9: internal/exactly-once-patterns/redis_storage.go, internal/admin-api/admin-api.go, internal/event-hooks/manager.go). BUGS.md already flags this.  
 > - Action (do it now): pick one Redis client (recommend migrate to github.com/redis/go-redis/v9), update all imports/usages, remove the other dependency from go.mod/go.sum, unify the repo Go directive (recommend go 1.25), update docs (docs/05_architecture.md, README.md, testing/promotion docs), run go mod tidy and the full test suite.
 > 
 > </blockquote></details>
@@ -6953,7 +6953,7 @@ Pick v9, rip out v8 completely, and be done with it. This should have been caugh
 
 ```
 In BUGS.md around lines 27-28: the repo currently depends on both
-github.com/go-redis/redis/v8 and redis/go-redis/v9; pick v9 only, remove v8
+github.com/redis/go-redis/v9 and redis/go-redis/v9; pick v9 only, remove v8
 references, and wrap the v9 client behind a small local interface (e.g. Cmdable)
 used throughout the codebase for easier testing. Update all imports to
 redis/go-redis/v9, replace any v8-specific types/usages with their v9

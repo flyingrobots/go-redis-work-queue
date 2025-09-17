@@ -12,21 +12,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // manager implements the Manager interface
 type manager struct {
-	config      *Config
-	logger      *zap.Logger
-	redis       *redis.Client
-	strategy    *RetryStrategy
-	cache       *retryCache
-	bayesianMu  sync.RWMutex
-	policyMu    sync.RWMutex
-	mlModel     *MLModel
-	mlMu        sync.RWMutex
+	config     *Config
+	logger     *zap.Logger
+	redis      *redis.Client
+	strategy   *RetryStrategy
+	cache      *retryCache
+	bayesianMu sync.RWMutex
+	policyMu   sync.RWMutex
+	mlModel    *MLModel
+	mlMu       sync.RWMutex
 }
 
 // retryCache provides caching for retry data
@@ -212,7 +212,7 @@ func (m *manager) getBayesianRecommendation(features RetryFeatures) (*RetryRecom
 
 	for _, bucket := range model.Buckets {
 		if bucket.Probability >= m.strategy.BayesianThreshold &&
-		   bucket.LowerBound >= m.strategy.BayesianThreshold * 0.8 { // Confidence check
+			bucket.LowerBound >= m.strategy.BayesianThreshold*0.8 { // Confidence check
 			if bestBucket == nil || bucket.Probability > bestBucket.Probability {
 				bestBucket = &bucket
 				// Use middle of bucket range
@@ -407,9 +407,9 @@ func (m *manager) GetStats(jobType, errorClass string, window time.Duration) (*R
 	}
 
 	stats := &RetryStats{
-		JobType:    jobType,
-		ErrorClass: errorClass,
-		WindowEnd:  time.Now(),
+		JobType:     jobType,
+		ErrorClass:  errorClass,
+		WindowEnd:   time.Now(),
 		WindowStart: time.Now().Add(-window),
 	}
 

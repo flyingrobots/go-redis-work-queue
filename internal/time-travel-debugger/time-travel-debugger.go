@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -20,10 +20,10 @@ type TimeTravelDebugger struct {
 	replay  *ReplayEngine
 
 	// State
-	mu       sync.RWMutex
-	enabled  bool
-	ctx      context.Context
-	cancel   context.CancelFunc
+	mu      sync.RWMutex
+	enabled bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 // NewTimeTravelDebugger creates a new time travel debugger instance
@@ -286,12 +286,11 @@ func (ttd *TimeTravelDebugger) Health() map[string]interface{} {
 	defer ttd.mu.RUnlock()
 
 	health := map[string]interface{}{
-		"enabled":            ttd.enabled,
-		"config_enabled":     ttd.config.Enabled,
-		"sampling_rate":      ttd.config.SamplingRate,
-		"active_recordings":  len(ttd.GetActiveRecordings()),
+		"enabled":           ttd.enabled,
+		"config_enabled":    ttd.config.Enabled,
+		"sampling_rate":     ttd.config.SamplingRate,
+		"active_recordings": len(ttd.GetActiveRecordings()),
 	}
 
 	return health
 }
-

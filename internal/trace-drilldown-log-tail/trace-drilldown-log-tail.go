@@ -13,19 +13,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // TraceManager manages trace collection and viewing
 type TraceManager struct {
-	config       *TracingConfig
-	redis        *redis.Client
-	logger       *zap.Logger
-	httpClient   *http.Client
-	traces       map[string]*TraceInfo
-	mu           sync.RWMutex
+	config     *TracingConfig
+	redis      *redis.Client
+	logger     *zap.Logger
+	httpClient *http.Client
+	traces     map[string]*TraceInfo
+	mu         sync.RWMutex
 }
 
 // NewTraceManager creates a new trace manager
@@ -462,13 +462,13 @@ func (tm *TraceManager) matchesFilter(trace *TraceInfo, filter *LogFilter) bool 
 
 // LogTailer handles log tailing with backpressure protection
 type LogTailer struct {
-	config    *LoggingConfig
-	redis     *redis.Client
-	logger    *zap.Logger
-	sessions  map[string]*TailSession
-	mu        sync.RWMutex
-	stopCh    chan struct{}
-	wg        sync.WaitGroup
+	config   *LoggingConfig
+	redis    *redis.Client
+	logger   *zap.Logger
+	sessions map[string]*TailSession
+	mu       sync.RWMutex
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewLogTailer creates a new log tailer
@@ -512,11 +512,11 @@ func (lt *LogTailer) StartTail(config *TailConfig) (*TailSession, <-chan LogStre
 	}
 
 	session := &TailSession{
-		ID:             uuid.New().String(),
-		Config:         *config,
-		StartedAt:      time.Now(),
-		Connected:      true,
-		LastActivity:   time.Now(),
+		ID:           uuid.New().String(),
+		Config:       *config,
+		StartedAt:    time.Now(),
+		Connected:    true,
+		LastActivity: time.Now(),
 		BackpressureStatus: BackpressureStatus{
 			MaxRate: config.MaxLinesPerSecond,
 		},
@@ -575,7 +575,7 @@ func (lt *LogTailer) WriteLog(entry *LogEntry) error {
 	key := fmt.Sprintf("logs:%s", time.Now().Format("2006-01-02"))
 	score := float64(entry.Timestamp.UnixNano())
 
-	if err := lt.redis.ZAdd(ctx, key, &redis.Z{
+	if err := lt.redis.ZAdd(ctx, key, redis.Z{
 		Score:  score,
 		Member: string(data),
 	}).Err(); err != nil {
@@ -594,7 +594,7 @@ func (lt *LogTailer) WriteLog(entry *LogEntry) error {
 // SearchLogs searches for logs
 func (lt *LogTailer) SearchLogs(ctx context.Context, filter *LogFilter) (*LogSearchResult, error) {
 	result := &LogSearchResult{
-		Logs:  make([]LogEntry, 0),
+		Logs: make([]LogEntry, 0),
 		Stats: &LogStats{
 			LevelBreakdown: make(map[string]int64),
 		},

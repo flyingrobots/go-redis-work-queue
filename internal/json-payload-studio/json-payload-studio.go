@@ -15,23 +15,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/xeipuuv/gojsonschema"
 	"go.uber.org/zap"
 )
 
 // JSONPayloadStudio provides JSON editing and validation capabilities
 type JSONPayloadStudio struct {
-	config        *StudioConfig
-	redis         *redis.Client
-	logger        *zap.Logger
-	templates     map[string]*Template
-	schemas       map[string]*JSONSchema
-	snippets      map[string]*Snippet
-	sessions      map[string]*SessionInfo
-	lastEnqueued  *EnqueueResult
-	mu            sync.RWMutex
+	config       *StudioConfig
+	redis        *redis.Client
+	logger       *zap.Logger
+	templates    map[string]*Template
+	schemas      map[string]*JSONSchema
+	snippets     map[string]*Snippet
+	sessions     map[string]*SessionInfo
+	lastEnqueued *EnqueueResult
+	mu           sync.RWMutex
 }
 
 // NewJSONPayloadStudio creates a new JSON Payload Studio
@@ -286,9 +286,9 @@ func (jps *JSONPayloadStudio) SearchTemplates(filter *TemplateFilter) *SearchRes
 	defer jps.mu.RUnlock()
 
 	result := &SearchResult{
-		Templates:  make([]Template, 0),
-		Query:      filter.Query,
-		Filters:    make([]string, 0),
+		Templates: make([]Template, 0),
+		Query:     filter.Query,
+		Filters:   make([]string, 0),
 	}
 
 	for _, template := range jps.templates {
@@ -489,7 +489,7 @@ func (jps *JSONPayloadStudio) EnqueuePayload(sessionID string, options *EnqueueO
 		if options.RunAt != nil {
 			// Scheduled job
 			score := float64(options.RunAt.Unix())
-			pipe.ZAdd(ctx, fmt.Sprintf("scheduled:%s", options.Queue), &redis.Z{
+			pipe.ZAdd(ctx, fmt.Sprintf("scheduled:%s", options.Queue), redis.Z{
 				Score:  score,
 				Member: string(jobData),
 			})
@@ -497,14 +497,14 @@ func (jps *JSONPayloadStudio) EnqueuePayload(sessionID string, options *EnqueueO
 			// Delayed job
 			runAt := time.Now().Add(options.Delay)
 			score := float64(runAt.Unix())
-			pipe.ZAdd(ctx, fmt.Sprintf("delayed:%s", options.Queue), &redis.Z{
+			pipe.ZAdd(ctx, fmt.Sprintf("delayed:%s", options.Queue), redis.Z{
 				Score:  score,
 				Member: string(jobData),
 			})
 		} else {
 			// Immediate job
 			if options.Priority > 0 {
-				pipe.ZAdd(ctx, fmt.Sprintf("priority:%s", options.Queue), &redis.Z{
+				pipe.ZAdd(ctx, fmt.Sprintf("priority:%s", options.Queue), redis.Z{
 					Score:  float64(options.Priority),
 					Member: string(jobData),
 				})

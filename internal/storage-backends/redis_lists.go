@@ -7,26 +7,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisListsConfig configures the Redis Lists backend
 type RedisListsConfig struct {
-	URL              string            `json:"url" yaml:"url"`
-	Database         int               `json:"database" yaml:"database"`
-	Password         string            `json:"password" yaml:"password"`
-	KeyPrefix        string            `json:"key_prefix" yaml:"key_prefix"`
-	MaxConnections   int               `json:"max_connections" yaml:"max_connections"`
-	ConnTimeout      time.Duration     `json:"conn_timeout" yaml:"conn_timeout"`
-	ReadTimeout      time.Duration     `json:"read_timeout" yaml:"read_timeout"`
-	WriteTimeout     time.Duration     `json:"write_timeout" yaml:"write_timeout"`
-	PoolTimeout      time.Duration     `json:"pool_timeout" yaml:"pool_timeout"`
-	IdleTimeout      time.Duration     `json:"idle_timeout" yaml:"idle_timeout"`
-	MaxRetries       int               `json:"max_retries" yaml:"max_retries"`
-	ClusterMode      bool              `json:"cluster_mode" yaml:"cluster_mode"`
-	ClusterAddrs     []string          `json:"cluster_addrs" yaml:"cluster_addrs"`
-	TLS              bool              `json:"tls" yaml:"tls"`
-	Options          map[string]string `json:"options" yaml:"options"`
+	URL            string            `json:"url" yaml:"url"`
+	Database       int               `json:"database" yaml:"database"`
+	Password       string            `json:"password" yaml:"password"`
+	KeyPrefix      string            `json:"key_prefix" yaml:"key_prefix"`
+	MaxConnections int               `json:"max_connections" yaml:"max_connections"`
+	ConnTimeout    time.Duration     `json:"conn_timeout" yaml:"conn_timeout"`
+	ReadTimeout    time.Duration     `json:"read_timeout" yaml:"read_timeout"`
+	WriteTimeout   time.Duration     `json:"write_timeout" yaml:"write_timeout"`
+	PoolTimeout    time.Duration     `json:"pool_timeout" yaml:"pool_timeout"`
+	IdleTimeout    time.Duration     `json:"idle_timeout" yaml:"idle_timeout"`
+	MaxRetries     int               `json:"max_retries" yaml:"max_retries"`
+	ClusterMode    bool              `json:"cluster_mode" yaml:"cluster_mode"`
+	ClusterAddrs   []string          `json:"cluster_addrs" yaml:"cluster_addrs"`
+	TLS            bool              `json:"tls" yaml:"tls"`
+	Options        map[string]string `json:"options" yaml:"options"`
 }
 
 // RedisListsBackend implements QueueBackend using Redis Lists
@@ -294,16 +294,16 @@ func (r *RedisListsBackend) Iter(ctx context.Context, opts IterOptions) (Iterato
 // Capabilities returns the capabilities of Redis Lists backend
 func (r *RedisListsBackend) Capabilities() BackendCapabilities {
 	return BackendCapabilities{
-		AtomicAck:          false, // Best effort with Lua scripts
-		ConsumerGroups:     false,
-		Replay:             false,
-		IdempotentEnqueue:  false,
-		Transactions:       true,  // Via Lua scripts
-		Persistence:        true,
-		Clustering:         r.config.ClusterMode,
-		TimeToLive:         false,
-		Prioritization:     false, // Via separate queues
-		BatchOperations:    true,
+		AtomicAck:         false, // Best effort with Lua scripts
+		ConsumerGroups:    false,
+		Replay:            false,
+		IdempotentEnqueue: false,
+		Transactions:      true, // Via Lua scripts
+		Persistence:       true,
+		Clustering:        r.config.ClusterMode,
+		TimeToLive:        false,
+		Prioritization:    false, // Via separate queues
+		BatchOperations:   true,
 	}
 }
 

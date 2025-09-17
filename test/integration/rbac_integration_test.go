@@ -19,7 +19,7 @@ import (
 	adminapi "github.com/flyingrobots/go-redis-work-queue/internal/admin-api"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	rbacandtokens "github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 

@@ -13,32 +13,32 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // Manager implements the CanaryManager interface
 type Manager struct {
-	config     *Config
-	redis      *redis.Client
-	logger     *slog.Logger
+	config *Config
+	redis  *redis.Client
+	logger *slog.Logger
 
 	// Internal components
-	router        Router
-	collector     MetricsCollector
-	alerter       Alerter
-	workers       *WorkerRegistry
+	router    Router
+	collector MetricsCollector
+	alerter   Alerter
+	workers   *WorkerRegistry
 
 	// State management
-	deployments   map[string]*CanaryDeployment
-	mu            sync.RWMutex
-	ctx           context.Context
-	cancel        context.CancelFunc
-	wg            sync.WaitGroup
+	deployments map[string]*CanaryDeployment
+	mu          sync.RWMutex
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 
 	// Channels for internal communication
-	alertChan     chan *Alert
-	eventChan     chan *DeploymentEvent
+	alertChan chan *Alert
+	eventChan chan *DeploymentEvent
 }
 
 // NewManager creates a new canary deployment manager
@@ -894,7 +894,7 @@ func (m *Manager) saveEventToRedis(ctx context.Context, event *DeploymentEvent) 
 	key := fmt.Sprintf("canary:events:%s", event.DeploymentID)
 	score := float64(event.Timestamp.Unix())
 
-	return m.redis.ZAdd(ctx, key, &redis.Z{
+	return m.redis.ZAdd(ctx, key, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err()

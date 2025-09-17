@@ -11,25 +11,25 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // ManagerImpl implements the Manager interface
 type ManagerImpl struct {
-	config      *Config
-	connections map[string]*ClusterConnection
-	cache       *ClusterCache
-	logger      *zap.Logger
-	events      chan Event
-	subscribers []chan Event
-	activeTab   string
-	compareMode bool
+	config          *Config
+	connections     map[string]*ClusterConnection
+	cache           *ClusterCache
+	logger          *zap.Logger
+	events          chan Event
+	subscribers     []chan Event
+	activeTab       string
+	compareMode     bool
 	compareClusters []string
 
-	mu          sync.RWMutex
-	stopCh      chan struct{}
-	wg          sync.WaitGroup
+	mu     sync.RWMutex
+	stopCh chan struct{}
+	wg     sync.WaitGroup
 }
 
 // NewManager creates a new multi-cluster manager

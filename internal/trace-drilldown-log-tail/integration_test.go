@@ -15,8 +15,8 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/distributed-tracing-integration"
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -569,7 +569,7 @@ func TestIntegration_PerformanceUnderLoad(t *testing.T) {
 	searchDuration := time.Since(searchStart)
 
 	require.NoError(t, err)
-	assert.Greater(t, len(result.Logs), 90) // Should find most logs
+	assert.Greater(t, len(result.Logs), 90)       // Should find most logs
 	assert.Less(t, searchDuration, 1*time.Second) // Search should be fast
 
 	t.Logf("Search found %d logs in %v", len(result.Logs), searchDuration)

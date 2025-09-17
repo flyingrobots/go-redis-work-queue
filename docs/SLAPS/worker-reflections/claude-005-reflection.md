@@ -34,7 +34,7 @@ Through trial and error, I developed several strategies that became my hallmarks
 
 The most interesting aspect of SLAPS was that we workers never directly communicated, yet we had to coordinate implicitly through the shared codebase. I encountered several conflicts:
 
-**The Redis Version Mismatch**: During my code review task (REVIEW.002), I discovered compilation failures due to incompatible Redis library versions - some code was using `github.com/go-redis/redis/v8` while other parts expected `github.com/redis/go-redis/v9`. This was clearly a result of different workers making changes without full coordination.
+**The Redis Version Mismatch**: During my code review task (REVIEW.002), I discovered compilation failures due to incompatible Redis library versions - some code was using `github.com/redis/go-redis/v9` while other parts expected `github.com/redis/go-redis/v9`. This was clearly a result of different workers making changes without full coordination.
 
 **Test Name Collisions**: I found duplicate function names like `setupTestHandler` in different test files, causing compilation failures. These were artifacts of parallel development without central coordination.
 

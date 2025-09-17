@@ -21,7 +21,7 @@ import (
 	adminapi "github.com/flyingrobots/go-redis-work-queue/internal/admin-api"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	rbacandtokens "github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -38,20 +38,20 @@ func TestSecurityFuzzHeaders(t *testing.T) {
 
 	// Fuzz test data for various headers
 	fuzzPayloads := []struct {
-		name    string
-		header  string
-		values  []string
-		desc    string
+		name   string
+		header string
+		values []string
+		desc   string
 	}{
 		{
 			name:   "Authorization Header Fuzzing",
 			header: "Authorization",
 			values: []string{
-				"Bearer " + strings.Repeat("A", 10000), // Extremely long token
-				"Bearer ../../../etc/passwd",           // Path traversal
-				"Bearer <script>alert('xss')</script>", // XSS attempt
-				"Bearer \x00\x01\x02\x03",             // Null bytes and control chars
-				"Bearer ' OR 1=1 --",                   // SQL injection attempt
+				"Bearer " + strings.Repeat("A", 10000),                              // Extremely long token
+				"Bearer ../../../etc/passwd",                                        // Path traversal
+				"Bearer <script>alert('xss')</script>",                              // XSS attempt
+				"Bearer \x00\x01\x02\x03",                                           // Null bytes and control chars
+				"Bearer ' OR 1=1 --",                                                // SQL injection attempt
 				"Basic " + base64.StdEncoding.EncodeToString([]byte("admin:admin")), // Wrong auth type
 				"Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.", // "none" algorithm
 			},
@@ -85,7 +85,7 @@ func TestSecurityFuzzHeaders(t *testing.T) {
 			header: "X-Forwarded-For",
 			values: []string{
 				strings.Repeat("127.0.0.1,", 10000), // IP flooding
-				"<script>alert('xss')</script>",      // XSS in IP
+				"<script>alert('xss')</script>",     // XSS in IP
 				"192.168.1.1\r\nX-Evil: true",       // Header injection
 				"' OR 1=1 --",                       // SQL injection
 			},
@@ -548,20 +548,20 @@ func (sys *securityTestSystem) createFutureToken() string {
 func (sys *securityTestSystem) createClockSkewToken() string {
 	return createSecurityTestTokenWithTimes(sys.secret, rbacandtokens.RoleAdmin,
 		[]rbacandtokens.Permission{rbacandtokens.PermAdminAll},
-		time.Now().Add(time.Hour),       // expires
-		time.Now().Add(10*time.Minute),  // issued at (future - excessive skew)
-		time.Now())                      // not before
+		time.Now().Add(time.Hour),      // expires
+		time.Now().Add(10*time.Minute), // issued at (future - excessive skew)
+		time.Now())                     // not before
 }
 
 func (sys *securityTestSystem) createLargeToken() string {
 	// Create token with very large claims
 	largeData := strings.Repeat("A", 100000)
 	return createSecurityTestTokenWithCustomClaims(sys.secret, map[string]interface{}{
-		"sub":       "test@example.com",
-		"roles":     []string{string(rbacandtokens.RoleViewer)},
-		"scopes":    []string{string(rbacandtokens.PermStatsRead)},
-		"exp":       time.Now().Add(time.Hour).Unix(),
-		"iat":       time.Now().Unix(),
+		"sub":        "test@example.com",
+		"roles":      []string{string(rbacandtokens.RoleViewer)},
+		"scopes":     []string{string(rbacandtokens.PermStatsRead)},
+		"exp":        time.Now().Add(time.Hour).Unix(),
+		"iat":        time.Now().Unix(),
 		"large_data": largeData,
 	})
 }
@@ -666,8 +666,8 @@ func modifyTokenTimestamps(token, secret string) string {
 	json.Unmarshal(payload, &claims)
 
 	// Modify timestamps to be suspicious
-	claims["iat"] = time.Now().Add(-time.Hour).Unix()  // Issued in past
-	claims["exp"] = time.Now().Add(2*time.Hour).Unix() // Expires in future
+	claims["iat"] = time.Now().Add(-time.Hour).Unix()    // Issued in past
+	claims["exp"] = time.Now().Add(2 * time.Hour).Unix() // Expires in future
 
 	modifiedPayload, _ := json.Marshal(claims)
 	parts[1] = base64.RawURLEncoding.EncodeToString(modifiedPayload)

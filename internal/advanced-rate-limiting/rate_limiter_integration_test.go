@@ -1,4 +1,5 @@
 // Copyright 2025 James Ross
+//go:build integration
 // +build integration
 
 package ratelimiting
@@ -11,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -88,8 +89,8 @@ func TestIntegrationMultiTenantIsolation(t *testing.T) {
 			allowed := counter.Load()
 			t.Logf("Tenant %s: %d requests allowed", tenantID, allowed)
 			// Should get at least burst size, but not much more due to refill
-			assert.GreaterOrEqual(t, allowed, int32(90))  // At least 90% of burst
-			assert.LessOrEqual(t, allowed, int32(150))    // Not more than 150% due to refill
+			assert.GreaterOrEqual(t, allowed, int32(90)) // At least 90% of burst
+			assert.LessOrEqual(t, allowed, int32(150))   // Not more than 150% due to refill
 		}
 	})
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -214,22 +214,22 @@ func TestLogTailer_SearchLogs(t *testing.T) {
 	// Write test logs
 	entries := []*LogEntry{
 		{
-			Level:    "info",
-			Message:  "Info message",
-			Source:   "test",
-			TraceID:  "trace-123",
+			Level:   "info",
+			Message: "Info message",
+			Source:  "test",
+			TraceID: "trace-123",
 		},
 		{
-			Level:    "error",
-			Message:  "Error message",
-			Source:   "test",
-			TraceID:  "trace-456",
+			Level:   "error",
+			Message: "Error message",
+			Source:  "test",
+			TraceID: "trace-456",
 		},
 		{
-			Level:    "debug",
-			Message:  "Debug message",
-			Source:   "other",
-			TraceID:  "trace-123",
+			Level:   "debug",
+			Message: "Debug message",
+			Source:  "other",
+			TraceID: "trace-123",
 		},
 	}
 
@@ -596,10 +596,10 @@ func BenchmarkLogTailer_WriteLog(b *testing.B) {
 	defer lt.Shutdown()
 
 	entry := &LogEntry{
-		Level:     "info",
-		Message:   "Benchmark log message",
-		Source:    "bench",
-		TraceID:   "bench-trace",
+		Level:   "info",
+		Message: "Benchmark log message",
+		Source:  "bench",
+		TraceID: "bench-trace",
 	}
 
 	b.ResetTimer()

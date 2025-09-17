@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // retentionManager implements the RetentionManager interface
 type retentionManager struct {
-	redis    *redis.Client
-	config   *RetentionConfig
-	logger   *zap.Logger
+	redis     *redis.Client
+	config    *RetentionConfig
+	logger    *zap.Logger
 	exporters map[ExportType]Exporter
 }
 
@@ -549,11 +549,11 @@ func (rm *retentionManager) GetCleanupStats(ctx context.Context) (map[string]int
 	}
 
 	result := map[string]interface{}{
-		"last_cleanup_at":    time.Time{},
-		"records_cleaned":    int64(0),
-		"objects_cleaned":    int64(0),
-		"gdpr_requests":      int64(0),
-		"policy":             rm.config,
+		"last_cleanup_at": time.Time{},
+		"records_cleaned": int64(0),
+		"objects_cleaned": int64(0),
+		"gdpr_requests":   int64(0),
+		"policy":          rm.config,
 	}
 
 	// Parse stats if they exist

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisMetricsCollector implements the MetricsCollector interface using Redis
@@ -105,20 +105,20 @@ func (rmc *RedisMetricsCollector) GetHistoricalMetrics(ctx context.Context, queu
 func (rmc *RedisMetricsCollector) StoreJobMetrics(ctx context.Context, job *Job, metrics *JobExecutionMetrics) error {
 	// Create a job metrics entry
 	jobMetric := &JobMetric{
-		JobID:           job.ID,
-		Queue:           job.Queue,
-		Type:            job.Type,
-		Version:         job.Version,
-		Lane:            job.Lane,
-		TenantID:        job.TenantID,
-		WorkerID:        job.WorkerID,
-		Success:         metrics.Success,
-		ProcessingTime:  metrics.ProcessingTime,
-		MemoryUsage:     metrics.MemoryUsage,
-		PayloadSize:     int64(len(fmt.Sprintf("%v", job.Payload))),
-		StartTime:       metrics.StartTime,
-		EndTime:         metrics.EndTime,
-		ErrorMessage:    metrics.ErrorMessage,
+		JobID:          job.ID,
+		Queue:          job.Queue,
+		Type:           job.Type,
+		Version:        job.Version,
+		Lane:           job.Lane,
+		TenantID:       job.TenantID,
+		WorkerID:       job.WorkerID,
+		Success:        metrics.Success,
+		ProcessingTime: metrics.ProcessingTime,
+		MemoryUsage:    metrics.MemoryUsage,
+		PayloadSize:    int64(len(fmt.Sprintf("%v", job.Payload))),
+		StartTime:      metrics.StartTime,
+		EndTime:        metrics.EndTime,
+		ErrorMessage:   metrics.ErrorMessage,
 	}
 
 	// Store in Redis sorted set for time-based queries
@@ -130,7 +130,7 @@ func (rmc *RedisMetricsCollector) StoreJobMetrics(ctx context.Context, job *Job,
 		return fmt.Errorf("failed to marshal job metric: %w", err)
 	}
 
-	if err := rmc.redis.ZAdd(ctx, key, &redis.Z{
+	if err := rmc.redis.ZAdd(ctx, key, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err(); err != nil {
@@ -465,11 +465,11 @@ type PerformanceComparison struct {
 	Canary        *MetricsSnapshot `json:"canary"`
 
 	// Calculated deltas
-	ErrorRateDelta    float64 `json:"error_rate_delta"`    // Percentage points
-	LatencyDelta      float64 `json:"latency_delta"`       // Percentage change
-	ThroughputDelta   float64 `json:"throughput_delta"`    // Percentage change
-	MemoryDelta       float64 `json:"memory_delta"`        // Percentage change
-	SuccessRateDelta  float64 `json:"success_rate_delta"`  // Percentage points
+	ErrorRateDelta   float64 `json:"error_rate_delta"`   // Percentage points
+	LatencyDelta     float64 `json:"latency_delta"`      // Percentage change
+	ThroughputDelta  float64 `json:"throughput_delta"`   // Percentage change
+	MemoryDelta      float64 `json:"memory_delta"`       // Percentage change
+	SuccessRateDelta float64 `json:"success_rate_delta"` // Percentage points
 }
 
 func (pc *PerformanceComparison) calculateDeltas() {

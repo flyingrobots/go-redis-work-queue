@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisRouter implements the Router interface using Redis for job routing
 type RedisRouter struct {
-	redis    *redis.Client
-	logger   *slog.Logger
+	redis     *redis.Client
+	logger    *slog.Logger
 	splitters map[string]*QueueSplitter
-	mu       sync.RWMutex
+	mu        sync.RWMutex
 }
 
 // NewRedisRouter creates a new Redis-based router
@@ -276,8 +276,8 @@ type ConsistentHashRouter struct {
 
 // HashRing implements a simple consistent hash ring
 type HashRing struct {
-	nodes   []HashNode
-	mu      sync.RWMutex
+	nodes []HashNode
+	mu    sync.RWMutex
 }
 
 type HashNode struct {
@@ -359,10 +359,10 @@ func (hr *HashRing) hash(key string) uint32 {
 
 // StreamGroupRouter implements routing using Redis Streams consumer groups
 type StreamGroupRouter struct {
-	redis  *redis.Client
-	logger *slog.Logger
+	redis   *redis.Client
+	logger  *slog.Logger
 	configs map[string]*StreamCanaryConfig
-	mu     sync.RWMutex
+	mu      sync.RWMutex
 }
 
 // NewStreamGroupRouter creates a new stream group router

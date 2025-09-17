@@ -10,7 +10,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -526,13 +526,13 @@ func (m *manager) getRedisStats(ctx context.Context, window time.Duration) (*Arc
 	}
 
 	return &ArchiveStats{
-		TotalJobs:       info.Length,
-		JobsByOutcome:   make(map[JobOutcome]int64),
-		JobsByQueue:     make(map[string]int64),
-		OldestJob:       time.Unix(0, info.FirstEntry.ID.Time*int64(time.Millisecond)),
-		NewestJob:       time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond)),
-		LastExportAt:    time.Now(),
-		ExportLag:       time.Since(time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond))),
+		TotalJobs:     info.Length,
+		JobsByOutcome: make(map[JobOutcome]int64),
+		JobsByQueue:   make(map[string]int64),
+		OldestJob:     time.Unix(0, info.FirstEntry.ID.Time*int64(time.Millisecond)),
+		NewestJob:     time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond)),
+		LastExportAt:  time.Now(),
+		ExportLag:     time.Since(time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond))),
 	}, nil
 }
 

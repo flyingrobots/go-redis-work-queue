@@ -7,28 +7,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // manager implements the DeduplicationManager interface
 type manager struct {
-	config           *Config
-	logger           *zap.Logger
-	redis            redis.Cmdable
-	chunkStore       ChunkStore
-	refCounter       ReferenceCounter
-	payloadStore     *PayloadMapStore
-	chunker          Chunker
-	compressor       Compressor
+	config             *Config
+	logger             *zap.Logger
+	redis              redis.Cmdable
+	chunkStore         ChunkStore
+	refCounter         ReferenceCounter
+	payloadStore       *PayloadMapStore
+	chunker            Chunker
+	compressor         Compressor
 	similarityDetector SimilarityDetector
-	dictBuilder      *DictionaryBuilder
-	stats            *DeduplicationStats
-	statsMu          sync.RWMutex
-	gcTicker         *time.Ticker
-	statsTicker      *time.Ticker
-	stopCh           chan struct{}
-	wg               sync.WaitGroup
+	dictBuilder        *DictionaryBuilder
+	stats              *DeduplicationStats
+	statsMu            sync.RWMutex
+	gcTicker           *time.Ticker
+	statsTicker        *time.Ticker
+	stopCh             chan struct{}
+	wg                 sync.WaitGroup
 }
 
 // NewManager creates a new deduplication manager

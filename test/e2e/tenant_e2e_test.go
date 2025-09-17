@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,13 +95,13 @@ func TestE2ESaaSPlatformScenario(t *testing.T) {
 		for _, customer := range customers {
 			// Create tenant
 			tenantConfig := map[string]interface{}{
-				"id":           customer.tenantID,
-				"name":         customer.companyName,
-				"tier":         customer.tier,
-				"status":       "active",
-				"created_at":   time.Now().Unix(),
-				"quotas":       customer.quotas,
-				"encryption":   customer.tier == "enterprise", // Only enterprise gets encryption
+				"id":            customer.tenantID,
+				"name":          customer.companyName,
+				"tier":          customer.tier,
+				"status":        "active",
+				"created_at":    time.Now().Unix(),
+				"quotas":        customer.quotas,
+				"encryption":    customer.tier == "enterprise", // Only enterprise gets encryption
 				"audit_enabled": true,
 			}
 
@@ -304,9 +304,9 @@ func TestE2ESecurityScenarios(t *testing.T) {
 
 			// Enable encryption for sensitive tenants
 			encConfig := map[string]interface{}{
-				"enabled":    true,
-				"algorithm":  "AES-256-GCM",
-				"kek_id":     fmt.Sprintf("kek-%s", tenantID),
+				"enabled":     true,
+				"algorithm":   "AES-256-GCM",
+				"kek_id":      fmt.Sprintf("kek-%s", tenantID),
 				"rotate_days": 30,
 			}
 
@@ -590,9 +590,9 @@ func TestE2EDisasterRecovery(t *testing.T) {
 
 		// Create production tenant with data
 		tenantData := map[string]interface{}{
-			"id":       sourceTenant,
-			"name":     "Production Company",
-			"status":   "active",
+			"id":     sourceTenant,
+			"name":   "Production Company",
+			"status": "active",
 			"settings": map[string]interface{}{
 				"critical_setting": "important_value",
 				"feature_flags":    []string{"feature1", "feature2"},
@@ -717,11 +717,11 @@ func TestE2EDisasterRecovery(t *testing.T) {
 
 		// Create new tenant
 		newData := map[string]interface{}{
-			"id":           newTenant,
-			"name":         "Affected Company (Migrated)",
-			"status":       "active",
+			"id":            newTenant,
+			"name":          "Affected Company (Migrated)",
+			"status":        "active",
 			"migrated_from": affectedTenant,
-			"migrated_at":  time.Now().Unix(),
+			"migrated_at":   time.Now().Unix(),
 		}
 
 		newConfigKey := fmt.Sprintf("tenant:%s:config", newTenant)

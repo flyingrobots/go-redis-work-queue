@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -80,24 +80,24 @@ type TenantConfig struct {
 
 // ConsumeResult contains the result of a rate limit check
 type ConsumeResult struct {
-	Allowed       bool
-	Tokens        int64         // Tokens consumed
-	Remaining     int64         // Tokens remaining
-	RetryAfter    time.Duration // Wait time if denied
-	ResetAt       time.Time     // When bucket refills
-	DryRunWouldAllow bool       // Result if not in dry-run mode
+	Allowed          bool
+	Tokens           int64         // Tokens consumed
+	Remaining        int64         // Tokens remaining
+	RetryAfter       time.Duration // Wait time if denied
+	ResetAt          time.Time     // When bucket refills
+	DryRunWouldAllow bool          // Result if not in dry-run mode
 }
 
 // Status represents current rate limiter status
 type Status struct {
-	Scope       string
-	Available   int64
-	Capacity    int64
-	RefillRate  int64
-	LastRefill  time.Time
-	NextRefill  time.Time
-	Priority    string
-	Weight      float64
+	Scope      string
+	Available  int64
+	Capacity   int64
+	RefillRate int64
+	LastRefill time.Time
+	NextRefill time.Time
+	Priority   string
+	Weight     float64
 }
 
 // NewRateLimiter creates a new rate limiter instance

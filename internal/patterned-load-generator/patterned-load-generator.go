@@ -12,36 +12,36 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // LoadGenerator generates load with various patterns
 type LoadGenerator struct {
-	config        *GeneratorConfig
-	redis         *redis.Client
-	logger        *zap.Logger
-	jobGenerator  JobGenerator
+	config       *GeneratorConfig
+	redis        *redis.Client
+	logger       *zap.Logger
+	jobGenerator JobGenerator
 
 	// State
-	status        *GeneratorStatus
+	status         *GeneratorStatus
 	currentProfile *LoadProfile
-	metrics       []MetricsSnapshot
-	chartData     *ChartData
+	metrics        []MetricsSnapshot
+	chartData      *ChartData
 
 	// Control
-	ctx           context.Context
-	cancel        context.CancelFunc
-	pauseCh       chan bool
-	controlCh     chan ControlMessage
-	eventCh       chan GeneratorEvent
+	ctx       context.Context
+	cancel    context.CancelFunc
+	pauseCh   chan bool
+	controlCh chan ControlMessage
+	eventCh   chan GeneratorEvent
 
 	// Synchronization
-	mu            sync.RWMutex
-	wg            sync.WaitGroup
-	running       atomic.Bool
-	paused        atomic.Bool
+	mu      sync.RWMutex
+	wg      sync.WaitGroup
+	running atomic.Bool
+	paused  atomic.Bool
 
 	// Rate limiting
 	rateLimiter   *RateLimiter

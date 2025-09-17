@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -39,14 +39,14 @@ func (r *RedisGraphStore) AddRelationship(ctx context.Context, rel JobRelationsh
 	// Store in parent->children index
 	childrenKey := r.getChildrenKey(rel.ParentID)
 	timestamp := float64(rel.Timestamp.Unix())
-	pipe.ZAdd(ctx, childrenKey, &redis.Z{
+	pipe.ZAdd(ctx, childrenKey, redis.Z{
 		Score:  timestamp,
 		Member: rel.ChildID,
 	})
 
 	// Store in child->parents index
 	parentsKey := r.getParentsKey(rel.ChildID)
-	pipe.ZAdd(ctx, parentsKey, &redis.Z{
+	pipe.ZAdd(ctx, parentsKey, redis.Z{
 		Score:  timestamp,
 		Member: rel.ParentID,
 	})

@@ -8,31 +8,31 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisStreamsConfig configures the Redis Streams backend
 type RedisStreamsConfig struct {
-	URL              string        `json:"url" yaml:"url"`
-	Database         int           `json:"database" yaml:"database"`
-	Password         string        `json:"password" yaml:"password"`
-	StreamName       string        `json:"stream_name" yaml:"stream_name"`
-	ConsumerGroup    string        `json:"consumer_group" yaml:"consumer_group"`
-	ConsumerName     string        `json:"consumer_name" yaml:"consumer_name"`
-	MaxLength        int64         `json:"max_length" yaml:"max_length"`
-	BlockTimeout     time.Duration `json:"block_timeout" yaml:"block_timeout"`
-	ClaimMinIdle     time.Duration `json:"claim_min_idle" yaml:"claim_min_idle"`
-	ClaimCount       int64         `json:"claim_count" yaml:"claim_count"`
-	MaxConnections   int           `json:"max_connections" yaml:"max_connections"`
-	ConnTimeout      time.Duration `json:"conn_timeout" yaml:"conn_timeout"`
-	ReadTimeout      time.Duration `json:"read_timeout" yaml:"read_timeout"`
-	WriteTimeout     time.Duration `json:"write_timeout" yaml:"write_timeout"`
-	PoolTimeout      time.Duration `json:"pool_timeout" yaml:"pool_timeout"`
-	IdleTimeout      time.Duration `json:"idle_timeout" yaml:"idle_timeout"`
-	MaxRetries       int           `json:"max_retries" yaml:"max_retries"`
-	ClusterMode      bool          `json:"cluster_mode" yaml:"cluster_mode"`
-	ClusterAddrs     []string      `json:"cluster_addrs" yaml:"cluster_addrs"`
-	TLS              bool          `json:"tls" yaml:"tls"`
+	URL            string        `json:"url" yaml:"url"`
+	Database       int           `json:"database" yaml:"database"`
+	Password       string        `json:"password" yaml:"password"`
+	StreamName     string        `json:"stream_name" yaml:"stream_name"`
+	ConsumerGroup  string        `json:"consumer_group" yaml:"consumer_group"`
+	ConsumerName   string        `json:"consumer_name" yaml:"consumer_name"`
+	MaxLength      int64         `json:"max_length" yaml:"max_length"`
+	BlockTimeout   time.Duration `json:"block_timeout" yaml:"block_timeout"`
+	ClaimMinIdle   time.Duration `json:"claim_min_idle" yaml:"claim_min_idle"`
+	ClaimCount     int64         `json:"claim_count" yaml:"claim_count"`
+	MaxConnections int           `json:"max_connections" yaml:"max_connections"`
+	ConnTimeout    time.Duration `json:"conn_timeout" yaml:"conn_timeout"`
+	ReadTimeout    time.Duration `json:"read_timeout" yaml:"read_timeout"`
+	WriteTimeout   time.Duration `json:"write_timeout" yaml:"write_timeout"`
+	PoolTimeout    time.Duration `json:"pool_timeout" yaml:"pool_timeout"`
+	IdleTimeout    time.Duration `json:"idle_timeout" yaml:"idle_timeout"`
+	MaxRetries     int           `json:"max_retries" yaml:"max_retries"`
+	ClusterMode    bool          `json:"cluster_mode" yaml:"cluster_mode"`
+	ClusterAddrs   []string      `json:"cluster_addrs" yaml:"cluster_addrs"`
+	TLS            bool          `json:"tls" yaml:"tls"`
 }
 
 // RedisStreamsBackend implements QueueBackend using Redis Streams
@@ -501,16 +501,16 @@ func (r *RedisStreamsBackend) Iter(ctx context.Context, opts IterOptions) (Itera
 // Capabilities returns the capabilities of Redis Streams backend
 func (r *RedisStreamsBackend) Capabilities() BackendCapabilities {
 	return BackendCapabilities{
-		AtomicAck:          true,  // XACK guarantees
-		ConsumerGroups:     true,  // Native XGROUP support
-		Replay:             true,  // Historical XREAD
-		IdempotentEnqueue:  false, // Application level
-		Transactions:       true,
-		Persistence:        true,
-		Clustering:         r.config.ClusterMode,
-		TimeToLive:         false,
-		Prioritization:     false,
-		BatchOperations:    true,
+		AtomicAck:         true,  // XACK guarantees
+		ConsumerGroups:    true,  // Native XGROUP support
+		Replay:            true,  // Historical XREAD
+		IdempotentEnqueue: false, // Application level
+		Transactions:      true,
+		Persistence:       true,
+		Clustering:        r.config.ClusterMode,
+		TimeToLive:        false,
+		Prioritization:    false,
+		BatchOperations:   true,
 	}
 }
 

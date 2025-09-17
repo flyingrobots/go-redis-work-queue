@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type WorkerControllerImpl struct {
@@ -158,9 +158,9 @@ func (c *WorkerControllerImpl) processAction(request WorkerActionRequest, respon
 		Success:   len(response.Failed) == 0,
 		Duration:  response.CompletedAt.Sub(response.StartedAt),
 		Metadata: map[string]interface{}{
-			"request_id":     response.RequestID,
-			"successful":     len(response.Successful),
-			"failed":         len(response.Failed),
+			"request_id":      response.RequestID,
+			"successful":      len(response.Successful),
+			"failed":          len(response.Failed),
 			"total_requested": response.TotalRequested,
 		},
 	}

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/PaesslerAG/jsonpath"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -254,12 +254,12 @@ func (ae *ActionExecutor) executeRequeue(ctx context.Context, job *DLQJob, param
 
 	// Prepare job data for requeue
 	jobData := map[string]interface{}{
-		"id":          job.JobID,
-		"type":        job.JobType,
-		"payload":     string(job.Payload),
-		"priority":    priority,
-		"retry_count": job.RetryCount,
-		"queue":       targetQueue,
+		"id":           job.JobID,
+		"type":         job.JobType,
+		"payload":      string(job.Payload),
+		"priority":     priority,
+		"retry_count":  job.RetryCount,
+		"queue":        targetQueue,
 		"scheduled_at": time.Now().Add(delay).Unix(),
 	}
 

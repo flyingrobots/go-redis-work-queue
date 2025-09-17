@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,8 +32,8 @@ func TestTenantManager_CreateTenant(t *testing.T) {
 	tm := NewTenantManager(redisClient)
 
 	config := &TenantConfig{
-		ID:   "test-tenant",
-		Name: "Test Tenant",
+		ID:     "test-tenant",
+		Name:   "Test Tenant",
 		Quotas: DefaultQuotas(),
 	}
 
@@ -60,8 +60,8 @@ func TestTenantManager_GetTenant(t *testing.T) {
 	tm := NewTenantManager(redisClient)
 
 	config := &TenantConfig{
-		ID:   "test-tenant",
-		Name: "Test Tenant",
+		ID:     "test-tenant",
+		Name:   "Test Tenant",
 		Quotas: DefaultQuotas(),
 	}
 
@@ -88,8 +88,8 @@ func TestTenantManager_UpdateTenant(t *testing.T) {
 	tm := NewTenantManager(redisClient)
 
 	config := &TenantConfig{
-		ID:   "test-tenant",
-		Name: "Test Tenant",
+		ID:     "test-tenant",
+		Name:   "Test Tenant",
 		Quotas: DefaultQuotas(),
 	}
 
@@ -122,8 +122,8 @@ func TestTenantManager_DeleteTenant(t *testing.T) {
 	tm := NewTenantManager(redisClient)
 
 	config := &TenantConfig{
-		ID:   "test-tenant",
-		Name: "Test Tenant",
+		ID:     "test-tenant",
+		Name:   "Test Tenant",
 		Quotas: DefaultQuotas(),
 	}
 
@@ -233,8 +233,8 @@ func TestTenantManager_QuotaUsage(t *testing.T) {
 	tm := NewTenantManager(redisClient)
 
 	config := &TenantConfig{
-		ID:   "test-tenant",
-		Name: "Test Tenant",
+		ID:     "test-tenant",
+		Name:   "Test Tenant",
 		Quotas: DefaultQuotas(),
 	}
 

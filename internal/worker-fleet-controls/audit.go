@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisAuditLogger struct {

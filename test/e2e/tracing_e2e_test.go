@@ -20,7 +20,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/producer"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/flyingrobots/go-redis-work-queue/internal/worker"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // E2E test that validates complete distributed tracing flow
@@ -305,7 +305,10 @@ func validateTraceContinity(t *testing.T, enqueuedTraces, processingTraces []Tra
 	}
 }
 
-func validateSpanStructure(t *testing.T, spans []map[string]interface{}, testJobs []struct{id, priority string; fileSize int64}) {
+func validateSpanStructure(t *testing.T, spans []map[string]interface{}, testJobs []struct {
+	id, priority string
+	fileSize     int64
+}) {
 	// Basic validation that spans contain expected structure
 	totalSpans := 0
 	for _, spanBatch := range spans {

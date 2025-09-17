@@ -11,33 +11,33 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // EventCapture handles recording job execution events
 type EventCapture struct {
-	config     *CaptureConfig
-	redis      *redis.Client
-	logger     *zap.Logger
+	config *CaptureConfig
+	redis  *redis.Client
+	logger *zap.Logger
 
 	// In-memory buffers for active recordings
 	recordings map[string]*activeRecording
 	mu         sync.RWMutex
 
 	// Background worker for async operations
-	eventChan  chan Event
-	snapChan   chan StateSnapshot
-	ctx        context.Context
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
+	eventChan chan Event
+	snapChan  chan StateSnapshot
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
 }
 
 // activeRecording represents an in-progress recording
 type activeRecording struct {
-	record      *ExecutionRecord
+	record       *ExecutionRecord
 	lastSnapshot time.Time
-	mu          sync.Mutex
+	mu           sync.Mutex
 }
 
 // NewEventCapture creates a new event capture instance
@@ -416,9 +416,9 @@ func (ec *EventCapture) createStateSnapshot(jobID string, jobState *JobState, pe
 		Timestamp: time.Now(),
 		JobState:  jobState,
 		QueueState: &QueueState{
-			Name:         "default", // Would determine from job
-			Length:       0,         // Would query Redis
-			LastUpdated:  time.Now(),
+			Name:        "default", // Would determine from job
+			Length:      0,         // Would query Redis
+			LastUpdated: time.Now(),
 		},
 		SystemMetrics: perfSnapshot,
 	}

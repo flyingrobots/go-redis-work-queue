@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // WorkerRegistry manages worker registration and health tracking
@@ -382,12 +382,12 @@ func (wr *WorkerRegistry) copyWorkerInfo(worker *WorkerInfo) *WorkerInfo {
 
 // WorkerStatistics represents overall worker statistics
 type WorkerStatistics struct {
-	TotalWorkers     int                    `json:"total_workers"`
-	HealthyWorkers   int                    `json:"healthy_workers"`
-	UnhealthyWorkers int                    `json:"unhealthy_workers"`
-	ByStatus         map[WorkerStatus]int   `json:"by_status"`
-	ByLane           map[string]int         `json:"by_lane"`
-	ByVersion        map[string]int         `json:"by_version"`
+	TotalWorkers     int                  `json:"total_workers"`
+	HealthyWorkers   int                  `json:"healthy_workers"`
+	UnhealthyWorkers int                  `json:"unhealthy_workers"`
+	ByStatus         map[WorkerStatus]int `json:"by_status"`
+	ByLane           map[string]int       `json:"by_lane"`
+	ByVersion        map[string]int       `json:"by_version"`
 }
 
 // WorkerHealthChecker provides advanced health checking capabilities
@@ -442,10 +442,10 @@ func (whc *WorkerHealthChecker) CheckLaneHealth(ctx context.Context, lane string
 	workers := whc.registry.GetWorkersByLane(lane)
 
 	report := &LaneHealthReport{
-		Lane:           lane,
-		Timestamp:      time.Now(),
-		TotalWorkers:   len(workers),
-		WorkerReports:  make([]*WorkerHealthReport, 0),
+		Lane:          lane,
+		Timestamp:     time.Now(),
+		TotalWorkers:  len(workers),
+		WorkerReports: make([]*WorkerHealthReport, 0),
 	}
 
 	for _, worker := range workers {
@@ -632,25 +632,25 @@ func (whc *WorkerHealthChecker) determineOverallHealth(checks map[string]HealthC
 // Health report types
 
 type WorkerHealthReport struct {
-	WorkerID      string                        `json:"worker_id"`
-	Timestamp     time.Time                     `json:"timestamp"`
-	OverallHealth string                        `json:"overall_health"`
-	Checks        map[string]HealthCheckResult  `json:"checks"`
+	WorkerID      string                       `json:"worker_id"`
+	Timestamp     time.Time                    `json:"timestamp"`
+	OverallHealth string                       `json:"overall_health"`
+	Checks        map[string]HealthCheckResult `json:"checks"`
 }
 
 type LaneHealthReport struct {
-	Lane            string                `json:"lane"`
-	Timestamp       time.Time             `json:"timestamp"`
-	OverallHealth   string                `json:"overall_health"`
-	TotalWorkers    int                   `json:"total_workers"`
-	HealthyWorkers  int                   `json:"healthy_workers"`
-	DegradedWorkers int                   `json:"degraded_workers"`
-	UnhealthyWorkers int                  `json:"unhealthy_workers"`
-	WorkerReports   []*WorkerHealthReport `json:"worker_reports"`
+	Lane             string                `json:"lane"`
+	Timestamp        time.Time             `json:"timestamp"`
+	OverallHealth    string                `json:"overall_health"`
+	TotalWorkers     int                   `json:"total_workers"`
+	HealthyWorkers   int                   `json:"healthy_workers"`
+	DegradedWorkers  int                   `json:"degraded_workers"`
+	UnhealthyWorkers int                   `json:"unhealthy_workers"`
+	WorkerReports    []*WorkerHealthReport `json:"worker_reports"`
 }
 
 type HealthCheckResult struct {
-	Status  string `json:"status"`  // "healthy", "degraded", "unhealthy", "unknown"
+	Status  string `json:"status"` // "healthy", "degraded", "unhealthy", "unknown"
 	Message string `json:"message"`
 	Score   int    `json:"score"` // 0-100
 }

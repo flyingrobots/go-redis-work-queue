@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -24,23 +24,23 @@ type MockTenantManager struct {
 }
 
 type Tenant struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Status      string                 `json:"status"`
-	Config      TenantConfig           `json:"config"`
-	Quotas      TenantQuotas           `json:"quotas"`
-	Encryption  EncryptionConfig       `json:"encryption"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Status     string                 `json:"status"`
+	Config     TenantConfig           `json:"config"`
+	Quotas     TenantQuotas           `json:"quotas"`
+	Encryption EncryptionConfig       `json:"encryption"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
 type TenantConfig struct {
-	IsolationLevel   string `json:"isolation_level"`
-	EnableAudit      bool   `json:"enable_audit"`
-	EnableMetrics    bool   `json:"enable_metrics"`
-	DefaultQueueTTL  int    `json:"default_queue_ttl"`
-	MaxJobRetries    int    `json:"max_job_retries"`
+	IsolationLevel  string `json:"isolation_level"`
+	EnableAudit     bool   `json:"enable_audit"`
+	EnableMetrics   bool   `json:"enable_metrics"`
+	DefaultQueueTTL int    `json:"default_queue_ttl"`
+	MaxJobRetries   int    `json:"max_job_retries"`
 }
 
 type TenantQuotas struct {
@@ -182,9 +182,9 @@ func TestCreateTenant(t *testing.T) {
 				EnableMetrics:  true,
 			},
 			Quotas: TenantQuotas{
-				MaxJobsPerHour:  10000,
-				MaxJobsPerDay:   200000,
-				MaxBacklogSize:  50000,
+				MaxJobsPerHour: 10000,
+				MaxJobsPerDay:  200000,
+				MaxBacklogSize: 50000,
 			},
 		}
 

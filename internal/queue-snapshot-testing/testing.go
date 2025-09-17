@@ -11,16 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // TestHelper provides snapshot testing utilities for Go tests
 type TestHelper struct {
-	manager      *SnapshotManager
-	updateMode   bool
-	snapshotDir  string
-	testName     string
+	manager     *SnapshotManager
+	updateMode  bool
+	snapshotDir string
+	testName    string
 }
 
 // NewTestHelper creates a new test helper
@@ -354,9 +354,9 @@ func (f *Fixtures) loadComplexScenario(ctx context.Context) error {
 		// Add queue config
 		configKey := fmt.Sprintf("queue:config:%s", queue)
 		redis.HSet(ctx, configKey, map[string]interface{}{
-			"max_retries":    "3",
-			"timeout":        "300",
-			"rate_limit":     "100",
+			"max_retries": "3",
+			"timeout":     "300",
+			"rate_limit":  "100",
 		})
 	}
 
@@ -397,13 +397,13 @@ func (f *Fixtures) loadErrorScenario(ctx context.Context) error {
 		}
 
 		job := JobState{
-			ID:        fmt.Sprintf("error-job-%d", i),
-			QueueName: "error-test",
-			Status:    status,
-			Attempts:  3,
+			ID:         fmt.Sprintf("error-job-%d", i),
+			QueueName:  "error-test",
+			Status:     status,
+			Attempts:   3,
 			MaxRetries: 3,
-			Error:     "simulated error",
-			CreatedAt: time.Now(),
+			Error:      "simulated error",
+			CreatedAt:  time.Now(),
 			Payload: map[string]interface{}{
 				"error": true,
 			},

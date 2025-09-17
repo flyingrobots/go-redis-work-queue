@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/go-redis/redis/v8"
 	tchelp "github.com/mistakenelf/teacup/help"
 	"github.com/mistakenelf/teacup/statusbar"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	bubprog "github.com/charmbracelet/bubbles/progress"

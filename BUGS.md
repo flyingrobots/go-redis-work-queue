@@ -25,7 +25,7 @@ go func() {
 // …do work… then cancel() right before LREM/DEL
 
 	2.	Unify Redis client (pick v9, everywhere).
-You’ve got github.com/go-redis/redis/v8 and redis/go-redis/v9. Pick v9, wrap it in your own interface{ Cmdable } for tests, and drop the duplicate dependency tree.
+You’ve got github.com/redis/go-redis/v9 is the only supported client; wrap it in your own interface { Cmdable } for tests to avoid duplicate dependency trees.
 	3.	Lose any KEYS in admin paths.
 I saw Keys( references in admin/handlers. Replace with SCAN (you already do in reaper). No accidental O(N) death spirals.
 

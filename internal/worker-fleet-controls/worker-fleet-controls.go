@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type WorkerFleetManagerImpl struct {
@@ -569,7 +569,7 @@ func (r *RedisWorkerRegistry) generateFleetSummary(workers []Worker) FleetSummar
 		TotalWorkers:       len(workers),
 		StateDistribution:  make(map[WorkerState]int),
 		HealthDistribution: make(map[HealthStatus]int),
-		UpdatedAt:         time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 
 	var totalLoad float64

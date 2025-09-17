@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,8 +33,8 @@ func TestTenantLifecycle_Integration(t *testing.T) {
 
 	// Test 1: Create tenant
 	createReq := map[string]interface{}{
-		"id":   "integration-test",
-		"name": "Integration Test Tenant",
+		"id":            "integration-test",
+		"name":          "Integration Test Tenant",
 		"contact_email": "test@example.com",
 		"metadata": map[string]string{
 			"environment": "test",
@@ -268,8 +268,8 @@ func TestEncryption_Integration(t *testing.T) {
 
 	// Create tenant with encryption enabled
 	config := &TenantConfig{
-		ID:   "encryption-test",
-		Name: "Encryption Test Tenant",
+		ID:     "encryption-test",
+		Name:   "Encryption Test Tenant",
 		Quotas: DefaultQuotas(),
 		Encryption: TenantEncryption{
 			Enabled:     true,

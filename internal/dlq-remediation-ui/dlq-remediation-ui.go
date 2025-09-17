@@ -10,26 +10,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 type DLQManagerImpl struct {
-	redis     *redis.Client
-	storage   DLQStorage
-	analyzer  PatternAnalyzer
-	engine    RemediationEngine
-	logger    *slog.Logger
-	config    Config
+	redis    *redis.Client
+	storage  DLQStorage
+	analyzer PatternAnalyzer
+	engine   RemediationEngine
+	logger   *slog.Logger
+	config   Config
 }
 
 type Config struct {
-	MaxPageSize         int           `json:"max_page_size"`
-	DefaultPageSize     int           `json:"default_page_size"`
-	PeekTimeout         time.Duration `json:"peek_timeout"`
-	BulkOperationLimit  int           `json:"bulk_operation_limit"`
-	PatternCacheSize    int           `json:"pattern_cache_size"`
-	EnableMetrics       bool          `json:"enable_metrics"`
-	MetricsPrefix       string        `json:"metrics_prefix"`
+	MaxPageSize        int           `json:"max_page_size"`
+	DefaultPageSize    int           `json:"default_page_size"`
+	PeekTimeout        time.Duration `json:"peek_timeout"`
+	BulkOperationLimit int           `json:"bulk_operation_limit"`
+	PatternCacheSize   int           `json:"pattern_cache_size"`
+	EnableMetrics      bool          `json:"enable_metrics"`
+	MetricsPrefix      string        `json:"metrics_prefix"`
 }
 
 func NewDLQManager(redisClient *redis.Client, config Config, logger *slog.Logger) *DLQManagerImpl {

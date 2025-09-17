@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,16 +47,16 @@ func createTestLogger() *slog.Logger {
 
 func createTestConfig() Config {
 	return Config{
-		HeartbeatTimeout:      30 * time.Second,
-		DefaultDrainTimeout:   5 * time.Minute,
-		MaxConcurrentActions:  10,
-		RequireConfirmation:   true,
-		SafetyChecksEnabled:   true,
-		MinHealthyWorkers:     1,
-		MaxDrainPercentage:    80.0,
-		AuditLogRetention:     7 * 24 * time.Hour,
-		EnableMetrics:         true,
-		MetricsPrefix:         "worker_fleet",
+		HeartbeatTimeout:     30 * time.Second,
+		DefaultDrainTimeout:  5 * time.Minute,
+		MaxConcurrentActions: 10,
+		RequireConfirmation:  true,
+		SafetyChecksEnabled:  true,
+		MinHealthyWorkers:    1,
+		MaxDrainPercentage:   80.0,
+		AuditLogRetention:    7 * 24 * time.Hour,
+		EnableMetrics:        true,
+		MetricsPrefix:        "worker_fleet",
 	}
 }
 

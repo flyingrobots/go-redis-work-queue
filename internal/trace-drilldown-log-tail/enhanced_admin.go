@@ -9,7 +9,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/distributed-tracing-integration"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -31,11 +31,11 @@ func NewEnhancedAdmin(tracingIntegration *distributed_tracing_integration.Tracin
 
 // EnhancedPeekResult extends PeekResult with trace information
 type EnhancedPeekResult struct {
-	Queue         string                                                    `json:"queue"`
-	Items         []string                                                  `json:"items"`
-	JobsWithTrace []JobWithTraceInfo                                        `json:"jobs_with_trace"`
-	TraceActions  map[string][]distributed_tracing_integration.TraceAction  `json:"trace_actions"`
-	Summary       EnhancedPeekSummary                                       `json:"summary"`
+	Queue         string                                                   `json:"queue"`
+	Items         []string                                                 `json:"items"`
+	JobsWithTrace []JobWithTraceInfo                                       `json:"jobs_with_trace"`
+	TraceActions  map[string][]distributed_tracing_integration.TraceAction `json:"trace_actions"`
+	Summary       EnhancedPeekSummary                                      `json:"summary"`
 }
 
 // EnhancedPeekSummary provides summary information
@@ -47,16 +47,16 @@ type EnhancedPeekSummary struct {
 
 // JobWithTraceInfo represents a job with trace information
 type JobWithTraceInfo struct {
-	JobID         string                                                   `json:"job_id"`
-	FilePath      string                                                   `json:"file_path"`
-	Priority      string                                                   `json:"priority"`
-	Retries       int                                                      `json:"retries"`
-	CreationTime  string                                                   `json:"creation_time"`
-	TraceID       string                                                   `json:"trace_id"`
-	SpanID        string                                                   `json:"span_id"`
-	TraceInfo     *TraceInfo                                               `json:"trace_info,omitempty"`
-	TraceActions  []distributed_tracing_integration.TraceAction           `json:"trace_actions,omitempty"`
-	RawJobData    string                                                   `json:"raw_job_data"`
+	JobID        string                                        `json:"job_id"`
+	FilePath     string                                        `json:"file_path"`
+	Priority     string                                        `json:"priority"`
+	Retries      int                                           `json:"retries"`
+	CreationTime string                                        `json:"creation_time"`
+	TraceID      string                                        `json:"trace_id"`
+	SpanID       string                                        `json:"span_id"`
+	TraceInfo    *TraceInfo                                    `json:"trace_info,omitempty"`
+	TraceActions []distributed_tracing_integration.TraceAction `json:"trace_actions,omitempty"`
+	RawJobData   string                                        `json:"raw_job_data"`
 }
 
 // EnhancedPeek performs a peek operation with trace information
@@ -194,12 +194,12 @@ func (ea *EnhancedAdmin) OpenJobTrace(jobData string) (*TraceActionResult, error
 	}
 
 	return &TraceActionResult{
-		JobID:       jobInfo.JobID,
-		TraceID:     jobInfo.TraceID,
-		Action:      "open",
-		URL:         traceURL,
-		Success:     true,
-		Message:     "Trace URL generated successfully",
+		JobID:        jobInfo.JobID,
+		TraceID:      jobInfo.TraceID,
+		Action:       "open",
+		URL:          traceURL,
+		Success:      true,
+		Message:      "Trace URL generated successfully",
 		Instructions: "Open this URL in your browser to view the trace",
 	}, nil
 }
@@ -293,16 +293,16 @@ type TraceActionResult struct {
 
 // TraceJobSearchResult represents search results for jobs by trace ID
 type TraceJobSearchResult struct {
-	TraceID    string            `json:"trace_id"`
-	TotalFound int               `json:"total_found"`
+	TraceID    string             `json:"trace_id"`
+	TotalFound int                `json:"total_found"`
 	Jobs       []JobWithTraceInfo `json:"jobs"`
 }
 
 // TraceTimeline represents a timeline of events for a trace
 type TraceTimeline struct {
-	TraceID      string                `json:"trace_id"`
-	TotalEvents  int                   `json:"total_events"`
-	Events       []TraceTimelineEvent  `json:"events"`
+	TraceID     string               `json:"trace_id"`
+	TotalEvents int                  `json:"total_events"`
+	Events      []TraceTimelineEvent `json:"events"`
 }
 
 // TraceTimelineEvent represents an event in a trace timeline

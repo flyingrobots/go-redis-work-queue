@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -68,12 +68,12 @@ func NewRemediationPipeline(config *Config, logger *zap.Logger) (*RemediationPip
 	}
 
 	pipeline := &RemediationPipeline{
-		redis:  redisClient,
-		logger: logger,
-		config: config,
-		classifier: NewClassificationEngine(redisClient, &config.Pipeline, logger),
+		redis:          redisClient,
+		logger:         logger,
+		config:         config,
+		classifier:     NewClassificationEngine(redisClient, &config.Pipeline, logger),
 		actionExecutor: NewActionExecutor(redisClient, &config.Pipeline, logger),
-		auditLogger: NewAuditLogger(redisClient, &config.Pipeline, logger),
+		auditLogger:    NewAuditLogger(redisClient, &config.Pipeline, logger),
 		rateLimiter: &RateLimiter{
 			MaxPerMinute: config.Pipeline.GlobalSafetyLimits.MaxPerMinute,
 			MaxTotal:     config.Pipeline.GlobalSafetyLimits.MaxTotalPerRun,
@@ -334,10 +334,10 @@ func (rp *RemediationPipeline) processJob(ctx context.Context, job *DLQJob, dryR
 	// Check if already processed
 	if rp.idempotency.IsProcessed(job.JobID) {
 		return &ProcessingResult{
-			JobID:   job.JobID,
-			Success: true,
+			JobID:    job.JobID,
+			Success:  true,
 			Duration: time.Since(startTime),
-			DryRun:  dryRun,
+			DryRun:   dryRun,
 		}
 	}
 
@@ -345,11 +345,11 @@ func (rp *RemediationPipeline) processJob(ctx context.Context, job *DLQJob, dryR
 	classification, err := rp.classifier.Classify(ctx, job, rp.rules)
 	if err != nil {
 		return &ProcessingResult{
-			JobID:   job.JobID,
-			Success: false,
-			Error:   fmt.Sprintf("Classification failed: %v", err),
+			JobID:    job.JobID,
+			Success:  false,
+			Error:    fmt.Sprintf("Classification failed: %v", err),
 			Duration: time.Since(startTime),
-			DryRun:  dryRun,
+			DryRun:   dryRun,
 		}
 	}
 
@@ -357,32 +357,32 @@ func (rp *RemediationPipeline) processJob(ctx context.Context, job *DLQJob, dryR
 	rule := rp.findRuleByID(classification.RuleID)
 	if rule == nil && classification.RuleID != "" {
 		return &ProcessingResult{
-			JobID:   job.JobID,
-			Success: false,
-			Error:   fmt.Sprintf("Rule %s not found", classification.RuleID),
+			JobID:    job.JobID,
+			Success:  false,
+			Error:    fmt.Sprintf("Rule %s not found", classification.RuleID),
 			Duration: time.Since(startTime),
-			DryRun:  dryRun,
+			DryRun:   dryRun,
 		}
 	}
 
 	// If no rule matches, skip processing
 	if rule == nil {
 		return &ProcessingResult{
-			JobID:   job.JobID,
-			Success: true,
+			JobID:    job.JobID,
+			Success:  true,
 			Duration: time.Since(startTime),
-			DryRun:  dryRun,
+			DryRun:   dryRun,
 		}
 	}
 
 	// Check safety limits for the rule
 	if !rp.canProcessRule(rule) {
 		return &ProcessingResult{
-			JobID:   job.JobID,
-			Success: false,
-			Error:   "Safety limits exceeded for rule",
+			JobID:    job.JobID,
+			Success:  false,
+			Error:    "Safety limits exceeded for rule",
 			Duration: time.Since(startTime),
-			DryRun:  dryRun,
+			DryRun:   dryRun,
 		}
 	}
 
@@ -478,7 +478,7 @@ func (rp *RemediationPipeline) getCircuitBreaker(ruleID string) *CircuitBreaker 
 		ErrorThreshold:  rp.config.Pipeline.GlobalSafetyLimits.ErrorRateThreshold,
 		MinRequests:     5,
 		RecoveryTimeout: 5 * time.Minute,
-		State:          CircuitClosed,
+		State:           CircuitClosed,
 	}
 
 	rp.circuitBreakers[ruleID] = cb
@@ -497,7 +497,7 @@ func (rp *RemediationPipeline) recordRuleFailure(rule *RemediationRule) {
 			rp.rules[i].Statistics.FailedActions++
 			rp.rules[i].Statistics.LastFailureAt = time.Now()
 			rp.rules[i].Statistics.SuccessRate = float64(rp.rules[i].Statistics.SuccessfulActions) /
-				float64(rp.rules[i].Statistics.SuccessfulActions + rp.rules[i].Statistics.FailedActions)
+				float64(rp.rules[i].Statistics.SuccessfulActions+rp.rules[i].Statistics.FailedActions)
 			break
 		}
 	}

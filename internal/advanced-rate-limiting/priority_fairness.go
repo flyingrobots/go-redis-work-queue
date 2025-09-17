@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -59,13 +59,13 @@ func DefaultFairnessConfig() *FairnessConfig {
 
 // FairnessState tracks the state for fair scheduling
 type FairnessState struct {
-	Priority         string
-	AllocatedTokens  int64
-	ConsumedTokens   int64
-	QueuedRequests   int64
-	AverageWaitTime  time.Duration
-	LastScheduled    time.Time
-	StarvationRisk   bool
+	Priority        string
+	AllocatedTokens int64
+	ConsumedTokens  int64
+	QueuedRequests  int64
+	AverageWaitTime time.Duration
+	LastScheduled   time.Time
+	StarvationRisk  bool
 }
 
 // NewPriorityFairness creates a new priority fairness scheduler
@@ -157,25 +157,25 @@ func (pf *PriorityFairness) CheckFairness(ctx context.Context, priority string, 
 	fairShare := pf.calculateFairShare(ctx, weight)
 
 	// Check if within fair allocation
-	withinFairShare := state.ConsumedTokens + requestedTokens <= fairShare
+	withinFairShare := state.ConsumedTokens+requestedTokens <= fairShare
 
 	// Check burst allowance
 	burstLimit := int64(float64(fairShare) * pf.config.BurstMultiplier)
-	withinBurstLimit := state.ConsumedTokens + requestedTokens <= burstLimit
+	withinBurstLimit := state.ConsumedTokens+requestedTokens <= burstLimit
 
 	// Check starvation risk
 	timeSinceScheduled := time.Since(state.LastScheduled)
 	isStarving := timeSinceScheduled > pf.config.MaxWaitTime
 
 	decision := &FairnessDecision{
-		Priority:         priority,
-		Allowed:          withinBurstLimit || isStarving,
-		FairShare:        fairShare,
-		CurrentUsage:     state.ConsumedTokens,
-		BurstLimit:       burstLimit,
+		Priority:          priority,
+		Allowed:           withinBurstLimit || isStarving,
+		FairShare:         fairShare,
+		CurrentUsage:      state.ConsumedTokens,
+		BurstLimit:        burstLimit,
 		IsWithinFairShare: withinFairShare,
-		IsStarving:       isStarving,
-		SuggestedDelay:   pf.calculateDelay(state, fairShare, requestedTokens),
+		IsStarving:        isStarving,
+		SuggestedDelay:    pf.calculateDelay(state, fairShare, requestedTokens),
 	}
 
 	// Update state if allowed
@@ -335,7 +335,7 @@ func (pf *PriorityFairness) calculateFairShare(ctx context.Context, weight float
 }
 
 func (pf *PriorityFairness) calculateDelay(state *FairnessState, fairShare, requested int64) time.Duration {
-	if state.ConsumedTokens + requested <= fairShare {
+	if state.ConsumedTokens+requested <= fairShare {
 		return 0
 	}
 

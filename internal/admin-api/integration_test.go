@@ -1,4 +1,5 @@
 // Copyright 2025 James Ross
+//go:build integration
 // +build integration
 
 package adminapi_test
@@ -16,7 +17,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	adminapi "github.com/flyingrobots/go-redis-work-queue/internal/admin-api"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -548,9 +549,9 @@ func TestIntegrationValidationErrors(t *testing.T) {
 		expectedCode   string
 	}{
 		{
-			name:   "Invalid peek count",
-			method: "GET",
-			path:   "/api/v1/queues/high/peek?count=200",
+			name:           "Invalid peek count",
+			method:         "GET",
+			path:           "/api/v1/queues/high/peek?count=200",
 			expectedStatus: http.StatusOK, // Count is clamped, not an error
 		},
 		{

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -102,11 +102,11 @@ func (s *RedisListsTestSuite) TestCapabilities() {
 // TestBasicOperations tests basic enqueue/dequeue operations
 func (s *RedisListsTestSuite) TestBasicOperations() {
 	job := &Job{
-		ID:      "redis-test-1",
-		Type:    "test-job",
-		Queue:   "test-queue",
-		Payload: "test payload",
-		Priority: 5,
+		ID:        "redis-test-1",
+		Type:      "test-job",
+		Queue:     "test-queue",
+		Payload:   "test payload",
+		Priority:  5,
 		CreatedAt: time.Now(),
 		Metadata: map[string]interface{}{
 			"source": "test",
@@ -182,10 +182,10 @@ func (s *RedisListsTestSuite) TestFIFOOrdering() {
 // TestPeekOperation tests the peek functionality
 func (s *RedisListsTestSuite) TestPeekOperation() {
 	job := &Job{
-		ID:      "peek-test",
-		Type:    "test",
-		Queue:   "peek-queue",
-		Payload: "peek payload",
+		ID:        "peek-test",
+		Type:      "test",
+		Queue:     "peek-queue",
+		Payload:   "peek payload",
 		CreatedAt: time.Now(),
 	}
 
@@ -249,10 +249,10 @@ func (s *RedisListsTestSuite) TestStats() {
 
 	// Perform some operations
 	job := &Job{
-		ID:      "stats-test",
-		Type:    "test",
-		Queue:   "stats-queue",
-		Payload: "stats payload",
+		ID:        "stats-test",
+		Type:      "test",
+		Queue:     "stats-queue",
+		Payload:   "stats payload",
 		CreatedAt: time.Now(),
 	}
 
@@ -301,10 +301,10 @@ func (s *RedisListsTestSuite) TestConcurrentOperations() {
 		go func(goroutineID int) {
 			for j := 0; j < jobsPerGoroutine; j++ {
 				job := &Job{
-					ID:      fmt.Sprintf("concurrent-%d-%d", goroutineID, j),
-					Type:    "concurrent-test",
-					Queue:   "concurrent-queue",
-					Payload: fmt.Sprintf("payload-%d-%d", goroutineID, j),
+					ID:        fmt.Sprintf("concurrent-%d-%d", goroutineID, j),
+					Type:      "concurrent-test",
+					Queue:     "concurrent-queue",
+					Payload:   fmt.Sprintf("payload-%d-%d", goroutineID, j),
 					CreatedAt: time.Now(),
 				}
 
@@ -358,7 +358,7 @@ func (s *RedisListsTestSuite) TestComplexJobSerialization() {
 		"array":   []interface{}{1, "two", 3.0, true, nil},
 		"object": map[string]interface{}{
 			"nested": map[string]interface{}{
-				"deep": "value",
+				"deep":  "value",
 				"count": 100,
 			},
 			"array_in_object": []interface{}{1, 2, 3},
@@ -411,10 +411,10 @@ func (s *RedisListsTestSuite) TestRedisConnectionFailure() {
 	s.redis.Close()
 
 	job := &Job{
-		ID:      "connection-failure-test",
-		Type:    "test",
-		Queue:   "failure-queue",
-		Payload: "test",
+		ID:        "connection-failure-test",
+		Type:      "test",
+		Queue:     "failure-queue",
+		Payload:   "test",
 		CreatedAt: time.Now(),
 	}
 

@@ -17,18 +17,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // SnapshotManager manages queue snapshots
 type SnapshotManager struct {
-	config     *SnapshotConfig
-	storage    Storage
-	redis      *redis.Client
-	logger     *zap.Logger
-	mu         sync.RWMutex
+	config  *SnapshotConfig
+	storage Storage
+	redis   *redis.Client
+	logger  *zap.Logger
+	mu      sync.RWMutex
 }
 
 // Storage interface for snapshot persistence
@@ -44,15 +44,15 @@ type Storage interface {
 func NewSnapshotManager(config *SnapshotConfig, redis *redis.Client, logger *zap.Logger) (*SnapshotManager, error) {
 	if config == nil {
 		config = &SnapshotConfig{
-			StoragePath:      "./snapshots",
-			MaxSnapshots:     100,
-			RetentionDays:    30,
-			CompressLevel:    gzip.BestSpeed,
-			IgnoreTimestamps: true,
-			IgnoreIDs:        true,
+			StoragePath:        "./snapshots",
+			MaxSnapshots:       100,
+			RetentionDays:      30,
+			CompressLevel:      gzip.BestSpeed,
+			IgnoreTimestamps:   true,
+			IgnoreIDs:          true,
 			MaxJobsPerSnapshot: 10000,
-			SampleRate:       1.0,
-			TimeoutSeconds:   30,
+			SampleRate:         1.0,
+			TimeoutSeconds:     30,
 		}
 	}
 

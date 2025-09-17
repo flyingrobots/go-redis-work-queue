@@ -8,7 +8,7 @@ import (
 	"time"
 
 	multicluster "github.com/flyingrobots/go-redis-work-queue/internal/multi-cluster-control"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -224,9 +224,9 @@ func testMultiClusterActions(t *testing.T, manager multicluster.Manager, ctx con
 		Type:    multicluster.ActionTypeBenchmark,
 		Targets: []string{"redis1", "redis2"},
 		Parameters: map[string]interface{}{
-			"iterations":    float64(10),
-			"payload_size":  float64(50),
-			"queue_name":    "benchmark-queue",
+			"iterations":   float64(10),
+			"payload_size": float64(50),
+			"queue_name":   "benchmark-queue",
 		},
 		Status:    multicluster.ActionStatusPending,
 		CreatedAt: time.Now(),

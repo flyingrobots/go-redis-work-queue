@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -245,11 +245,11 @@ func (al *AuditLogger) storeAuditEntry(ctx context.Context, entry *AuditLogEntry
 // buildParameters builds parameters map for audit log
 func (al *AuditLogger) buildParameters(rule *RemediationRule, classification *Classification) map[string]interface{} {
 	params := map[string]interface{}{
-		"rule_priority":         rule.Priority,
+		"rule_priority":             rule.Priority,
 		"classification_confidence": classification.Confidence,
 		"classification_category":   classification.Category,
 		"classification_reason":     classification.Reason,
-		"actions_count":            len(rule.Actions),
+		"actions_count":             len(rule.Actions),
 	}
 
 	if len(rule.Actions) > 0 {
@@ -329,18 +329,18 @@ func (al *AuditLogger) serializeState(state *PipelineState) json.RawMessage {
 
 // AuditFilter defines filters for audit log queries
 type AuditFilter struct {
-	JobID      string     `json:"job_id,omitempty"`
-	RuleID     string     `json:"rule_id,omitempty"`
-	Action     ActionType `json:"action,omitempty"`
-	UserID     string     `json:"user_id,omitempty"`
-	Result     string     `json:"result,omitempty"`
-	DryRun     *bool      `json:"dry_run,omitempty"`
-	StartTime  *time.Time `json:"start_time,omitempty"`
-	EndTime    *time.Time `json:"end_time,omitempty"`
-	Limit      int        `json:"limit,omitempty"`
-	Offset     int        `json:"offset,omitempty"`
-	SortBy     string     `json:"sort_by,omitempty"` // timestamp, duration
-	SortOrder  string     `json:"sort_order,omitempty"` // asc, desc
+	JobID     string     `json:"job_id,omitempty"`
+	RuleID    string     `json:"rule_id,omitempty"`
+	Action    ActionType `json:"action,omitempty"`
+	UserID    string     `json:"user_id,omitempty"`
+	Result    string     `json:"result,omitempty"`
+	DryRun    *bool      `json:"dry_run,omitempty"`
+	StartTime *time.Time `json:"start_time,omitempty"`
+	EndTime   *time.Time `json:"end_time,omitempty"`
+	Limit     int        `json:"limit,omitempty"`
+	Offset    int        `json:"offset,omitempty"`
+	SortBy    string     `json:"sort_by,omitempty"`    // timestamp, duration
+	SortOrder string     `json:"sort_order,omitempty"` // asc, desc
 }
 
 // matchesFilter checks if an audit entry matches the filter

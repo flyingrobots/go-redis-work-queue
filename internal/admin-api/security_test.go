@@ -1,4 +1,5 @@
 // Copyright 2025 James Ross
+//go:build security
 // +build security
 
 package adminapi_test
@@ -19,7 +20,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	adminapi "github.com/flyingrobots/go-redis-work-queue/internal/admin-api"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 

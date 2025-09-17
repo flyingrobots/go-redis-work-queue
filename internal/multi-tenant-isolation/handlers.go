@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 )
 
 // TenantHandler provides HTTP handlers for tenant management
@@ -260,8 +260,8 @@ func (th *TenantHandler) writeJSON(w http.ResponseWriter, status int, data inter
 
 func (th *TenantHandler) writeError(w http.ResponseWriter, status int, message string, err error) {
 	response := map[string]interface{}{
-		"error":   message,
-		"status":  status,
+		"error":     message,
+		"status":    status,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
 

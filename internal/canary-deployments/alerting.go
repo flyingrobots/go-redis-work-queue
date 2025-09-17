@@ -10,19 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // WebhookAlerter implements the Alerter interface using webhooks
 type WebhookAlerter struct {
-	webhookURLs  []string
-	httpClient   *http.Client
-	logger       *slog.Logger
-	redis        *redis.Client
-	cooldownMap  map[string]time.Time
-	mu           sync.RWMutex
-	cooldown     time.Duration
+	webhookURLs []string
+	httpClient  *http.Client
+	logger      *slog.Logger
+	redis       *redis.Client
+	cooldownMap map[string]time.Time
+	mu          sync.RWMutex
+	cooldown    time.Duration
 }
 
 // NewWebhookAlerter creates a new webhook-based alerter
@@ -197,7 +197,7 @@ func (wa *WebhookAlerter) storeAlert(ctx context.Context, alert *Alert) error {
 		return fmt.Errorf("failed to marshal alert: %w", err)
 	}
 
-	if err := wa.redis.ZAdd(ctx, key, &redis.Z{
+	if err := wa.redis.ZAdd(ctx, key, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err(); err != nil {
@@ -206,7 +206,7 @@ func (wa *WebhookAlerter) storeAlert(ctx context.Context, alert *Alert) error {
 
 	// Also store in global alerts index
 	globalKey := "canary:alerts:all"
-	if err := wa.redis.ZAdd(ctx, globalKey, &redis.Z{
+	if err := wa.redis.ZAdd(ctx, globalKey, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err(); err != nil {
@@ -254,7 +254,7 @@ func (wa *WebhookAlerter) updateAlert(ctx context.Context, alert *Alert) error {
 	score := float64(alert.Timestamp.Unix())
 
 	// Update in deployment-specific alerts
-	if err := wa.redis.ZAdd(ctx, deploymentKey, &redis.Z{
+	if err := wa.redis.ZAdd(ctx, deploymentKey, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err(); err != nil {
@@ -262,7 +262,7 @@ func (wa *WebhookAlerter) updateAlert(ctx context.Context, alert *Alert) error {
 	}
 
 	// Update in global alerts
-	if err := wa.redis.ZAdd(ctx, globalKey, &redis.Z{
+	if err := wa.redis.ZAdd(ctx, globalKey, redis.Z{
 		Score:  score,
 		Member: data,
 	}).Err(); err != nil {
@@ -527,12 +527,12 @@ func (pda *PagerDutyAlerter) SendAlert(ctx context.Context, alert *Alert) error 
 
 // PagerDuty event types
 type PagerDutyEvent struct {
-	RoutingKey   string            `json:"routing_key"`
-	EventAction  string            `json:"event_action"`
-	DedupKey     string            `json:"dedup_key"`
-	Payload      PagerDutyPayload  `json:"payload"`
-	Client       string            `json:"client"`
-	ClientURL    string            `json:"client_url"`
+	RoutingKey  string           `json:"routing_key"`
+	EventAction string           `json:"event_action"`
+	DedupKey    string           `json:"dedup_key"`
+	Payload     PagerDutyPayload `json:"payload"`
+	Client      string           `json:"client"`
+	ClientURL   string           `json:"client_url"`
 }
 
 type PagerDutyPayload struct {

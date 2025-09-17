@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -303,11 +303,11 @@ func TestTimeTravelDebuggerAutoStartRecording(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name       string
-		jobID      string
-		jobStatus  string
-		hasRetries bool
-		isFailure  bool
+		name         string
+		jobID        string
+		jobStatus    string
+		hasRetries   bool
+		isFailure    bool
 		shouldRecord bool
 	}{
 		{

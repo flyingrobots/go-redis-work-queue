@@ -314,7 +314,7 @@ import (
     "time"
 
     "github.com/ClickHouse/clickhouse-go/v2"
-    "github.com/go-redis/redis/v8"
+    "github.com/redis/go-redis/v9"
 )
 
 type ArchiveService struct {

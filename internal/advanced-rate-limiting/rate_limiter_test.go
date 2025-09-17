@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -157,7 +157,7 @@ func TestDryRunMode(t *testing.T) {
 		// Consume way more than limit
 		result, err := rl.Consume(ctx, "dry-run-test", 1000, "normal")
 		require.NoError(t, err)
-		assert.True(t, result.Allowed) // Always allowed in dry run
+		assert.True(t, result.Allowed)           // Always allowed in dry run
 		assert.False(t, result.DryRunWouldAllow) // But would be denied normally
 	})
 }

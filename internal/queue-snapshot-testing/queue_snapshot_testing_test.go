@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -30,15 +30,15 @@ func setupTest(t *testing.T) (*SnapshotManager, *redis.Client, func()) {
 	tmpDir := t.TempDir()
 
 	config := &SnapshotConfig{
-		StoragePath:      tmpDir,
-		MaxSnapshots:     10,
-		RetentionDays:    7,
-		CompressLevel:    0,
-		IgnoreTimestamps: true,
-		IgnoreIDs:        false,
+		StoragePath:        tmpDir,
+		MaxSnapshots:       10,
+		RetentionDays:      7,
+		CompressLevel:      0,
+		IgnoreTimestamps:   true,
+		IgnoreIDs:          false,
 		MaxJobsPerSnapshot: 100,
-		SampleRate:       1.0,
-		TimeoutSeconds:   10,
+		SampleRate:         1.0,
+		TimeoutSeconds:     10,
 	}
 
 	logger := zap.NewNop()

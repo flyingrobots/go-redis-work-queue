@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -555,4 +555,3 @@ func storeTestRecording(t *testing.T, rdb *redis.Client, recording *ExecutionRec
 	err = rdb.Set(context.Background(), jobKey, recording.Metadata.RecordID, time.Hour).Err()
 	require.NoError(t, err)
 }
-

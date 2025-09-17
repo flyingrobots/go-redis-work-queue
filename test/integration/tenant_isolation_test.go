@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -190,9 +190,9 @@ func TestQuotaEnforcementIntegration(t *testing.T) {
 
 		// Set initial quotas
 		quotaConfig := map[string]interface{}{
-			"max_jobs_per_hour":   1000,
-			"max_jobs_per_day":    10000,
-			"max_backlog_size":    500,
+			"max_jobs_per_hour":    1000,
+			"max_jobs_per_day":     10000,
+			"max_backlog_size":     500,
 			"soft_limit_threshold": 0.8,
 		}
 
