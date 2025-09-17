@@ -327,8 +327,8 @@ All existing Admin API endpoints are protected with appropriate scopes:
 | `DELETE /api/v1/queues/{name}` | `queues:delete` | specific queue |
 | `POST /api/v1/jobs` | `jobs:enqueue` | target queue |
 | `DELETE /api/v1/jobs/{id}` | `jobs:cancel` | job's queue |
-| `POST /api/v1/dlq/retry` | `dlq:retry` | target queue |
-| `DELETE /api/v1/dlq/purge` | `dlq:purge` | target queue |
+| `POST /api/v1/dlq/requeue` | `dlq:retry` | target queue |
+| `POST /api/v1/dlq/purge` | `dlq:purge` | target queue |
 | `GET /api/v1/audit/events` | `admin:audit` | cluster |
 
 ## Data Models
