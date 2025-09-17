@@ -143,6 +143,17 @@ Performs queueing theory analysis using M/M/c, M/M/1, or M/G/c models.
 ```go
 calc := capacityplanning.NewQueueingCalculator(config)
 
+metrics := capacityplanning.Metrics{
+    Timestamp:        time.Now(),
+    ArrivalRate:      18.5,
+    ServiceTime:      250 * time.Millisecond,
+    CurrentWorkers:   4,
+    Utilization:      0.82,
+    Backlog:          32,
+    QueueName:        "checkout",
+    HistoricalWindow: 15 * time.Minute,
+}
+
 result := calc.Calculate(
     20.0,  // λ = 20 jobs/sec arrival rate
     5.0,   // μ = 5 jobs/sec per worker service rate
@@ -308,7 +319,8 @@ import (
     "fmt"
     "time"
 
-    "github.com/yourorg/go-redis-work-queue/internal/automatic-capacity-planning"
+    capacityplanning "github.com/flyingrobots/go-redis-work-queue/internal/automatic-capacity-planning"
+    // Replace the import above with your module path if you vendor the package elsewhere.
 )
 
 func main() {
