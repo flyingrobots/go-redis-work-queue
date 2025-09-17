@@ -178,8 +178,8 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Docs: Add TUI design README with SVG mockups
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
-- [ ] Observability: Publish Anomaly Radar OpenAPI spec + client CI automation
-- [ ] Observability: Finalize Anomaly Radar auth/error/pagination contract and document endpoints
+- [x] Observability: Publish Anomaly Radar OpenAPI spec + client CI automation
+- [x] Observability: Finalize Anomaly Radar auth/error/pagination contract and document endpoints
 - [ ] Observability: Revisit chunk_008 OpenAPI/auth review items once spec + contract land
 
 ### Finished Log
