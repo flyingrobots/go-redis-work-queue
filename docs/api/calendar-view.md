@@ -243,9 +243,10 @@ Reschedules multiple events in a single operation.
 **Response:**
 ```json
 {
+  "transaction_id": "resched-2023-06-01T14:30:00Z",
   "results": [
     {
-      "success": true,
+      "status": "success",
       "old_time": "2023-06-01T09:00:00Z",
       "new_time": "2023-06-02T10:00:00Z",
       "event_id": "event123",
@@ -253,15 +254,20 @@ Reschedules multiple events in a single operation.
       "timestamp": "2023-06-01T14:30:00Z"
     },
     {
-      "success": false,
+      "status": "error",
       "event_id": "event124",
       "message": "Event not found",
+      "error_code": "not_found",
       "timestamp": "2023-06-01T14:30:00Z"
     }
-  ],
-  "errors": [null, "Event not found"]
+  ]
 }
 ```
+
+- **Payload limits**: Maximum 100 items per request (configurable). Clients must batch larger operations.
+- **Rate limits**: Subject to the admin API write rate limiter; repeated failures should back off exponentially.
+- **Transactional behaviour**: The server performs best-effort updates—successful entries stay committed when peers fail. Failed rows include `error_code` plus guidance for targeted retries.
+- **Auditing**: `transaction_id` ties to audit logs; include it in client telemetry and incident reports.
 
 ### Recurring Rules Management
 
