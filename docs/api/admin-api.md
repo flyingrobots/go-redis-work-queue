@@ -40,8 +40,12 @@ admin_api:
 
   # Confirmations
   require_double_confirm: true
-  confirmation_phrase: "CONFIRM_DELETE"
+  dlq_confirmation_phrase: "CONFIRM_DELETE"
+  purge_all_confirmation_phrase: "CONFIRM_DELETE_ALL"
+#  confirmation_phrase: "CONFIRM_DELETE"        # optional legacy fallback
 ```
+
+When both phrases are provided the DLQ endpoint uses `dlq_confirmation_phrase` while the purge-all endpoint uses `purge_all_confirmation_phrase`. For backward compatibility a single `confirmation_phrase` value may still be supplied; if present it is used as the fallback for DLQ and as the base string (with `_ALL` suffix) for purge-all confirmations.
 
 ## Authentication
 
