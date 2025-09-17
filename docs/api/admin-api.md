@@ -36,7 +36,7 @@ admin_api:
 
   # Security
   cors_enabled: false
-  cors_allow_origins: ["*"]
+  cors_allow_origins: []
 
   # Confirmations
   require_double_confirm: true
@@ -46,6 +46,8 @@ admin_api:
 ```
 
 When both phrases are provided the DLQ endpoint uses `dlq_confirmation_phrase` while the purge-all endpoint uses `purge_all_confirmation_phrase`. For backward compatibility a single `confirmation_phrase` value may still be supplied; if present it is used as the fallback for DLQ and as the base string (with `_ALL` suffix) for purge-all confirmations.
+
+For CORS, keep `cors_allow_origins` empty to block cross-origin browser calls by default. If you must enable CORS, provide an explicit list of trusted origins per environment (e.g., staging/admin portals) and avoid the wildcard `"*"` when `require_auth` is enabled. Consider templating the list via environment variables and validate CORS behavior in staging before promoting to production.
 
 ## Authentication
 
@@ -276,9 +278,10 @@ All errors follow a consistent format:
 1. **Always use HTTPS in production** - Enable TLS with proper certificates
 2. **Rotate JWT secrets regularly** - Update the jwt_secret configuration
 3. **Monitor audit logs** - Review logs for suspicious activity
-4. **Use strong confirmation phrases** - Change default confirmation phrases
-5. **Implement least privilege** - Grant minimal necessary permissions in JWT roles
-6. **Set appropriate rate limits** - Adjust based on your usage patterns
+4. **Restrict CORS origins** - Leave `cors_allow_origins` empty unless you must expose the API; when enabled, list explicit origins per environment and never use `"*"` when `require_auth: true`
+5. **Use strong confirmation phrases** - Change default confirmation phrases
+6. **Implement least privilege** - Grant minimal necessary permissions in JWT roles
+7. **Set appropriate rate limits** - Adjust based on your usage patterns
 
 ## Integration Examples
 
