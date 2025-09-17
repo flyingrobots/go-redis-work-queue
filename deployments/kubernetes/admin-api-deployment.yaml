@@ -189,8 +189,13 @@ metadata:
   namespace: work-queue
 rules:
 - apiGroups: [""]
-  resources: ["configmaps", "secrets"]
-  verbs: ["get", "list", "watch"]
+  resources: ["configmaps"]
+  resourceNames: ["admin-api-config"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["admin-api-secrets"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
