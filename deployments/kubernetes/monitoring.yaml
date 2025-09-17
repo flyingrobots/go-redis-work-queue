@@ -102,14 +102,19 @@ spec:
     # Certificate Expiry
     - alert: AdminAPICertificateExpiry
       expr: |
-        certmanager_certificate_expiration_timestamp_seconds{name="admin-api-tls"}
-        - time() < 7 * 24 * 3600
+        (
+          certmanager_certificate_expiration_timestamp_seconds{
+            name="admin-api-tls",
+            namespace="work-queue"
+          }
+          - time()
+        ) < 7 * 24 * 3600
       labels:
         severity: warning
         component: admin-api
       annotations:
         summary: "Admin API TLS certificate expiring soon"
-        description: "TLS certificate for Admin API will expire in {{ $value | humanizeDuration }}"
+        description: "Admin API TLS certificate expires in {{ humanizeDuration (certmanager_certificate_expiration_timestamp_seconds{name=\"admin-api-tls\",namespace=\"work-queue\"} - time()) }}"
 
     # Rate Limit Exceeded
     - alert: AdminAPIRateLimitExceeded
