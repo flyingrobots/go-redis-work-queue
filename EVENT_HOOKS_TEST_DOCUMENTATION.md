@@ -237,10 +237,10 @@ go test -v ./... -run '^TestSignatureService_'
 ### Benchmarks
 ```bash
 # Run all benchmarks
-go test -bench=. ./*.go
+go test -run '^$' -bench=. ./...
 
 # Run specific benchmark
-go test -bench=BenchmarkHMACSigner_SignPayload ./*.go
+go test -run '^$' -bench='^BenchmarkHMACSigner_SignPayload$' ./...
 ```
 
 ## Test Performance and Metrics
