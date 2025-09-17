@@ -69,10 +69,10 @@ rate_limit:
 # CORS settings
 cors:
   enabled: true
-  allowed_origins:
-    - "http://localhost:3000"
-    - "https://admin.staging.example.com"
-    - "https://admin.example.com"
+  allowed_origins:  # Provided via env vars per environment
+    - "${CORS_ALLOWED_ORIGIN_LOCAL:-http://localhost:3000}"
+    - "${CORS_ALLOWED_ORIGIN_STAGING:-}"
+    - "${CORS_ALLOWED_ORIGIN_PROD:-}"
   allowed_methods:
     - "GET"
     - "POST"
