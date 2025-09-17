@@ -113,7 +113,7 @@ GET /calendar/data?view=month&date=2023-06-15&timezone=UTC&queues=high-priority,
             "queue_name": "high-priority",
             "job_type": "process-order",
             "scheduled_at": "2023-06-01T09:00:00Z",
-            "status": 0,
+            "status": "scheduled",
             "priority": 1,
             "metadata": {"order_id": "12345"},
             "tags": ["urgent", "payment"]
@@ -172,7 +172,7 @@ GET /calendar/events?from=2023-06-01T00:00:00Z&till=2023-06-30T23:59:59Z&queue=h
       "queue_name": "high-priority",
       "job_type": "process-order",
       "scheduled_at": "2023-06-01T09:00:00Z",
-      "status": 0,
+      "status": "scheduled",
       "priority": 1,
       "metadata": {"order_id": "12345"},
       "tags": ["urgent", "payment"]
@@ -570,21 +570,23 @@ The calendar supports various navigation actions:
 
 ### View Types
 
-| Type | Value | Description |
-|------|-------|-------------|
-| ViewTypeMonth | 0 | Monthly calendar view |
-| ViewTypeWeek | 1 | Weekly calendar view |
-| ViewTypeDay | 2 | Daily hourly view |
+| Type | JSON Value | Description |
+|------|------------|-------------|
+| ViewTypeMonth | "month" | Monthly calendar view |
+| ViewTypeWeek | "week" | Weekly calendar view |
+| ViewTypeDay | "day" | Daily hourly view |
 
 ### Event Statuses
 
-| Status | Value | Description |
-|--------|-------|-------------|
-| StatusScheduled | 0 | Event is scheduled |
-| StatusRunning | 1 | Event is currently running |
-| StatusCompleted | 2 | Event completed successfully |
-| StatusFailed | 3 | Event failed |
-| StatusCanceled | 4 | Event was canceled |
+| Status | JSON Value | Description |
+|--------|------------|-------------|
+| StatusScheduled | "scheduled" | Event is scheduled |
+| StatusRunning | "running" | Event is currently running |
+| StatusCompleted | "completed" | Event completed successfully |
+| StatusFailed | "failed" | Event failed |
+| StatusCanceled | "canceled" | Event was canceled |
+
+> Server serialises `EventStatus` and `ViewType` to the string values shown above; numeric constants remain available inside the Go SDK for convenience.
 
 ## Usage Examples
 
