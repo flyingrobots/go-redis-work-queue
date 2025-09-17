@@ -143,12 +143,10 @@ func main() {
 		if err := wrk.Run(ctx); err != nil {
 			logger.Fatal("worker error", obs.Err(err))
 		}
+	case "admin":
+		runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes, benchCount, benchRate, benchPriority, benchTimeout)
+		return
 	default:
-		// admin role
-		if role == "admin" {
-			runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes, benchCount, benchRate, benchPriority, benchTimeout)
-			return
-		}
 		logger.Fatal("unknown role", obs.String("role", role))
 	}
 }
