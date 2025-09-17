@@ -135,9 +135,6 @@ wait_for_deployment() {
 run_health_checks() {
     log "Running health checks..."
 
-    # Get the service endpoint
-    SERVICE_IP=$(kubectl get service rbac-token-service -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}')
-
     # Port forward for testing
     kubectl port-forward service/rbac-token-service 8081:80 -n "$NAMESPACE" &
     PORT_FORWARD_PID=$!
