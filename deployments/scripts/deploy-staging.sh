@@ -53,9 +53,9 @@ check_prerequisites() {
     fi
 
     # Check namespace exists
-    if ! kubectl get namespace $NAMESPACE &> /dev/null; then
+    if ! kubectl get namespace "$NAMESPACE" &> /dev/null; then
         log_warn "Namespace $NAMESPACE does not exist, creating..."
-        kubectl create namespace $NAMESPACE
+        kubectl create namespace "$NAMESPACE"
     fi
 
     log_info "Prerequisites check passed"
@@ -105,7 +105,7 @@ deploy_to_k8s() {
     log_info "Deploying to Kubernetes..."
 
     # Update image in deployment
-    kubectl set image deployment/$APP_NAME $APP_NAME=$REGISTRY/$APP_NAME:$IMAGE_TAG -n $NAMESPACE
+    kubectl set image "deployment/$APP_NAME" "$APP_NAME=$REGISTRY/$APP_NAME:$IMAGE_TAG" -n "$NAMESPACE"
 
     # Apply configurations
     kubectl apply -f deployments/kubernetes/admin-api-deployment.yaml
@@ -113,7 +113,7 @@ deploy_to_k8s() {
 
     # Wait for rollout to complete
     log_info "Waiting for deployment rollout..."
-    kubectl rollout status deployment/$APP_NAME -n $NAMESPACE --timeout=300s
+    kubectl rollout status "deployment/$APP_NAME" -n "$NAMESPACE" --timeout=300s
 
     if [ $? -ne 0 ]; then
         log_error "Deployment rollout failed"
@@ -129,8 +129,8 @@ verify_deployment() {
     log_info "Verifying deployment..."
 
     # Check pod status
-    READY_PODS=$(kubectl get pods -n $NAMESPACE -l app=$APP_NAME -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true")
-    TOTAL_PODS=$(kubectl get pods -n $NAMESPACE -l app=$APP_NAME --no-headers | wc -l)
+    READY_PODS=$(kubectl get pods -n "$NAMESPACE" -l app="$APP_NAME" -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | grep -c "true")
+    TOTAL_PODS=$(kubectl get pods -n "$NAMESPACE" -l app="$APP_NAME" --no-headers | wc -l)
 
     if [ "$READY_PODS" -ne "$TOTAL_PODS" ]; then
         log_error "Not all pods are ready ($READY_PODS/$TOTAL_PODS)"
@@ -140,21 +140,23 @@ verify_deployment() {
     log_info "All pods are ready ($READY_PODS/$TOTAL_PODS)"
 
     # Check service endpoint
-    SERVICE_IP=$(kubectl get service $APP_NAME -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    SERVICE_IP=$(kubectl get service "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
     if [ -z "$SERVICE_IP" ]; then
-        SERVICE_IP=$(kubectl get service $APP_NAME -n $NAMESPACE -o jsonpath='{.spec.clusterIP}')
+        SERVICE_IP=$(kubectl get service "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}')
     fi
 
     # Port forward for health check
-    kubectl port-forward -n $NAMESPACE service/$APP_NAME 8080:80 &
+    kubectl port-forward -n "$NAMESPACE" "service/$APP_NAME" 8080:80 &
     PF_PID=$!
     sleep 5
 
     # Health check
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
 
-    kill $PF_PID 2>/dev/null || true
+    if [[ -n "${PF_PID:-}" ]]; then
+        kill "$PF_PID" 2>/dev/null || true
+    fi
 
     if [ "$HTTP_STATUS" -ne 200 ]; then
         log_error "Health check failed (HTTP $HTTP_STATUS)"
@@ -167,8 +169,8 @@ verify_deployment() {
 # Rollback deployment
 rollback() {
     log_warn "Rolling back deployment..."
-    kubectl rollout undo deployment/$APP_NAME -n $NAMESPACE
-    kubectl rollout status deployment/$APP_NAME -n $NAMESPACE --timeout=300s
+    kubectl rollout undo "deployment/$APP_NAME" -n "$NAMESPACE"
+    kubectl rollout status "deployment/$APP_NAME" -n "$NAMESPACE" --timeout=300s
     log_info "Rollback completed"
 }
 
@@ -177,7 +179,7 @@ run_smoke_tests() {
     log_info "Running smoke tests..."
 
     # Port forward
-    kubectl port-forward -n $NAMESPACE service/$APP_NAME 8080:80 &
+    kubectl port-forward -n "$NAMESPACE" "service/$APP_NAME" 8080:80 &
     PF_PID=$!
     sleep 5
 
@@ -191,12 +193,16 @@ run_smoke_tests() {
             log_info "Endpoint $endpoint responded with $HTTP_STATUS"
         else
             log_error "Endpoint $endpoint failed with $HTTP_STATUS"
-            kill $PF_PID 2>/dev/null || true
+            if [[ -n "${PF_PID:-}" ]]; then
+                kill "$PF_PID" 2>/dev/null || true
+            fi
             exit 1
         fi
     done
 
-    kill $PF_PID 2>/dev/null || true
+    if [[ -n "${PF_PID:-}" ]]; then
+        kill "$PF_PID" 2>/dev/null || true
+    fi
     log_info "Smoke tests passed"
 }
 
@@ -210,15 +216,15 @@ print_deployment_info() {
     echo "Image: $REGISTRY/$APP_NAME:$IMAGE_TAG"
     echo ""
 
-    kubectl get deployment $APP_NAME -n $NAMESPACE
+    kubectl get deployment "$APP_NAME" -n "$NAMESPACE"
     echo ""
-    kubectl get pods -n $NAMESPACE -l app=$APP_NAME
+    kubectl get pods -n "$NAMESPACE" -l app="$APP_NAME"
     echo ""
-    kubectl get service $APP_NAME -n $NAMESPACE
+    kubectl get service "$APP_NAME" -n "$NAMESPACE"
     echo ""
 
-    INGRESS_HOST=$(kubectl get ingress $APP_NAME -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}')
-    if [ ! -z "$INGRESS_HOST" ]; then
+    INGRESS_HOST=$(kubectl get ingress "$APP_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.rules[0].host}')
+    if [[ -n "$INGRESS_HOST" ]]; then
         echo "Access URL: https://$INGRESS_HOST"
     fi
 }
