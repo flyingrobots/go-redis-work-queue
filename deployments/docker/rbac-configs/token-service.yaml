@@ -25,7 +25,7 @@ keys:
   storage:
     type: "file"
     connection: "/app/keys"
-    encryption_key: "${RBAC_KEY_ENCRYPTION_KEY:-default-dev-key-change-in-production}"
+    encryption_key: "${RBAC_KEY_ENCRYPTION_KEY}"
 
 # Audit logging
 audit:
@@ -51,7 +51,7 @@ authz:
 redis:
   host: "${REDIS_HOST:-localhost}"
   port: "${REDIS_PORT:-6379}"
-  password: "${REDIS_PASSWORD:-}"
+  password: "${REDIS_PASSWORD}"
   db: 1  # Use different DB for RBAC data
   pool_size: 10
   min_idle_conns: 5
@@ -103,6 +103,13 @@ metrics:
   enabled: true
   path: "/metrics"
   port: 8081
+
+# Startup validation to enforce required secrets
+startup_validation:
+  fail_fast: true
+  required_env_vars:
+    - RBAC_KEY_ENCRYPTION_KEY
+    - REDIS_PASSWORD
 
 # Security headers
 security:
