@@ -20,7 +20,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 )
 
-func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration) model {
+func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration, opts Options) model {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sp := spinner.New()
@@ -75,12 +75,18 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 		tchelp.TitleColor{Background: lipgloss.AdaptiveColor{Dark: "#444444", Light: "#DDDDDD"}, Foreground: lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#000000"}},
 		lipgloss.AdaptiveColor{Dark: "#888888", Light: "#222222"}, entries)
 
+	fps := opts.FPS
+	if fps <= 0 {
+		fps = 60
+	}
+
 	return model{
 		ctx:           ctx,
 		cancel:        cancel,
 		cfg:           cfg,
 		rdb:           rdb,
 		logger:        logger,
+		opts:          opts,
 		focus:         focusQueues,
 		help:          help.New(),
 		spinner:       sp,
@@ -102,7 +108,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 		help2:         help2,
 		pb:            bubprog.New(bubprog.WithDefaultGradient()),
 		activeTab:     tabJobs,
-		spring:        harmonica.NewSpring(harmonica.FPS(60), 6.0, 0.25),
+		spring:        harmonica.NewSpring(harmonica.FPS(float64(fps)), 6.0, 0.25),
 		expPos:        0.0,
 		expVel:        0.0,
 		expTarget:     0.0,

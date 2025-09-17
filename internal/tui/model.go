@@ -66,6 +66,7 @@ type model struct {
 	cfg    *config.Config
 	rdb    *redis.Client
 	logger *zap.Logger
+	opts   Options
 
 	width  int
 	height int

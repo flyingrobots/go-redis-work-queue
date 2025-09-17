@@ -18,8 +18,18 @@ func (m model) View() string {
 	// Tab bar
 	tabBar, _ := m.buildTabBar()
 
-	header := lipgloss.NewStyle().Bold(true).Render("Job Queue TUI — Redis " + m.cfg.Redis.Addr)
+	headerText := fmt.Sprintf("Job Queue TUI — Redis %s", m.cfg.Redis.Addr)
+	if m.opts.Cluster != "" {
+		headerText += fmt.Sprintf(" | Cluster: %s", m.opts.Cluster)
+	}
+	if m.opts.Namespace != "" {
+		headerText += fmt.Sprintf(" | Namespace: %s", m.opts.Namespace)
+	}
+	header := lipgloss.NewStyle().Bold(true).Render(headerText)
 	sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d", focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
+	if m.opts.ReadOnly {
+		sub += "  |  Mode: READ-ONLY"
+	}
 	if m.errText != "" {
 		sub += "  |  Error: " + m.errText
 	}

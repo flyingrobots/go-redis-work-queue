@@ -22,6 +22,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.confirmOpen {
+			if m.opts.ReadOnly && (m.confirmAction == "purge-dlq" || m.confirmAction == "purge-all") {
+				m.errText = "read-only mode: purge disabled"
+				m.confirmOpen = false
+				return m, nil
+			}
 			switch msg.String() {
 			case "y", "enter":
 				if m.confirmAction == "quit" {
@@ -110,9 +115,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "b":
+			if m.opts.ReadOnly {
+				m.errText = "read-only mode: bench disabled"
+				return m, nil
+			}
 			m.benchCount.Focus()
 		case "enter":
 			if m.benchCount.Focused() || m.benchRate.Focused() || m.benchPriority.Focused() || m.benchTimeout.Focused() {
+				if m.opts.ReadOnly {
+					m.errText = "read-only mode: bench disabled"
+					return m, nil
+				}
 				count := atoiDefault(m.benchCount.Value(), 1000)
 				rate := atoiDefault(m.benchRate.Value(), 500)
 				prio := strings.TrimSpace(m.benchPriority.Value())
@@ -149,9 +162,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "D":
+			if m.opts.ReadOnly {
+				m.errText = "read-only mode: purge disabled"
+				return m, nil
+			}
 			m.confirmOpen = true
 			m.confirmAction = "purge-dlq"
 		case "A":
+			if m.opts.ReadOnly {
+				m.errText = "read-only mode: purge disabled"
+				return m, nil
+			}
 			m.confirmOpen = true
 			m.confirmAction = "purge-all"
 		}
