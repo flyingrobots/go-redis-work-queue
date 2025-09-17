@@ -40,7 +40,7 @@ spec:
       annotations:
         summary: "RBAC Token Service is down"
         description: "RBAC Token Service has been down for more than 1 minute"
-        runbook_url: "https://wiki.company.com/rbac-service-down"
+        runbook_url: "https://github.com/flyingrobots/go-redis-work-queue/blob/main/docs/original-spec/14_ops_runbook.md#rbac-token-service"
 
     - alert: RBACTokenServiceHighErrorRate
       expr: rate(http_requests_total{job="rbac-token-service",status=~"5.."}[5m]) > 0.1
