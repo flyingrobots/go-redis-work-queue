@@ -30,7 +30,7 @@ For each document that needs enhancement, add the following sections:
 #### A. Claude's Thoughts Section
 Add after the Executive Summary using this format:
 ```markdown
-> [!note]- **🗣️ CLAUDE'S THOUGHTS 💭**
+### 🗣️ CLAUDE'S THOUGHTS
 > [Your insightful analysis here. Be specific about what makes this feature special, potential concerns, implementation suggestions, and how it compares to industry solutions. Reference specific technical details from their plan. 2-4 sentences.]
 ```
 
