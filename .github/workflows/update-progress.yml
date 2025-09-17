@@ -36,12 +36,21 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/features-ledger.md README.md
+          files_to_add=()
+          if [ -f docs/features-ledger.md ]; then
+            files_to_add+=("docs/features-ledger.md")
+          fi
+          if [ -f README.md ]; then
+            files_to_add+=("README.md")
+          fi
+          if [ ${#files_to_add[@]} -gt 0 ]; then
+            git add "${files_to_add[@]}"
+          fi
           if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "ci: update progress bars and KLoC [skip ci]"
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Push commit
