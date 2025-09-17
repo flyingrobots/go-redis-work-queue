@@ -167,18 +167,24 @@ Returns current anomaly detection status and SLO budget information.
     "remaining_budget": 64.5,
     "budget_utilization": 0.57,
     "current_burn_rate": 0.012,
-    "time_to_exhaustion": "89h30m0s",
+    "time_to_exhaustion": "89h30m",
     "is_healthy": true,
     "alert_level": "warning",
     "last_calculated": "2025-09-14T19:46:15Z"
   },
-  "timestamp": "2025-09-14T19:46:15Z"
+"timestamp": "2025-09-14T19:46:15Z"
 }
 ```
+
+Durations are encoded using Go’s `time.Duration` format (e.g., `72h`, `720h0m0s`, `30m`, `1h30m`, `1500ms`, or negative offsets like `-5m`). Clients should parse these values accordingly, including optional fractional seconds.
 
 ### Get Configuration
 
 **GET** `/api/v1/anomaly-radar/config`
+
+**Authentication/Authorization**
+
+This endpoint requires Admin API credentials. Supply an `Authorization: Bearer <token>` header that carries an admin-scoped JWT (scope: `admin` or the equivalent capability for anomaly radar management). Requests missing valid tokens receive `401 Unauthorized`; tokens lacking required scope receive `403 Forbidden`.
 
 Returns current configuration.
 
@@ -193,9 +199,9 @@ Returns current configuration.
       "window": "720h0m0s",
       "burn_rate_thresholds": {
         "fast_burn_rate": 0.01,
-        "fast_burn_window": "1h0m0s",
+        "fast_burn_window": "1h30m",
         "slow_burn_rate": 0.05,
-        "slow_burn_window": "6h0m0s"
+        "slow_burn_window": "6h"
       }
     },
     "thresholds": {
