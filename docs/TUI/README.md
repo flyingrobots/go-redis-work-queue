@@ -10,6 +10,16 @@ This document describes the intended user experience and layout for the Bubble T
 
 The Body is composed with a flexbox-like grid (stickers/flexbox) that stretches and squishes with the terminal size. Borders are applied at the cell level, and content width/height are sized to the cell’s inner dimensions to avoid clipping.
 
+## How to build/run TUI
+
+From the repository root you can build and launch the interface with the dedicated Makefile target:
+
+```bash
+make run-tui
+```
+
+The target builds `bin/tui` and starts it with the sample configuration so you can verify layouts quickly. All referenced SVG mockups live in `docs/TUI/images/` if you want to inspect or regenerate them.
+
 ## Job Queue — Balanced
 
 ![Job Queue (Balanced)](images/job-balanced.svg)
