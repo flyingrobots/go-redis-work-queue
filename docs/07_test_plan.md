@@ -50,7 +50,11 @@ This plan defines coverage goals, scenarios, performance benchmarks, and securit
 
 - Baseline: 1k jobs/min per 4 vCPU node; p95 < 2s for small files.
 - Method: synthetic job generation via producer; worker-only mode on dedicated runner; capture metrics.
-- Reporting: include CPU, memory, Redis CPU/latency, queue depths.
+- Runner: GitHub-hosted `ubuntu-22.04` image, 8 vCPU / 32 GB (equivalent to `Standard_D8ds_v5`).
+- Toolchain: Go `1.25.x`; export `GOMAXPROCS=8` before invoking benchmarks.
+- Determinism: export `BENCHMARK_SEED=1337` (or supplied value) and log it with results; synthetic producer must accept the seed.
+- CPU governor: set to `performance` via `sudo cpupower frequency-set -g performance` at job start and restore on exit.
+- Reporting: capture commit SHA, build tags/flags, CPU, memory, Redis CPU/latency, queue depths, chosen seed, and runner instance type.
 
 ## Security Testing
 
