@@ -180,7 +180,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
 
 ### Finished Log
-- [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://fake.com)
+- [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)
 
 - [x] TUI layout revamp (flexbox + animation) **2025-09-13**
   - Integrated `github.com/76creates/stickers/flexbox` for panel layout across all tabs
@@ -213,7 +213,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 Step-by-step task list to build the TUI up to design spec.
 
 - [ ] `TUI001`
-> [!info]- Launch CLI + Config Discovery
+> [!NOTE] Launch CLI + Config Discovery
 > Implement flags/env/config bootstrap for smooth first-run.
 > - Add flags in `cmd/tui/main.go`: `--config`, `--redis-url`, `--cluster`, `--namespace`, `--read-only`, `--refresh`, `--metrics-addr`, `--log-level`, `--theme`, `--fps`, `--no-mouse`.
 > - Read env overrides: `GRQ_*` (see docs/design/TUI2-design.md Launch section).
@@ -222,7 +222,7 @@ Step-by-step task list to build the TUI up to design spec.
 > - Persist last-good config path and last cluster (no secrets) under XDG data dir.
 
 - [ ] `TUI002`
-> [!info]- First‑Run Welcome Overlay
+> [!NOTE] First‑Run Welcome Overlay
 > Fullscreen scrim with: Quick Connect, Demo Mode, Init Config.
 > - Add `internal/tui/overlays.go` view+model for Welcome; trigger when no config/URL or connection fails.
 > - Inputs: Redis URL (with auth), cluster name, namespace; test button runs a lightweight `PING`.
@@ -230,28 +230,28 @@ Step-by-step task list to build the TUI up to design spec.
 > - On success, dismiss and hydrate dashboard; store connection metadata in state.
 
 - [ ] `TUI003`
-> [!info]- Demo Mode (Seeded, Read‑only)
+> [!NOTE] Demo Mode (Seeded, Read‑only)
 > Provide instant value safely.
 > - Add `tui demo` subcommand and Welcome shortcut; seed queues/workers using existing `admin.Bench` with low rate and cap.
 > - Mark UI as read‑only (status bar badge + theme accent); gate destructive ops.
 > - Auto-clean on exit or keep ephemeral keys under `rq:demo:*` namespace.
 
 - [ ] `TUI004`
-> [!info]- Doctor Subcommand
+> [!NOTE] Doctor Subcommand
 > Connectivity and permissions diagnostics for support and CI.
 > - Implement `tui doctor` in `cmd/tui`: DNS/TCP, TLS/mTLS, Redis PING, role (INFO), latency sample.
 > - ACL probe for required commands (LLEN, XRANGE, HGETALL, etc.); print table + exit code.
 > - Optional `--redis-url`/`--cluster`; respect config discovery.
 
 - [ ] `TUI005`
-> [!info]- Global Read‑only Mode + Guardrails
+> [!NOTE] Global Read‑only Mode + Guardrails
 > Enforce safe defaults everywhere.
 > - Add `readOnly bool` to `internal/tui/model.go`; render status bar indicator and toggle (if allowed).
 > - Wrap dangerous actions: Purge, Requeue, Enqueue > confirm modal; block when read‑only.
 > - `--read-only` flag overrides persisted state; cannot be disabled from UI.
 
 - [ ] `TUI006`
-> [!info]- Responsive Breakpoints (Mobile/Tablet/Desktop/Ultrawide)
+> [!NOTE] Responsive Breakpoints (Mobile/Tablet/Desktop/Ultrawide)
 > Finish breakpoint-aware layouts using stickers flexbox.
 > - Implement thresholds (≤40, 41–80, 81–120, 121+) in `WindowSizeMsg` handler.
 > - Define per-breakpoint cell grids and hide/reflow panels accordingly.
@@ -259,58 +259,58 @@ Step-by-step task list to build the TUI up to design spec.
 > - Ensure charts/tables clamp to cell inner dims; test very small widths.
 
 - [ ] `TUI007`
-> [!info]- Precise Mouse Hitboxes (bubblezone)
+> [!NOTE] Precise Mouse Hitboxes (bubblezone)
 > Map clickable regions for tabs, rows, splitters, context menus.
 > - Integrate `github.com/lrstanley/bubblezone` (or maintained fork) in `internal/tui/view.go`.
 > - Register zones for: tab labels, tables rows, charts panel, splitter.
 > - Update `MouseMsg` handling to resolve zone hits deterministically.
 
 - [ ] `TUI008`
-> [!info]- Table Polish (Threshold Colors, Glyphs, Striping)
+> [!NOTE] Table Polish (Threshold Colors, Glyphs, Striping)
 > Improve readability and status signaling in Queues table.
 > - Add thresholds (green/yellow/red) for backlog, latency; centralize in `internal/tui/styles.go`.
 > - Selection glyph and alternating row background; clamp height to cell.
 > - Ensure color accessibility in high-contrast theme.
 
 - [ ] `TUI009`
-> [!info]- Persist UI State
+> [!NOTE] Persist UI State
 > Restore previous session: tab, focus, filters, theme, split ratio.
 > - XDG data file (JSON/YAML) with `activeTab`, `focus`, `filter`, `theme`, `split`, `lastCluster`.
 > - Load at start, save on change (debounced); allow `--no-state` flag to disable.
 
 - [ ] `TUI010`
-> [!info]- Adjustable Panel Split (Keys + Mouse)
+> [!NOTE] Adjustable Panel Split (Keys + Mouse)
 > User-controlled left/right ratio within bounds.
 > - Keys `[`/`]` adjust ratio; mouse drag on splitter via bubblezone.
 > - Persist split ratio; constrain to 25–75% range; animate with Harmonica.
 
 - [ ] `TUI011`
-> [!info]- Enqueue Actions (`e`/`E`)
+> [!NOTE] Enqueue Actions (`e`/`E`)
 > Quick enqueue to selected queue from Job Queue tab.
 > - `e` enqueue 1 with default payload; `E` opens inline form for count, payload size, jitter.
 > - Use admin enqueue/bench helper; show toasts on success/failure; respect read‑only.
 
 - [ ] `TUI012`
-> [!info]- Right‑click Peek on Queues
+> [!NOTE] Right‑click Peek on Queues
 > Contextual mouse shortcut for discoverability.
 > - Right‑click selected row to trigger Peek; fallback long‑press on touch terminals.
 > - Reuse existing peek panel; add bubblezone hit region per row.
 
 - [ ] `TUI013`
-> [!info]- Bench UX Enhancements
+> [!NOTE] Bench UX Enhancements
 > Cancel, ETA, live throughput, payload size/jitter, concurrency.
 > - Convert bench to non-blocking; ESC cancels (context cancel).
 > - Compute ETA from baseline + current rate; show progress + rate sparkline.
 > - Inputs for payload size, jitter %, concurrency; validate before run.
 
 - [ ] `TUI014`
-> [!info]- Bench Progress Baseline
+> [!NOTE] Bench Progress Baseline
 > Avoid overcount when Completed list pre-populated.
 > - On bench start, record `LLEN` of `cfg.Worker.CompletedList` as baseline; subtract from subsequent counts.
 > - Handle overflow/reset; guard against large lists by capping scan.
 
 - [ ] `TUI015` [blocked by Admin: Requeue-from-DLQ]
-> [!info]- DLQ Tab (List, Peek, Requeue, Purge, Search)
+> [!NOTE] DLQ Tab (List, Peek, Requeue, Purge, Search)
 > Full remediation workflow.
 > - Paginate DLQ items (cursor-based); peek full payload with pretty JSON.
 > - Actions: requeue selected, purge selected, bulk operations with confirm.
@@ -331,7 +331,7 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (DLQList, DLQRequeue, DLQPurge)
 
 - [ ] `TUI016` [blocked by Admin: Workers-list API]
-> [!info]- Workers Tab (Live View)
+> [!NOTE] Workers Tab (Live View)
 > Worker IDs, last heartbeat, active job/queue; sort/filter.
 > - Admin call for workers list (IDs, timestamps, active item); poll periodically.
 > - Table with status coloring and sort; drill-in to worker details/log tail.
@@ -348,87 +348,87 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (Workers)
 
 - [ ] `TUI017`
-> [!info]- Settings Tab (Interactive)
+> [!NOTE] Settings Tab (Interactive)
 > Theme toggle, config path, copy, open config.
 > - Implement theme chooser; display current config path; add "copy value" actions.
 > - Shortcut to open config in `$EDITOR` when available.
 
 - [ ] `TUI018`
-> [!info]- Theme System (Centralized + High Contrast)
+> [!NOTE] Theme System (Centralized + High Contrast)
 > Consistent styling with adaptive colors and playground integration.
 > - Centralize styles in `internal/tui/theme/*.go`; add dark/light/high-contrast palettes.
 > - Respect `NO_COLOR` and terminal truecolor detection; expose `--theme` and UI toggle.
 > - Surface Theme Playground under Settings.
 
 - [ ] `TUI019`
-> [!info]- Help Overlay Expansion
+> [!NOTE] Help Overlay Expansion
 > List all shortcuts (tabs, enqueue, right-click), mouse hints, README link.
 > - Context-aware help per tab and breakpoint; `?` or `esc` toggles.
 > - Include numeric tab shortcuts (1–4) and new commands.
 
 - [ ] `TUI020`
-> [!info]- Mouse UX Extras
+> [!NOTE] Mouse UX Extras
 > Double-click row to peek; header click to sort (if supported).
 > - Implement double-click detection with time threshold; use bubblezone for headers.
 > - Sort toggles per column where data supports it; visual sort glyphs.
 
 - [ ] `TUI021`
-> [!info]- Non‑blocking Toasts / Status Area
+> [!NOTE] Non‑blocking Toasts / Status Area
 > Transient error/info messages without stealing focus.
 > - Top-right stack with auto-dismiss timers; queue messages; log tail in Info panel.
 > - Provide API `tui.toast(level, msg)` for internal use.
 
 - [ ] `TUI022`
-> [!info]- Command Palette (`Ctrl+P`)
+> [!NOTE] Command Palette (`Ctrl+P`)
 > Fuzzy action launcher with context-aware suggestions.
 > - Action registry with IDs, labels, shortcuts; integrate fzf-like filter.
 > - Invoke enqueue, peek, switch tabs, toggle theme, open docs, etc.
 
 - [ ] `TUI023`
-> [!info]- Frame‑Gated Batching (60/30fps)
+> [!NOTE] Frame‑Gated Batching (60/30fps)
 > Smooth updates without over-rendering.
 > - Switch `Update` to pointer receiver; implement coalescing buffer + `tea.Tick` frame messages.
 > - Cap FPS via `--fps` and auto-drop to 30fps if render >12ms.
 > - Enable `viewport.HighPerformanceRendering` and incremental content updates.
 
 - [ ] `TUI024`
-> [!info]- Cross‑Platform Compatibility
+> [!NOTE] Cross‑Platform Compatibility
 > Terminal quirks and fallbacks.
 > - Windows/WSL truecolor detection; degrade gracefully; default 30fps on slow terms.
 > - tmux mouse escape hatch `--no-mouse`; document recommended settings.
 > - Verify selection/clipboard friendliness; avoid clearing screen unnecessarily.
 
 - [ ] `TUI025`
-> [!info]- TUI Runtime Metrics
+> [!NOTE] TUI Runtime Metrics
 > Optional instrumentation for debugging.
 > - Export FPS, render time, RPC latency histograms at `:9090/metrics`.
 > - Add on/off flag `--metrics`; annotate frames with dropped/merged counts.
 
 - [ ] `TUI026`
-> [!info]- Tests (Helpers + Layout)
+> [!NOTE] Tests (Helpers + Layout)
 > Unit tests for pure helpers; snapshot-ish rendering checks.
 > - Test filtering, formatting, thresholds, clamp functions.
 > - Add layout tests that render at key widths and assert presence of key strings.
 
 - [ ] `TUI027`
-> [!info]- Docs Update (README TUI)
+> [!NOTE] Docs Update (README TUI)
 > Screenshots, tabs description, new keybindings, launch flags.
 > - Update README TUI section; include SVG mockups; cross-link design doc.
 > - Add short “Quickstart” with Demo Mode and Doctor.
 
 - [ ] `TUI028`
-> [!info]- Release Notes
+> [!NOTE] Release Notes
 > Changelog entries for tabbed layout, overlays, and new UX.
 > - Summarize user-visible changes; include safety guardrails and flags.
 
 - [ ] `TUI029`
-> [!info]- Multi‑Cluster Foundation (Ultrawide)
+> [!NOTE] Multi‑Cluster Foundation (Ultrawide)
 > Basic cluster selector + compare view scaffold.
 > - Add cluster switcher UI; persist recent clusters; wire to config.
 > - In ultrawide, render two clusters side-by-side (read-only compare to start).
 
 - [ ] `TUI030` [blocked by Admin: Job events stream]
-> [!info]- Time Travel Debugger (MVP)
+> [!NOTE] Time Travel Debugger (MVP)
 > Minimal timeline + state viewer for a single job.
 > - Open by ID; fetch event stream; scrub timeline with left/right.
 > - Show state deltas; no step-in code view yet; export link placeholder.
@@ -446,13 +446,13 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (JobTimeline, SubscribeJob)
 
 - [ ] `TUI031`
-> [!info]- Voice Command Integration (MVP)
+> [!NOTE] Voice Command Integration (MVP)
 > Hook Terminal Voice Commands to simple actions.
 > - Map phrases to palette actions (peek queue, switch tab, run bench).
 > - Provide visual feedback toast when recognized; allow disable in Settings.
 
 - [ ] `TUI032`
-> [!info]- Error & Offline Degrade
+> [!NOTE] Error & Offline Degrade
 > Friendly failure modes, no dead ends.
 > - On connection loss, show non-blocking banner + retry loop with backoff.
 > - Offer "Edit connection" and "Switch to Demo" inline; keep UI responsive.
@@ -548,7 +548,8 @@ Notes
 
 Please keep this document up-to-date with records of what you've worked on as you're working. When you start a task, write down what you're about to do. When you finish something, log that you've finished it. If it was an item off the backlog (see below), check it off. Build up a commit graph of the day's activity and keep it up-to-date as you make commits. Use this not only to record activity, but to capture ideas, make notes/observations/insights, and jot down bugs you don't have time to deal with in the moment.
 
-> [!info]- ### 2025-09-13–Rewrote `AGENTS.md`
+> [!NOTE]
+> ### 2025-09-13–Rewrote `AGENTS.md`
 > Today we rewrote `AGENTS.md` and now it's a very useful artifact that records past activity, captures current activity, plans for future activity, and helps both AI agents and humans remember what they're doing.
 > 
 > ```mermaid
@@ -569,15 +570,16 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Organized top picks from yesterday's brainstorm 
 > ##### 07:23 – Finished `AGENTS.md` Enhancements
 > 
-> - PR open at [URL](to PR)
+> - PR open at [PR #213](https://github.com/flyingrobots/go-redis-work-queue/pull/213)
 > - Tests added: `/path/to/tests.whatever`
 > ##### 13:42 – Bug Report
->   > [!warning]- **Bug: Infinite Loop in Foo.bar**
+>   > [!WARNING] **Bug: Infinite Loop in Foo.bar**
 >   > Repro steps:
 >   > etc…
 
 ---
-> [!info]- ### 2025-09-13 – TUI Layout Revamp (Flexbox + Animation + Docs)
+> [!NOTE]
+> ### 2025-09-13 – TUI Layout Revamp (Flexbox + Animation + Docs)
 > Implemented a responsive, animated TUI layout and added design docs.
 >
 > Changes
@@ -596,7 +598,8 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Tune stacking threshold; optionally add min-widths per cell
 >
 
-> [!info]- ### 2025-09-15 – 24h Commit Review (Admin API hardening, TVC, Theme, Patterned Load)
+> [!NOTE]
+> ### 2025-09-15 – 24h Commit Review (Admin API hardening, TVC, Theme, Patterned Load)
 > Summary of changes over the last 24 hours across core modules.
 >
 > Highlights
@@ -614,7 +617,8 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Add DLQ pagination + filters; extend tests
 
 
-> [!info]- ### 2025-09-15 – TUI Launch UX, Admin DLQ/Workers, Features Ledger
+> [!NOTE]
+> ### 2025-09-15 – TUI Launch UX, Admin DLQ/Workers, Features Ledger
 > Summary of today’s changes to align TUI with the redesign and extend Admin API.
 >
 > Changes
@@ -637,7 +641,8 @@ Please keep this document up-to-date with records of what you've worked on as yo
 
 
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
-> [!info]- ### 2025-09-16 – Code Review Worksheet automation, CI hardening, prompt archival
+> [!NOTE]
+> ### 2025-09-16 – Code Review Worksheet automation, CI hardening, prompt archival
 > Summary of today’s session focused on preserving review artifacts, improving CI hygiene, and preparing merges.
 >
 > Changes
