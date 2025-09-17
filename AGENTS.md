@@ -644,6 +644,7 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Completed CodeRabbit chunk_005 (30/30 items) covering compose secrets, admin API manifests, PRD clarifications, and API/README updates.
 > - Added `scripts/check_yaml_newlines.py` plus `make lint` to enforce YAML trailing newlines; pinned admin API deployment image and externalized JWT secret.
 > - Logged dispositions in the chunk file and updated the progress bar to 100%.
+> - Lessons: automate format safety (lint scripts, pinned images) instead of relying on manual edits; update review artifacts immediately to keep evidence aligned with commits.
 
 
 > [!NOTE]
