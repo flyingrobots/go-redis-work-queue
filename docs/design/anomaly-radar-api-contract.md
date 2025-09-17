@@ -43,3 +43,40 @@ This note captures the outstanding decisions for the Anomaly Radar + SLO Budget 
 - Target milestone: align with “Publish Anomaly Radar OpenAPI spec + client CI” task.
 
 Once these decisions are implemented we can revisit the chunk_008 review rejections and mark them resolved.
+
+## Scope Matrix (Proposed)
+
+| Endpoint | Method | Required Scope |
+|----------|--------|----------------|
+| `/api/v1/anomaly-radar/status` | GET | `slo_reader` |
+| `/api/v1/anomaly-radar/metrics` | GET | `slo_reader` |
+| `/api/v1/anomaly-radar/alerts` | GET | `slo_reader` |
+| `/api/v1/anomaly-radar/slo-budget` | GET | `slo_reader` |
+| `/api/v1/anomaly-radar/config` | GET | `slo_reader` |
+| `/api/v1/anomaly-radar/config` | PUT | `slo_admin` |
+| `/api/v1/anomaly-radar/start` | POST | `slo_admin` |
+| `/api/v1/anomaly-radar/stop` | POST | `slo_admin` |
+
+Health endpoint remains authenticated (no anonymous access) to avoid leaking status in restricted environments.
+
+## Error Envelope Decision
+
+- Adopt a shared helper that emits:
+  ```json
+  {
+    "error": "human readable message",
+    "code": "MACHINE_CODE",
+    "details": {
+      "field": "message"
+    },
+    "request_id": "uuid"
+  }
+  ```
+- Validation failures return HTTP 422 with `validation_errors` array (field/message pairs).
+
+## Pagination Decision
+
+- Implement cursor-based pagination:
+  - Request params: `window`, `max_samples` (default 1000, max 5000), `next_cursor` (opaque).
+  - Response includes `next_cursor` (null when complete) and `count`.
+- Update handler to page through stored snapshots and surface cursor tokens.
