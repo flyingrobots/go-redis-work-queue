@@ -135,7 +135,7 @@ Sleep 1s
 # Simulate running the enhanced TUI
 Type "# Simulate starting the enhanced TUI"
 Enter
-Type "if [ -x ./bin/queue-tui ]; then ./bin/queue-tui --enhanced; else echo 'Skipping ./bin/queue-tui demo (binary missing)'; fi"
+Type "if [ -x ./bin/tui ]; then ./bin/tui --config config/config.yaml; else echo 'Skipping ./bin/tui demo (binary missing)'; fi"
 Enter
 Sleep 1s
 
