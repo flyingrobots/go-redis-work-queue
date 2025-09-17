@@ -55,5 +55,4 @@ jobs:
 
       - name: Push commit
         if: steps.commit.outputs.changed == 'true'
-        run: |
-          git push
+        run: git push
