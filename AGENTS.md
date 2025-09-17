@@ -640,6 +640,19 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Add integration tests for the new endpoints.
 
 
+> [!NOTE]
+> ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
+> 
+> Changes
+> - Migrated the entire repository (and helper modules) to `github.com/redis/go-redis/v9`; removed v8 imports in favour of the consolidated client.
+> - Hardened `cmd/tui` flag handling and plumbed runtime options (cluster/namespace/read-only/theme/FPS/metrics) into the TUI with fail-fast Redis health checks.
+> - Standardised admin-api namespaces/docs and tightened deployment scripts (strict bash, quoting, docker compose pre-checks, JWT secret enforcement).
+> - Finished PR#3 chunk_004 worksheet (30/30 items) and refreshed the progress bar.
+> 
+> Follow-ups
+> - Run `go test ./...` once the existing suite failures (forecasting, exactly-once outbox, etc.) are resolved upstream.
+
+
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 > [!NOTE]
 > ### 2025-09-16 – Code Review Worksheet automation, CI hardening, prompt archival
