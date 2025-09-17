@@ -118,27 +118,37 @@ The following headers are included with webhook deliveries:
 - `X-Webhook-Timestamp: 1642248600` - Unix timestamp
 - `X-Webhook-Job-ID: job_abc123` - Job identifier
 - `X-Webhook-Queue: payments` - Queue name
-- `X-Webhook-Signature: sha256=abc123...` - HMAC signature (if secret provided)
+- `X-Webhook-Signature: sha256=abc123...` - HMAC signature computed over `"<timestamp>." + body` (if secret provided)
 - `X-Trace-ID: trace_xyz789` - Distributed tracing ID (if available)
 - `X-Request-ID: req_123456` - Request correlation ID (if available)
 
 ## HMAC Signature Verification
 
-If a webhook secret is provided, payloads are signed with HMAC-SHA256:
+If a webhook secret is provided, payloads are signed with HMAC-SHA256 using a canonical string that binds the timestamp:
 
 ```python
 import hmac
 import hashlib
+import time
 
-def verify_signature(payload, signature, secret):
-    expected = hmac.new(
-        secret.encode('utf-8'),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
-    expected_signature = f"sha256={expected}"
+def verify_signature(payload: bytes, timestamp: str, signature: str, secret: str, freshness_seconds: int = 300) -> bool:
+    """Return True if the signature and timestamp are valid."""
+
+    # Enforce freshness window to block replays
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        return False
+    if abs(time.time() - ts) > freshness_seconds:
+        return False
+
+    canonical = f"{timestamp}.{payload.decode('utf-8')}".encode('utf-8')
+    expected_hex = hmac.new(secret.encode('utf-8'), canonical, hashlib.sha256).hexdigest()
+    expected_signature = f"sha256={expected_hex}"
     return hmac.compare_digest(signature, expected_signature)
 ```
+
+Receivers must reject requests with stale or missing `X-Webhook-Timestamp` headers even if the HMAC validates.
 
 ## Dead Letter Hooks (DLH)
 
