@@ -221,10 +221,11 @@ func TestBenchmark(t *testing.T) {
 
 	// Create request
 	reqBody := BenchRequest{
-		Count:    10,
-		Priority: "high",
-		Rate:     100,
-		Timeout:  5,
+		Count:       10,
+		Priority:    "high",
+		Rate:        100,
+		Timeout:     5,
+		PayloadSize: 1024,
 	}
 	body, _ := json.Marshal(reqBody)
 

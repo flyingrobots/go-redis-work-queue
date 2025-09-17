@@ -21,6 +21,16 @@ This guide provides a reproducible method to measure throughput and latency, and
 
 ## Baseline Procedure
 
+### Test Environment
+
+- Host: 4 vCPU (Intel Xeon Gold 6338, 16 GB RAM) running Ubuntu 24.04 LTS
+- Redis: `redis:7.2.4-alpine` container with AOF disabled, `maxmemory-policy=noeviction`, `tcp-keepalive 60`
+- Payload: synthetic NDJSON (1 KB per job) generated via the bench command’s `--bench-payload-size` flag
+
+> Adjust the numbers to match your hardware; record CPU model, core count, RAM, and Redis config when sharing results.
+
+### Procedure
+
 1) Start Redis
 
 ```bash
@@ -47,7 +57,8 @@ docker stop jobq-redis
 ```bash
 ./bin/job-queue-system --role=admin --admin-cmd=bench \
   --bench-count=2000 --bench-rate=1000 \
-  --bench-priority=low --bench-timeout=60s
+  --bench-priority=low --bench-payload-size=1024 \
+  --bench-timeout=60s
 ```
 
 5) Record the JSON result and capture Prometheus metrics (if scraping locally, curl /metrics).

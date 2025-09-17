@@ -12,10 +12,11 @@ type PeekRequest struct {
 }
 
 type BenchRequest struct {
-	Count    int    `json:"count" validate:"required,min=1,max=10000"`
-	Priority string `json:"priority" validate:"required,oneof=high low"`
-	Rate     int    `json:"rate" validate:"min=1,max=1000"`
-	Timeout  int    `json:"timeout_seconds" validate:"min=1,max=300"`
+	Count       int    `json:"count" validate:"required,min=1,max=10000"`
+	Priority    string `json:"priority" validate:"required,oneof=high low"`
+	Rate        int    `json:"rate" validate:"min=1,max=1000"`
+	Timeout     int    `json:"timeout_seconds" validate:"min=1,max=300"`
+	PayloadSize int    `json:"payload_size_bytes" validate:"min=0,max=1048576"`
 }
 
 type PurgeRequest struct {
@@ -78,57 +79,57 @@ type PurgeResponse struct {
 
 // DLQ types
 type DLQItem struct {
-    ID        string    `json:"id"`
-    Queue     string    `json:"queue,omitempty"`
-    Payload   string    `json:"payload"`
-    Reason    string    `json:"reason,omitempty"`
-    Attempts  int       `json:"attempts,omitempty"`
-    FirstSeen time.Time `json:"first_seen,omitempty"`
-    LastSeen  time.Time `json:"last_seen,omitempty"`
+	ID        string    `json:"id"`
+	Queue     string    `json:"queue,omitempty"`
+	Payload   string    `json:"payload"`
+	Reason    string    `json:"reason,omitempty"`
+	Attempts  int       `json:"attempts,omitempty"`
+	FirstSeen time.Time `json:"first_seen,omitempty"`
+	LastSeen  time.Time `json:"last_seen,omitempty"`
 }
 
 type DLQListResponse struct {
-    Items      []DLQItem `json:"items"`
-    NextCursor string    `json:"next_cursor,omitempty"`
-    Count      int       `json:"count"`
-    Timestamp  time.Time `json:"timestamp"`
+	Items      []DLQItem `json:"items"`
+	NextCursor string    `json:"next_cursor,omitempty"`
+	Count      int       `json:"count"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 type DLQRequeueRequest struct {
-    Namespace string   `json:"ns"`
-    IDs       []string `json:"ids"`
-    DestQueue string   `json:"dest_queue,omitempty"`
+	Namespace string   `json:"ns"`
+	IDs       []string `json:"ids"`
+	DestQueue string   `json:"dest_queue,omitempty"`
 }
 
 type DLQRequeueResponse struct {
-    Requeued int       `json:"requeued"`
-    Timestamp time.Time `json:"timestamp"`
+	Requeued  int       `json:"requeued"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type DLQPurgeSelectionRequest struct {
-    Namespace string   `json:"ns"`
-    IDs       []string `json:"ids"`
+	Namespace string   `json:"ns"`
+	IDs       []string `json:"ids"`
 }
 
 type DLQPurgeSelectionResponse struct {
-    Purged    int       `json:"purged"`
-    Timestamp time.Time `json:"timestamp"`
+	Purged    int       `json:"purged"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // Workers types
 type WorkerInfo struct {
-    ID            string     `json:"id"`
-    LastHeartbeat time.Time  `json:"last_heartbeat"`
-    Queue         string     `json:"queue,omitempty"`
-    JobID         string     `json:"job_id,omitempty"`
-    StartedAt     *time.Time `json:"started_at,omitempty"`
-    Version       string     `json:"version,omitempty"`
-    Host          string     `json:"host,omitempty"`
+	ID            string     `json:"id"`
+	LastHeartbeat time.Time  `json:"last_heartbeat"`
+	Queue         string     `json:"queue,omitempty"`
+	JobID         string     `json:"job_id,omitempty"`
+	StartedAt     *time.Time `json:"started_at,omitempty"`
+	Version       string     `json:"version,omitempty"`
+	Host          string     `json:"host,omitempty"`
 }
 
 type WorkersResponse struct {
-    Workers   []WorkerInfo `json:"workers"`
-    Timestamp time.Time    `json:"timestamp"`
+	Workers   []WorkerInfo `json:"workers"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 // Audit log entry

@@ -199,9 +199,12 @@ Run a performance benchmark by enqueuing test jobs.
   "count": 1000,
   "priority": "high",
   "rate": 100,
-  "timeout_seconds": 30
+  "timeout_seconds": 30,
+  "payload_size_bytes": 1024
 }
 ```
+
+`payload_size_bytes` is optional; when omitted the server defaults to 1024 bytes per job.
 
 **Response:**
 ```json

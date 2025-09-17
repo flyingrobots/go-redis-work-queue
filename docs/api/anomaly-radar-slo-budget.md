@@ -4,6 +4,15 @@
 
 The Anomaly Radar + SLO Budget system provides real-time monitoring of queue health with Service Level Objective (SLO) tracking and error budget management. This system implements industry-standard SRE practices for proactive incident detection and reliability management.
 
+## Versioning & Deprecation
+
+- **Supported versions**: `v1` (current). Minor/patch updates must remain backward compatible; breaking changes require a new major version.
+- **Compatibility guarantees**: Request/response schemas additively evolve; existing fields are never repurposed.
+- **Breaking-change policy**: Proposed breaking changes require SRE approval and a published migration plan.
+- **Deprecation timeline**: Minimum 90 days’ notice before removing or altering deprecated fields or endpoints.
+- **Change log**: Updates are recorded in `docs/changelog/anomaly-radar-slo-budget.md` and release notes.
+- **Client migration**: Consumers should pin to versioned routes (e.g., `/api/v1/…`) and watch for `Deprecation`/`Sunset` headers; see types such as `SLOConfig`, `BurnRateThresholds`, and `Alert` for field-level guidance.
+
 ## Features
 
 - **Real-time Anomaly Detection**: Monitors backlog growth, error rates, and latency percentiles
@@ -34,42 +43,37 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 ### Installation
 
 ```go
-import anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+import ars "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
 ```
 
 ### Basic Usage
 
 ```go
 // Create configuration
-config := anomalyradarslobudget.DefaultConfig()
+config := ars.DefaultConfig()
 
 // Customize for your environment
 config.SLO.AvailabilityTarget = 0.999  // 99.9%
 config.SLO.LatencyThresholdMs = 500    // 500ms
 config.Thresholds.ErrorRateWarning = 0.01  // 1%
 
-// Create metrics collector
-collector := anomalyradarslobudget.NewSimpleMetricsCollector(
-    func() int64 { return getBacklogSize() },
-    func() int64 { return getRequestCount() },
-    func() int64 { return getErrorCount() },
-    func() (float64, float64, float64) { return getLatencyPercentiles() },
-)
+// Create metrics collector (see QueueMetricsCollector example below)
+collector := &QueueMetricsCollector{Client: metricsClient}
 
 // Create and start anomaly radar
-radar := anomalyradarslobudget.New(config, collector)
+radar := ars.New(config, collector)
 err := radar.Start(context.Background())
 if err != nil {
     log.Fatal(err)
 }
 
 // Register alert callback
-radar.RegisterAlertCallback(func(alert anomalyradarslobudget.Alert) {
+radar.RegisterAlertCallback(func(alert ars.Alert) {
     log.Printf("Alert: %s - %s", alert.Type.String(), alert.Message)
 })
 
 // Set up HTTP endpoints
-handler := anomalyradarslobudget.NewHTTPHandler(radar)
+handler := ars.NewHTTPHandler(radar)
 mux := http.NewServeMux()
 handler.RegisterRoutes(mux, "/api/v1/anomaly-radar")
 ```
@@ -86,26 +90,44 @@ type SLOConfig struct {
     Window               time.Duration      // SLO measurement window
     BurnRateThresholds   BurnRateThresholds // Alert thresholds
 }
+
+type BurnRateThresholds struct {
+    FastBurnRate    float64       // Fast-path burn rate (budget/hour)
+    FastBurnWindow  time.Duration // Evaluation window for fast burn (e.g., 5m)
+    SlowBurnRate    float64       // Slow-path burn rate (budget/hour)
+    SlowBurnWindow  time.Duration // Evaluation window for slow burn (e.g., 6h)
+}
 ```
+
+`budget_utilization` is a fraction [0,1], `current_burn_rate` measures budget consumed per hour, and `time_to_exhaustion` uses Go's `time.Duration` encoding (e.g., `89h30m0s`).
 
 ### Anomaly Thresholds
 
 ```go
 type AnomalyThresholds struct {
-    BacklogGrowthWarning  float64  // Items/second warning threshold
-    BacklogGrowthCritical float64  // Items/second critical threshold
-    ErrorRateWarning      float64  // Error rate warning (0-1)
-    ErrorRateCritical     float64  // Error rate critical (0-1)
-    LatencyP95Warning     float64  // P95 latency warning (ms)
-    LatencyP95Critical    float64  // P95 latency critical (ms)
+    BacklogGrowthWarning  float64  // Warning threshold (items/second)
+    BacklogGrowthCritical float64  // Critical threshold (items/second)
+    ErrorRateWarning      float64  // Warning threshold (fraction 0–1)
+    ErrorRateCritical     float64  // Critical threshold (fraction 0–1)
+    LatencyP95Warning     float64  // Warning threshold (milliseconds)
+    LatencyP95Critical    float64  // Critical threshold (milliseconds)
 }
+
+| Field                   | Unit            | Valid Range |
+|-------------------------|-----------------|-------------|
+| BacklogGrowthWarning    | items/second    | ≥0          |
+| BacklogGrowthCritical   | items/second    | ≥ BacklogGrowthWarning |
+| ErrorRateWarning        | fraction (0–1)  | 0 ≤ x ≤ 1   |
+| ErrorRateCritical       | fraction (0–1)  | ErrorRateCritical ≥ ErrorRateWarning |
+| LatencyP95Warning       | milliseconds    | ≥0          |
+| LatencyP95Critical      | milliseconds    | ≥ LatencyP95Warning |
 ```
 
 ### Recommended Configurations
 
 #### High-Criticality Systems
 ```go
-config := anomalyradarslobudget.GetRecommendedConfig(
+config := ars.GetRecommendedConfig(
     5000.0,              // expectedQPS
     500*time.Millisecond, // targetLatency
     "critical",          // systemCriticality
@@ -114,7 +136,7 @@ config := anomalyradarslobudget.GetRecommendedConfig(
 
 #### Medium-Criticality Systems
 ```go
-config := anomalyradarslobudget.GetRecommendedConfig(
+config := ars.GetRecommendedConfig(
     1000.0,              // expectedQPS
     time.Second,         // targetLatency
     "medium",            // systemCriticality
@@ -132,6 +154,8 @@ Returns current anomaly detection status and SLO budget information.
 **Query Parameters:**
 - `include_metrics` (boolean): Include recent metrics in response
 - `metric_window` (duration): Time window for included metrics (default: 1h)
+
+Durations use Go's `time.ParseDuration` syntax (e.g., `30m`, `1h`, `7h30m`).
 
 **Response:**
 ```json
@@ -175,6 +199,8 @@ Returns current anomaly detection status and SLO budget information.
 "timestamp": "2025-09-14T19:46:15Z"
 }
 ```
+
+`budget_utilization` is a fraction between 0 and 1, `current_burn_rate` expresses budget consumed per hour, and `time_to_exhaustion` is encoded using Go's `time.Duration`/RFC3339 duration representation (e.g., `89h30m`).
 
 Durations are encoded using Go’s `time.Duration` format (e.g., `72h`, `720h0m0s`, `30m`, `1h30m`, `1500ms`, or negative offsets like `-5m`). Clients should parse these values accordingly, including optional fractional seconds.
 
@@ -251,6 +277,8 @@ Returns historical metric snapshots.
 
 **Query Parameters:**
 - `window` (duration): Time window for metrics (default: 24h)
+
+Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
 - `max_samples` (integer): Maximum number of samples to return
 
 **Response:**
@@ -265,6 +293,7 @@ Returns historical metric snapshots.
       "error_count": 25,
       "error_rate": 0.005,
       "p50_latency_ms": 150.5,
+      "p90_latency_ms": 320.4,
       "p95_latency_ms": 485.2,
       "p99_latency_ms": 890.1
     }
@@ -341,6 +370,8 @@ Returns latency percentiles for a given time window.
 **Query Parameters:**
 - `window` (duration): Time window for calculation (default: 1h)
 
+Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
+
 **Response:**
 ```json
 {
@@ -377,6 +408,9 @@ Returns health status of the anomaly radar system.
 **HTTP Status Codes:**
 - `200 OK`: System is healthy or has warnings
 - `503 Service Unavailable`: System is not running or has critical issues
+- `500 Internal Server Error`: Unexpected failure while evaluating system health
+- `429 Too Many Requests`: Health checks throttled (caller should back off)
+- `206 Partial Content`: Health data available but degraded (e.g., metrics backend unreachable)
 
 ### Start/Stop Operations
 
@@ -384,9 +418,37 @@ Returns health status of the anomaly radar system.
 
 Starts the anomaly radar monitoring.
 
+- **Auth**: Requires bearer token with `slo_admin` (or `anomaly_radar:manage`) permission.
+- **Idempotency**: Returns `200 OK` with `{ "status": "already_started" }` if radar is already running; otherwise returns `202 Accepted` while startup completes.
+- **Errors**: `401` for missing auth, `403` for insufficient scope, `500` for startup failures.
+
+Example response when already running:
+
+```json
+{
+  "status": "already_started",
+  "timestamp": "2025-09-14T19:46:15Z"
+}
+```
+
 **POST** `/api/v1/anomaly-radar/stop`
 
 Stops the anomaly radar monitoring.
+
+- **Auth**: Requires bearer token with `slo_admin` (or `anomaly_radar:manage`) permission.
+- **Idempotency**: Returns `200 OK` with `{ "status": "already_stopped" }` if radar is not running; otherwise returns `202 Accepted` while shutdown completes.
+- **Errors**: `401` for missing auth, `403` for insufficient scope, `500` for shutdown failures.
+
+Example response when already stopped:
+
+```json
+{
+  "status": "already_stopped",
+  "timestamp": "2025-09-14T19:46:15Z"
+}
+```
+
+Concurrent start/stop requests are handled safely; the service guarantees consistent state is returned in the response body.
 
 ## Alert Types
 
@@ -443,9 +505,16 @@ Triggered when SLO budget consumption rate indicates budget exhaustion risk.
 1. **Optimize Sampling**: Adjust sampling rate based on system load
 2. **Manage Retention**: Balance historical data needs with memory usage
 3. **Monitor Resource Usage**: Track CPU and memory usage of the monitoring system
-4. **Batch Operations**: Use batch endpoints for efficient data retrieval
 
 ## Examples
+
+### Metrics Collector Interface
+
+```go
+type MetricsCollector interface {
+    CollectMetrics(ctx context.Context) (ars.MetricSnapshot, error)
+}
+```
 
 ### Custom Metrics Collector
 
@@ -455,15 +524,15 @@ type QueueMetricsCollector struct {
     statsCache   *StatsCache
 }
 
-func (c *QueueMetricsCollector) CollectMetrics(ctx context.Context) (anomalyradarslobudget.MetricSnapshot, error) {
+func (c *QueueMetricsCollector) CollectMetrics(ctx context.Context) (ars.MetricSnapshot, error) {
     stats, err := c.queueService.GetStats(ctx)
     if err != nil {
-        return anomalyradarslobudget.MetricSnapshot{}, err
+        return ars.MetricSnapshot{}, err
     }
 
     latencies := c.statsCache.GetRecentLatencies()
 
-    return anomalyradarslobudget.MetricSnapshot{
+    return ars.MetricSnapshot{
         Timestamp:    time.Now(),
         BacklogSize:  stats.QueueLength,
         RequestCount: stats.ProcessedCount,
@@ -478,11 +547,11 @@ func (c *QueueMetricsCollector) CollectMetrics(ctx context.Context) (anomalyrada
 ### Alert Integration
 
 ```go
-radar.RegisterAlertCallback(func(alert anomalyradarslobudget.Alert) {
+radar.RegisterAlertCallback(func(alert ars.Alert) {
     switch alert.Severity {
-    case anomalyradarslobudget.AlertLevelCritical:
+    case ars.AlertLevelCritical:
         pagerduty.TriggerIncident(alert.Message)
-    case anomalyradarslobudget.AlertLevelWarning:
+    case ars.AlertLevelWarning:
         slack.SendAlert(alert.Message)
     }
 })
@@ -501,9 +570,18 @@ func (r *AnomalyRadar) ExportPrometheusMetrics() {
     // Export burn rate
     burnRateGauge.Set(sloBudget.CurrentBurnRate)
 
-    // Export alert counts by severity
+    // Export alert counts by severity (idempotent)
+    counts := map[string]float64{}
     for _, alert := range anomalyStatus.ActiveAlerts {
-        alertCountVec.WithLabelValues(alert.Severity.String()).Inc()
+        counts[alert.Severity.String()]++
+    }
+    for severity, value := range counts {
+        alertCountVec.WithLabelValues(severity).Set(value)
+    }
+    for _, severity := range []string{"info", "warning", "critical"} {
+        if _, ok := counts[severity]; !ok {
+            alertCountVec.WithLabelValues(severity).Set(0)
+        }
     }
 }
 ```

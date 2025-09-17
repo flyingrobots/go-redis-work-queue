@@ -373,10 +373,11 @@ func TestIntegrationBenchmark(t *testing.T) {
 
 	// Run benchmark
 	benchReq := adminapi.BenchRequest{
-		Count:    50,
-		Priority: "high",
-		Rate:     100,
-		Timeout:  10,
+		Count:       50,
+		Priority:    "high",
+		Rate:        100,
+		Timeout:     10,
+		PayloadSize: 512,
 	}
 	body, _ := json.Marshal(benchReq)
 

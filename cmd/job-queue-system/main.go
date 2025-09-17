@@ -35,6 +35,7 @@ func main() {
 	var benchRate int
 	var benchPriority string
 	var benchTimeout time.Duration
+	var benchPayloadSize int
 	var showVersion bool
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fs.StringVar(&role, "role", "all", "Role to run: producer|worker|all|admin")
@@ -48,6 +49,7 @@ func main() {
 	fs.IntVar(&benchRate, "bench-rate", 500, "Admin bench: enqueue rate jobs/sec")
 	fs.StringVar(&benchPriority, "bench-priority", "low", "Admin bench: priority/queue alias")
 	fs.DurationVar(&benchTimeout, "bench-timeout", 60*time.Second, "Admin bench: timeout to wait for completion")
+	fs.IntVar(&benchPayloadSize, "bench-payload-size", 1024, "Admin bench: payload size in bytes")
 	_ = fs.Parse(os.Args[1:])
 
 	if showVersion {
@@ -144,14 +146,14 @@ func main() {
 			logger.Fatal("worker error", obs.Err(err))
 		}
 	case "admin":
-		runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes, benchCount, benchRate, benchPriority, benchTimeout)
+		runAdmin(ctx, cfg, rdb, logger, adminCmd, adminQueue, adminN, adminYes, benchCount, benchRate, benchPriority, benchPayloadSize, benchTimeout)
 		return
 	default:
 		logger.Fatal("unknown role", obs.String("role", role))
 	}
 }
 
-func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool, benchCount, benchRate int, benchPriority string, benchTimeout time.Duration) {
+func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool, benchCount, benchRate int, benchPriority string, benchPayloadSize int, benchTimeout time.Duration) {
 	switch cmd {
 	case "stats":
 		res, err := admin.Stats(ctx, cfg, rdb)
@@ -191,7 +193,7 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
 		}{Purged: n})
 		fmt.Println(string(payload))
 	case "bench":
-		res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchTimeout)
+		res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchPayloadSize, benchTimeout)
 		if err != nil {
 			logger.Fatal("admin bench error", obs.Err(err))
 		}

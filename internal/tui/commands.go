@@ -33,8 +33,9 @@ func (m model) doPeekCmd(target string, n int) tea.Cmd {
 }
 
 func (m model) doBenchCmd(priority string, count, rate int, timeout time.Duration) tea.Cmd {
+	const defaultBenchPayloadSize = 1024
 	return func() tea.Msg {
-		b, err := admin.Bench(m.ctx, m.cfg, m.rdb, priority, count, rate, timeout)
+		b, err := admin.Bench(m.ctx, m.cfg, m.rdb, priority, count, rate, defaultBenchPayloadSize, timeout)
 		return benchMsg{b: b, err: err}
 	}
 }

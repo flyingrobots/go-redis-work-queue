@@ -279,6 +279,13 @@ func (h *Handler) RunBenchmark(w http.ResponseWriter, r *http.Request) {
 	if req.Rate <= 0 {
 		req.Rate = 100
 	}
+	if req.PayloadSize < 0 || req.PayloadSize > 1_048_576 {
+		writeError(w, http.StatusBadRequest, "INVALID_PAYLOAD_SIZE", "Payload size must be between 0 and 1048576 bytes")
+		return
+	}
+	if req.PayloadSize == 0 {
+		req.PayloadSize = 1024
+	}
 
 	timeout := 30 * time.Second
 	if req.Timeout > 0 {
@@ -289,7 +296,7 @@ func (h *Handler) RunBenchmark(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Run benchmark
-	result, err := admin.Bench(ctx, h.cfg, h.rdb, req.Priority, req.Count, req.Rate, timeout)
+	result, err := admin.Bench(ctx, h.cfg, h.rdb, req.Priority, req.Count, req.Rate, req.PayloadSize, timeout)
 	if err != nil {
 		h.logger.Error("Failed to run benchmark", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "BENCH_ERROR", "Failed to run benchmark")

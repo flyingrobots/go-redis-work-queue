@@ -409,6 +409,12 @@ components:
           maximum: 300
           default: 30
           description: Maximum time to wait for completion
+        payload_size_bytes:
+          type: integer
+          minimum: 0
+          maximum: 1048576
+          default: 1024
+          description: Size of each synthetic payload enqueued (bytes)
 
     BenchResponse:
       type: object

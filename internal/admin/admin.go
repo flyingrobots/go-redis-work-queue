@@ -136,13 +136,16 @@ type BenchResult struct {
 // Bench enqueues count jobs to the chosen queue and waits for completion
 // (observing the completed list) up to timeout. It computes simple latency
 // stats using job creation_time vs. measurement time.
-func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority string, count int, rate int, timeout time.Duration) (BenchResult, error) {
+func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority string, count int, rate int, payloadSize int, timeout time.Duration) (BenchResult, error) {
 	res := BenchResult{Count: count}
 	if count <= 0 {
 		return res, fmt.Errorf("count must be > 0")
 	}
 	if rate <= 0 {
 		rate = 100
+	}
+	if payloadSize <= 0 {
+		payloadSize = 1024
 	}
 	qkey, err := resolveQueue(cfg, priority)
 	if err != nil {
@@ -161,8 +164,8 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 			return res, ctx.Err()
 		case <-ticker.C:
 		}
-		payload := fmt.Sprintf(`{"id":"bench-%d","filepath":"/bench/%d","filesize":1,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
-			i, i, priority, time.Now().UTC().Format(time.RFC3339Nano))
+		payload := fmt.Sprintf(`{"id":"bench-%d","filepath":"/bench/%d","filesize":%d,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
+			i, i, payloadSize, priority, time.Now().UTC().Format(time.RFC3339Nano))
 		if err := rdb.LPush(ctx, qkey, payload).Err(); err != nil {
 			return res, err
 		}
@@ -338,9 +341,9 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 // PeekWithTracing enhances the standard Peek function with tracing information
 type PeekWithTracingResult struct {
 	PeekResult
-	TraceJobs    []*distributed_tracing_integration.TraceableJob            `json:"trace_jobs,omitempty"`
-	TraceActions map[string][]distributed_tracing_integration.TraceAction   `json:"trace_actions,omitempty"`
-	TraceInfo    []string                                                   `json:"trace_info,omitempty"`
+	TraceJobs    []*distributed_tracing_integration.TraceableJob          `json:"trace_jobs,omitempty"`
+	TraceActions map[string][]distributed_tracing_integration.TraceAction `json:"trace_actions,omitempty"`
+	TraceInfo    []string                                                 `json:"trace_info,omitempty"`
 }
 
 func PeekWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client, queueAlias string, n int64) (PeekWithTracingResult, error) {
@@ -388,12 +391,12 @@ func PeekWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client,
 
 // InfoWithTracing provides detailed job information including trace data
 type JobInfoResult struct {
-	JobID        string                                                     `json:"job_id"`
-	Queue        string                                                     `json:"queue"`
-	Job          *distributed_tracing_integration.TraceableJob             `json:"job,omitempty"`
-	TraceActions []distributed_tracing_integration.TraceAction             `json:"trace_actions,omitempty"`
-	TraceURL     string                                                     `json:"trace_url,omitempty"`
-	RawJSON      string                                                     `json:"raw_json"`
+	JobID        string                                        `json:"job_id"`
+	Queue        string                                        `json:"queue"`
+	Job          *distributed_tracing_integration.TraceableJob `json:"job,omitempty"`
+	TraceActions []distributed_tracing_integration.TraceAction `json:"trace_actions,omitempty"`
+	TraceURL     string                                        `json:"trace_url,omitempty"`
+	RawJSON      string                                        `json:"raw_json"`
 }
 
 func InfoWithTracing(ctx context.Context, cfg *config.Config, rdb *redis.Client, queueAlias string, jobIndex int) (JobInfoResult, error) {
