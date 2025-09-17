@@ -82,13 +82,15 @@ func main() {
 	rdb := redisclient.New(cfg)
 	defer rdb.Close()
 
-	// HTTP server: metrics, healthz, readyz
-	readyCheck := func(c context.Context) error {
-		_, err := rdb.Ping(c).Result()
-		return err
+	// HTTP server: metrics, healthz, readyz (skip for admin CLI)
+	if role != "admin" {
+		readyCheck := func(c context.Context) error {
+			_, err := rdb.Ping(c).Result()
+			return err
+		}
+		httpSrv := obs.StartHTTPServer(cfg, readyCheck)
+		defer func() { _ = httpSrv.Shutdown(context.Background()) }()
 	}
-	httpSrv := obs.StartHTTPServer(cfg, readyCheck)
-	defer func() { _ = httpSrv.Shutdown(context.Background()) }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
