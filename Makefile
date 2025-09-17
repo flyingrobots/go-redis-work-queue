@@ -10,7 +10,7 @@ LDFLAGS := -X main.version=$(VERSION)
 all: build
 
 build:
-	GO111MODULE=on go build -ldflags "$(LDFLAGS)" -o bin/$(APP) ./cmd/$(APP)
+	go build -ldflags "$(LDFLAGS)" -o bin/$(APP) ./cmd/$(APP)
 
 .PHONY: build-tui tui-build
 build-tui tui-build:
