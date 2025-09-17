@@ -39,8 +39,8 @@ metadata:
   namespace: work-queue
 type: Opaque
 stringData:
-  jwt-secret: "change-me-in-production"
-  redis-password: ""
+  jwt-secret: "" # populated via `kubectl create secret` in deployment pipeline
+  redis-password: "" # placeholder; provide via secret manager
 
 ---
 apiVersion: apps/v1
