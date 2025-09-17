@@ -104,8 +104,7 @@ coordinator_task = {
                 "Conclusions"
             ]
         },
-        "dependencies": ["POSTMORTEM.001", "POSTMORTEM.002", "POSTMORTEM.003", "POSTMORTEM.004", "POSTMORTEM.005",
-                         "POSTMORTEM.006", "POSTMORTEM.007", "POSTMORTEM.008", "POSTMORTEM.009", "POSTMORTEM.010"],
+        "dependencies": [task["task_id"] for task in postmortem_tasks],
         "resources_required": ["all_worker_reflections"]
     }
 }
