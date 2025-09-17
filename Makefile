@@ -29,6 +29,9 @@ test:
 tidy:
 	go mod tidy
 
+lint:
+	./scripts/check_yaml_newlines.py
+
 version:
 	@echo $(VERSION)
 
