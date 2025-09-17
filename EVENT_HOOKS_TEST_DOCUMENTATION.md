@@ -226,13 +226,12 @@ go tool cover -html=coverage.out -o coverage.html
 
 ### Integration Tests Only
 ```bash
-cd test/integration
-go test -v ./*.go
+go test -v ./test/integration
 ```
 
 ### Security Tests Only
 ```bash
-go test -v ./security_test.go
+go test -v ./... -run '^TestSignatureService_'
 ```
 
 ### Benchmarks
