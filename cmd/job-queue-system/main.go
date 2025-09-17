@@ -186,7 +186,10 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
 		if err != nil {
 			logger.Fatal("admin purge-all error", obs.Err(err))
 		}
-		fmt.Printf("purged %d keys\n", n)
+		payload, _ := json.Marshal(struct {
+			Purged int `json:"purged"`
+		}{Purged: n})
+		fmt.Println(string(payload))
 	case "bench":
 		res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchTimeout)
 		if err != nil {
