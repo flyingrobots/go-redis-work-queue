@@ -18,7 +18,7 @@ roles:
     permissions:
       - "jobs:enqueue"
       - "jobs:retry"
-      - "queues:list"
+      - "queues:read"
       - "bench:run"
     resource_constraints:
       queues: ["*"]
@@ -47,8 +47,10 @@ roles:
     permissions:
       - "dlq:purge"
       - "queues:delete"
-      - "admin:*"
-      - "system:*"
+      - "admin:users"
+      - "admin:tokens"
+      - "admin:audit"
+      - "admin:system"
     resource_constraints:
       queues: ["*"]
       environment: ["*"]
@@ -83,8 +85,16 @@ roles:
     name: "Emergency Response"
     description: "Emergency access for incident response"
     permissions:
-      - "admin:all"
-      - "emergency:*"
+      - "admin:users"
+      - "admin:tokens"
+      - "admin:audit"
+      - "admin:system"
+      - "queues:delete"
+      - "dlq:purge"
+      - "jobs:cancel"
+      - "jobs:priority"
+      - "workers:manage"
+      - "stats:export"
     resource_constraints:
       queues: ["*"]
       environment: ["*"]
