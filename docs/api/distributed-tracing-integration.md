@@ -46,8 +46,10 @@ observability:
     environment: "production"
     sampling_strategy: "probabilistic"
     sampling_rate: 0.1  # Sample 10% of traces
-    insecure: true  # Use insecure connection for local development
+    insecure: false  # TLS by default; set true only for local development
 ```
+
+> **Note:** The tracer validates endpoint schemes—if the endpoint implies TLS (e.g., `https://`, standard OTLP TLS ports) while `insecure: true`, startup fails fast with a clear error so operators do not accidentally ship plaintext.
 
 ### Advanced Configuration
 
