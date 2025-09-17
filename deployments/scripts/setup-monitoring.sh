@@ -10,6 +10,33 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# SMTP/alert recipients are supplied via environment variables.
+SMTP_HOST="${SMTP_HOST:?Environment variable SMTP_HOST must be set (e.g. smtp.example.com)}"
+SMTP_PORT="${SMTP_PORT:?Environment variable SMTP_PORT must be set (e.g. 587)}"
+SMTP_FROM_ADDRESS="${SMTP_FROM_ADDRESS:?Environment variable SMTP_FROM_ADDRESS must be set (e.g. alertmanager@example.com)}"
+ALERT_CRITICAL_EMAILS="${ALERT_CRITICAL_EMAILS:?Environment variable ALERT_CRITICAL_EMAILS must be set (comma-separated list)}"
+ALERT_WARNING_EMAILS="${ALERT_WARNING_EMAILS:?Environment variable ALERT_WARNING_EMAILS must be set (comma-separated list)}"
+ALERTMANAGER_WEBHOOK_URL="${ALERTMANAGER_WEBHOOK_URL:-http://localhost:9093/webhook}"
+
+render_email_block() {
+    local csv="$1"
+    local subject="$2"
+    local block=""
+    IFS=',' read -r -a recipients <<< "$csv"
+    for recipient in "${recipients[@]}"; do
+        local trimmed
+        trimmed=$(echo "$recipient" | xargs)
+        block+="  - to: '${trimmed}'\\n"
+        block+="    subject: '${subject}'\\n"
+        block+="    body: |\\n"
+        block+="      Alert: {{ .CommonAnnotations.summary }}\\n"
+        block+="      Description: {{ .CommonAnnotations.description }}\\n"
+        block+="      Severity: {{ .CommonLabels.severity }}\\n"
+        block+="      Time: {{ .CommonAnnotations.timestamp }}\\n"
+    done
+    printf '%b' "$block"
+}
+
 # Check prerequisites
 check_prerequisites() {
     log "Checking monitoring prerequisites..."
@@ -108,13 +135,17 @@ configure_alerting() {
     if ! kubectl get secret alertmanager-main -n "$MONITORING_NAMESPACE" &> /dev/null; then
         warn "AlertManager configuration not found"
         info "Creating basic AlertManager configuration..."
+        info "SMTP host: ${SMTP_HOST}:${SMTP_PORT} (from: ${SMTP_FROM_ADDRESS})"
+        info "Critical alert recipients: ${ALERT_CRITICAL_EMAILS}"
+        info "Warning alert recipients: ${ALERT_WARNING_EMAILS}"
 
-        kubectl create secret generic alertmanager-rbac-config \
-            --namespace="$MONITORING_NAMESPACE" \
-            --from-literal=alertmanager.yml="$(cat <<'EOF'
+        local critical_email_configs warning_email_configs alertmanager_config
+        critical_email_configs=$(render_email_block "$ALERT_CRITICAL_EMAILS" "CRITICAL: RBAC Token Service Alert")
+        warning_email_configs=$(render_email_block "$ALERT_WARNING_EMAILS" "WARNING: RBAC Token Service Alert")
+        alertmanager_config=$(cat <<EOF
 global:
-  smtp_smarthost: 'localhost:587'
-  smtp_from: 'alertmanager@company.com'
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_FROM_ADDRESS}'
 
 route:
   group_by: ['alertname']
@@ -135,29 +166,21 @@ route:
 receivers:
 - name: 'default-receiver'
   webhook_configs:
-  - url: 'http://localhost:9093/webhook'
+  - url: '${ALERTMANAGER_WEBHOOK_URL}'
 
 - name: 'rbac-critical'
   email_configs:
-  - to: 'admin@company.com'
-    subject: 'CRITICAL: RBAC Token Service Alert'
-    body: |
-      Alert: {{ .CommonAnnotations.summary }}
-      Description: {{ .CommonAnnotations.description }}
-      Severity: {{ .CommonLabels.severity }}
-      Time: {{ .CommonAnnotations.timestamp }}
-
+${critical_email_configs}
 - name: 'rbac-warning'
   email_configs:
-  - to: 'ops@company.com'
-    subject: 'WARNING: RBAC Token Service Alert'
-    body: |
-      Alert: {{ .CommonAnnotations.summary }}
-      Description: {{ .CommonAnnotations.description }}
-      Severity: {{ .CommonLabels.severity }}
-      Time: {{ .CommonAnnotations.timestamp }}
+${warning_email_configs}
 EOF
-)" --dry-run=client -o yaml | kubectl apply -f -
+)
+
+        kubectl create secret generic alertmanager-rbac-config \
+            --namespace="$MONITORING_NAMESPACE" \
+            --from-literal=alertmanager.yml="$alertmanager_config" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
     else
         info "AlertManager configuration already exists"
