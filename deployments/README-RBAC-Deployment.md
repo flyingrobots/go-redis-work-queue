@@ -15,25 +15,61 @@ The RBAC Token Service provides role-based access control and JWT/PASETO token m
 
 ## Architecture
 
+### Network Topology
+- **Namespace:** `work-queue`; all control-plane workloads run in this namespace.
+- **Ingress → Admin API:** HTTPS ingress terminates TLS and forwards to the `admin-api` service (`ClusterIP`, port 8080).
+- **Admin API ↔ RBAC Token Service:** Admin API calls the token service over the cluster network (`ClusterIP`, port 8081) for policy decisions and token minting.
+- **RBAC Token Service ↔ Redis:** The service connects to the Redis state store (`StatefulSet` or managed instance) on port 6379 using a dedicated Redis user/ACL.
+- **Observability Stack:** Prometheus scrapes both admin API and token service via `ServiceMonitor`s; Grafana and Alertmanager sit behind an internal NetworkPolicy‑guarded namespace.
+
+```mermaid
+flowchart LR
+    subgraph k8s[Kubernetes Namespace: work-queue]
+        ingress(Ingress Controller)
+        adminAPI(Admin API svc @8080)
+        rbacSvc(RBAC Token Service svc @8081)
+        redis[(Redis)]
+        prometheus{{Prometheus}}
+        grafana[[Grafana]]
+        alertMgr[[Alertmanager]]
+    end
+
+    ingress -->|HTTPS| adminAPI
+    adminAPI -->|mTLS/HTTP| rbacSvc
+    rbacSvc -->|TLS| redis
+    prometheus --> adminAPI
+    prometheus --> rbacSvc
+    grafana --> prometheus
+    alertMgr --> prometheus
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Kubernetes Cluster                         │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   Admin API     │  │  RBAC Token     │  │     Redis       │  │
-│  │   (Main App)    │  │    Service      │  │   (Storage)     │  │
-│  │                 │  │                 │  │                 │  │
-│  │  Port: 8080     │  │  Port: 8081     │  │  Port: 6379     │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-│           │                     │                     │          │
-│           └─────────────────────┼─────────────────────┘          │
-│                                 │                                │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   Prometheus    │  │     Grafana     │  │  AlertManager   │  │
-│  │   (Metrics)     │  │  (Dashboard)    │  │   (Alerts)      │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
+
+### Security Boundaries
+- **Network Policies:** Token service accepts traffic only from the admin API and Prometheus scrape jobs; outbound access limited to Redis and metrics endpoints.
+- **Secrets:** JWT signing keys, Redis credentials, and encryption keys are stored in `rbac-secrets` (Kubernetes `Secret`) or Docker secrets; mounted read-only in pods.
+- **Service Accounts & RBAC:** Dedicated service account `rbac-token-service` with least-privilege RBAC (configmap/secret read, metrics write).
+- **TLS:** External ingress terminates TLS; internal service-to-service communication uses cluster certificates or mTLS depending on environment.
+
+### Data Flow
+1. Client request hits the ingress and reaches the admin API.
+2. Admin API validates existing tokens with the RBAC token service.
+3. Token service looks up roles/resources in ConfigMaps, checks Redis for revocation lists, and emits audit logs.
+4. Responses return to the client; metrics and audit events flow to Prometheus and persistent storage respectively.
+
+### Port Reference
+| Component            | Service Port | Protocol | Notes                              |
+|--------------------- |-------------:|----------|------------------------------------|
+| Admin API            | 8080         | HTTP/TLS | Exposed via ingress                |
+| RBAC Token Service   | 8081         | HTTP     | Internal only (ClusterIP)          |
+| Redis                | 6379         | TCP/TLS  | ACL-protected connection           |
+| Prometheus           | 9090         | HTTP     | Metrics UI (cluster internal)      |
+| Grafana              | 3000         | HTTP/TLS | Optional ingress for dashboards    |
+| Alertmanager         | 9093         | HTTP/TLS | Optional ingress for alerts        |
+
+### Service Dependencies & Startup Order
+1. **Redis** with required ACLs and secrets in place.
+2. **RBAC Token Service** (requires Redis and secrets/config maps).
+3. **Admin API** (requires token service healthy).
+4. **Observability stack** (Prometheus → Grafana/Alertmanager) can start in parallel once core services are registered.
 
 ## Components
 
