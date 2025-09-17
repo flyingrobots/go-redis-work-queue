@@ -72,8 +72,14 @@ spec:
     # High Memory Usage
     - alert: AdminAPIHighMemory
       expr: |
-        container_memory_usage_bytes{pod=~"admin-api-.*"}
-        / container_spec_memory_limit_bytes{pod=~"admin-api-.*"} > 0.9
+        (
+          container_memory_usage_bytes{namespace="work-queue",pod=~"admin-api-.*"}
+          /
+          clamp_min(
+            kube_pod_container_resource_limits{namespace="work-queue",pod=~"admin-api-.*",resource="memory",unit="byte"},
+            1
+          )
+        ) > 0.9
       for: 5m
       labels:
         severity: warning
