@@ -302,13 +302,13 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 #### Trigger Outbox Publishing
 ```bash
-curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST -H "Authorization: Bearer ${API_TOKEN}" \
   http://localhost:8080/api/v1/exactly-once/outbox/publish
 ```
 
 #### Update Configuration
 ```bash
-curl -X PUT -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X PUT -H "Authorization: Bearer ${API_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"idempotency": {"enabled": true}}' \
   http://localhost:8080/api/v1/exactly-once/config
@@ -316,9 +316,11 @@ curl -X PUT -H "Authorization: Bearer YOUR_TOKEN" \
 
 #### Health Check
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
+curl -H "Authorization: Bearer ${API_TOKEN}" \
   http://localhost:8080/api/v1/exactly-once/health
 ```
+
+> Replace `${API_TOKEN}` with a real admin token or read it from your environment (e.g., `export API_TOKEN=...`) before invoking these commands.
 
 ## Integration with TUI
 
