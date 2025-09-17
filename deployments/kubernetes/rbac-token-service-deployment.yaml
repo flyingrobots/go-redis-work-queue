@@ -301,7 +301,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["configmaps", "secrets"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["get", "list"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch"]
