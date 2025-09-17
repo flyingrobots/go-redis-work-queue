@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 # Configuration
 NAMESPACE="work-queue"
@@ -30,15 +31,25 @@ check_prerequisites() {
 # Function to build Docker image
 build_image() {
     echo "Building Docker image..."
-    docker build -t ${APP_NAME}:${VERSION} -f deployments/admin-api/Dockerfile .
+    docker build -t "${APP_NAME}:${VERSION}" -f deployments/admin-api/Dockerfile .
 
-    if [ "$ENVIRONMENT" != "local" ]; then
-        # Tag for registry
-        REGISTRY_URL="${DOCKER_REGISTRY:-docker.io}"
-        docker tag ${APP_NAME}:${VERSION} ${REGISTRY_URL}/${APP_NAME}:${VERSION}
+    if [[ "${ENVIRONMENT}" != "local" ]]; then
+        registry="${DOCKER_REGISTRY:-docker.io}"
+        namespace="${DOCKER_NAMESPACE:-${APP_NAME}}"
+        if [[ -z "${namespace}" ]]; then
+            echo "Error: DOCKER_NAMESPACE must be provided" >&2
+            exit 1
+        fi
+        repo="${registry%/}/${namespace}/${APP_NAME}:${VERSION}"
+
+        echo "Tagging image as ${repo}"
+        docker tag "${APP_NAME}:${VERSION}" "${repo}"
 
         echo "Pushing image to registry..."
-        docker push ${REGISTRY_URL}/${APP_NAME}:${VERSION}
+        if ! docker push "${repo}"; then
+            echo "Error: docker push failed" >&2
+            exit 1
+        fi
     fi
 }
 
@@ -46,22 +57,17 @@ build_image() {
 deploy_kubernetes() {
     echo "Deploying to Kubernetes..."
 
-    # Create namespace if it doesn't exist
-    kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
-    # Apply Redis deployment
-    kubectl apply -f deployments/admin-api/k8s-redis.yaml
+    kubectl apply -n "${NAMESPACE}" -f deployments/admin-api/k8s-redis.yaml
 
-    # Wait for Redis to be ready
     echo "Waiting for Redis to be ready..."
-    kubectl wait --for=condition=ready pod -l app=redis -n ${NAMESPACE} --timeout=60s
+    kubectl wait --for=condition=ready pod -l app=redis -n "${NAMESPACE}" --timeout=60s
 
-    # Apply Admin API deployment
-    kubectl apply -f deployments/admin-api/k8s-deployment.yaml
+    kubectl apply -n "${NAMESPACE}" -f deployments/admin-api/k8s-deployment.yaml
 
-    # Wait for deployment to be ready
     echo "Waiting for Admin API deployment to be ready..."
-    kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE}
+    kubectl rollout status "deployment/${APP_NAME}" -n "${NAMESPACE}"
 
     echo "Deployment completed successfully"
 }
@@ -70,48 +76,53 @@ deploy_kubernetes() {
 run_smoke_tests() {
     echo "Running smoke tests..."
 
-    # Get service endpoint
-    if [ "$ENVIRONMENT" == "local" ]; then
-        # For local testing with port-forward
-        kubectl port-forward -n ${NAMESPACE} service/admin-api-service 8080:8080 &
-        PF_PID=$!
-        sleep 5
+    local endpoint=""
+    local pf_pid=""
 
-        ENDPOINT="http://localhost:8080"
+    if [[ "${ENVIRONMENT}" == "local" ]]; then
+        kubectl port-forward -n "${NAMESPACE}" service/admin-api-service 8080:8080 &
+        pf_pid=$!
+        trap '[[ -n "${pf_pid}" ]] && kill "${pf_pid}"' EXIT
+        sleep 5
+        endpoint="http://localhost:8080"
     else
-        # Get ingress endpoint
-        ENDPOINT=$(kubectl get ingress admin-api-ingress -n ${NAMESPACE} -o jsonpath='{.spec.rules[0].host}')
-        ENDPOINT="https://${ENDPOINT}"
+        host="$(kubectl get ingress admin-api-ingress -n "${NAMESPACE}" -o jsonpath='{.spec.rules[0].host}')"
+        endpoint="https://${host}"
     fi
 
-    # Test health endpoint
     echo "Testing health endpoint..."
-    if curl -f "${ENDPOINT}/health" > /dev/null 2>&1; then
+    if curl -fsS "${endpoint}/healthz" > /dev/null; then
         echo "✓ Health check passed"
     else
         echo "✗ Health check failed"
-        [ ! -z "$PF_PID" ] && kill $PF_PID
         exit 1
     fi
 
-    # Test API endpoint
+    echo "Testing readiness endpoint..."
+    if curl -fsS "${endpoint}/readyz" > /dev/null; then
+        echo "✓ Readiness check passed"
+    else
+        echo "✗ Readiness check failed"
+    fi
+
     echo "Testing API stats endpoint..."
-    if curl -f "${ENDPOINT}/api/v1/stats" -H "Authorization: Bearer test-token" > /dev/null 2>&1; then
+    if curl -fsS "${endpoint}/api/v1/stats" -H "Authorization: Bearer test-token" > /dev/null; then
         echo "✓ API endpoint accessible"
     else
         echo "⚠ API endpoint requires authentication (expected)"
     fi
 
-    # Test OpenAPI spec
     echo "Testing OpenAPI spec endpoint..."
-    if curl -f "${ENDPOINT}/api/v1/openapi.yaml" > /dev/null 2>&1; then
+    if curl -fsS "${endpoint}/api/v1/openapi.yaml" > /dev/null; then
         echo "✓ OpenAPI spec available"
     else
         echo "✗ OpenAPI spec not available"
     fi
 
-    # Clean up port-forward if local
-    [ ! -z "$PF_PID" ] && kill $PF_PID
+    if [[ -n "${pf_pid}" ]]; then
+        kill "${pf_pid}"
+        trap - EXIT
+    fi
 
     echo "Smoke tests completed"
 }
@@ -120,7 +131,7 @@ run_smoke_tests() {
 setup_monitoring() {
     echo "Setting up monitoring..."
 
-    cat <<EOF | kubectl apply -f -
+    cat <<EOF | kubectl apply -n "${NAMESPACE}" -f -
 apiVersion: v1
 kind: ServiceMonitor
 metadata:
@@ -144,13 +155,13 @@ verify_deployment() {
     echo "Verifying deployment..."
 
     # Check pod status
-    kubectl get pods -n ${NAMESPACE} -l app=${APP_NAME}
+    kubectl get pods -n "${NAMESPACE}" -l app="${APP_NAME}"
 
     # Check service endpoints
-    kubectl get endpoints -n ${NAMESPACE} admin-api-service
+    kubectl get endpoints -n "${NAMESPACE}" admin-api-service
 
     # Check recent events
-    kubectl get events -n ${NAMESPACE} --sort-by='.lastTimestamp' | tail -10
+    kubectl get events -n "${NAMESPACE}" --sort-by='.lastTimestamp' | tail -10
 
     echo "Deployment verification complete"
 }
@@ -158,8 +169,8 @@ verify_deployment() {
 # Function for rollback
 rollback() {
     echo "Rolling back deployment..."
-    kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE}
-    kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE}
+    kubectl rollout undo "deployment/${APP_NAME}" -n "${NAMESPACE}"
+    kubectl rollout status "deployment/${APP_NAME}" -n "${NAMESPACE}"
     echo "Rollback completed"
 }
 
@@ -170,7 +181,11 @@ main() {
     case "$ENVIRONMENT" in
         local)
             echo "Deploying locally with Docker Compose..."
-            docker-compose -f deployments/admin-api/docker-compose.yaml up -d
+            if ! docker compose version >/dev/null 2>&1; then
+                echo "Error: docker compose is required" >&2
+                exit 1
+            fi
+            docker compose -f deployments/admin-api/docker-compose.yaml up -d
             ;;
         staging)
             build_image

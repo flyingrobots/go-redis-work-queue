@@ -25,7 +25,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET:-development-secret-key}
+      - JWT_SECRET=${JWT_SECRET}
       - AUDIT_LOG_PATH=/var/log/admin-api/audit.log
       - RATE_LIMIT_ENABLED=true
       - RATE_LIMIT_PER_MINUTE=100
@@ -37,8 +37,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      admin-api-envcheck:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -53,3 +55,10 @@ volumes:
 networks:
   admin-api-network:
     driver: bridge
+  admin-api-envcheck:
+    image: alpine:3.20
+    entrypoint: ["/bin/sh", "-c", "if [ -z \"$JWT_SECRET\" ]; then echo 'JWT_SECRET must be set'; exit 1; fi"]
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - admin-api-network
