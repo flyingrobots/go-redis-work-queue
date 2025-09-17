@@ -68,7 +68,7 @@ build_image() {
     IMAGE_NAME="$REGISTRY/$APP_NAME:$IMAGE_TAG"
 
     # Build the image
-    docker build -f deployments/docker/Dockerfile.admin-api -t $IMAGE_NAME .
+    docker build -f deployments/docker/Dockerfile.admin-api -t "$IMAGE_NAME" .
 
     if [ $? -ne 0 ]; then
         log_error "Docker build failed"
