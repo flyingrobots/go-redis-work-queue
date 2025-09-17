@@ -1,4 +1,7 @@
+import errno
 import json
+import os
+import sys
 from datetime import datetime
 
 # Create post-mortem reflection tasks for each worker
@@ -109,10 +112,22 @@ coordinator_task = {
     }
 }
 
+def ensure_directory(path: str) -> None:
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError as err:
+        if err.errno in (errno.EACCES, errno.EROFS):
+            raise RuntimeError(f"insufficient permissions to create directory '{path}' ({err.strerror})") from err
+        raise RuntimeError(f"failed to create directory '{path}': {err.strerror}") from err
+
+
 # Write all tasks to open-tasks
-import os
-os.makedirs('slaps-coordination/open-tasks', exist_ok=True)
-os.makedirs('docs/SLAPS/worker-reflections', exist_ok=True)
+try:
+    ensure_directory('slaps-coordination/open-tasks')
+    ensure_directory('docs/SLAPS/worker-reflections')
+except RuntimeError as err:
+    print(f"create_postmortem_tasks: {err}", file=sys.stderr)
+    sys.exit(1)
 
 for task in postmortem_tasks:
     filename = f"slaps-coordination/open-tasks/{task['task_id']}.json"
