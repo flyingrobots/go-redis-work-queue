@@ -85,7 +85,7 @@ go test -v ./... -run '^TestEventFilter_'
 
 **Running**:
 ```bash
-cd test/integration && go test -v ./webhook_harness_test.go
+cd test/integration && go test -v -run '^TestWebhookHarness_'
 ```
 
 #### NATS Transport (`test/integration/nats_transport_test.go`)
