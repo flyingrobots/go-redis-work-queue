@@ -68,9 +68,7 @@ build_image() {
     IMAGE_NAME="$REGISTRY/$APP_NAME:$IMAGE_TAG"
 
     # Build the image
-    docker build -f deployments/docker/Dockerfile.admin-api -t "$IMAGE_NAME" .
-
-    if [ $? -ne 0 ]; then
+    if ! docker build -f deployments/docker/Dockerfile.admin-api -t "$IMAGE_NAME" .; then
         log_error "Docker build failed"
         exit 1
     fi
@@ -80,9 +78,7 @@ build_image() {
     # Push to registry if not local
     if [ "$REGISTRY" != "local" ]; then
         log_info "Pushing image to registry..."
-        docker push $IMAGE_NAME
-
-        if [ $? -ne 0 ]; then
+        if ! docker push "$IMAGE_NAME"; then
             log_error "Failed to push image to registry"
             exit 1
         fi
