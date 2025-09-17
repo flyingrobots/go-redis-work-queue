@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: admin-api-alerts
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   groups:
     - name: admin-api
@@ -67,7 +67,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: admin-api-dashboards
-  namespace: redis-work-queue
+  namespace: work-queue
 data:
   dashboard.json: |
     {
