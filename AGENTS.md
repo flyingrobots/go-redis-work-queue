@@ -657,6 +657,14 @@ Please keep this document up-to-date with records of what you've worked on as yo
 
 
 > [!NOTE]
+> ### 2025-09-16 – CodeRabbit PR#3 chunk_007 sweep
+> - Cleared CodeRabbit chunk_007 (30/30 items) with per-item commits and refreshed the chunk progress bar to 100%.
+> - Hardened admin API docs/config (dedicated confirmation phrases, CORS guidance), refreshed webhook signing/idempotency guidance, and aligned RBAC monitoring with real metrics.
+> - Standardized event-hooks testing docs around package-aware `go test` patterns and made the postmortem coordinator task derive dependencies dynamically.
+> - Lessons: keep documentation commands module-aware (no filename globs) and generate orchestration dependencies from shared data instead of static lists.
+
+
+> [!NOTE]
 > ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
 > 
 > Changes
