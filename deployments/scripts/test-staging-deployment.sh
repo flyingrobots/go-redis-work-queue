@@ -336,8 +336,14 @@ test_rbac_functionality() {
     sleep 5
 
     # Get bootstrap token
-    local bootstrap_token
-    bootstrap_token=$(kubectl get secret rbac-secrets -n "$NAMESPACE" -o jsonpath='{.data.admin-bootstrap-token}' | base64 -d 2>/dev/null || echo "")
+    local bootstrap_token=""
+    local bootstrap_encoded
+    bootstrap_encoded=$(kubectl get secret rbac-secrets -n "$NAMESPACE" -o jsonpath='{.data.admin-bootstrap-token}' 2>/dev/null || true)
+    if [[ -n "$bootstrap_encoded" ]]; then
+        if ! bootstrap_token=$(printf '%s' "$bootstrap_encoded" | base64 -d 2>/dev/null); then
+            bootstrap_token=""
+        fi
+    fi
 
     if [[ -n "$bootstrap_token" ]]; then
         add_test_result "bootstrap-token-retrieved" "PASS" "Bootstrap token retrieved successfully"
