@@ -94,6 +94,10 @@ roles:
 
 default_role: "viewer"
 role_assignment_rules:
+# Evaluated by the RBAC token service after explicit user/group rules.
+# Matching uses the token's email domain; precedence is user > group > first domain match.
+# Example: jane@devops.company.com in the "incident-response" group keeps that group role;
+# otherwise the devops domain default ("operator") applies.
   - domain: "company.com"
     default_role: "viewer"
   - domain: "devops.company.com"
