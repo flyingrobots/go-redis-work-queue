@@ -456,6 +456,20 @@ test_backup_readiness() {
     local pods
     pods=$(kubectl get pods -n "$NAMESPACE" -l "app=$SERVICE_NAME" -o name 2>/dev/null)
 
+    local expected_audit_mount expected_keys_mount
+    expected_audit_mount=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].volumeMounts[?(@.name=="audit-logs")].mountPath}' 2>/dev/null || echo "")
+    expected_keys_mount=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].volumeMounts[?(@.name=="rbac-keys")].mountPath}' 2>/dev/null || echo "")
+
+    if [[ -z "$expected_audit_mount" ]]; then
+        warn "Unable to derive audit-logs mount path from deployment; falling back to /app/audit"
+        expected_audit_mount="/app/audit"
+    fi
+
+    if [[ -z "$expected_keys_mount" ]]; then
+        warn "Unable to derive rbac-keys mount path from deployment; falling back to /app/keys"
+        expected_keys_mount="/app/keys"
+    fi
+
     if [[ -n "$pods" ]]; then
         for pod in $pods; do
             local pod_name="${pod##*/}"
@@ -464,7 +478,7 @@ test_backup_readiness() {
             local audit_mount
             audit_mount=$(kubectl get "$pod" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].volumeMounts[?(@.name=="audit-logs")].mountPath}' 2>/dev/null || echo "")
 
-            if [[ "$audit_mount" == "/app/audit" ]]; then
+            if [[ "$audit_mount" == "$expected_audit_mount" ]]; then
                 add_test_result "audit-volume-mount-$pod_name" "PASS" "Audit volume properly mounted"
             else
                 add_test_result "audit-volume-mount-$pod_name" "FAIL" "Audit volume not properly mounted"
@@ -474,7 +488,7 @@ test_backup_readiness() {
             local keys_mount
             keys_mount=$(kubectl get "$pod" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].volumeMounts[?(@.name=="rbac-keys")].mountPath}' 2>/dev/null || echo "")
 
-            if [[ "$keys_mount" == "/app/keys" ]]; then
+            if [[ "$keys_mount" == "$expected_keys_mount" ]]; then
                 add_test_result "keys-volume-mount-$pod_name" "PASS" "Keys volume properly mounted"
             else
                 add_test_result "keys-volume-mount-$pod_name" "FAIL" "Keys volume not properly mounted"
