@@ -646,6 +646,13 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Logged dispositions in the chunk file and updated the progress bar to 100%.
 > - Lessons: automate format safety (lint scripts, pinned images) instead of relying on manual edits; update review artifacts immediately to keep evidence aligned with commits.
 
+> [!NOTE]
+> ### 2025-09-16 – PR#3 Review Chunk 006
+> - Addressed CodeRabbit chunk_006 (30/30 items) touching Docker/Kubernetes manifests, deployment scripts, and docs.
+> - Introduced `deployments/scripts/lib/logging.sh`, parameterized Alertmanager SMTP settings, and derived runtime checks from live manifests.
+> - Extracted the feature palette into `docs/colors.yml` and standardized template formatting; chunk log now reads 100%.
+> - Lessons: keep scripting helpers centralized, source production credentials from env/secret inputs, and treat design tokens as structured data for reuse.
+
 
 > [!NOTE]
 > ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
