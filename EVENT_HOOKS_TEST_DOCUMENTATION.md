@@ -216,10 +216,11 @@ assert.True(t, event.MatchesSubscription(subscription))
 ### Complete Test Suite
 ```bash
 # Run all tests with verbose output
-go test -v ./*.go
+go test -v ./...
 
 # Run with coverage
-go test -v -coverprofile=coverage.out ./*.go
+go test -v -coverprofile=coverage.out ./...
+go tool cover -func=coverage.out
 go tool cover -html=coverage.out -o coverage.html
 ```
 
