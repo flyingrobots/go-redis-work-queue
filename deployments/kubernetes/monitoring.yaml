@@ -119,7 +119,7 @@ spec:
     # Rate Limit Exceeded
     - alert: AdminAPIRateLimitExceeded
       expr: |
-        sum(rate(http_requests_rate_limited_total{app="admin-api"}[5m])) > 10
+        sum(rate(rate_limit_exceeded_total{app="admin-api"}[5m])) > 10
       for: 5m
       labels:
         severity: info
@@ -214,7 +214,7 @@ data:
             "title": "Rate Limited Requests",
             "targets": [
               {
-                "expr": "sum(rate(http_requests_rate_limited_total{app=\"admin-api\"}[5m]))"
+                "expr": "sum(rate(rate_limit_exceeded_total{app=\"admin-api\"}[5m]))"
               }
             ]
           },
