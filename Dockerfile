@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.23 AS build
+FROM golang:1.25 AS build
 WORKDIR /src
 COPY go.mod .
 RUN go mod download
@@ -12,4 +12,3 @@ WORKDIR /
 COPY --from=build /out/job-queue-system /job-queue-system
 USER nonroot:nonroot
 ENTRYPOINT ["/job-queue-system"]
-
