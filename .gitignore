@@ -39,3 +39,6 @@ go.work
 # Logs
 *.log
 logs/
+
+# Local compose secrets
+deployments/docker/admin-api.env

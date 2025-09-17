@@ -22,6 +22,8 @@ services:
       dockerfile: deployments/docker/Dockerfile.admin-api
     ports:
       - "8080:8080"
+    env_file:
+      - ./admin-api.env
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -33,11 +35,8 @@ services:
       - RBAC_TOKEN_MAX_TTL=168h  # 7 days
       - RBAC_AUDIT_ENABLED=true
       - RBAC_AUDIT_LOG_PATH=/app/audit/rbac-audit.log
-      - RBAC_ROLES_FILE=/app/configs/roles.yaml
-      - RBAC_RESOURCES_FILE=/app/configs/resources.yaml
-      # Legacy token support for gradual migration
-      - API_TOKEN_1=local-dev-token
-      - API_TOKEN_2=local-readonly-token
+      - RBAC_ROLES_FILE=/app/rbac/roles.yaml
+      - RBAC_RESOURCES_FILE=/app/rbac/resources.yaml
     depends_on:
       redis:
         condition: service_healthy
