@@ -272,6 +272,17 @@ Failed webhook deliveries are automatically retried with exponential backoff:
 - Maximum retries: 5 (configurable)
 - Jitter added to prevent thundering herd
 
+## Idempotency & Replay Semantics
+
+Webhooks may be delivered more than once, especially when DLH replays are triggered. Consumers must:
+
+- Treat every delivery as potentially duplicated.
+- Use `X-Webhook-Delivery` as the idempotency key and persist it (e.g., in a short-lived cache or datastore) with a retention window appropriate for your SLA—30 to 90 minutes is typical.
+- Honor the optional `X-Webhook-Replay: true` header on DLH replays so you can provide custom logging or altered retry logic.
+- Return a 2xx response for requests whose delivery ID has already been processed; the sender interprets duplicate IDs with 2xx as success and will not replay again.
+
+**Recommendation:** store delivery IDs with an expiry in Redis or your application database. On duplicate IDs, skip side effects and log the duplicate rather than erroring. When possible, make downstream operations idempotent so retries and replays remain safe.
+
 ## Error Handling
 
 Webhook delivery errors are categorized as:
