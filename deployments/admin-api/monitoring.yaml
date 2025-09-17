@@ -54,7 +54,15 @@ spec:
             description: "Failed to write {{ $value }} audit log entries"
 
         - alert: AdminAPIMemoryUsage
-          expr: container_memory_usage_bytes{pod=~"admin-api-.*"} / container_spec_memory_limit_bytes > 0.8
+          expr: |
+            (
+              container_memory_usage_bytes{namespace="work-queue",pod=~"admin-api-.*"}
+              /
+              clamp_min(
+                kube_pod_container_resource_limits{namespace="work-queue",pod=~"admin-api-.*",resource="memory",unit="byte"},
+                1
+              )
+            ) > 0.8
           for: 5m
           labels:
             severity: warning
