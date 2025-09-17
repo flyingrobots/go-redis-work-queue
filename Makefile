@@ -5,7 +5,7 @@ PKG := github.com/flyingrobots/go-redis-work-queue
 VERSION ?= dev
 LDFLAGS := -X main.version=$(VERSION)
 
-.PHONY: all build test run lint tidy version
+.PHONY: all build test run lint tidy version clean
 
 all: build
 
@@ -31,6 +31,10 @@ tidy:
 
 version:
 	@echo $(VERSION)
+
+.PHONY: clean
+clean:
+	rm -rf bin dist build out coverage *.coverprofile *.out .gocache
 
 .PHONY: hooks
 hooks:
