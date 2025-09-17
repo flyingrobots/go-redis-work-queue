@@ -12,10 +12,10 @@ http://localhost:8080/api/v1/canary
 
 ## Authentication
 
-The API supports multiple authentication methods:
+The API expects an admin-scoped bearer token:
 
-- **Bearer Token**: Include `Authorization: Bearer <token>` header
-- **API Key**: Include `X-API-Key: <key>` header
+- **Bearer Token (preferred):** Include `Authorization: Bearer <token>` with an admin-capable JWT.
+- **API Token Alias (optional):** `X-API-Token: <token>` is accepted for legacy clients, but if both headers are provided the `Authorization` header takes precedence.
 
 ## Content Type
 
@@ -34,6 +34,8 @@ All error responses follow this format:
   }
 }
 ```
+
+All percentage fields (`error_percent`, `success_percent`) are expressed on a 0–100 scale.
 
 ### Error Codes
 
@@ -307,8 +309,8 @@ Retrieves current performance metrics for both stable and canary versions.
     "job_count": 1250,
     "success_count": 1238,
     "error_count": 12,
-    "error_rate": 0.96,
-    "success_rate": 99.04,
+    "error_percent": 0.96,
+    "success_percent": 99.04,
     "avg_latency": 245.6,
     "p50_latency": 198.3,
     "p95_latency": 456.7,
@@ -328,8 +330,8 @@ Retrieves current performance metrics for both stable and canary versions.
     "job_count": 312,
     "success_count": 309,
     "error_count": 3,
-    "error_rate": 0.96,
-    "success_rate": 99.04,
+    "error_percent": 0.96,
+    "success_percent": 99.04,
     "avg_latency": 231.2,
     "p50_latency": 189.5,
     "p95_latency": 423.8,
@@ -557,7 +559,7 @@ Retrieves available canary deployment configuration profiles.
 
 ```json
 {
-  "id": "string",
+  "id": "01J6P3ZGR8MB2X4E7Q5V9YH6T2",
   "queue_name": "string",
   "tenant_id": "string",
   "stable_version": "string",
@@ -589,6 +591,8 @@ Retrieves available canary deployment configuration profiles.
 }
 ```
 
+`id` values are ULIDs (26-character Crockford base32, uppercase). IDs must match `^[0-9A-HJKMNP-TV-Z]{26}$`; invalid IDs return `400 Bad Request` with validation details.
+
 ### Metrics Snapshot
 
 ```json
@@ -599,8 +603,8 @@ Retrieves available canary deployment configuration profiles.
   "job_count": 1250,
   "success_count": 1238,
   "error_count": 12,
-  "error_rate": 0.96,
-  "success_rate": 99.04,
+  "error_percent": 0.96,
+  "success_percent": 99.04,
   "avg_latency": 245.6,
   "p50_latency": 198.3,
   "p95_latency": 456.7,
@@ -616,6 +620,8 @@ Retrieves available canary deployment configuration profiles.
   "version": "v1.2.0"
 }
 ```
+
+Percentage values are expressed on a 0–100 scale.
 
 ### Worker Object
 
