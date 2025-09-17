@@ -62,7 +62,7 @@ spec:
     spec:
       containers:
       - name: admin-api
-        image: redis-work-queue/admin-api:latest
+        image: redis-work-queue/admin-api:v0.4.0-alpha
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
