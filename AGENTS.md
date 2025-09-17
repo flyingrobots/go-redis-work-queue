@@ -651,7 +651,8 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Addressed CodeRabbit chunk_006 (30/30 items) touching Docker/Kubernetes manifests, deployment scripts, and docs.
 > - Introduced `deployments/scripts/lib/logging.sh`, parameterized Alertmanager SMTP settings, and derived runtime checks from live manifests.
 > - Extracted the feature palette into `docs/colors.yml` and standardized template formatting; chunk log now reads 100%.
-> - Lessons: keep scripting helpers centralized, source production credentials from env/secret inputs, and treat design tokens as structured data for reuse.
+> - Summary: Compose/K8s manifests are now deterministic, RBAC catalog matches Admin API, and staging tooling (tests + monitoring scripts) fail fast on missing prerequisites.
+> - Lessons: keep scripting helpers centralized, source production credentials from env/secret inputs, treat design tokens as structured data, and wrap optional integrations (SMTP) behind feature flags for safer defaults.
 > - Follow-up: Alertmanager emails now gated by `ENABLE_ALERTMANAGER_SMTP`; defaults to webhook-only routing when disabled.
 
 
