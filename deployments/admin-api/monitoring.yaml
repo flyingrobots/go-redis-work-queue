@@ -86,7 +86,7 @@ data:
             "title": "Request Rate",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job='admin-api'}[5m])"
+                "expr": "rate(http_requests_total{job=\"admin-api\"}[5m])"
               }
             ]
           },
@@ -94,7 +94,7 @@ data:
             "title": "Error Rate",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job='admin-api',status=~'5..'}[5m])"
+                "expr": "rate(http_requests_total{job=\"admin-api\",status=~\"5..\"}[5m])"
               }
             ]
           },
@@ -102,7 +102,7 @@ data:
             "title": "P95 Latency",
             "targets": [
               {
-                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='admin-api'}[5m]))"
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"admin-api\"}[5m]))"
               }
             ]
           },
@@ -110,7 +110,7 @@ data:
             "title": "Active Connections",
             "targets": [
               {
-                "expr": "http_connections_active{job='admin-api'}"
+                "expr": "http_connections_active{job=\"admin-api\"}"
               }
             ]
           },
@@ -118,7 +118,7 @@ data:
             "title": "Rate Limit Hits",
             "targets": [
               {
-                "expr": "rate(rate_limit_exceeded_total{job='admin-api'}[5m])"
+                "expr": "rate(rate_limit_exceeded_total{job=\"admin-api\"}[5m])"
               }
             ]
           },
@@ -126,7 +126,7 @@ data:
             "title": "Audit Log Writes",
             "targets": [
               {
-                "expr": "rate(audit_log_writes_total{job='admin-api'}[5m])"
+                "expr": "rate(audit_log_writes_total{job=\"admin-api\"}[5m])"
               }
             ]
           }
