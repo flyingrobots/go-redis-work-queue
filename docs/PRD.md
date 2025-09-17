@@ -162,7 +162,18 @@ Job payload JSON:
 - HTTP server exposes `/metrics`, `/healthz`, and `/readyz`. Key metrics:
   - Counter: `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total`
   - Histogram: `job_processing_duration_seconds`
-  - Gauges: `queue_length{queue=...}`, `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`)
+  - Gauges: queue depth reporting honours `metrics.allowed_queues` configuration. Only queues listed there are exported verbatim; all others are hashed into stable buckets (`queue_hash` labels) or aggregated under `queue="other"` to cap cardinality. Additional gauges: `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`).
+  - Default configuration:
+    ```yaml
+    metrics:
+      allowed_queues:
+        - critical-orders
+        - default
+        - payments
+      fallback_strategy: hash  # hash|bucket|other
+      fallback_bucket_count: 8
+    ```
+    Operators may expand `allowed_queues` as needed; remaining queues follow the selected fallback strategy to maintain bounded label sets.
 - Logging (zap): structured, includes `trace_id`/`span_id` when present
 - Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process. Job `trace_id`/`span_id` are propagated as remote parent when present.
 
