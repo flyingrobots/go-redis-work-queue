@@ -200,8 +200,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: rbac-token-service
-        image: work-queue/rbac-token-service:latest
-        imagePullPolicy: Always
+        image: redis-work-queue/rbac-token-service:v0.4.0-alpha
+        imagePullPolicy: IfNotPresent
         ports:
         - name: http
           containerPort: 8081
