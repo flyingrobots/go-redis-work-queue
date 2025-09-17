@@ -34,7 +34,7 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 ### Installation
 
 ```go
-import "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+import anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
 ```
 
 ### Basic Usage
