@@ -128,6 +128,8 @@ The deployment includes comprehensive monitoring setup:
 - Audit log metrics
 - System resource metrics
 
+> **Important:** The `/metrics` endpoint should remain ClusterIP-only. Restrict access with NetworkPolicies so only Prometheus scrape targets can reach it, and scrape via a ServiceMonitor or explicit Prometheus scrape config against the internal service—never expose it through an Ingress or external load balancer.
+
 ### Alerts
 
 - High error rate (>5%)
