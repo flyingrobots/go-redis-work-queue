@@ -132,7 +132,7 @@ setup_monitoring() {
     echo "Setting up monitoring..."
 
     cat <<EOF | kubectl apply -n "${NAMESPACE}" -f -
-apiVersion: v1
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: admin-api-monitor
