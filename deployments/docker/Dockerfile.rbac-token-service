@@ -35,12 +35,12 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/rbac-token-service /app/rbac-token-service
 
-# Copy default configs if they exist
-COPY --from=builder /app/configs/rbac* /app/configs/ 2>/dev/null || true
-COPY --from=builder /app/deployments/docker/rbac-configs/ /app/configs/ 2>/dev/null || true
+# Prepare config directory and copy packaged defaults
+RUN mkdir -p /app/configs
+COPY --from=builder /app/deployments/docker/rbac-configs/ /app/configs/
 
 # Create directories for keys, logs and audit
-RUN mkdir -p /app/keys /app/logs /app/audit /app/configs && \
+RUN mkdir -p /app/keys /app/logs /app/audit && \
     chown -R tokenuser:tokenuser /app
 
 # Switch to non-root user
