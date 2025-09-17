@@ -146,7 +146,9 @@ run_health_checks() {
         log "Health check passed"
     else
         error "Health check failed"
-        kill $PORT_FORWARD_PID 2>/dev/null || true
+        if [[ -n "${PORT_FORWARD_PID:-}" ]]; then
+            kill "$PORT_FORWARD_PID" 2>/dev/null || true
+        fi
         exit 1
     fi
 
@@ -158,7 +160,9 @@ run_health_checks() {
     fi
 
     # Clean up port forward
-    kill $PORT_FORWARD_PID 2>/dev/null || true
+    if [[ -n "${PORT_FORWARD_PID:-}" ]]; then
+        kill "$PORT_FORWARD_PID" 2>/dev/null || true
+    fi
 
     log "Health checks completed"
 }
