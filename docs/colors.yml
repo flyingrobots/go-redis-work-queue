@@ -1,0 +1,21 @@
+feature_enhancement_palette:
+  background:
+    canvas: "#0d1117"
+    panel: "#161b22"
+    input: "#0d1117"
+    highlight: "#1f2937"
+  border:
+    default: "#30363d"
+    success: "#238636"
+    error: "#f85149"
+    warning: "#ffa657"
+  text:
+    primary: "#f0f6fc"
+    secondary: "#8b949e"
+    link: "#58a6ff"
+    success: "#39d353"
+    error: "#f85149"
+  button:
+    primary: "#238636"
+    secondary: "#30363d"
+    info: "#58a6ff"

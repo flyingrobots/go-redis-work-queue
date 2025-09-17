@@ -153,31 +153,26 @@ Save SVGs to `/docs/images/` with descriptive names like `feature-name-desktop.s
 
 ### Color Palette
 
-```xml
-<!-- Backgrounds -->
-#0d1117 - Main background
-#161b22 - Panel background
-#0d1117 - Input/nested background
-#1f2937 - Highlighted section
+Refer to [`docs/colors.yml`](colors.yml) (`feature_enhancement_palette`) for the canonical palette. Key values:
 
-<!-- Borders -->
-#30363d - Default border
-#238636 - Success border
-#f85149 - Error border
-#ffa657 - Warning border
-
-<!-- Text -->
-#f0f6fc - Primary text
-#8b949e - Secondary text
-#58a6ff - Links/actions
-#39d353 - Success text
-#f85149 - Error text
-
-<!-- Buttons -->
-#238636 - Primary button
-#30363d - Secondary button
-#58a6ff - Info button
-```
+| Category | Token | Hex |
+|----------|-------|-----|
+| Background | canvas | `#0d1117` |
+| Background | panel | `#161b22` |
+| Background | input | `#0d1117` |
+| Background | highlight | `#1f2937` |
+| Border | default | `#30363d` |
+| Border | success | `#238636` |
+| Border | error | `#f85149` |
+| Border | warning | `#ffa657` |
+| Text | primary | `#f0f6fc` |
+| Text | secondary | `#8b949e` |
+| Text | link | `#58a6ff` |
+| Text | success | `#39d353` |
+| Text | error | `#f85149` |
+| Button | primary | `#238636` |
+| Button | secondary | `#30363d` |
+| Button | info | `#58a6ff` |
 
 ### Layout Patterns
 
