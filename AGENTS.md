@@ -639,6 +639,12 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Implement Job Timeline API and TUI Time Travel view.
 > - Add integration tests for the new endpoints.
 
+> [!NOTE]
+> ### 2025-09-16 – PR#3 Review Chunk 005
+> - Completed CodeRabbit chunk_005 (30/30 items) covering compose secrets, admin API manifests, PRD clarifications, and API/README updates.
+> - Added `scripts/check_yaml_newlines.py` plus `make lint` to enforce YAML trailing newlines; pinned admin API deployment image and externalized JWT secret.
+> - Logged dispositions in the chunk file and updated the progress bar to 100%.
+
 
 > [!NOTE]
 > ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
