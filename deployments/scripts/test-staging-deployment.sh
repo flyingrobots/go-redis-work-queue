@@ -67,6 +67,14 @@ check_prerequisites() {
         all_passed=false
     fi
 
+    # Check jq
+    if command -v jq &> /dev/null; then
+        add_test_result "jq-available" "PASS" "jq is available"
+    else
+        add_test_result "jq-available" "FAIL" "jq not found"
+        all_passed=false
+    fi
+
     # Check cluster connection
     if kubectl cluster-info &> /dev/null; then
         add_test_result "cluster-connection" "PASS" "Can connect to Kubernetes cluster"
