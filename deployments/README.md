@@ -86,6 +86,12 @@ export IMAGE_TAG=v1.0.0
 | `API_TOKEN_1` | Service account token | Required |
 | `API_TOKEN_2` | Readonly account token | Required |
 | `LOG_LEVEL` | Logging level | `info` |
+| `RATE_LIMIT_RPM` | Per-minute request budget for the admin API rate limiter | `100` |
+| `RATE_LIMIT_BURST` | Burst size allowed before throttling engages | `20` |
+| `RATE_LIMIT_WINDOW_SECONDS` | Sliding window length (seconds) used for rate limit calculations | `60` |
+| `RATE_LIMIT_ENABLED` | Toggle to enable or disable the rate limiter (`true`/`false`) | `true` |
+
+The Admin API reads these values during startup to configure token-bucket throttling; adjust them to tune request throughput for your environment.
 
 ### Secrets Management
 
