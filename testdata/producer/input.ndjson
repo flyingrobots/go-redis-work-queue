@@ -1,1 +1,2 @@
-test file for producer
+{"id":"job-0001","type":"email","payload":{"to":"user@example.com","subject":"Welcome","body":"Thanks for trying the queue."},"queued_at":"2025-01-01T00:00:00Z","priority":"high","options":{"retries":0,"ttl_seconds":3600}}
+{"id":"job-0002","type":"report","payload":{"path":"/data/reports/daily-2025-01-01.csv","size_bytes":524288},"queued_at":"2025-01-01T00:05:00Z","priority":"normal","options":{"retries":1,"ttl_seconds":7200}}
