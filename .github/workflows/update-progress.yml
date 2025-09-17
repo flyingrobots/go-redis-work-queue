@@ -8,6 +8,10 @@ name: Update Progress Bars
 permissions:
   contents: write
 
+concurrency:
+  group: "update-progress-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   update-progress:
     if: github.actor != 'github-actions[bot]'
