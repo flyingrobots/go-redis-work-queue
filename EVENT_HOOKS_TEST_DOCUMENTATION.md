@@ -60,7 +60,7 @@ go test -v ./... -run '^TestHMACSigner_'
 
 **Running**:
 ```bash
-go test -v ./event_filter_test.go
+go test -v ./... -run '^TestEventFilter_'
 ```
 
 ### 2. Integration Tests
