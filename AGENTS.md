@@ -652,6 +652,7 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Introduced `deployments/scripts/lib/logging.sh`, parameterized Alertmanager SMTP settings, and derived runtime checks from live manifests.
 > - Extracted the feature palette into `docs/colors.yml` and standardized template formatting; chunk log now reads 100%.
 > - Lessons: keep scripting helpers centralized, source production credentials from env/secret inputs, and treat design tokens as structured data for reuse.
+> - Follow-up: Alertmanager emails now gated by `ENABLE_ALERTMANAGER_SMTP`; defaults to webhook-only routing when disabled.
 
 
 > [!NOTE]

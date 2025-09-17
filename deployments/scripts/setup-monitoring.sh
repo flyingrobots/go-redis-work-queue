@@ -10,12 +10,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "${SCRIPT_DIR}/lib/logging.sh"
 
-# SMTP/alert recipients are supplied via environment variables.
-SMTP_HOST="${SMTP_HOST:?Environment variable SMTP_HOST must be set (e.g. smtp.example.com)}"
-SMTP_PORT="${SMTP_PORT:?Environment variable SMTP_PORT must be set (e.g. 587)}"
-SMTP_FROM_ADDRESS="${SMTP_FROM_ADDRESS:?Environment variable SMTP_FROM_ADDRESS must be set (e.g. alertmanager@example.com)}"
-ALERT_CRITICAL_EMAILS="${ALERT_CRITICAL_EMAILS:?Environment variable ALERT_CRITICAL_EMAILS must be set (comma-separated list)}"
-ALERT_WARNING_EMAILS="${ALERT_WARNING_EMAILS:?Environment variable ALERT_WARNING_EMAILS must be set (comma-separated list)}"
+# Alert routing feature flag / configuration.
+ENABLE_ALERTMANAGER_SMTP="${ENABLE_ALERTMANAGER_SMTP:-false}"
+
+if [[ "$ENABLE_ALERTMANAGER_SMTP" == "true" ]]; then
+  : "${SMTP_HOST:?ENABLE_ALERTMANAGER_SMTP=true but SMTP_HOST not set (e.g. smtp.example.com)}"
+  : "${SMTP_PORT:?ENABLE_ALERTMANAGER_SMTP=true but SMTP_PORT not set (e.g. 587)}"
+  : "${SMTP_FROM_ADDRESS:?ENABLE_ALERTMANAGER_SMTP=true but SMTP_FROM_ADDRESS not set (e.g. alertmanager@example.com)}"
+  : "${ALERT_CRITICAL_EMAILS:?ENABLE_ALERTMANAGER_SMTP=true but ALERT_CRITICAL_EMAILS not set (comma-separated list)}"
+  : "${ALERT_WARNING_EMAILS:?ENABLE_ALERTMANAGER_SMTP=true but ALERT_WARNING_EMAILS not set (comma-separated list)}"
+else
+  SMTP_HOST="${SMTP_HOST:-}"
+  SMTP_PORT="${SMTP_PORT:-}"
+  SMTP_FROM_ADDRESS="${SMTP_FROM_ADDRESS:-}"
+  ALERT_CRITICAL_EMAILS="${ALERT_CRITICAL_EMAILS:-}"
+  ALERT_WARNING_EMAILS="${ALERT_WARNING_EMAILS:-}"
+fi
+
 ALERTMANAGER_WEBHOOK_URL="${ALERTMANAGER_WEBHOOK_URL:-http://localhost:9093/webhook}"
 
 render_email_block() {
@@ -135,14 +146,17 @@ configure_alerting() {
     if ! kubectl get secret alertmanager-main -n "$MONITORING_NAMESPACE" &> /dev/null; then
         warn "AlertManager configuration not found"
         info "Creating basic AlertManager configuration..."
-        info "SMTP host: ${SMTP_HOST}:${SMTP_PORT} (from: ${SMTP_FROM_ADDRESS})"
-        info "Critical alert recipients: ${ALERT_CRITICAL_EMAILS}"
-        info "Warning alert recipients: ${ALERT_WARNING_EMAILS}"
 
-        local critical_email_configs warning_email_configs alertmanager_config
-        critical_email_configs=$(render_email_block "$ALERT_CRITICAL_EMAILS" "CRITICAL: RBAC Token Service Alert")
-        warning_email_configs=$(render_email_block "$ALERT_WARNING_EMAILS" "WARNING: RBAC Token Service Alert")
-        alertmanager_config=$(cat <<EOF
+        local alertmanager_config
+        if [[ "$ENABLE_ALERTMANAGER_SMTP" == "true" ]]; then
+            info "SMTP host: ${SMTP_HOST}:${SMTP_PORT} (from: ${SMTP_FROM_ADDRESS})"
+            info "Critical alert recipients: ${ALERT_CRITICAL_EMAILS}"
+            info "Warning alert recipients: ${ALERT_WARNING_EMAILS}"
+
+            local critical_email_configs warning_email_configs
+            critical_email_configs=$(render_email_block "$ALERT_CRITICAL_EMAILS" "CRITICAL: RBAC Token Service Alert")
+            warning_email_configs=$(render_email_block "$ALERT_WARNING_EMAILS" "WARNING: RBAC Token Service Alert")
+            alertmanager_config=$(cat <<EOF
 global:
   smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
   smtp_from: '${SMTP_FROM_ADDRESS}'
@@ -175,7 +189,24 @@ ${critical_email_configs}
   email_configs:
 ${warning_email_configs}
 EOF
-)
+            )
+        else
+            info "ENABLE_ALERTMANAGER_SMTP=false; configuring webhook-only AlertManager receiver"
+            alertmanager_config=$(cat <<EOF
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+
+receivers:
+- name: 'default-receiver'
+  webhook_configs:
+  - url: '${ALERTMANAGER_WEBHOOK_URL}'
+EOF
+            )
+        fi
 
         kubectl create secret generic alertmanager-rbac-config \
             --namespace="$MONITORING_NAMESPACE" \
