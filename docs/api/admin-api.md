@@ -113,7 +113,17 @@ Returns detailed information about all managed Redis keys.
 View jobs in a queue without removing them.
 
 **Parameters:**
-- `queue`: Queue name (high, low, completed, dead_letter, or full Redis key)
+- `queue`: Queue identifier. Accepts either one of the configured aliases or a fully-qualified Redis key.
+  - Default aliases resolve against the worker config:
+
+    | Alias | Redis Key (default) | Config Field |
+    |-------|--------------------|--------------|
+    | `high` | `jobqueue:high_priority` | `worker.queues.high` |
+    | `low` | `jobqueue:low_priority` | `worker.queues.low` |
+    | `completed` | `jobqueue:completed` | `worker.completed_list` |
+    | `dead_letter` / `dlq` | `jobqueue:dead_letter` | `worker.dead_letter_list` |
+
+  - Supplying a full Redis key (e.g. `jobqueue:custom`) bypasses alias resolution. Update the values above in `config.yaml` to change the mappings.
 - `count`: Number of items to peek (1-100, default 10)
 
 **Example:**
