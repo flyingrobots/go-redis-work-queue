@@ -39,7 +39,7 @@ type CalendarManager struct {
 type CalendarView struct {
     ViewType    ViewType      `json:"view_type"`    // month, week, day
     CurrentDate time.Time     `json:"current_date"` // Current viewing date
-    Timezone    *time.Location `json:"timezone"`    // Display timezone
+    Timezone    string        `json:"timezone"`     // Display timezone (IANA name)
     Filter      EventFilter   `json:"filter"`       // Active filters
 }
 ```
@@ -608,7 +608,7 @@ func main() {
     view := &calendarview.CalendarView{
         ViewType:    calendarview.ViewTypeMonth,
         CurrentDate: time.Now(),
-        Timezone:    time.UTC,
+        Timezone:    "UTC",
         Filter: calendarview.EventFilter{
             QueueNames: []string{"high-priority"},
             Statuses:   []calendarview.EventStatus{calendarview.StatusScheduled},
