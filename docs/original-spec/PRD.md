@@ -162,7 +162,18 @@ Job payload JSON:
 
 ## Observability
 
-- HTTP server exposes `/metrics`, `/healthz`, and `/readyz`. Key metrics:
+- HTTP server exposes `/metrics`, `/healthz`, and `/readyz`.
+  - `/readyz` executes a Redis `PING`, verifies worker goroutines are running (heartbeat tickers) and ensures the circuit breaker is `Closed`. Returns `200` with `{status:"ok", checks:{redis:"ok", workers:"ok", circuit_breaker:"closed"}}` on success and `500` with failing checks otherwise. Readiness probe example:
+    ```yaml
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      failureThreshold: 3
+    ```
+  - Key metrics:
   - Counter: `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total`
   - Histogram: `job_processing_duration_seconds`
   - Gauges: queue depth reporting honours `metrics.allowed_queues` configuration. Only queues listed there are exported verbatim; all others are hashed into stable buckets (`queue_hash` labels) or aggregated under `queue="other"` to cap cardinality. Additional gauges: `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`).
