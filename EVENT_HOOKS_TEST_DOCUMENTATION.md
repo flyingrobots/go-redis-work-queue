@@ -39,7 +39,7 @@ delays: [1s, 2s, 4s, 8s, 16s] with max cap at 30s
 
 **Running**:
 ```bash
-go test -v ./webhook_signature_test.go
+go test -v ./... -run '^TestHMACSigner_'
 ```
 
 #### Event Filter Matching (`event_filter_test.go`)
