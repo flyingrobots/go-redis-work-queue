@@ -663,6 +663,13 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Standardized event-hooks testing docs around package-aware `go test` patterns and made the postmortem coordinator task derive dependencies dynamically.
 > - Lessons: keep documentation commands module-aware (no filename globs) and generate orchestration dependencies from shared data instead of static lists.
 
+> [!NOTE]
+> ### 2025-09-16 – CodeRabbit PR#3 chunk_008 sweep
+> - Closed CodeRabbit chunk_008 (30/30) with a bench payload-size flag, deterministic producer fixtures, and updated performance baseline guidance.
+> - Hardened admin API build artifacts (trimpath, VERSION ldflags, non-root images) and expanded anomaly radar docs with versioning policy, metrics collector interface, units, and idempotent exporter examples.
+> - Logged outstanding work (OpenAPI spec, full auth/error policy, pagination) as follow-ups after the API stabilises.
+> - Lessons: keep docs wired to real entrypoints, prefer idempotent Prometheus patterns, and centralise policy sections for reuse across APIs.
+
 
 > [!NOTE]
 > ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
