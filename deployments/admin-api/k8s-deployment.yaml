@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: redis-work-queue
+  name: work-queue
 
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: admin-api-config
-  namespace: redis-work-queue
+  namespace: work-queue
 data:
   admin-api.yaml: |
     server:
@@ -36,7 +36,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: admin-api-secrets
-  namespace: redis-work-queue
+  namespace: work-queue
 type: Opaque
 stringData:
   jwt-secret: "change-me-in-production"
@@ -47,7 +47,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: admin-api
-  namespace: redis-work-queue
+  namespace: work-queue
   labels:
     app: admin-api
 spec:
@@ -119,7 +119,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: admin-api-service
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   selector:
     app: admin-api
@@ -134,7 +134,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: admin-api-ingress
-  namespace: redis-work-queue
+  namespace: work-queue
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -162,7 +162,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: admin-api-pdb
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   minAvailable: 1
   selector:
@@ -174,7 +174,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: admin-api-hpa
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

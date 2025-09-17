@@ -1,21 +1,21 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: redis-work-queue
+  name: work-queue
 
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: redis-sa
-  namespace: redis-work-queue
+  namespace: work-queue
 
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   serviceName: redis-service
   replicas: 1
@@ -91,7 +91,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-service
-  namespace: redis-work-queue
+  namespace: work-queue
 spec:
   selector:
     app: redis

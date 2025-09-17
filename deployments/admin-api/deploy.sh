@@ -3,7 +3,7 @@
 set -e
 
 # Configuration
-NAMESPACE="redis-work-queue"
+NAMESPACE="work-queue"
 APP_NAME="admin-api"
 ENVIRONMENT="${1:-staging}"
 VERSION="${2:-latest}"
