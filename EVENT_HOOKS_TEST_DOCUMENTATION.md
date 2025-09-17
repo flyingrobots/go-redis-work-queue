@@ -111,7 +111,7 @@ Examples:
 
 **Running**:
 ```bash
-cd test/integration && go test -v ./nats_transport_test.go
+cd test/integration && go test -v -run '^TestNATSTransport_'
 ```
 
 #### Dead Letter Hook Replay (`test/integration/dlh_replay_test.go`)
