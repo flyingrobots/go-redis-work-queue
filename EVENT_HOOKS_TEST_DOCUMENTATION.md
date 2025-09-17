@@ -134,7 +134,7 @@ cd test/integration && go test -v -run '^TestNATSTransport_'
 
 **Running**:
 ```bash
-cd test/integration && go test -v ./dlh_replay_test.go
+cd test/integration && go test -v -run '^TestDLH_'
 ```
 
 ### 3. Security Tests (`security_test.go`)
