@@ -235,7 +235,7 @@ check_logs() {
     log "Checking recent logs for errors..."
 
     local error_count
-    error_count=$(kubectl logs -n "$NAMESPACE" -l "app=$SERVICE_NAME" --since=5m 2>/dev/null | grep -i error | wc -l)
+    error_count=$(kubectl logs -n "$NAMESPACE" -l "app=$SERVICE_NAME" --since=5m 2>/dev/null | grep -i -c error || true)
 
     if [[ $error_count -eq 0 ]]; then
         log "No errors found in recent logs"
