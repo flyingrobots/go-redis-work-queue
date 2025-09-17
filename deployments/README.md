@@ -36,8 +36,9 @@ deployments/
 
 2. Test the API:
    ```bash
-   # Health check
-   curl http://localhost:8080/health
+   # Liveness and readiness checks
+   curl http://localhost:8080/healthz
+   curl http://localhost:8080/readyz
 
    # Get stats (requires token)
    curl -H "X-API-Token: local-dev-token" http://localhost:8080/api/v1/stats
@@ -132,7 +133,7 @@ Grafana dashboards are automatically provisioned showing:
 
 ### Authentication
 
-All API endpoints except `/health` require authentication via `X-API-Token` header.
+All API endpoints except `/healthz` and `/readyz` require authentication via `X-API-Token` header.
 
 ### Authorization
 
@@ -164,8 +165,9 @@ All destructive operations are logged to audit files including:
 
 The service provides multiple health check endpoints:
 
-- `/health`: Basic liveness check
-- Kubernetes probes: Liveness and readiness probes
+- `/healthz`: Kubernetes-style liveness probe (unauthenticated)
+- `/readyz`: Readiness probe (unauthenticated)
+- Prometheus metrics: Detailed health metrics
 - Prometheus metrics: Detailed health metrics
 
 ## Scaling
