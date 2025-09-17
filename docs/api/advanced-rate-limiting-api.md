@@ -154,6 +154,8 @@ type FairnessConfig struct {
 }
 ```
 
+> **Guardrail:** Ensure \(\sum weights\) × `MinGuaranteedShare` stays below `1.0`. When the product exceeds `1.0`, the implementation automatically renormalises the per-priority minimums proportionally so the total fits within the available capacity (values are capped at `1.0` and negative results are clamped to `0`). A warning is logged when renormalisation happens so operators can adjust weights or guarantees.
+
 #### Methods
 
 ##### NewPriorityFairness
