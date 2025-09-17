@@ -1,8 +1,8 @@
 name: Update Progress Bars
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: ['main']
   workflow_dispatch: {}
 
 permissions:
@@ -44,4 +44,3 @@ jobs:
         if: steps.commit.outputs.changed == 'true'
         run: |
           git push
-
