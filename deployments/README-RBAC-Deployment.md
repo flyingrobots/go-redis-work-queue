@@ -292,15 +292,41 @@ Real-time dashboard showing:
 
 ### Production Deployment
 
-**Important**: This task is configured to STOP at staging deployment. Production deployment requires additional approvals and procedures.
+#### 1. Pre-Deployment Gate
+- Confirm CAB/Change ticket approval and on-call coverage.
+- Ensure staging is green: last deploy, health checks, and integration tests reported success in the previous 24 hours.
+- Verify secrets (JWT signing/encryption keys, Redis credentials) are rotated or still within policy.
 
-For production deployment, consider:
-- **Blue-green deployment**: Zero-downtime deployment strategy
-- **Database migrations**: Handle schema changes carefully
-- **Load testing**: Verify performance under production load
-- **Monitoring validation**: Ensure all alerts are properly configured
-- **Backup verification**: Test backup and recovery procedures
-- **Security review**: Final security assessment
+#### 2. Blue-Green (or Canary) Rollout
+- Create a parallel `rbac-token-service-prod-blue` Deployment referencing the new image tag/digest.
+- Apply the new ConfigMaps/Secrets; use immutable naming (`config-2025-09-16`) to support fast rollback.
+- Shift ingress/Service selector to the new deployment gradually (10% → 50% → 100%) or, for blue-green, flip the Service/Ingress once validation passes.
+
+#### 3. Migration & Data Safeguards
+- Run any Redis migrations/ACL updates via `deployments/scripts/rbac-migrate.sh` (or documented manual steps) before cutting over traffic.
+- Take a Redis snapshot (RDB) or trigger managed backup prior to rollout.
+- Capture audit log checkpoint in object storage for incident reconstruction.
+
+#### 4. Validation During Cutover
+- Execute smoke tests (`health-check-rbac.sh` with `--timeout 5s`) and targeted token issuance/validation flows.
+- Watch Prometheus dashboards (latency, error rate, Redis round-trips) for 10–15 minutes after each traffic increment.
+- Check Alertmanager for new alerts; ensure none fire unexpectedly.
+
+#### 5. Rollback Procedure
+- If KPIs regress, shift traffic back to the previous deployment or re-point Service selectors to the green deployment.
+- Restore prior ConfigMaps/Secrets by reapplying the previous immutable versions.
+- Rehydrate Redis from snapshot if schema or ACL changes caused issues (documented in the runbook).
+
+#### 6. Post-Deployment Tasks
+- Remove the idle (blue) deployment once confidence window passes.
+- Update the deployment log (change ticket, dashboards, evidence links) and notify stakeholders.
+- Review audit logs for anomalies during the rollout window.
+
+#### 7. Disaster Recovery & Backups
+- Confirm nightly backups succeeded post-release and update recovery point objective (RPO) tracker.
+- Run the quarterly DR drill playbook if the release introduced new components or data paths.
+
+Maintain this checklist in sync with the change-management process and include it in runbooks for consistency across releases.
 
 ## Troubleshooting
 
