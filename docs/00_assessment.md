@@ -17,7 +17,7 @@ The project has a working foundation: a single Go binary with producer, worker, 
 ## Current Implementation
 
 - Modes: `--role=producer|worker|all` with YAML config and env overrides.
-- Redis: go-redis v8 with dynamic pool, retries, timeouts.
+- Redis: go-redis v9 (v9+) with dynamic pool, retries, and tuned client timeouts.
 - Queues: priority lists (`high`, `low`), per-worker processing list, completed and dead-letter lists.
 - Worker: BRPOPLPUSH per-queue with short timeout to emulate priority; heartbeat via `SET ... EX`.
 - Reaper: scans `jobqueue:worker:*:processing` when heartbeat missing and requeues payloads.
@@ -25,6 +25,21 @@ The project has a working foundation: a single Go binary with producer, worker, 
 - Observability: Prometheus `/metrics`, zap logs; optional OTLP tracing.
 - Tests: unit tests for breaker, config, queue, worker flows; integration with miniredis.
 - CI: GitHub Actions build + race tests.
+
+### go-redis v9 Migration Checklist
+
+- [ ] Re-audit pipeline usage (pipelines are no longer thread-safe); ensure exclusive use per goroutine.
+- [ ] Update timeout/cancellation handling for new context semantics.
+- [ ] Remove deprecated `Pipeline.Close`/`WithContext` calls.
+- [ ] Rename client options (`MaxConnAge` → `ConnMaxLifetime`, `IdleTimeout` → `ConnMaxIdleTime`).
+- [ ] Account for the removed connection reaper by sizing `MaxIdleConns` appropriately.
+- [ ] Update structures that relied on `*redis.Z` to the new value semantics.
+- [ ] Migrate hook setup to the revised v9 hooks API, including `DialHook` signatures.
+- [ ] Validate RESP3 responses where feature flags depend on RESP2 behavior.
+
+**Upgrade plan:** bump the module dependency to go-redis v9 in `go.mod`, run the full test suite, audit pipeline usages and option names, adjust hooks/types, and execute performance plus RESP3 smoke tests. 
+
+**Rollback plan:** if regressions surface, revert the dependency pin to v8 in `go.mod` (and go.sum) and redeploy while issues are triaged.
 
 ## What’s Working
 
