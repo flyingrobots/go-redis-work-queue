@@ -348,12 +348,16 @@ tracing := distributed_tracing_integration.New(distributed_tracing_integration.T
 The TUI provides these actions for each traced job:
 
 1. **Copy Trace ID**: Copy trace ID to clipboard
-   - Command: `echo 'abc123def456' | pbcopy`
+   - macOS: `echo 'abc123def456' | pbcopy`
+   - Linux: `echo 'abc123def456' | xclip -selection clipboard` (or `xsel -b`)
+   - Windows (PowerShell): `Set-Clipboard 'abc123def456'`
    - Description: "Copy trace ID to clipboard"
 
 2. **Open Trace**: Open trace in browser
    - URL: `http://localhost:16686/trace/abc123def456`
-   - Command: `open 'http://localhost:16686/trace/abc123def456'`
+   - macOS: `open 'http://localhost:16686/trace/abc123def456'`
+   - Linux: `xdg-open 'http://localhost:16686/trace/abc123def456'`
+   - Windows (PowerShell): `Start-Process 'http://localhost:16686/trace/abc123def456'`
    - Description: "Open trace in jaeger"
 
 3. **View Trace ID**: Display trace information
