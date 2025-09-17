@@ -348,10 +348,12 @@ data:
         group_interval: 15m
         repeat_interval: 24h
 
+    # Slack webhooks are read from mounted secrets at /etc/alertmanager/slack.
+    # Provision `rbac-alertmanager-slack` Secret with keys critical-webhook/warning-webhook before applying.
     receivers:
     - name: critical-alerts
       slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      - api_url_file: '/etc/alertmanager/slack/critical-webhook'
         channel: '#alerts-critical'
         title: 'Critical Alert: {{ .GroupLabels.service }}'
         text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}'
@@ -359,7 +361,7 @@ data:
 
     - name: warning-alerts
       slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      - api_url_file: '/etc/alertmanager/slack/warning-webhook'
         channel: '#alerts-warning'
         title: 'Warning: {{ .GroupLabels.service }}'
         text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}'
