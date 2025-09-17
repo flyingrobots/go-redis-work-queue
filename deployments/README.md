@@ -98,13 +98,23 @@ The Admin API reads these values during startup to configure token-bucket thrott
 Secrets are managed via Kubernetes secrets:
 
 ```bash
-# Create API tokens secret
+# Create API tokens secret (store sensitive values in local files with 0600 perms)
 kubectl create secret generic admin-api-secrets \
-  --from-literal=api-token-1=your-service-token \
-  --from-literal=api-token-2=your-readonly-token \
-  --from-literal=redis-password=your-redis-password \
+  --from-file=api-token-1=secrets/api-token-1.txt \
+  --from-file=api-token-2=secrets/api-token-2.txt \
+  --from-file=redis-password=secrets/redis-password.txt \
   -n work-queue
+
+# Or render a manifest safely via stdin and apply without exposing values in shell history
+kubectl create secret generic admin-api-secrets \
+  --from-file=api-token-1=secrets/api-token-1.txt \
+  --from-file=api-token-2=secrets/api-token-2.txt \
+  --from-file=redis-password=secrets/redis-password.txt \
+  -n work-queue \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
+
+> **Tip:** Avoid pasting secrets directly into terminals or CI logs—source them from secure files, environment variables, or your secret manager and pipe them into `kubectl` instead.
 
 ## Monitoring
 
