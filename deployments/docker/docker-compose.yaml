@@ -1,4 +1,5 @@
 version: '3.8'
+# Verified with Docker Compose v2.39.2 (supports depends_on.condition: service_healthy)
 
 services:
   redis:
