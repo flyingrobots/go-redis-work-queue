@@ -175,6 +175,21 @@ actions:
     risk_level: "high"
     audit_required: true
 
+  "metrics:read":
+    description: "Read system metrics (Prometheus scrape)"
+    risk_level: "low"
+    audit_required: false
+
+  "health:read":
+    description: "Access health/readiness endpoints"
+    risk_level: "low"
+    audit_required: false
+
+  "queues:list":
+    description: "List queues (alias of queues:read for audit clarity)"
+    risk_level: "low"
+    audit_required: false
+
   # Admin operations
   "admin:users":
     description: "Manage users and roles"
