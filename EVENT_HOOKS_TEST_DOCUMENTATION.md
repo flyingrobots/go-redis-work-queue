@@ -181,7 +181,7 @@ password: "secret123" → "[REDACTED]"
 
 **Running**:
 ```bash
-go test -v ./security_test.go
+go test -v ./... -run '^TestSignatureService_'
 ```
 
 ### 4. Test Fixtures and Mock Data
