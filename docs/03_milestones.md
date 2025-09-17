@@ -10,7 +10,7 @@ Milestones define concrete deliverables with success criteria, dependencies, and
 
 - [Milestone List](#milestone-list)
 - [Dependencies](#dependencies)
-- [Go/No-Go Decision Gates](#gono-go-decision-gates)
+- [Go/No-Go Decision Gates](#go-no-go-decision-gates)
 
 ## Milestone List
 

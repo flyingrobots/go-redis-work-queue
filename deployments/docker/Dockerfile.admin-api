@@ -1,6 +1,8 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
+ARG VERSION=dev
+
 # Install build dependencies
 RUN apk add --no-cache git make
 
@@ -17,7 +19,8 @@ RUN go mod download
 COPY . .
 
 # Build the admin API binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o admin-api ./cmd/admin-api
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /app/bin/admin-api ./cmd/admin-api
 
 # Runtime stage
 FROM alpine:3.19
@@ -33,13 +36,10 @@ RUN addgroup -g 1000 -S appuser && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /app/admin-api /app/admin-api
+COPY --from=builder /app/bin/admin-api /app/admin-api
 
-# Copy default config if exists
-COPY --from=builder /app/configs/admin-api.yaml /app/configs/admin-api.yaml
-
-# Create directories for logs and audit
-RUN mkdir -p /app/logs /app/audit && \
+# Create directories for logs, audit, and configs (mounted at runtime)
+RUN mkdir -p /app/logs /app/audit /app/configs && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
@@ -54,4 +54,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run the binary
 ENTRYPOINT ["/app/admin-api"]
-CMD ["--config", "/app/configs/admin-api.yaml"]
