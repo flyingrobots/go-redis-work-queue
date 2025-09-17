@@ -132,7 +132,10 @@ Job payload JSON:
 ### Worker Fetch
 
 - Unique worker ID: `"hostname-PID-idx"` for each goroutine.
-- Prioritized fetch: loop priorities in order (e.g., high then low) and call `BRPOPLPUSH` per-queue with a short timeout (default 1s). Guarantees atomic move per-queue, priority preference within timeout granularity, and no job loss. Tradeoff: lower-priority jobs may wait up to the timeout when higher-priority queues are empty.
+- Prioritized fetch offers two selectable modes:
+  - **Loop Mode (default, low latency):** Iterate priorities in order and call `BRPOPLPUSH` per queue with a tight timeout (50–200 ms). Provides sub-200 ms latency for lower priorities at the cost of slightly higher Redis CPU.
+  - **Atomic Script Mode:** Use the Lua helper `worker:fetchAtomic` to probe priority lists and atomically RPOPLPUSH the first available job within a single round-trip. Reduces Redis commands but may incur higher per-call latency.
+- Configuration knobs: `worker.fetch.mode` (`loop` or `atomic`), `worker.fetch.loop_timeout` (ms), and `worker.fetch.atomic_retry_backoff` for script retry policy.
 - On receipt, `SET heartbeat` key to job JSON with `EX=heartbeat_ttl`.
 
 ### Processing
