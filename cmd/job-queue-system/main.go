@@ -111,8 +111,10 @@ func main() {
 		}
 	}()
 
-	// Background metrics: queue lengths
-	obs.StartQueueLengthUpdater(ctx, cfg, rdb, logger)
+	// Background metrics: queue lengths (skip for admin CLI)
+	if role != "admin" {
+		obs.StartQueueLengthUpdater(ctx, cfg, rdb, logger)
+	}
 
 	switch role {
 	case "producer":
