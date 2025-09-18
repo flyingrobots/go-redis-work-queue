@@ -833,11 +833,19 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Repaired the admin handler tests (bad helper usage) so `go test ./internal/admin-api/...` compiles cleanly.
 > - Shipped the `tools/requestidlint` analyzer + CLI, wired it into `go test` via `internal/admin-api/requestidlint_test.go`, and extended helpers with `writeErrorWithDetails`.
 > - Swapped the Exactly-Once handler error paths over to `writeError`/`writeErrorWithDetails` so they emit the envelope + headers.
+> - Hooked the analyzer into `make lint` and the pre-commit hook so request-ID regressions block commits automatically.
 >
 > Validation
+> - `make lint` (fails fast today on existing YAML newline issues; requestidlint runs after those pass).
 > - `go test ./internal/admin-api/...`
 > - `go test ./tools/requestidlint/...`
 > - `go test ./...` still fails elsewhere (pre-existing lint/build issues across forecasting, tui, terminal voice commands, etc.).
+>
+> Outstanding test debt (snapshot — unblock when those areas come back into focus)
+> - Build breakers: `internal/terminal-voice-commands`, `internal/canary-deployments`, `internal/tui`, `cmd/job-queue-system`, `internal/collaborative-session`, `internal/json-payload-studio`, `internal/kubernetes-operator`, `internal/storage-backends`, `internal/trace-drilldown-log-tail`, `internal/worker-fleet-controls`, `test/fixtures`.
+> - Redis API drift: several packages (`internal/dlq-remediation-pipeline`, `internal/storage-backends`) still reference removed `IdleTimeout`/`MaxConnAge` fields.
+> - Behavioral test flakes: `internal/advanced-rate-limiting`, `internal/anomaly-radar-slo-budget`, `internal/chaos-harness`, `internal/exactly_once`, `internal/forecasting` fail assertions/panic.
+> - Misc hygiene: numerous unused imports/vars in `internal/automatic-capacity-planning`, `internal/calendar-view`, `internal/event-hooks`, etc.—needs cleanup pass before end-to-end tests will go green.
 >
 > Follow-ups
 > - Add the new analyzer invocation to `make lint` / pre-commit so it runs automatically (docs already mention how).

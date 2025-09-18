@@ -24,4 +24,16 @@ if [ -f scripts/update_progress.py ]; then
   git add docs/features-ledger.md README.md || true
 fi
 
+# Ensure HTTP handlers keep emitting X-Request-ID via requestidlint
+if command -v go >/dev/null 2>&1; then
+  echo "[pre-commit] Running request ID lint…"
+  if ! go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api; then
+    echo "[pre-commit] requestidlint failed. Aborting commit." >&2
+    exit 1
+  fi
+else
+  echo "[pre-commit] Go toolchain not found; skipping requestidlint." >&2
+  exit 1
+fi
+
 exit 0

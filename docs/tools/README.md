@@ -9,7 +9,7 @@ A lightweight static analysis pass (`tools/requestidlint`) keeps HTTP handlers o
 - **Analyzer coverage**: Flags direct calls to `http.Error` or `ResponseWriter.WriteHeader` (for status codes ≥400) inside `internal/admin-api` packages unless they go through the shared helpers. This nudges new handlers toward `writeError`/`writeErrorWithDetails`.
 - **Usage**: `go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api` (the CI / pre-commit hook can pass multiple packages).
 - **Tests**: `go test ./tools/requestidlint/...` exercises analyzer fixtures, and `go test ./internal/admin-api` now executes the analyzer against real sources via `requestidlint_test.go`.
-- **Integration**: Add the `go run` invocation to lint scripts or git hooks to fail fast when new handlers bypass the envelope helpers.
+- **Integration**: `make lint` and the pre-commit hook both run `go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api`, so commits/CI fail fast if handlers bypass the helpers.
 
 ## Features Ledger + Progress Automation
 

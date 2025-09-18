@@ -34,6 +34,7 @@ tidy:
 
 lint:
 	./scripts/check_yaml_newlines.py
+	go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api
 
 version:
 	@echo $(VERSION)
