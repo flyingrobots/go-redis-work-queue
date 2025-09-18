@@ -22,6 +22,7 @@ vendor/
 
 # Go modules sum cache (generated)
 go.work
+go.work.sum
 
 # IDE/Editor
 .idea/
@@ -42,3 +43,8 @@ logs/
 
 # Local compose secrets
 deployments/docker/admin-api.env
+.env
+.env.*
+.env.local
+.env.production
+!.env.example

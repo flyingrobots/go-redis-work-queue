@@ -176,7 +176,7 @@ actions:
     audit_required: true
 
   "metrics:read":
-    description: "Read system metrics (Prometheus scrape)"
+    description: "Read system metrics (Prometheus scrape endpoints)"
     risk_level: "low"
     audit_required: false
 

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
 	"go.uber.org/zap"
 )
 
@@ -22,6 +23,7 @@ const (
 	contextKeyClaims    contextKey = "claims"
 	contextKeyRequestID contextKey = "request_id"
 	contextKeyUserIP    contextKey = "user_ip"
+	contextKeyScopes    contextKey = "scopes"
 )
 
 // AuthMiddleware validates JWT tokens
@@ -52,7 +54,12 @@ func AuthMiddleware(secret string, denyByDefault bool, logger *zap.Logger) func(
 				return
 			}
 
+			scopes := append([]string(nil), claims.Scopes...)
 			ctx := context.WithValue(r.Context(), contextKeyClaims, claims)
+			if len(scopes) > 0 {
+				ctx = context.WithValue(ctx, contextKeyScopes, scopes)
+				ctx = anomalyradarslobudget.ContextWithScopes(ctx, scopes)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

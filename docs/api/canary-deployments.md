@@ -7,8 +7,10 @@ The Canary Deployments API provides comprehensive functionality for safely rolli
 ## Base URL
 
 ```
-http://localhost:8080/api/v1/canary
+https://api.example.com/api/v1/canary
 ```
+
+> Production deployments should default to HTTPS. For local experimentation, use `http://localhost:8080/api/v1/canary` as noted in the [Local development](#local-development) appendix.
 
 ## Authentication
 
@@ -761,8 +763,10 @@ Paginated responses include metadata:
 Real-time updates are available via WebSocket connections:
 
 ```
-ws://localhost:8080/api/v1/canary/deployments/{id}/events
+wss://api.example.com/api/v1/canary/deployments/{id}/events
 ```
+
+> For local development use `ws://localhost:8080/api/v1/canary/deployments/{id}/events` after enabling TLS termination in your dev stack.
 
 **Event Types:**
 - `deployment_status_changed`
@@ -816,3 +820,12 @@ ws://localhost:8080/api/v1/canary/deployments/{id}/events
 3. **Graceful Shutdown**: Support graceful job completion during rollback
 4. **Resource Monitoring**: Track memory and CPU usage
 5. **Queue Affinity**: Consider worker capabilities when assigning queues
+
+## Local Development
+
+Use non-TLS endpoints only when running everything locally:
+
+- REST: `http://localhost:8080/api/v1/canary`
+- WebSocket: `ws://localhost:8080/api/v1/canary/deployments/{id}/events`
+
+These examples assume loopback access behind your firewall. Do not expose plain HTTP/WS endpoints outside local experimentation.

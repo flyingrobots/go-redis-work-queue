@@ -175,12 +175,12 @@ The RBAC Token Service uses the following environment variables:
 |----------|-------------|---------|
 | `REDIS_HOST` | Redis server hostname | localhost |
 | `REDIS_PORT` | Redis server port | 6379 |
-| `REDIS_PASSWORD` | Redis password | **REQUIRED — inject via secret** |
-| `RBAC_SIGNING_KEY` | JWT signing key | **REQUIRED — inject via secret** |
-| `RBAC_ENCRYPTION_KEY` | Encryption key | **REQUIRED — inject via secret** |
-
-> **Note:** Provision these secrets through Kubernetes `Secret` objects, Docker secrets, or environment-specific secret managers (e.g., Vault). Never commit real values to source control; reference them via `envFrom`, `secretKeyRef`, or Docker `env_file` entries during deployment.
+| `REDIS_PASSWORD_FILE` | Path to Redis password file | `/app/secrets/redis-password` |
+| `RBAC_SIGNING_KEY_FILE` | Path to JWT signing key file | `/app/secrets/rbac-signing-key` |
+| `RBAC_ENCRYPTION_KEY_FILE` | Path to encryption key file | `/app/secrets/rbac-encryption-key` |
 | `LOG_LEVEL` | Logging level | info |
+
+> **Note:** Provision these secrets through Kubernetes `Secret` objects (or Docker secrets), mount them as read-only files, and point the `_FILE` environment variables at those paths. Never commit real values to source control.
 
 ### Configuration Files
 

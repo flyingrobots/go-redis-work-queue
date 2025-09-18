@@ -154,14 +154,21 @@ func main() {
 }
 
 func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool, benchCount, benchRate int, benchPriority string, benchPayloadSize int, benchTimeout time.Duration) {
+	encode := func(label string, v any) {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(v); err != nil {
+			logger.Fatal("admin json encode error", obs.Err(err), obs.String("command", label))
+		}
+	}
+
 	switch cmd {
 	case "stats":
 		res, err := admin.Stats(ctx, cfg, rdb)
 		if err != nil {
 			logger.Fatal("admin stats error", obs.Err(err))
 		}
-		b, _ := json.MarshalIndent(res, "", "  ")
-		fmt.Println(string(b))
+		encode("stats", res)
 	case "peek":
 		if queue == "" {
 			logger.Fatal("admin peek requires --queue")
@@ -170,8 +177,7 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
 		if err != nil {
 			logger.Fatal("admin peek error", obs.Err(err))
 		}
-		b, _ := json.MarshalIndent(res, "", "  ")
-		fmt.Println(string(b))
+		encode("peek", res)
 	case "purge-dlq":
 		if !yes {
 			logger.Fatal("refusing to purge without --yes")
@@ -188,24 +194,21 @@ func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger
 		if err != nil {
 			logger.Fatal("admin purge-all error", obs.Err(err))
 		}
-		payload, _ := json.Marshal(struct {
+		encode("purge-all", struct {
 			Purged int `json:"purged"`
 		}{Purged: n})
-		fmt.Println(string(payload))
 	case "bench":
 		res, err := admin.Bench(ctx, cfg, rdb, benchPriority, benchCount, benchRate, benchPayloadSize, benchTimeout)
 		if err != nil {
 			logger.Fatal("admin bench error", obs.Err(err))
 		}
-		b, _ := json.MarshalIndent(res, "", "  ")
-		fmt.Println(string(b))
+		encode("bench", res)
 	case "stats-keys":
 		res, err := admin.StatsKeys(ctx, cfg, rdb)
 		if err != nil {
 			logger.Fatal("admin stats-keys error", obs.Err(err))
 		}
-		b, _ := json.MarshalIndent(res, "", "  ")
-		fmt.Println(string(b))
+		encode("stats-keys", res)
 	default:
 		logger.Fatal("unknown admin command", obs.String("cmd", cmd))
 	}

@@ -1,3 +1,6 @@
+---
+noteID: 038e5837-7962-4429-96e1-6c00645f6485
+---
 # Testing Guide
 
 This guide describes how to build and run the test suites, what each test verifies, and copy/paste commands to run any test in isolation.

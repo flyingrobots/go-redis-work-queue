@@ -194,10 +194,13 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: rbac-token-service
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: rbac-token-service
         image: redis-work-queue/rbac-token-service:v0.4.0-alpha
@@ -211,21 +214,12 @@ spec:
           value: "redis-master.work-queue.svc.cluster.local"
         - name: REDIS_PORT
           value: "6379"
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: rbac-secrets
-              key: redis-password
-        - name: RBAC_SIGNING_KEY
-          valueFrom:
-            secretKeyRef:
-              name: rbac-secrets
-              key: rbac-signing-key
-        - name: RBAC_ENCRYPTION_KEY
-          valueFrom:
-            secretKeyRef:
-              name: rbac-secrets
-              key: rbac-encryption-key
+        - name: REDIS_PASSWORD_FILE
+          value: "/app/secrets/redis-password"
+        - name: RBAC_SIGNING_KEY_FILE
+          value: "/app/secrets/rbac-signing-key"
+        - name: RBAC_ENCRYPTION_KEY_FILE
+          value: "/app/secrets/rbac-encryption-key"
         - name: LOG_LEVEL
           value: "info"
         resources:
@@ -245,7 +239,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
+            path: /readyz
             port: http
           initialDelaySeconds: 10
           periodSeconds: 10
@@ -259,6 +253,20 @@ spec:
           mountPath: /app/keys
         - name: audit-logs
           mountPath: /app/audit
+        - name: secret-files
+          mountPath: /app/secrets
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
       volumes:
       - name: rbac-config
         configMap:
@@ -269,6 +277,10 @@ spec:
       - name: audit-logs
         persistentVolumeClaim:
           claimName: rbac-audit-pvc
+      - name: secret-files
+        secret:
+          secretName: rbac-secrets
+          defaultMode: 0400
 ---
 apiVersion: v1
 kind: Service

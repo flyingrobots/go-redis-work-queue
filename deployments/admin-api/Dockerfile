@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
 # Final stage
 FROM alpine:3.19
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget
 
 # Create dedicated user
 RUN addgroup -g 1000 -S adminapi && \

@@ -257,7 +257,7 @@ Removes all injectors and stops all scenarios.
 ### Using the Chaos Harness
 
 ```go
-import "internal/chaos-harness"
+import chaosharness "github.com/flyingrobots/go-redis-work-queue/pkg/chaos-harness"
 
 // Initialize chaos harness
 config := chaosharness.DefaultConfig()

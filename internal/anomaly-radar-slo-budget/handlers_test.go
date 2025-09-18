@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+var allowAllScopes = WithScopeChecker(func(ctx context.Context, required string) bool { return true })
+
+func contextWithScope(ctx context.Context, scope string) context.Context {
+	return ContextWithScopes(ctx, []string{scope})
+}
+
 func TestHTTPHandlerStatus(t *testing.T) {
 	config := DefaultConfig()
 	collector := NewMockMetricsCollector([]MetricSnapshot{
@@ -22,17 +28,22 @@ func TestHTTPHandlerStatus(t *testing.T) {
 		},
 	})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Start radar to populate some data
-	radar.Start(context.Background())
+	if err := radar.Start(context.Background()); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
 	time.Sleep(200 * time.Millisecond)
-	radar.Stop()
+	if err := radar.Stop(); err != nil {
+		t.Fatalf("stop failed: %v", err)
+	}
 
 	// Test status endpoint
 	req := httptest.NewRequest("GET", "/status", nil)
 	w := httptest.NewRecorder()
 
+	req = req.WithContext(contextWithScope(req.Context(), ScopeReader))
 	handler.GetStatus(w, req)
 
 	if w.Code != http.StatusOK {
@@ -50,6 +61,7 @@ func TestHTTPHandlerStatus(t *testing.T) {
 
 	// Test with include_metrics parameter
 	req = httptest.NewRequest("GET", "/status?include_metrics=true&metric_window=1h", nil)
+	req = req.WithContext(contextWithScope(req.Context(), ScopeReader))
 	w = httptest.NewRecorder()
 
 	handler.GetStatus(w, req)
@@ -71,7 +83,7 @@ func TestHTTPHandlerConfig(t *testing.T) {
 	config := DefaultConfig()
 	collector := NewMockMetricsCollector([]MetricSnapshot{})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Test get config
 	req := httptest.NewRequest("GET", "/config", nil)
@@ -105,6 +117,7 @@ func TestHTTPHandlerConfig(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 
+	req = req.WithContext(contextWithScope(req.Context(), ScopeAdmin))
 	handler.UpdateConfig(w, req)
 
 	if w.Code != http.StatusOK {
@@ -126,10 +139,18 @@ func TestHTTPHandlerConfig(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 
-	handler.UpdateConfig(w, req)
+	handler.UpdateConfig(w, req.WithContext(contextWithScope(req.Context(), ScopeAdmin)))
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status 400 for invalid config, got %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("Expected status 422 for invalid config, got %d", w.Code)
+	}
+
+	var errResp ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+		t.Fatalf("Failed to decode error response: %v", err)
+	}
+	if errResp.Code != "CONFIG_INVALID" {
+		t.Errorf("Expected error code CONFIG_INVALID, got %s", errResp.Code)
 	}
 }
 
@@ -151,7 +172,7 @@ func TestHTTPHandlerMetrics(t *testing.T) {
 
 	collector := NewMockMetricsCollector(snapshots)
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Add some metrics data
 	for _, snapshot := range snapshots {
@@ -161,8 +182,7 @@ func TestHTTPHandlerMetrics(t *testing.T) {
 	// Test metrics endpoint
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	w := httptest.NewRecorder()
-
-	handler.GetMetrics(w, req)
+	handler.GetMetrics(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -184,8 +204,7 @@ func TestHTTPHandlerMetrics(t *testing.T) {
 	// Test with window parameter
 	req = httptest.NewRequest("GET", "/metrics?window=6h", nil)
 	w = httptest.NewRecorder()
-
-	handler.GetMetrics(w, req)
+	handler.GetMetrics(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -194,8 +213,7 @@ func TestHTTPHandlerMetrics(t *testing.T) {
 	// Test with max_samples parameter
 	req = httptest.NewRequest("GET", "/metrics?max_samples=5", nil)
 	w = httptest.NewRecorder()
-
-	handler.GetMetrics(w, req)
+	handler.GetMetrics(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -208,6 +226,37 @@ func TestHTTPHandlerMetrics(t *testing.T) {
 	if len(response.Metrics) > 5 {
 		t.Errorf("Expected max 5 metrics when max_samples=5, got %d", len(response.Metrics))
 	}
+
+	if response.NextCursor == "" {
+		t.Error("Expected next_cursor to be provided when more metrics remain")
+	}
+
+	// Fetch next page using cursor
+	req = httptest.NewRequest("GET", "/metrics?max_samples=5&next_cursor="+response.NextCursor, nil)
+	w = httptest.NewRecorder()
+	handler.GetMetrics(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200 for second page, got %d", w.Code)
+	}
+
+	var second MetricsResponse
+	if err := json.NewDecoder(w.Body).Decode(&second); err != nil {
+		t.Fatalf("Failed to decode second page: %v", err)
+	}
+
+	if second.NextCursor != "" && second.NextCursor == response.NextCursor {
+		t.Error("Expected next_cursor to advance between pages")
+	}
+
+	// Invalid cursor should return 400
+	req = httptest.NewRequest("GET", "/metrics?next_cursor=invalid", nil)
+	w = httptest.NewRecorder()
+	handler.GetMetrics(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400 for invalid cursor, got %d", w.Code)
+	}
 }
 
 func TestHTTPHandlerAlerts(t *testing.T) {
@@ -216,7 +265,7 @@ func TestHTTPHandlerAlerts(t *testing.T) {
 
 	collector := NewMockMetricsCollector([]MetricSnapshot{})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Add snapshot that triggers alert
 	alertSnapshot := MetricSnapshot{
@@ -234,8 +283,7 @@ func TestHTTPHandlerAlerts(t *testing.T) {
 	// Test alerts endpoint
 	req := httptest.NewRequest("GET", "/alerts", nil)
 	w := httptest.NewRecorder()
-
-	handler.GetAlerts(w, req)
+	handler.GetAlerts(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -274,13 +322,12 @@ func TestHTTPHandlerHealth(t *testing.T) {
 	config := DefaultConfig()
 	collector := NewMockMetricsCollector([]MetricSnapshot{})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Test health when not running
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
-
-	handler.GetHealth(w, req)
+	handler.GetHealth(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status 503 when not running, got %d", w.Code)
@@ -296,13 +343,14 @@ func TestHTTPHandlerHealth(t *testing.T) {
 	}
 
 	// Start radar and test health
-	radar.Start(context.Background())
+	if err := radar.Start(context.Background()); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
 	time.Sleep(200 * time.Millisecond) // Allow time for metrics collection
 
 	req = httptest.NewRequest("GET", "/health", nil)
 	w = httptest.NewRecorder()
-
-	handler.GetHealth(w, req)
+	handler.GetHealth(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200 when running, got %d", w.Code)
@@ -316,7 +364,9 @@ func TestHTTPHandlerHealth(t *testing.T) {
 		t.Error("Expected IsRunning to be true when radar is started")
 	}
 
-	radar.Stop()
+	if err := radar.Stop(); err != nil {
+		t.Fatalf("stop failed: %v", err)
+	}
 }
 
 func TestHTTPHandlerSLOBudget(t *testing.T) {
@@ -325,7 +375,7 @@ func TestHTTPHandlerSLOBudget(t *testing.T) {
 
 	collector := NewMockMetricsCollector([]MetricSnapshot{})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Add snapshots to calculate budget
 	now := time.Now()
@@ -353,8 +403,7 @@ func TestHTTPHandlerSLOBudget(t *testing.T) {
 	// Test SLO budget endpoint
 	req := httptest.NewRequest("GET", "/slo-budget", nil)
 	w := httptest.NewRecorder()
-
-	handler.GetSLOBudget(w, req)
+	handler.GetSLOBudget(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -401,7 +450,7 @@ func TestHTTPHandlerPercentiles(t *testing.T) {
 	req := httptest.NewRequest("GET", "/percentiles", nil)
 	w := httptest.NewRecorder()
 
-	handler.GetPercentiles(w, req)
+	handler.GetPercentiles(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -427,8 +476,7 @@ func TestHTTPHandlerPercentiles(t *testing.T) {
 	// Test with custom window
 	req = httptest.NewRequest("GET", "/percentiles?window=30m", nil)
 	w = httptest.NewRecorder()
-
-	handler.GetPercentiles(w, req)
+	handler.GetPercentiles(w, req.WithContext(contextWithScope(req.Context(), ScopeReader)))
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
@@ -439,53 +487,94 @@ func TestHTTPHandlerStartStop(t *testing.T) {
 	config := DefaultConfig()
 	collector := NewMockMetricsCollector([]MetricSnapshot{})
 	radar := New(config, collector)
-	handler := NewHTTPHandler(radar)
+	handler := NewHTTPHandler(radar, allowAllScopes)
 
 	// Test start
-	req := httptest.NewRequest("POST", "/start", nil)
+	req := httptest.NewRequest(http.MethodPost, "/start", nil)
 	w := httptest.NewRecorder()
+	handler.Start(w, req.WithContext(contextWithScope(req.Context(), ScopeAdmin)))
 
-	handler.Start(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200 for start, got %d", w.Code)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("Expected status 202 for start, got %d", w.Code)
 	}
 
-	var response map[string]string
-	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+	var startResp StartStopResponse
+	if err := json.NewDecoder(w.Body).Decode(&startResp); err != nil {
 		t.Fatalf("Failed to decode start response: %v", err)
 	}
-
-	if response["status"] != "started" {
-		t.Errorf("Expected status 'started', got '%s'", response["status"])
+	if startResp.Status != "started" {
+		t.Errorf("Expected status 'started', got '%s'", startResp.Status)
 	}
 
-	// Test start when already running (should fail)
-	req = httptest.NewRequest("POST", "/start", nil)
+	// Starting again should be idempotent
+	req = httptest.NewRequest(http.MethodPost, "/start", nil)
 	w = httptest.NewRecorder()
-
-	handler.Start(w, req)
-
-	if w.Code != http.StatusConflict {
-		t.Errorf("Expected status 409 when already running, got %d", w.Code)
-	}
-
-	// Test stop
-	req = httptest.NewRequest("POST", "/stop", nil)
-	w = httptest.NewRecorder()
-
-	handler.Stop(w, req)
+	handler.Start(w, req.WithContext(contextWithScope(req.Context(), ScopeAdmin)))
 
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200 for stop, got %d", w.Code)
+		t.Fatalf("Expected status 200 for already started, got %d", w.Code)
 	}
 
-	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+	if err := json.NewDecoder(w.Body).Decode(&startResp); err != nil {
+		t.Fatalf("Failed to decode second start response: %v", err)
+	}
+	if startResp.Status != "already_started" {
+		t.Errorf("Expected status 'already_started', got '%s'", startResp.Status)
+	}
+
+	// Stop should succeed
+	req = httptest.NewRequest(http.MethodPost, "/stop", nil)
+	w = httptest.NewRecorder()
+	handler.Stop(w, req.WithContext(contextWithScope(req.Context(), ScopeAdmin)))
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("Expected status 202 for stop, got %d", w.Code)
+	}
+	var stopResp StartStopResponse
+	if err := json.NewDecoder(w.Body).Decode(&stopResp); err != nil {
 		t.Fatalf("Failed to decode stop response: %v", err)
 	}
+	if stopResp.Status != "stopped" {
+		t.Errorf("Expected status 'stopped', got '%s'", stopResp.Status)
+	}
 
-	if response["status"] != "stopped" {
-		t.Errorf("Expected status 'stopped', got '%s'", response["status"])
+	// Second stop should be idempotent
+	req = httptest.NewRequest(http.MethodPost, "/stop", nil)
+	w = httptest.NewRecorder()
+	handler.Stop(w, req.WithContext(contextWithScope(req.Context(), ScopeAdmin)))
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200 for already stopped, got %d", w.Code)
+	}
+	if err := json.NewDecoder(w.Body).Decode(&stopResp); err != nil {
+		t.Fatalf("Failed to decode second stop response: %v", err)
+	}
+	if stopResp.Status != "already_stopped" {
+		t.Errorf("Expected status 'already_stopped', got '%s'", stopResp.Status)
+	}
+}
+
+func TestHTTPHandlerScopeDenied(t *testing.T) {
+	config := DefaultConfig()
+	collector := NewMockMetricsCollector([]MetricSnapshot{})
+	radar := New(config, collector)
+	handler := NewHTTPHandler(radar, WithScopeChecker(func(ctx context.Context, required string) bool { return false }))
+
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	w := httptest.NewRecorder()
+
+	handler.GetStatus(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("Expected status 403 when scope missing, got %d", w.Code)
+	}
+
+	var errResp ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+		t.Fatalf("Failed to decode error response: %v", err)
+	}
+	if errResp.Code != "ACCESS_DENIED" {
+		t.Errorf("Expected error code ACCESS_DENIED, got %s", errResp.Code)
 	}
 }
 

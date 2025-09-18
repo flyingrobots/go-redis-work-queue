@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Anomaly Radar + SLO Budget system provides real-time monitoring of queue health with Service Level Objective (SLO) tracking and error budget management. This system implements industry-standard SRE practices for proactive incident detection and reliability management. A draft OpenAPI specification is available at [docs/api/anomaly-radar-openapi.yaml](anomaly-radar-openapi.yaml).
+The Anomaly Radar + SLO Budget system provides real-time monitoring of queue health with Service Level Objective (SLO) tracking and error budget management. This system implements industry-standard SRE practices for proactive incident detection and reliability management. A draft OpenAPI specification is available at [docs/api/anomaly-radar-openapi.yaml](anomaly-radar-openapi.yaml), and Go clients should import `github.com/flyingrobots/go-redis-work-queue/pkg/anomaly-radar-slo-budget` for a stable API surface.
 
 ## Versioning & Deprecation
 
@@ -12,6 +12,39 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 - **Deprecation timeline**: Minimum 90 days’ notice before removing or altering deprecated fields or endpoints.
 - **Change log**: Updates are recorded in `docs/changelog/anomaly-radar-slo-budget.md` and release notes.
 - **Client migration**: Consumers should pin to versioned routes (e.g., `/api/v1/…`) and watch for `Deprecation`/`Sunset` headers; see types such as `SLOConfig`, `BurnRateThresholds`, and `Alert` for field-level guidance.
+
+## Authentication & Error Handling
+
+- All endpoints require a bearer token. Scopes:
+
+  | Endpoint | Method | Required Scope |
+  |----------|--------|----------------|
+  | `/api/v1/anomaly-radar/status` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/metrics` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/alerts` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/slo-budget` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/percentiles` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/config` | GET | `slo_reader` |
+  | `/api/v1/anomaly-radar/config` | PUT | `slo_admin` |
+  | `/api/v1/anomaly-radar/start` | POST | `slo_admin` |
+  | `/api/v1/anomaly-radar/stop` | POST | `slo_admin` |
+  | `/api/v1/anomaly-radar/health` | GET | `slo_reader` |
+
+- Error responses use a consistent envelope:
+
+  ```json
+  {
+    "error": "human readable message",
+    "code": "MACHINE_CODE",
+    "details": {"field": "detail"},
+    "request_id": "uuid",
+    "timestamp": "2025-09-14T19:46:15Z"
+  }
+  ```
+
+  Common status codes: `401` (missing/invalid token), `403` (insufficient scope), `422` (validation failure), `429` (rate limited), and `500` (unexpected error).
+
+- Timestamps are emitted in RFC3339 UTC format (trailing `Z`).
 
 ## Features
 
@@ -43,8 +76,10 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 ### Installation
 
 ```go
-import ars "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+import ars "github.com/flyingrobots/go-redis-work-queue/pkg/anomaly-radar-slo-budget"
 ```
+
+> Note: The module depends on `github.com/redis/go-redis/v9`. Ensure your `go.mod` pins the same major version to avoid mixed-client issues.
 
 ### Basic Usage
 
@@ -151,6 +186,12 @@ config := ars.GetRecommendedConfig(
 
 Returns current anomaly detection status and SLO budget information.
 
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `429`, `500` (standard error envelope).
+
 **Query Parameters:**
 - `include_metrics` (boolean): Include recent metrics in response
 - `metric_window` (duration): Time window for included metrics (default: 1h)
@@ -200,6 +241,8 @@ Durations use Go's `time.ParseDuration` syntax (e.g., `30m`, `1h`, `7h30m`).
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 `budget_utilization` is a fraction between 0 and 1, `current_burn_rate` expresses budget consumed per hour, and `time_to_exhaustion` is encoded using Go's `time.Duration`/RFC3339 duration representation (e.g., `89h30m`).
 
 Durations are encoded using Go’s `time.Duration` format (e.g., `72h`, `720h0m0s`, `30m`, `1h30m`, `1500ms`, or negative offsets like `-5m`). Clients should parse these values accordingly, including optional fractional seconds.
@@ -208,9 +251,11 @@ Durations are encoded using Go’s `time.Duration` format (e.g., `72h`, `720h0m0
 
 **GET** `/api/v1/anomaly-radar/config`
 
-**Authentication/Authorization**
+**Authentication:** Bearer token with `slo_reader` scope.
 
-This endpoint requires Admin API credentials. Supply an `Authorization: Bearer <token>` header that carries an admin-scoped JWT (scope: `admin` or the equivalent capability for anomaly radar management). Requests missing valid tokens receive `401 Unauthorized`; tokens lacking required scope receive `403 Forbidden`.
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `500`.
 
 Returns current configuration.
 
@@ -249,11 +294,19 @@ Returns current configuration.
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 ### Update Configuration
 
 **PUT** `/api/v1/anomaly-radar/config`
 
 Updates the configuration.
+
+**Authentication:** Bearer token with `slo_admin` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `400` (invalid payload), `401`, `403`, `422` (schema validation), `500`.
 
 **Request Body:**
 ```json
@@ -269,17 +322,28 @@ Updates the configuration.
 }
 ```
 
+- Unknown fields are rejected (`400 INVALID_REQUEST`).
+- Business-rule validation failures (e.g., negative thresholds, inconsistent burn rate windows) return `422 UNPROCESSABLE_ENTITY` with field-level details.
+- On success the response mirrors `GET /config` with the updated configuration snapshot.
+
 ### Get Historical Metrics
 
 **GET** `/api/v1/anomaly-radar/metrics`
 
 Returns historical metric snapshots.
 
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `400` (invalid parameters), `401`, `403`, `429`, `500`.
+
 **Query Parameters:**
 - `window` (duration): Time window for metrics (default: 24h)
+- `max_samples` (integer): Maximum number of samples to return (default 1000, maximum 5000)
+- `next_cursor` (string): Cursor token returned by the previous response to continue pagination
 
-Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
-- `max_samples` (integer): Maximum number of samples to return
+Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`). When `next_cursor` is non-null, pass it on the subsequent request to fetch the next page.
 
 **Response:**
 ```json
@@ -300,15 +364,24 @@ Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
   ],
   "window": "24h0m0s",
   "count": 1,
+  "next_cursor": null,
   "timestamp": "2025-09-14T19:46:15Z"
 }
 ```
+
+All timestamps are RFC3339 in UTC (trailing `Z`).
 
 ### Get Active Alerts
 
 **GET** `/api/v1/anomaly-radar/alerts`
 
 Returns currently active alerts.
+
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `500`.
 
 **Response:**
 ```json
@@ -330,11 +403,19 @@ Returns currently active alerts.
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 ### Get SLO Budget Details
 
 **GET** `/api/v1/anomaly-radar/slo-budget`
 
 Returns detailed SLO budget information with insights.
+
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `500`.
 
 **Response:**
 ```json
@@ -361,11 +442,19 @@ Returns detailed SLO budget information with insights.
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 ### Get Latency Percentiles
 
 **GET** `/api/v1/anomaly-radar/percentiles`
 
 Returns latency percentiles for a given time window.
+
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `400` (invalid window), `401`, `403`, `500`.
 
 **Query Parameters:**
 - `window` (duration): Time window for calculation (default: 1h)
@@ -386,11 +475,19 @@ Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 ### Health Check
 
 **GET** `/api/v1/anomaly-radar/health`
 
 Returns health status of the anomaly radar system.
+
+**Authentication:** Bearer token with `slo_reader` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `429`, `500`.
 
 **Response:**
 ```json
@@ -405,18 +502,26 @@ Returns health status of the anomaly radar system.
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 **HTTP Status Codes:**
 - `200 OK`: System is healthy or has warnings
+- `206 Partial Content`: Health data available but degraded (e.g., metrics backend unreachable)
 - `503 Service Unavailable`: System is not running or has critical issues
 - `500 Internal Server Error`: Unexpected failure while evaluating system health
 - `429 Too Many Requests`: Health checks throttled (caller should back off)
-- `206 Partial Content`: Health data available but degraded (e.g., metrics backend unreachable)
 
 ### Start/Stop Operations
 
 **POST** `/api/v1/anomaly-radar/start`
 
 Starts the anomaly radar monitoring.
+
+**Authentication:** Bearer token with `slo_admin` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `429`, `500`.
 
 - **Auth**: Requires bearer token with `slo_admin` (or `anomaly_radar:manage`) permission.
 - **Idempotency**: Returns `200 OK` with `{ "status": "already_started" }` if radar is already running; otherwise returns `202 Accepted` while startup completes.
@@ -431,9 +536,17 @@ Example response when already running:
 }
 ```
 
+All timestamps are RFC3339 in UTC (trailing `Z`).
+
 **POST** `/api/v1/anomaly-radar/stop`
 
 Stops the anomaly radar monitoring.
+
+**Authentication:** Bearer token with `slo_admin` scope.
+
+**Content-Type:** `application/json`
+
+**Errors:** `401`, `403`, `429`, `500`.
 
 - **Auth**: Requires bearer token with `slo_admin` (or `anomaly_radar:manage`) permission.
 - **Idempotency**: Returns `200 OK` with `{ "status": "already_stopped" }` if radar is not running; otherwise returns `202 Accepted` while shutdown completes.
@@ -447,6 +560,8 @@ Example response when already stopped:
   "timestamp": "2025-09-14T19:46:15Z"
 }
 ```
+
+All timestamps are RFC3339 in UTC (trailing `Z`).
 
 Concurrent start/stop requests are handled safely; the service guarantees consistent state is returned in the response body.
 
@@ -497,7 +612,7 @@ Triggered when SLO budget consumption rate indicates budget exhaustion risk.
 
 1. **Implement Proper Metrics Collection**: Ensure accurate and timely metrics
 2. **Set Up Alert Callbacks**: Integrate with your alerting system (PagerDuty, Slack, etc.)
-3. **Dashboard Integration**: Display key metrics in operational dashboards
+3. **Dashboard Integration**: Display key metrics in operational dashboards and honour `next_cursor` pagination when visualising long windows
 4. **Incident Response**: Include SLO budget status in incident response procedures
 
 ### Performance
@@ -559,6 +674,65 @@ radar.RegisterAlertCallback(func(alert ars.Alert) {
 
 ### Dashboard Integration
 
+#### Paginated Metrics Retrieval (Go)
+
+```go
+// Assumes:
+//
+// import (
+//     "context"
+//     "encoding/json"
+//     "fmt"
+//     "net/http"
+//     "time"
+//     ars "github.com/flyingrobots/go-redis-work-queue/pkg/anomaly-radar-slo-budget"
+// )
+func FetchAllMetrics(ctx context.Context, httpClient *http.Client, baseURL, bearerToken string, window time.Duration) ([]ars.MetricSnapshot, error) {
+    cursor := ""
+    var snapshots []ars.MetricSnapshot
+
+    for {
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/v1/anomaly-radar/metrics", nil)
+        if err != nil {
+            return nil, err
+        }
+
+        q := req.URL.Query()
+        q.Set("window", window.String())
+        if cursor != "" {
+            q.Set("next_cursor", cursor)
+        }
+        req.URL.RawQuery = q.Encode()
+        req.Header.Set("Authorization", "Bearer "+bearerToken)
+
+        resp, err := httpClient.Do(req)
+        if err != nil {
+            return nil, err
+        }
+        defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK {
+            return nil, fmt.Errorf("metrics request failed: %s", resp.Status)
+        }
+
+        var payload ars.MetricsResponse
+        if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+            return nil, err
+        }
+
+        snapshots = append(snapshots, payload.Metrics...)
+
+        if payload.NextCursor == "" {
+            return snapshots, nil
+        }
+
+        cursor = payload.NextCursor
+    }
+}
+```
+
+Dashboards should surface a "show more" affordance or auto-fetch additional pages when `next_cursor` is present so operators can inspect the full window without truncation.
+
 ```go
 // Prometheus metrics export
 func (r *AnomalyRadar) ExportPrometheusMetrics() {
@@ -595,14 +769,6 @@ func (r *AnomalyRadar) ExportPrometheusMetrics() {
 3. **False Alerts**: Adjust thresholds based on baseline system behavior
 4. **High Memory Usage**: Reduce max snapshots or metric retention period
 5. **Performance Impact**: Increase monitoring interval or reduce sampling rate
-
-### Debug Information
-
-Use the debug endpoint (if implemented) to inspect internal state:
-
-```bash
-curl http://localhost:8080/api/v1/anomaly-radar/debug
-```
 
 ### Logging
 

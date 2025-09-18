@@ -28,12 +28,16 @@ spec:
         app: redis
     spec:
       serviceAccountName: redis-sa
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        fsGroup: 1000
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: redis
-        image: redis:7-alpine
+        image: redis:7-alpine@sha256:0302cccee2b2043e61b497c8f4075467c5f7ba27a9f38be7e092634f2734baed
+        imagePullPolicy: Always
         ports:
         - containerPort: 6379
           name: redis
@@ -46,11 +50,13 @@ spec:
         volumeMounts:
         - name: redis-data
           mountPath: /data
+        - name: redis-tmp
+          mountPath: /tmp
         securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+          runAsUser: 10001
+          runAsGroup: 10001
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
               - "ALL"
@@ -66,17 +72,22 @@ spec:
         livenessProbe:
           exec:
             command:
-            - redis-cli
-            - ping
+            - sh
+            - -c
+            - "redis-cli -h 127.0.0.1 -p 6379 ping"
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           exec:
             command:
-            - redis-cli
-            - ping
+            - sh
+            - -c
+            - "redis-cli -h 127.0.0.1 -p 6379 ping"
           initialDelaySeconds: 5
           periodSeconds: 5
+      volumes:
+      - name: redis-tmp
+        emptyDir: {}
   volumeClaimTemplates:
   - metadata:
       name: redis-data

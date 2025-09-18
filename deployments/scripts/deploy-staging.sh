@@ -17,6 +17,38 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+declare -a ACTIVE_PORT_FORWARDS=()
+
+cleanup() {
+    for pid in "${ACTIVE_PORT_FORWARDS[@]}"; do
+        if [[ -n "$pid" ]]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+}
+
+trap cleanup EXIT
+
+register_port_forward() {
+    local pid="$1"
+    if [[ -n "$pid" ]]; then
+        ACTIVE_PORT_FORWARDS+=("$pid")
+    fi
+}
+
+stop_port_forward() {
+    local pid="$1"
+    if [[ -z "$pid" ]]; then
+        return
+    fi
+    kill "$pid" 2>/dev/null || true
+    for i in "${!ACTIVE_PORT_FORWARDS[@]}"; do
+        if [[ "${ACTIVE_PORT_FORWARDS[$i]}" == "$pid" ]]; then
+            unset 'ACTIVE_PORT_FORWARDS[$i]'
+        fi
+    done
+}
+
 # Logging functions
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -149,14 +181,14 @@ verify_deployment() {
     # Port forward for health check
     kubectl port-forward -n "$NAMESPACE" "service/$APP_NAME" 8080:80 &
     PF_PID=$!
+    register_port_forward "$PF_PID"
+    register_port_forward "$PF_PID"
     sleep 5
 
     # Health check
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
 
-    if [[ -n "${PF_PID:-}" ]]; then
-        kill "$PF_PID" 2>/dev/null || true
-    fi
+    stop_port_forward "$PF_PID"
 
     if [ "$HTTP_STATUS" -ne 200 ]; then
         log_error "Health check failed (HTTP $HTTP_STATUS)"
@@ -193,16 +225,12 @@ run_smoke_tests() {
             log_info "Endpoint $endpoint responded with $HTTP_STATUS"
         else
             log_error "Endpoint $endpoint failed with $HTTP_STATUS"
-            if [[ -n "${PF_PID:-}" ]]; then
-                kill "$PF_PID" 2>/dev/null || true
-            fi
+            stop_port_forward "$PF_PID"
             exit 1
         fi
     done
 
-    if [[ -n "${PF_PID:-}" ]]; then
-        kill "$PF_PID" 2>/dev/null || true
-    fi
+    stop_port_forward "$PF_PID"
     log_info "Smoke tests passed"
 }
 

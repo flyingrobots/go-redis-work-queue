@@ -43,7 +43,12 @@ spec:
         runbook_url: "https://github.com/flyingrobots/go-redis-work-queue/blob/main/docs/original-spec/14_ops_runbook.md#rbac-token-service"
 
     - alert: RBACTokenServiceHighErrorRate
-      expr: rate(http_requests_total{app="rbac-token-service",status=~"5.."}[5m]) > 0.1
+      expr: |
+        (
+          sum(rate(http_requests_total{job="rbac-token-service",status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_requests_total{job="rbac-token-service"}[5m])), 1)
+        ) > 0.1
       for: 2m
       labels:
         severity: warning
@@ -54,7 +59,10 @@ spec:
 
     # Response time alerts
     - alert: RBACTokenServiceHighLatency
-      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="rbac-token-service"}[5m])) > 1.0
+      expr: |
+        histogram_quantile(0.95,
+          sum by (le) (rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m]))
+        ) > 1.0
       for: 5m
       labels:
         severity: warning
@@ -64,7 +72,10 @@ spec:
         description: "95th percentile latency is {{ $value }}s"
 
     - alert: RBACTokenServiceVeryHighLatency
-      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="rbac-token-service"}[5m])) > 5.0
+      expr: |
+        histogram_quantile(0.95,
+          sum by (le) (rate(http_request_duration_seconds_bucket{job="rbac-token-service"}[5m]))
+        ) > 5.0
       for: 2m
       labels:
         severity: critical

@@ -256,7 +256,7 @@ test_monitoring() {
     fi
 
     # Clean up port forward
-    kill $port_forward_pid 2>/dev/null || true
+    kill "$port_forward_pid" 2>/dev/null || true
 
     # Check if Prometheus is scraping the target
     if kubectl get pods -n "$MONITORING_NAMESPACE" -l app.kubernetes.io/name=prometheus &> /dev/null; then

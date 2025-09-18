@@ -39,8 +39,15 @@ class ClaudeWorker:
         self.failed_dir = self.base_dir / 'failed-tasks'
         self.help_dir = self.base_dir / 'help-me'
 
-        # Ensure my directory exists
-        self.my_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure required directories exist
+        for path in (
+            self.open_tasks_dir,
+            self.my_dir,
+            self.finished_dir,
+            self.failed_dir,
+            self.help_dir,
+        ):
+            path.mkdir(parents=True, exist_ok=True)
 
         print(f"[WORKER] {self.worker_name} initialized")
         print(f"[WORKER] Watching: {self.open_tasks_dir}")

@@ -171,7 +171,28 @@ check_http_health() {
     trap cleanup_port_forward EXIT
 
     # Wait for port forward to establish
-    sleep 3
+    local start_ts
+    start_ts=$(date +%s)
+    while true; do
+        if command -v nc >/dev/null 2>&1; then
+            if nc -z localhost 8081 >/dev/null 2>&1; then
+                break
+            fi
+        else
+            if exec 3<>/dev/tcp/localhost/8081 2>/dev/null; then
+                exec 3>&-
+                break
+            fi
+        fi
+
+        if (( $(date +%s) - start_ts >= TIMEOUT )); then
+            cleanup_port_forward
+            trap - EXIT
+            error "Port forward to localhost:8081 did not become ready within $TIMEOUT seconds"
+            return 1
+        fi
+        sleep 1
+    done
 
     local health_check_passed=0
 

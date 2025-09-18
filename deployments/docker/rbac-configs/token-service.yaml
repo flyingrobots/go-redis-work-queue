@@ -20,8 +20,8 @@ token:
 keys:
   rotation_interval: 720h  # 30 days
   grace_period: 24h
-  algorithm: "HS256"
-  key_size: 256
+  algorithm: "RS256"
+  key_size: 4096
   storage:
     type: "file"
     connection: "/app/keys"
@@ -51,7 +51,7 @@ authz:
 redis:
   host: "${REDIS_HOST:-localhost}"
   port: "${REDIS_PORT:-6379}"
-  password: "${REDIS_PASSWORD}"
+  password_file: "${REDIS_PASSWORD_FILE:-/app/secrets/redis-password}"
   db: 1  # Use different DB for RBAC data
   pool_size: 10
   min_idle_conns: 5
@@ -109,7 +109,9 @@ startup_validation:
   fail_fast: true
   required_env_vars:
     - RBAC_KEY_ENCRYPTION_KEY
-    - REDIS_PASSWORD
+    - REDIS_PASSWORD_FILE
+    - RBAC_SIGNING_KEY_FILE
+    - RBAC_ENCRYPTION_KEY_FILE
 
 # Security headers
 security:
@@ -118,4 +120,10 @@ security:
     x_content_type_options: "nosniff"
     x_xss_protection: "1; mode=block"
     strict_transport_security: "max-age=31536000; includeSubDomains"
+
+  # Key rotation process (summary):
+  # 1. Generate a new RSA 4096 keypair and store the private key under /app/keys (not committed).
+  # 2. Publish the corresponding public key to verifier services (e.g., Admin API) or expose via JWKS.
+  # 3. Update this service to reference the new private key, deploy, and monitor issuance.
+  # 4. After verifiers confirm the new public key, revoke the old key and prune it from storage.
     content_security_policy: "default-src 'self'"

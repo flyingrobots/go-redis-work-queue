@@ -2,6 +2,7 @@ package anomalyradarslobudget
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -11,24 +12,29 @@ import (
 
 // AnomalyRadar monitors queue health and tracks SLO budgets
 type AnomalyRadar struct {
-	config Config
-	window *RollingWindow
-	budget *SLOBudget
+	config    Config
+	window    *RollingWindow
+	budget    *SLOBudget
 	anomalies *AnomalyStatus
-	alerts map[string]*Alert
+	alerts    map[string]*Alert
 
 	// Metrics collector interface
 	metricsCollector MetricsCollector
 
 	// State management
-	mu sync.RWMutex
+	mu      sync.RWMutex
 	running bool
-	stopCh chan struct{}
-	wg sync.WaitGroup
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
 
 	// Alert callbacks
 	alertCallbacks []AlertCallback
 }
+
+var (
+	ErrAlreadyRunning = errors.New("anomaly radar already running")
+	ErrNotRunning     = errors.New("anomaly radar not running")
+)
 
 // MetricsCollector interface for gathering system metrics
 type MetricsCollector interface {
@@ -49,18 +55,18 @@ func New(config Config, collector MetricsCollector) *AnomalyRadar {
 		anomalies: &AnomalyStatus{
 			ActiveAlerts: make([]Alert, 0),
 		},
-		alerts: make(map[string]*Alert),
+		alerts:           make(map[string]*Alert),
 		metricsCollector: collector,
-		stopCh: make(chan struct{}),
-		alertCallbacks: make([]AlertCallback, 0),
+		stopCh:           make(chan struct{}),
+		alertCallbacks:   make([]AlertCallback, 0),
 	}
 }
 
 // NewRollingWindow creates a new rolling window for metrics
 func NewRollingWindow(retention time.Duration, maxSnapshots int) *RollingWindow {
 	return &RollingWindow{
-		WindowSize: retention,
-		Snapshots: make([]MetricSnapshot, 0, maxSnapshots),
+		WindowSize:   retention,
+		Snapshots:    make([]MetricSnapshot, 0, maxSnapshots),
 		maxSnapshots: maxSnapshots,
 	}
 }
@@ -71,10 +77,11 @@ func (ar *AnomalyRadar) Start(ctx context.Context) error {
 	defer ar.mu.Unlock()
 
 	if ar.running {
-		return fmt.Errorf("anomaly radar is already running")
+		return ErrAlreadyRunning
 	}
 
 	ar.running = true
+	ar.stopCh = make(chan struct{})
 	ar.wg.Add(1)
 
 	go ar.monitoringLoop(ctx)
@@ -85,15 +92,20 @@ func (ar *AnomalyRadar) Start(ctx context.Context) error {
 // Stop gracefully shuts down the anomaly radar
 func (ar *AnomalyRadar) Stop() error {
 	ar.mu.Lock()
-	defer ar.mu.Unlock()
-
 	if !ar.running {
-		return nil
+		ar.mu.Unlock()
+		return ErrNotRunning
 	}
-
+	stopCh := ar.stopCh
 	ar.running = false
-	close(ar.stopCh)
+	ar.mu.Unlock()
+
+	close(stopCh)
 	ar.wg.Wait()
+
+	ar.mu.Lock()
+	ar.stopCh = make(chan struct{})
+	ar.mu.Unlock()
 
 	return nil
 }
@@ -115,19 +127,43 @@ func (ar *AnomalyRadar) GetCurrentStatus() (AnomalyStatus, SLOBudget) {
 
 // GetMetrics returns recent metric snapshots
 func (ar *AnomalyRadar) GetMetrics(window time.Duration) []MetricSnapshot {
+	metrics, _ := ar.GetMetricsPage(window, 0, 0)
+	return metrics
+}
+
+// GetMetricsPage returns a page of metrics snapshots along with the next cursor index.
+func (ar *AnomalyRadar) GetMetricsPage(window time.Duration, limit int, cursor int) ([]MetricSnapshot, int) {
 	ar.mu.RLock()
 	defer ar.mu.RUnlock()
 
 	cutoff := time.Now().Add(-window)
-	metrics := make([]MetricSnapshot, 0)
-
+	filtered := make([]MetricSnapshot, 0, len(ar.window.Snapshots))
 	for _, snapshot := range ar.window.Snapshots {
 		if snapshot.Timestamp.After(cutoff) {
-			metrics = append(metrics, snapshot)
+			filtered = append(filtered, snapshot)
 		}
 	}
 
-	return metrics
+	if cursor < 0 {
+		cursor = 0
+	}
+	if cursor > len(filtered) {
+		cursor = len(filtered)
+	}
+
+	if limit <= 0 || cursor+limit > len(filtered) {
+		limit = len(filtered) - cursor
+	}
+
+	end := cursor + limit
+	page := append([]MetricSnapshot(nil), filtered[cursor:end]...)
+
+	next := -1
+	if end < len(filtered) {
+		next = end
+	}
+
+	return page, next
 }
 
 // monitoringLoop runs the main monitoring and analysis cycle
@@ -516,11 +552,11 @@ func (ar *AnomalyRadar) checkMetricAlert(alerts map[string]*Alert, id string, al
 		alertType.String(), status.String(), value, threshold)
 
 	alert := &Alert{
-		ID: id,
-		Type: alertType,
-		Severity: severity,
-		Message: message,
-		Value: value,
+		ID:        id,
+		Type:      alertType,
+		Severity:  severity,
+		Message:   message,
+		Value:     value,
 		Threshold: threshold,
 		UpdatedAt: time.Now(),
 	}
@@ -552,11 +588,11 @@ func (ar *AnomalyRadar) checkBurnRateAlert(alerts map[string]*Alert) {
 		severity.String(), ar.budget.CurrentBurnRate, threshold)
 
 	alert := &Alert{
-		ID: id,
-		Type: AlertTypeBurnRate,
-		Severity: severity,
-		Message: message,
-		Value: ar.budget.CurrentBurnRate,
+		ID:        id,
+		Type:      AlertTypeBurnRate,
+		Severity:  severity,
+		Message:   message,
+		Value:     ar.budget.CurrentBurnRate,
 		Threshold: threshold,
 		UpdatedAt: time.Now(),
 	}

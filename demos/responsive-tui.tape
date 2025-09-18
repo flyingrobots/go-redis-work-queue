@@ -14,7 +14,6 @@ Type "# 📱➡️🖥️ Responsive Terminal UI Demo"
 Enter
 Type "# Redis Work Queue TUI adapts to any screen size"
 Enter
-Sleep 2s
 Clear
 
 # Mobile Mode Demo (≤40 cols)
@@ -71,7 +70,6 @@ Type "└─────────────────┘"
 Enter
 Type "EOF"
 Enter
-Sleep 1.5s
 Clear
 
 # Tablet Mode Demo (41-80 cols)
@@ -130,7 +128,6 @@ Type "└───────────────────────�
 Enter
 Type "EOF"
 Enter
-Sleep 2s
 Clear
 
 # Desktop Mode Demo (81-120 cols)
@@ -217,7 +214,6 @@ Type "[Enter] Peek Queue • [Space] Pause/Resume • [D] Drain • [/] Filter �
 Enter
 Type "EOF"
 Enter
-Sleep 2s
 Clear
 
 # Ultrawide Mode Demo (121+ cols)
@@ -312,13 +308,11 @@ Type "[F1] Help • [F2] Clusters • [F3] Debug • [Ctrl+P] Command Palette �
 Enter
 Type "EOF"
 Enter
-Sleep 6s
 Clear
 
 # Feature summary
 Type "echo '✨ Responsive TUI Features:'"
 Enter
-Sleep 1s
 Type "echo ''"
 Enter
 Type "echo '📱 Mobile (≤40 cols):'"
@@ -329,7 +323,6 @@ Type "echo '   • Essential info only, large touch targets'"
 Enter
 Type "echo '   • Voice commands prominent'"
 Enter
-Sleep 1s
 Type "echo ''"
 Type "echo '📟 Tablet (41-80 cols):'"
 Enter
@@ -339,7 +332,6 @@ Type "echo '   • Medium information density'"
 Enter
 Type "echo '   • Mixed mouse/keyboard interaction'"
 Enter
-Sleep 1s
 Type "echo ''"
 Type "echo '🖥️  Desktop (81-120 cols):'"
 Enter
@@ -349,7 +341,6 @@ Type "echo '   • Rich data visualization'"
 Enter
 Type "echo '   • Full feature access'"
 Enter
-Sleep 1s
 Type "echo ''"
 Type "echo '🖥️🖥️ Ultrawide (121+ cols):'"
 Enter
@@ -359,7 +350,6 @@ Type "echo '   • Multi-cluster comparison'"
 Enter
 Type "echo '   • Advanced analytics'"
 Enter
-Sleep 2s
 
 Type "echo ''"
 Type "if command -v figlet >/dev/null 2>&1; then figlet -f small 'Responsive TUI'; else echo 'Responsive TUI'; fi"
@@ -372,4 +362,3 @@ Type "echo ''"
 Type "echo '🔧 Built with: LipGloss + Bubbletea + Responsive Design Principles'"
 Enter
 
-Sleep 3s

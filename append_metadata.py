@@ -11,25 +11,42 @@ from typing import Dict, List
 from dependency_analysis import features
 
 
-def format_list(items: List[str], prefix: str) -> str:
-    if not items:
-        return f"{prefix}[]"
-    return "\n".join(f"{prefix}{item}" for item in items)
+def _render_dependency_block(deps: Dict[str, List[str]]) -> str:
+    hard = deps.get("hard", [])
+    soft = deps.get("soft", [])
+
+    if hard:
+        hard_block = "  hard:\n" + "\n".join(f"    - {item}" for item in hard)
+    else:
+        hard_block = "  hard: []"
+
+    if soft:
+        soft_block = "  soft:\n" + "\n".join(f"    - {item}" for item in soft)
+    else:
+        soft_block = "  soft: []"
+
+    return f"{hard_block}\n{soft_block}"
+
+
+def _render_top_level_list(name: str, items: List[str]) -> str:
+    if items:
+        body = "\n".join(f"  - {item}" for item in items)
+        return f"{name}:\n{body}"
+    return f"{name}: []"
 
 
 def generate_yaml_metadata(feature_name: str, deps: Dict[str, List[str]]) -> str:
+    dependencies_block = _render_dependency_block(deps)
+    enables_block = _render_top_level_list("enables", deps.get("enables", []))
+    provides_block = _render_top_level_list("provides", deps.get("provides", []))
+
     return f"""
 ---
 feature: {feature_name}
 dependencies:
-  hard:
-{format_list(deps.get('hard', []), '    - ')}
-  soft:
-{format_list(deps.get('soft', []), '    - ')}
-enables:
-{format_list(deps.get('enables', []), '  - ')}
-provides:
-{format_list(deps.get('provides', []), '  - ')}
+{dependencies_block}
+{enables_block}
+{provides_block}
 ---"""
 
 
@@ -40,17 +57,25 @@ def append_metadata_for_features(ideas_dir: str) -> None:
             print(f"✗ File not found: {feature_name}.md")
             continue
 
-        with open(file_path, "r", encoding="utf-8") as handle:
-            content = handle.read()
+        try:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                content = handle.read()
+        except OSError as exc:
+            print(f"✗ Failed to read {feature_name}.md: {exc}")
+            continue
 
         if content.endswith("---"):
             print(f"⚠ Metadata already exists in {feature_name}.md")
             continue
 
         yaml_metadata = generate_yaml_metadata(feature_name, deps)
-        with open(file_path, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.write(yaml_metadata)
+        try:
+            with open(file_path, "w", encoding="utf-8") as handle:
+                handle.write(content)
+                handle.write(yaml_metadata)
+        except OSError as exc:
+            print(f"✗ Failed to write metadata to {feature_name}.md: {exc}")
+            continue
         print(f"✓ Appended metadata to {feature_name}.md")
 
 
@@ -159,8 +184,12 @@ def generate_dag(ideas_dir: str) -> Dict[str, List[Dict[str, str]]]:
 def write_dag(ideas_dir: str) -> None:
     dag = generate_dag(ideas_dir)
     dag_path = os.path.join(ideas_dir, "DAG.json")
-    with open(dag_path, "w", encoding="utf-8") as handle:
-        json.dump(dag, handle, indent=2)
+    try:
+        with open(dag_path, "w", encoding="utf-8") as handle:
+            json.dump(dag, handle, indent=2)
+    except OSError as exc:
+        print(f"✗ Failed to write {dag_path}: {exc}")
+        return
     print(f"\n✓ Generated DAG.json with {len(dag['nodes'])} nodes and {len(dag['edges'])} edges")
 
 
@@ -177,6 +206,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     ideas_dir = os.path.expanduser(args.ideas_dir)
+    try:
+        os.makedirs(ideas_dir, exist_ok=True)
+    except OSError as exc:
+        raise SystemExit(f"Failed to create ideas directory '{ideas_dir}': {exc}") from exc
     append_metadata_for_features(ideas_dir)
     write_dag(ideas_dir)
 

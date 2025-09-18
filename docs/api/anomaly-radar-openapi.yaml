@@ -20,6 +20,8 @@ paths:
       tags: [Anomaly Radar]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       responses:
         '200':
           description: Current anomaly radar status
@@ -37,6 +39,8 @@ paths:
       tags: [Configuration]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       responses:
         '200':
           description: Current configuration
@@ -52,6 +56,8 @@ paths:
       tags: [Configuration]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_admin
       requestBody:
         required: true
         content:
@@ -76,6 +82,8 @@ paths:
       tags: [Metrics]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       parameters:
         - in: query
           name: window
@@ -92,6 +100,12 @@ paths:
             type: integer
             minimum: 1
             maximum: 5000
+        - in: query
+          name: next_cursor
+          description: Opaque cursor returned by a previous response
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Historical metric snapshots
@@ -109,6 +123,8 @@ paths:
       tags: [Alerts]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       responses:
         '200':
           description: Active alerts
@@ -125,6 +141,8 @@ paths:
       tags: [Anomaly Radar]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       responses:
         '200':
           description: SLO budget status
@@ -139,6 +157,10 @@ paths:
     get:
       summary: Health check for anomaly radar service
       tags: [Operations]
+      security:
+        - bearerAuth: []
+      x-required-scopes:
+        - slo_reader
       responses:
         '200':
           description: Healthy or warning state
@@ -160,6 +182,8 @@ paths:
       tags: [Operations]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_admin
       responses:
         '200':
           description: Radar already running
@@ -183,6 +207,8 @@ paths:
       tags: [Operations]
       security:
         - bearerAuth: []
+      x-required-scopes:
+        - slo_admin
       responses:
         '200':
           description: Radar already stopped
@@ -388,6 +414,10 @@ components:
         timestamp:
           type: string
           format: date-time
+        next_cursor:
+          type: string
+          nullable: true
+          description: Cursor for the next page; omitted when no more data exists
       required: [metrics, count, timestamp]
     MetricSnapshot:
       type: object
@@ -535,6 +565,10 @@ components:
           nullable: true
         request_id:
           type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
           nullable: true
       required: [error]
     ValidationErrorResponse:

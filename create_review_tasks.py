@@ -55,12 +55,14 @@ def load_completed_tasks(completed_dir: str) -> List[str]:
         return []
     tasks: List[str] = []
     for filename in os.listdir(completed_dir):
-        if filename.endswith(".json") and "duplicate" not in filename:
+        lowered = filename.lower()
+        if lowered.endswith(".json") and "duplicate" not in lowered:
             task_id = filename[:-5]
             if task_id.startswith(("P1.T", "P2.T", "P3.T", "P4.T")):
                 try:
                     task_num = int(task_id.split(".T")[1])
-                except (IndexError, ValueError):
+                except (IndexError, ValueError) as exc:
+                    print(f"Skipping {filename}: unable to parse task number ({exc})")
                     continue
                 if task_num < 50:
                     tasks.append(task_id)

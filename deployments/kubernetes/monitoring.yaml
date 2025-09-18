@@ -34,7 +34,7 @@ spec:
         (
           sum(rate(http_requests_total{app="admin-api",status=~"5.."}[5m]))
           /
-          sum(rate(http_requests_total{app="admin-api"}[5m]))
+          clamp_min(sum(rate(http_requests_total{app="admin-api"}[5m])), 1)
         ) > 0.05
       for: 5m
       labels:

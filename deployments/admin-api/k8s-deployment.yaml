@@ -60,6 +60,14 @@ spec:
       labels:
         app: admin-api
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: admin-api
         image: redis-work-queue/admin-api:v0.4.0-alpha
@@ -88,6 +96,17 @@ spec:
           readOnly: true
         - name: audit-logs
           mountPath: /var/log/admin-api
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests:
             memory: "256Mi"

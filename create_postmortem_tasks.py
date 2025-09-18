@@ -2,7 +2,7 @@ import errno
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Create post-mortem reflection tasks for each worker
 workers = [
@@ -15,7 +15,7 @@ postmortem_tasks = []
 for i, worker in enumerate(workers, 1):
     task = {
         "task_id": f"POSTMORTEM.{i:03d}",
-        "created_at": datetime.now().isoformat() + "Z",
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "task": {
             "id": f"POSTMORTEM.{i:03d}",
             "feature_id": "SLAPS_REFLECTION",
@@ -28,7 +28,7 @@ for i, worker in enumerate(workers, 1):
                 },
                 "definition_of_done": {
                     "criteria": [
-                        "Write from YOUR perspective as Worker {i}",
+                        f"Write from YOUR perspective as Worker {i}",
                         "Describe your unique experiences during SLAPS",
                         "Share challenges you faced",
                         "Highlight your achievements",
@@ -37,7 +37,7 @@ for i, worker in enumerate(workers, 1):
                         "Include specific examples from your tasks",
                         "Be honest about what worked and what didn't",
                         "Share any emergent behaviors you developed",
-                        "Save to docs/SLAPS/worker-reflections/{worker}-reflection.md"
+                        f"Save to docs/SLAPS/worker-reflections/{worker}-reflection.md"
                     ]
                 }
             },
@@ -69,7 +69,7 @@ for i, worker in enumerate(workers, 1):
 # Add final coordinator summary task
 coordinator_task = {
     "task_id": "POSTMORTEM.FINAL",
-    "created_at": datetime.now().isoformat() + "Z",
+    "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "task": {
         "id": "POSTMORTEM.FINAL",
         "feature_id": "SLAPS_REFLECTION",

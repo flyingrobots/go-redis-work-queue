@@ -20,7 +20,7 @@ features = {
     },
     "visual-dag-builder": {
         "hard": ["admin_api", "tui_framework", "redis", "scheduler_primitives"],
-        "soft": ["event_hooks", "distributed_tracing"],
+        "soft": ["event_hooks", "distributed-tracing-integration"],
         "enables": ["workflow_orchestration", "pipeline_execution", "compensation_patterns"],
         "provides": ["dag_editor", "workflow_runner", "dag_validation", "live_status"]
     },
@@ -38,7 +38,7 @@ features = {
     },
     "time-travel-debugger": {
         "hard": ["admin_api", "event_sourcing", "redis"],
-        "soft": ["distributed_tracing", "job_genealogy_navigator"],
+        "soft": ["distributed-tracing-integration", "job_genealogy_navigator"],
         "enables": ["replay_debugging", "production_debugging", "state_comparison"],
         "provides": ["event_capture", "timeline_navigation", "state_snapshots", "diff_viewer"]
     },
@@ -86,7 +86,7 @@ features = {
     },
     "event-hooks": {
         "hard": ["admin_api", "http_client"],
-        "soft": ["rbac_and_tokens", "distributed_tracing"],
+        "soft": ["rbac_and_tokens", "distributed-tracing-integration"],
         "enables": ["external_integrations", "real_time_notifications", "workflow_triggers"],
         "provides": ["webhook_delivery", "event_filtering", "retry_logic", "deep_links"]
     },
@@ -104,12 +104,12 @@ features = {
     },
     "job-genealogy-navigator": {
         "hard": ["graph_storage", "relationship_tracking", "tui_framework"],
-        "soft": ["admin_api", "distributed_tracing"],
+        "soft": ["admin_api", "distributed-tracing-integration"],
         "enables": ["debugging_workflows", "impact_analysis", "root_cause_analysis"],
         "provides": ["tree_visualization", "relationship_graph", "blame_mode", "ancestry_tracking"]
     },
     "long-term-archives": {
-        "hard": ["storage_backend", "completed_stream"],
+        "hard": ["storage-backends", "completed_stream"],
         "soft": ["admin_api", "clickhouse", "s3"],
         "enables": ["historical_analysis", "compliance", "forensics"],
         "provides": ["data_export", "retention_policies", "query_interface", "archive_management"]
@@ -163,7 +163,7 @@ features = {
         "provides": ["theme_system", "color_picker", "wcag_validation", "theme_export"]
     },
     "trace-drilldown-log-tail": {
-        "hard": ["distributed_tracing", "log_aggregation", "admin_api"],
+        "hard": ["distributed-tracing-integration", "log_aggregation", "admin_api"],
         "soft": ["time_travel_debugger"],
         "enables": ["deep_debugging", "correlated_logs", "incident_response"],
         "provides": ["trace_viewer", "log_correlation", "span_details", "waterfall_timeline"]
@@ -282,7 +282,7 @@ infrastructure = {
     "schema_validation": "Schema validation library",
     "serialization": "Serialization utilities",
     "storage_abstraction": "Storage abstraction layer",
-    "storage_backend": "Pluggable storage backend",
+    "storage-backends": "Pluggable storage backend",
     "tenant_labels": "Tenant labelling utilities",
     "time_series_analysis": "Time series analytics tooling",
     "voice_recognition": "Speech-to-text recognition service",
@@ -295,6 +295,7 @@ infrastructure = {
 ALIASES = {
     "distributed_tracing": "distributed_tracing_integration",
     "capacity_planning": "automatic_capacity_planning",
+    "storage_backend": "storage_backends",
 }
 
 
