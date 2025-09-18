@@ -4,6 +4,25 @@
 
 The Chaos Harness provides controlled fault injection and chaos testing capabilities for the go-redis-work-queue system. It allows you to inject failures, test resilience, and validate recovery behaviors.
 
+## Authentication & Error Handling
+
+- Endpoints require a bearer token with the minimum chaos-harness scopes needed for the action (read operations typically need a read scope, mutating calls need an admin/write scope). See [RBAC and Tokens](rbac-and-tokens.md) for scope planning guidance.
+- Error responses use the standardized Admin API envelope:
+
+  ```json
+  {
+    "error": "human readable message",
+    "code": "MACHINE_CODE",
+    "details": {"field": "detail"},
+    "request_id": "uuid",
+    "timestamp": "2025-09-14T19:46:15Z"
+  }
+  ```
+
+  Common status codes include `400` (validation failure), `401` (missing/invalid token), `403` (insufficient scope), `404` (injector/scenario not found), `429` (rate limited), and `500` (unexpected error).
+
+- Every error response emits an `X-Request-ID` header that matches the `request_id` field—capture it in test runs and incident reports so engineering can trace the request.
+
 ## Core Components
 
 ### Fault Injectors

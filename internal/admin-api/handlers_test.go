@@ -183,7 +183,7 @@ func TestPurgeDLQ(t *testing.T) {
 }
 
 func TestPurgeDLQInvalidConfirmation(t *testing.T) {
-	handler, _, cleanup := setupTestHandler(t)
+	handler, _, cleanup := setupHandlerTest(t)
 	defer cleanup()
 
 	// Create request with wrong confirmation
@@ -216,7 +216,7 @@ func TestPurgeDLQInvalidConfirmation(t *testing.T) {
 }
 
 func TestBenchmark(t *testing.T) {
-	handler, _, cleanup := setupTestHandler(t)
+	handler, _, cleanup := setupHandlerTest(t)
 	defer cleanup()
 
 	// Create request

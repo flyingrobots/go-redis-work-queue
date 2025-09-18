@@ -44,6 +44,8 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 
   Common status codes: `401` (missing/invalid token), `403` (insufficient scope), `422` (validation failure), `429` (rate limited), and `500` (unexpected error).
 
+- Every error response emits an `X-Request-ID` header that matches the `request_id` field. Capture it in client logs to correlate with server-side traces.
+
 - Timestamps are emitted in RFC3339 UTC format (trailing `Z`).
 
 ## Features

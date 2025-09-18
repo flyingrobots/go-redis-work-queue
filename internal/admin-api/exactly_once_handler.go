@@ -9,8 +9,8 @@ import (
 
 	exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 	"github.com/flyingrobots/go-redis-work-queue/internal/exactly_once"
-	"github.com/redis/go-redis/v9"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -87,7 +87,7 @@ func (h *ExactlyOnceHandler) GetDedupStats(w http.ResponseWriter, r *http.Reques
 	stats, err := h.idempManager.Stats(ctx)
 	if err != nil {
 		h.logger.Error("Failed to get dedup stats", zap.Error(err))
-		http.Error(w, "Failed to retrieve statistics", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "DEDUP_STATS_ERROR", "Failed to retrieve statistics")
 		return
 	}
 
@@ -124,18 +124,18 @@ func (h *ExactlyOnceHandler) PublishOutboxEvents(w http.ResponseWriter, r *http.
 	err := h.manager.PublishOutboxEvents(ctx)
 	if err != nil {
 		if err == exactlyonce.ErrOutboxDisabled {
-			response := map[string]interface{}{
-				"error":   "Outbox is disabled",
-				"message": "Enable outbox in configuration to use this feature",
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
+			writeErrorWithDetails(
+				w,
+				http.StatusBadRequest,
+				"OUTBOX_DISABLED",
+				"Outbox is disabled",
+				map[string]string{"remediation": "Enable outbox in configuration to use this feature"},
+			)
 			return
 		}
 
 		h.logger.Error("Failed to publish outbox events", zap.Error(err))
-		http.Error(w, "Failed to publish events", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "OUTBOX_PUBLISH_ERROR", "Failed to publish events")
 		return
 	}
 
@@ -156,18 +156,18 @@ func (h *ExactlyOnceHandler) CleanupOutboxEvents(w http.ResponseWriter, r *http.
 	err := h.manager.CleanupOutboxEvents(ctx)
 	if err != nil {
 		if err == exactlyonce.ErrOutboxDisabled {
-			response := map[string]interface{}{
-				"error":   "Outbox is disabled",
-				"message": "Enable outbox in configuration to use this feature",
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
+			writeErrorWithDetails(
+				w,
+				http.StatusBadRequest,
+				"OUTBOX_DISABLED",
+				"Outbox is disabled",
+				map[string]string{"remediation": "Enable outbox in configuration to use this feature"},
+			)
 			return
 		}
 
 		h.logger.Error("Failed to cleanup outbox events", zap.Error(err))
-		http.Error(w, "Failed to cleanup events", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "OUTBOX_CLEANUP_ERROR", "Failed to cleanup events")
 		return
 	}
 
@@ -213,7 +213,7 @@ func (h *ExactlyOnceHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 func (h *ExactlyOnceHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 	var updateReq map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

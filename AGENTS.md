@@ -824,6 +824,25 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Align Features Ledger “Redis Client” row with actual v9 status; run `scripts/update_progress.py` to refresh bars.
 > - Consider concurrency/min‑permissions for `update-progress.yml` to avoid redundant runs.
 
+> [!NOTE]
+> ### 2025-09-18 – Error envelope audit & Request ID guardrail plan
+> Picked up post chunk_011 clean-up to finish the doc audit and outline automation for request IDs.
+>
+> Changes
+> - Updated `docs/api/anomaly-radar-slo-budget.md` and `docs/api/chaos-harness.md` to call out the shared error envelope and matching `X-Request-ID` header.
+> - Repaired the admin handler tests (bad helper usage) so `go test ./internal/admin-api/...` compiles cleanly.
+> - Shipped the `tools/requestidlint` analyzer + CLI, wired it into `go test` via `internal/admin-api/requestidlint_test.go`, and extended helpers with `writeErrorWithDetails`.
+> - Swapped the Exactly-Once handler error paths over to `writeError`/`writeErrorWithDetails` so they emit the envelope + headers.
+>
+> Validation
+> - `go test ./internal/admin-api/...`
+> - `go test ./tools/requestidlint/...`
+> - `go test ./...` still fails elsewhere (pre-existing lint/build issues across forecasting, tui, terminal voice commands, etc.).
+>
+> Follow-ups
+> - Add the new analyzer invocation to `make lint` / pre-commit so it runs automatically (docs already mention how).
+> - Consider extending `writeErrorWithDetails` to cover success payloads that need custom detail structures (e.g., health checks) for richer semantics.
+
 ---
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 

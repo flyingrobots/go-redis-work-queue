@@ -490,6 +490,10 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 func writeError(w http.ResponseWriter, status int, code string, message string) {
+	writeErrorWithDetails(w, status, code, message, nil)
+}
+
+func writeErrorWithDetails(w http.ResponseWriter, status int, code string, message string, details map[string]string) {
 	requestID := w.Header().Get("X-Request-ID")
 	if requestID == "" {
 		requestID = generateID()
@@ -502,6 +506,7 @@ func writeError(w http.ResponseWriter, status int, code string, message string) 
 		Status:    status,
 		RequestID: requestID,
 		Timestamp: time.Now().UTC(),
+		Details:   details,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
