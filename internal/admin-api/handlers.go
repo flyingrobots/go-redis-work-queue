@@ -490,9 +490,18 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 func writeError(w http.ResponseWriter, status int, code string, message string) {
+	requestID := w.Header().Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateID()
+		w.Header().Set("X-Request-ID", requestID)
+	}
+
 	response := ErrorResponse{
-		Error: message,
-		Code:  code,
+		Error:     message,
+		Code:      code,
+		Status:    status,
+		RequestID: requestID,
+		Timestamp: time.Now().UTC(),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

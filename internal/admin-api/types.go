@@ -27,9 +27,12 @@ type PurgeRequest struct {
 // Response types
 
 type ErrorResponse struct {
-	Error   string            `json:"error"`
-	Code    string            `json:"code,omitempty"`
-	Details map[string]string `json:"details,omitempty"`
+	Error     string            `json:"error"`
+	Code      string            `json:"code"`
+	Status    int               `json:"status"`
+	RequestID string            `json:"request_id"`
+	Timestamp time.Time         `json:"timestamp"`
+	Details   map[string]string `json:"details,omitempty"`
 }
 
 type SuccessResponse struct {
@@ -150,6 +153,7 @@ type AuditEntry struct {
 type Claims struct {
 	Subject   string   `json:"sub"`
 	Roles     []string `json:"roles"`
+	Scopes    []string `json:"scopes"`
 	ExpiresAt int64    `json:"exp"`
 	IssuedAt  int64    `json:"iat"`
 }

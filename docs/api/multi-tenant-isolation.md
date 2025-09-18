@@ -239,11 +239,15 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 
 ## Error Responses
 
+All responses include an `X-Request-ID` header matching the `request_id` field. Clients should log it for support investigations.
+
 ### 400 Bad Request
 ```json
 {
+  "code": "VALIDATION_ERROR",
   "error": "validation error",
   "status": 400,
+  "request_id": "c2f0b5ac-4fe3-4a97-9f3d-8bb4b48e2fa2",
   "timestamp": "2025-01-15T10:30:00Z",
   "details": "tenant ID length must be between 3 and 32 characters"
 }
@@ -252,8 +256,10 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 ### 403 Forbidden
 ```json
 {
+  "code": "ACCESS_DENIED",
   "error": "access denied",
   "status": 403,
+  "request_id": "4df4e9f1-b2f8-4ab8-977d-9e1fbcddf2af",
   "timestamp": "2025-01-15T10:30:00Z",
   "details": "access denied for user user1: cannot write resource tenant in tenant tenant-1 (reason: insufficient permissions)"
 }
@@ -262,8 +268,10 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 ### 404 Not Found
 ```json
 {
+  "code": "TENANT_NOT_FOUND",
   "error": "tenant not found",
   "status": 404,
+  "request_id": "0ea4d412-5c9f-41fb-8d4f-2e798b46026d",
   "timestamp": "2025-01-15T10:30:00Z",
   "details": "tenant not found: non-existent-tenant"
 }
@@ -272,8 +280,10 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 ### 409 Conflict
 ```json
 {
+  "code": "TENANT_EXISTS",
   "error": "tenant already exists",
   "status": 409,
+  "request_id": "aa2d57df-7f7c-4bda-b884-2e81b646d358",
   "timestamp": "2025-01-15T10:30:00Z",
   "details": "tenant already exists: existing-tenant"
 }
@@ -282,8 +292,10 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 ### 429 Too Many Requests
 ```json
 {
+  "code": "RATE_LIMIT",
   "error": "rate limit exceeded",
   "status": 429,
+  "request_id": "2ef516ab-8d87-4a7c-9c09-4ce077c73b02",
   "timestamp": "2025-01-15T10:30:00Z",
   "details": "rate limit exceeded for tenant tenant-1: enqueue rate 101/s exceeds limit 100/s (retry after 1s)",
   "retry_after": 1

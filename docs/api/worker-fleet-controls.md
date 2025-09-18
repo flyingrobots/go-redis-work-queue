@@ -613,13 +613,18 @@ Include the confirmation in subsequent requests:
 
 ## Error Responses
 
-### Error Response Format
+Errors conform to the shared Admin API envelope and include an `X-Request-ID` header for correlation.
 
 ```json
 {
-  "error": "Error message",
-  "details": "Detailed error information",
-  "timestamp": "2024-01-15T12:30:00Z"
+  "code": "CONFIRMATION_REQUIRED",
+  "error": "confirmation token missing",
+  "status": 428,
+  "request_id": "d781c4f2-5f46-4c8c-9200-83b5f65a6d42",
+  "timestamp": "2024-01-15T12:30:00Z",
+  "details": {
+    "expected": "CONFIRM"
+  }
 }
 ```
 
@@ -634,6 +639,14 @@ Include the confirmation in subsequent requests:
 | 404 | Not Found - Worker or action not found |
 | 428 | Precondition Required - Confirmation needed |
 | 500 | Internal Server Error |
+
+Common error codes:
+
+- `CONFIRMATION_REQUIRED` – destructive action attempted without the expected confirmation token
+- `VALIDATION_ERROR` – payload failed validation (details include offending fields)
+- `AUTH_INVALID` / `AUTH_MISSING` – authentication problems
+- `RATE_LIMIT` – request exceeded the configured limit; respect `details.retry_after`
+- `INTERNAL_ERROR` – unexpected failure; retry or contact support with the request ID
 
 ## Rate Limiting
 

@@ -191,8 +191,8 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Observability: Revisit chunk_008 rejections with enhanced OpenAPI auth/error responses and close out review items
 - [ ] Ops: Share port-forward helper across deployment scripts
 - [ ] DevOps: Add policy-as-code checks for security contexts and secret mounts
-- [ ] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
-- [ ] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
+- [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
+- [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
 
 ### Finished Log
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)

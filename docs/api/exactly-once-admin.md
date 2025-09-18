@@ -25,7 +25,7 @@ Returns comprehensive statistics about exactly-once processing.
   "deduplication": {
     "processed": 15000,
     "duplicates": 342,
-    "hit_rate": 2.28,
+    "hit_percent": 2.28,
     "storage_size": 1536000,
     "active_keys": 12000
   },
@@ -37,7 +37,7 @@ Returns comprehensive statistics about exactly-once processing.
 
 - `processed`: Total number of unique items processed
 - `duplicates`: Number of duplicate attempts blocked
-- `hit_rate`: Percentage of requests that were duplicates
+- `hit_percent`: Percentage of requests that were duplicates (e.g., `2.28` = `2.28%`)
 - `storage_size`: Estimated storage size in bytes
 - `active_keys`: Number of active idempotency keys
 
@@ -55,7 +55,7 @@ Returns detailed deduplication statistics.
 {
   "processed": 15000,
   "duplicates": 342,
-  "hit_rate": 2.28,
+  "hit_percent": 2.28,
   "storage_size": 1536000,
   "active_keys": 12000
 }
@@ -261,34 +261,28 @@ Status Code: 503
 
 ## Error Responses
 
-All endpoints may return the following error responses:
-
-### 400 Bad Request
+Errors follow the shared envelope and include an `X-Request-ID` header.
 
 ```json
 {
-  "error": "Invalid request",
-  "message": "Detailed error message"
+  "code": "OUTBOX_DISABLED",
+  "error": "Outbox is disabled for namespace default",
+  "status": 400,
+  "request_id": "b5790c1d-5c6a-41f2-a4fb-0d508593f664",
+  "timestamp": "2025-09-14T12:05:00Z",
+  "details": {
+    "hint": "Enable outbox before publishing"
+  }
 }
 ```
 
-### 401 Unauthorized
+Common error codes:
 
-```json
-{
-  "error": "Unauthorized",
-  "message": "Invalid or missing authentication token"
-}
-```
-
-### 500 Internal Server Error
-
-```json
-{
-  "error": "Internal server error",
-  "message": "An unexpected error occurred"
-}
-```
+- `VALIDATION_ERROR` – payload failed validation
+- `OUTBOX_DISABLED` – attempted to publish with the outbox turned off
+- `AUTH_INVALID` / `AUTH_MISSING` – authentication failures
+- `RATE_LIMIT` – exceeded API limits (check `details.retry_after`)
+- `INTERNAL_ERROR` – unexpected failure; retry with the logged request ID
 
 ## Usage Examples
 
@@ -336,7 +330,7 @@ The TUI (Terminal User Interface) can use these endpoints to:
 
 These endpoints provide key metrics for monitoring:
 
-- **Deduplication effectiveness**: `hit_rate` from `/stats`
+- **Deduplication effectiveness**: `hit_percent` from `/stats` (percentage value; lower is better)
 - **Processing volume**: `processed` count from `/dedup/stats`
 - **Storage usage**: `storage_size` and `active_keys`
 - **System health**: Component status from `/health`

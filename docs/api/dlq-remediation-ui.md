@@ -314,17 +314,27 @@ Retrieve statistics about DLQ entries.
 
 ## Error Responses
 
-All endpoints return appropriate HTTP status codes and error details in case of failures.
-
-### Error Response Format
+The Admin UI surfaces the same structured errors as the Admin API. Every response includes an `X-Request-ID` header that matches the `request_id` field; include it when filing support issues.
 
 ```json
 {
-  "error": "Error message",
-  "details": "Detailed error information",
-  "timestamp": "2024-01-15T11:00:00Z"
+  "code": "VALIDATION_ERROR",
+  "error": "queue parameter is required",
+  "status": 400,
+  "request_id": "1ff9be8f-4c7f-49ee-9df8-2f4eeefef6b4",
+  "timestamp": "2024-01-15T11:00:00Z",
+  "details": {
+    "field": "queue"
+  }
 }
 ```
+
+Common error codes:
+
+- `VALIDATION_ERROR` – payload or query parameters failed validation
+- `AUTH_INVALID` / `AUTH_MISSING` – authentication header missing or invalid
+- `RATE_LIMIT` – request exceeded the configured limit (check `details.retry_after`)
+- `INTERNAL_ERROR` – unexpected server error; retry with the same request ID when contacting support
 
 ### Common HTTP Status Codes
 

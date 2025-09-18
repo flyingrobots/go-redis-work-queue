@@ -147,13 +147,22 @@ GET /api/v1/queues/high/peek?count=5
 ```
 
 #### DELETE /api/v1/queues/dlq
-Purge the dead letter queue. Requires confirmation.
+Purge the dead letter queue. Requires confirmation and an audit reason.
 
 **Request Body:**
 ```json
 {
   "confirmation": "CONFIRM_DELETE",
   "reason": "Clearing failed jobs after investigation"
+}
+```
+
+`reason` must contain at least 10 characters. Requests that omit the field or send a shorter value return `HTTP 400` with an error body:
+
+```json
+{
+  "code": "REASON_REQUIRED",
+  "message": "reason must be provided and contain at least 10 characters"
 }
 ```
 
@@ -168,7 +177,7 @@ Purge the dead letter queue. Requires confirmation.
 ```
 
 #### DELETE /api/v1/queues/all
-Purge ALL queues. Requires double confirmation.
+Purge ALL queues. Requires double confirmation and enforces the same minimum reason length.
 
 **Request Body:**
 ```json
@@ -177,6 +186,8 @@ Purge ALL queues. Requires double confirmation.
   "reason": "System reset for testing environment"
 }
 ```
+
+Requests with `reason` shorter than 10 characters receive the same `HTTP 400` + `REASON_REQUIRED` response shown above.
 
 **Response:**
 ```json
@@ -255,12 +266,15 @@ All destructive operations are logged to the audit log with the following inform
 
 ## Error Responses
 
-All errors follow a consistent format:
+All errors return a structured body and emit an `X-Request-ID` header. Log the request ID when opening support tickets.
 
 ```json
 {
-  "error": "Rate limit exceeded",
   "code": "RATE_LIMIT",
+  "error": "Rate limit exceeded",
+  "status": 429,
+  "request_id": "8f6b5c4e-2d1f-4c74-9f4b-8d8306d41e9a",
+  "timestamp": "2025-01-15T10:05:30Z",
   "details": {
     "retry_after": "60"
   }
@@ -375,7 +389,7 @@ Monitor these key metrics:
 
 3. **400 Bad Request on Purge**
    - Verify confirmation phrase matches configuration
-   - Ensure reason is provided and meets minimum length
+   - Ensure `reason` is present and contains at least 10 characters
 
 4. **500 Internal Server Error**
    - Check server logs for details

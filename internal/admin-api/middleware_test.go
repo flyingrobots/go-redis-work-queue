@@ -2,12 +2,18 @@
 package adminapi
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
+	anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+	"github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
 	"go.uber.org/zap"
 )
 
@@ -85,6 +91,69 @@ func TestAuthMiddlewareWithoutDenyByDefault(t *testing.T) {
 	}
 }
 
+func TestAuthMiddlewareInjectsScopesForDownstreamHandlers(t *testing.T) {
+	logger := zap.NewNop()
+	secret := "test-secret"
+	token := mustMakeScopedToken(t, secret, []string{string(rbacandtokens.PermAdminAll)})
+
+	handler := AuthMiddleware(secret, true, logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		scopesVal := r.Context().Value(contextKeyScopes)
+		if scopesVal == nil {
+			t.Fatal("expected scopes to be present in context")
+		}
+
+		scopes, ok := scopesVal.([]string)
+		if !ok {
+			t.Fatalf("expected []string scopes, got %T", scopesVal)
+		}
+
+		if len(scopes) != 1 || scopes[0] != string(rbacandtokens.PermAdminAll) {
+			t.Fatalf("unexpected scopes in context: %v", scopes)
+		}
+
+		radarScopes := anomalyradarslobudget.ScopesFromContext(r.Context())
+		if len(radarScopes) != 1 || radarScopes[0] != string(rbacandtokens.PermAdminAll) {
+			t.Fatalf("anomaly radar scopes missing or incorrect: %v", radarScopes)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", w.Code)
+	}
+}
+
+func mustMakeScopedToken(t *testing.T, secret string, scopes []string) string {
+	t.Helper()
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+	claims := map[string]interface{}{
+		"sub":    "test@example.com",
+		"roles":  []string{"admin"},
+		"scopes": scopes,
+		"exp":    time.Now().Add(time.Hour).Unix(),
+		"iat":    time.Now().Unix(),
+		"iss":    "unit-test",
+		"aud":    "admin-api",
+	}
+	claimsJSON, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatalf("failed to marshal claims: %v", err)
+	}
+	payload := base64.RawURLEncoding.EncodeToString(claimsJSON)
+	message := header + "." + payload
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(message))
+	signature := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+	return message + "." + signature
+}
+
 func TestRateLimitBucketRefill(t *testing.T) {
 	bucket := &rateBucket{
 		tokens:    0,
@@ -106,10 +175,10 @@ func TestRateLimitBucketRefill(t *testing.T) {
 
 func TestGetClientIP(t *testing.T) {
 	tests := []struct {
-		name        string
-		headers     map[string]string
-		remoteAddr  string
-		expectedIP  string
+		name       string
+		headers    map[string]string
+		remoteAddr string
+		expectedIP string
 	}{
 		{
 			name:       "X-Real-IP",
@@ -219,6 +288,7 @@ func TestAuditLoggerRotation(t *testing.T) {
 
 func TestWriteError(t *testing.T) {
 	w := httptest.NewRecorder()
+	w.Header().Set("X-Request-ID", "req-123")
 
 	writeError(w, http.StatusBadRequest, "TEST_ERROR", "Test error message")
 
@@ -226,8 +296,52 @@ func TestWriteError(t *testing.T) {
 		t.Errorf("Expected status 400, got %d", w.Code)
 	}
 
-	if w.Header().Get("Content-Type") != "application/json" {
-		t.Errorf("Expected Content-Type application/json, got %s", w.Header().Get("Content-Type"))
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", ct)
+	}
+
+	if got := w.Header().Get("X-Request-ID"); got != "req-123" {
+		t.Errorf("Expected X-Request-ID header to be preserved, got %s", got)
+	}
+
+	var resp ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.Code != "TEST_ERROR" {
+		t.Errorf("Expected code TEST_ERROR, got %s", resp.Code)
+	}
+
+	if resp.Status != http.StatusBadRequest {
+		t.Errorf("Expected status 400 in body, got %d", resp.Status)
+	}
+
+	if resp.RequestID != "req-123" {
+		t.Errorf("Expected request ID req-123, got %s", resp.RequestID)
+	}
+
+	if resp.Timestamp.IsZero() {
+		t.Error("Expected timestamp to be populated")
+	}
+}
+
+func TestWriteErrorGeneratesRequestIDWhenMissing(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	writeError(w, http.StatusInternalServerError, "INTERNAL", "boom")
+
+	if got := w.Header().Get("X-Request-ID"); got == "" {
+		t.Error("Expected X-Request-ID header to be generated")
+	}
+
+	var resp ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.RequestID == "" {
+		t.Error("Expected response request_id to be generated")
 	}
 }
 
