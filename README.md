@@ -78,6 +78,12 @@ Run worker only
 
 An interactive TUI is available for observing and administering the job queue. It uses `Charmbracelet`’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.
 
+Before the first run, download dependencies:
+
+```bash
+go mod download
+```
+
 Run it:
 
 ```

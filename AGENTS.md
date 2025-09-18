@@ -8,35 +8,34 @@
 
 <!-- Table of Contents -->
 # Table of Contents
-1. [[AGENTS# AGENTS|AGENTS]]
-	1. [[AGENTS## Important Information|Important Information]]
-		1. [[AGENTS### Sections You Must Actively Maintain|Sections You Must Actively Maintain]]
-		2. [[AGENTS### Job Queue|Job Queue]]
-		3. [[AGENTS### TUI App|TUI App]]
-			1. [[AGENTS#### TUI stack and structure|TUI stack and structure]]
-			2. [[AGENTS#### Overlays and input behavior|Overlays and input behavior]]
-			3. [[AGENTS#### Current tabs|Current tabs]]
-			4. [[AGENTS#### Keybindings (important)|Keybindings (important)]]
-			5. [[AGENTS#### Redis/admin plumbing|Redis/admin plumbing]]
-			6. [[AGENTS#### Config + run|Config + run]]
-			7. [[AGENTS#### Observability|Observability]]
-				1. [[AGENTS##### Guardrails|Guardrails]]
-		4. [[AGENTS### Project Status|Project Status]]
-		5. [[AGENTS### Notes|Notes]]
-	2. [[AGENTS## Working Tasklist|Working Tasklist]]
-		1. [[AGENTS### Prioritized Backlog|Prioritized Backlog]]
-		2. [[AGENTS### Finished Log|Finished Log]]
-	3. [[AGENTS## TUI Tasks|TUI Tasks]]
-		1. [[AGENTS### TUI Task Chains|TUI Task Chains]]
-		2. [[AGENTS### TUI Parallelization & Priorities|TUI Parallelization & Priorities]]
-	4. [[AGENTS## Daily Activity Logs|Daily Activity Logs]]
-		1. [[AGENTS### 2025-09-13–Rewrote `AGENTS.md`|2025-09-13–Rewrote `AGENTS.md`]]
-			1. [[AGENTS#### ##### 06:39 – Starting `AGENTS.md` Enhancements|##### 06:39 – Starting `AGENTS.md` Enhancements]]
-				1. [[AGENTS##### 06:39 – Starting `AGENTS.md` Enhancements|06:39 – Starting `AGENTS.md` Enhancements]]
-	5. [[AGENTS## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM|APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM]]
-		1. [[AGENTS### Codex's Top Picks|Codex's Top Picks]]
-	6. [[AGENTS## Appendix C: Codex Ideas in Detail|Appendix C: Codex Ideas in Detail]]
-
+1. [AGENTS](#agents)
+	1. [Important Information](#important-information)
+		1. [Sections You Must Actively Maintain](#sections-you-must-actively-maintain)
+		2. [Job Queue](#job-queue)
+		3. [TUI App](#tui-app)
+			1. [TUI stack and structure](#tui-stack-and-structure)
+			2. [Overlays and input behavior](#overlays-and-input-behavior)
+			3. [Current tabs](#current-tabs)
+			4. [Keybindings (important)](#keybindings-important)
+			5. [Redis/admin plumbing](#redisadmin-plumbing)
+			6. [Config + run](#config-run)
+			7. [Observability](#observability)
+				1. [Guardrails](#guardrails)
+		4. [Project Status](#project-status)
+		5. [Notes](#notes)
+	2. [Working Tasklist](#working-tasklist)
+		1. [Prioritized Backlog](#prioritized-backlog)
+		2. [Finished Log](#finished-log)
+	3. [TUI Tasks](#tui-tasks)
+		1. [TUI Task Chains](#tui-task-chains)
+		2. [TUI Parallelization & Priorities](#tui-parallelization-priorities)
+	4. [Daily Activity Logs](#daily-activity-logs)
+		1. [2025-09-13–Rewrote `AGENTS.md`](#2025-09-13-rewrote-agentsmd)
+			1. [##### 06:39 – Starting `AGENTS.md` Enhancements](#0639-starting-agentsmd-enhancements)
+				1. [06:39 – Starting `AGENTS.md` Enhancements](#0639-starting-agentsmd-enhancements)
+	5. [APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM](#appendix-b-wild-ideas-have-a-brainstorm)
+		1. [Codex's Top Picks](#codexs-top-picks)
+	6. [Appendix C: Codex Ideas in Detail](#appendix-c-codex-ideas-in-detail)
 <!-- End of TOC -->
 
 ---
@@ -144,6 +143,12 @@ Pre-commit hook
 - Enable hooks once per clone: `make hooks` (sets `core.hooksPath=.githooks`).
 - Reminder: Whenever you touch `AGENTS.md`, also ensure the features ledger is current (the hook will do this, but run the script manually if needed).
 
+#### Updating Backlog & Features Ledger
+1. Edit the `Prioritized Backlog` section here in `AGENTS.md` with the new item status/notes.
+2. Mirror the change in `docs/features-ledger.md` (same feature row or add a new one) so both artifacts stay aligned.
+3. Run `python3 scripts/update_progress.py` to refresh the progress bars in `docs/features-ledger.md` and `README.md`.
+4. Review the script output, then stage/commit the updated files together with your backlog changes.
+
 CI auto-update
 - On merges to `main`, a GitHub Actions workflow (`.github/workflows/update-progress.yml`) runs the progress updater and commits any changes to the ledger/README automatically.
 - This provides a consistent source of truth even if local hooks are bypassed.
@@ -175,12 +180,19 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Admin: Requeue-from-DLQ command with count/range support (exposed to TUI)
 - [ ] Admin: Workers-list admin call (IDs, last heartbeat, active item) for Workers tab
 - [ ] Metrics: Optional TUI runtime metrics (ticks, RPC latency) for debugging
+- [ ] Admin: Rename ExactlyOnce handler/tests to AtLeastOnce and implement missing AtLeastOnce admin API endpoints
 - [x] Docs: Add TUI design README with SVG mockups
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
 - [ ] Release: Add changelog entries for TUI tabbed layout and overlays
 - [x] Observability: Publish Anomaly Radar OpenAPI spec + client CI automation
 - [x] Observability: Finalize Anomaly Radar auth/error/pagination contract and document endpoints
-- [ ] Observability: Revisit chunk_008 OpenAPI/auth review items once spec + contract land
+- [x] Observability: Inject scopes into Anomaly Radar HTTP handlers via Admin API gateway/context plumbing
+- [x] Observability: Update dashboards/clients to follow Anomaly Radar pagination cursors and surface `next_cursor`
+- [x] Observability: Revisit chunk_008 rejections with enhanced OpenAPI auth/error responses and close out review items
+- [ ] Ops: Share port-forward helper across deployment scripts
+- [ ] DevOps: Add policy-as-code checks for security contexts and secret mounts
+- [ ] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
+- [ ] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
 
 ### Finished Log
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)
@@ -685,6 +697,80 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > 
 > Follow-ups
 > - Run `go test ./...` once the existing suite failures (forecasting, exactly-once outbox, etc.) are resolved upstream.
+
+> [!NOTE]
+> ### 2025-09-17 – Anomaly Radar Scope Guardrails & Pagination UX
+> Scoped the anomaly radar HTTP surface, made cursor pagination first-class, and refreshed docs/specs to match.
+>
+> Changes
+> - Added scope-aware HTTP helpers, cursor utilities, and idempotent start/stop responses under `internal/anomaly-radar-slo-budget/`.
+> - Updated handlers/tests to enforce scope checks, default/max pagination, and the standard JSON error envelope; new docs outline auth, error policy, and pagination flow.
+> - Published `docs/api/anomaly-radar-openapi.yaml` with CI validation plus contract notes in `docs/design/anomaly-radar-api-contract.md`.
+> - Exported a public wrapper at `pkg/anomaly-radar-slo-budget/` and refreshed the docs/OpenAPI spec with scope tables, error envelope notes, and a paginated metrics example.
+>
+> Important Learnings
+> - Centralised error helpers keep CLI/UI clients aligned once scopes are enforced—no divergent envelopes during failures.
+> - Treat cursors as opaque tokens in tests to avoid brittle assumptions; golden fixtures now flex with redis-backed pagination.
+> - Writing the OpenAPI spec early flushes review gaps (auth scopes, error schema) before client integration work starts.
+> - Stabilising the import path via a thin wrapper lets docs and clients converge without exposing internal packages prematurely.
+>
+> Next Steps
+> - Implement SLO budget calculations/visuals so the TUI widget has real data to render.
+> - Wire the TUI/Admin API integration to consume the new paginated endpoints and surface scope errors.
+> - Expand integration coverage for the gateway scope propagation once end-to-end plumbing completes.
+
+> [!NOTE]
+> ### 2025-09-17 – PR#3 Review Chunk 009
+> Cleared the next CodeRabbit batch (30/30) and hardened docs + tooling along the way.
+>
+> Changes
+> - DLQ API docs now spell out auth scopes, server-enforced limits, purge-all schema/idempotency, and valid JSON responses (`docs/api/dlq-remediation-ui.md`).
+> - Added public wrappers for anomaly radar and chaos harness packages (`pkg/anomaly-radar-slo-budget/`, `pkg/chaos-harness/`) and updated docs accordingly.
+> - Improved auxiliary scripts (append_metadata, review task generators) with safer I/O, UTC timestamps, and accurate logging; trimmed slow sleeps from `demos/responsive-tui.tape`.
+> - Hardened Redis deployment manifest and Docker image health checks; updated BUGS.md guidance for heartbeats/schedulers/ledgers.
+>
+> Important Learnings
+> - Documentation needs to carry real contracts (auth, rate limits, JSON schemas) so downstream tooling stays in sync.
+> - Wrapper packages are a low-friction way to expose internal modules without destabilising the tree.
+> - Investing in script hygiene (UTC times, error handling) prevents subtle drift when other automation depends on them.
+>
+> Follow-ups
+> - Chunk 010 (remaining CodeRabbit feedback) still open; expect similar breadth across docs + tooling.
+> - Continue chipping away at backlog items once CodeRabbit sequence is complete (ExactlyOnce→AtLeastOnce rename already queued).
+
+> [!NOTE]
+> ### 2025-09-17 – CodeRabbit PR#3 chunk_010 sweep
+> Closed the final CodeRabbit batch with deployment hardening, documentation polish, and secret handling fixes.
+>
+> Changes
+> - Hardened admin API and RBAC Kubernetes manifests: pod/container security contexts, RuntimeDefault seccomp, disabled SA token mounts, distinct health/readiness probes, and corrected Grafana compose mounts.
+> - Shifted the RBAC token service to file-backed secrets plus RS256 keys, updated token-service config/startup validation, and refreshed deployment docs (`deployments/docker/rbac-configs/token-service.yaml`, `deployments/README-RBAC-Deployment.md`).
+> - Clarified key docs (release plan freeze policy, purge reason validation, DLQ pipeline guardrails, HTTPS defaults, hit_percent rename) and converted `AGENTS.md` TOC to standard anchors.
+> - Completed the chunk_010 worksheet with accepted dispositions and a 100% progress bar (`docs/audits/code-reviews/PR3/e35da518e543d331abf0b57fa939d682d39f5a88.md.chunk_010.md`).
+>
+> Validation
+> - Updated shell scripts (`deploy-staging.sh`, `health-check-rbac.sh`, `setup-monitoring.sh`) to manage port-forward PIDs safely; existing Go test failures remain pre-existing and were not re-run.
+>
+> Follow-ups
+> - Propagate the new port-forward helpers to other deployment scripts.
+> - Add policy-as-code checks to enforce secret volume usage and security context drift.
+
+> [!NOTE]
+> ### 2025-09-17 – CodeRabbit PR#3 chunk_011 sweep
+> Closed the remaining CodeRabbit review items with documentation polish and onboarding fixes.
+>
+> Changes
+> - Standardized DLQ pipeline error envelopes (codes + request IDs), clarified rate-limit headers, and documented cursor pagination.
+> - Updated DLQ UI purge-all example to the safe JSON POST form with idempotency and restructured the claude-008 reflection with front matter.
+> - Added a `go mod download` preflight step to README so first-time TUI users fetch dependencies before running.
+>
+> Follow-ups
+> - Verify other API docs reference the shared error envelope pattern.
+> - Consider adding automated checks for missing `X-Request-ID` logging in new handlers.
+>
+> Important Learnings
+> - Shared error envelope docs prevent API drift—keeping the pattern centralized avoids per-endpoint divergence.
+> - Adding dependency preflight steps in README shortens new contributor setup loops and avoids common module errors.
 
 
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM

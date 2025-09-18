@@ -155,6 +155,9 @@ Process a batch of DLQ jobs using current rules.
 POST /pipeline/process-batch
 ```
 
+**Headers:**
+- `Idempotency-Key` (string, optional but required for safe retries): repeated values within 24 hours return the original `200` response body without re-executing actions.
+
 **Response:**
 ```json
 {
@@ -171,13 +174,15 @@ POST /pipeline/process-batch
       "rule_id": "rule_abc",
       "success": true,
       "actions": ["requeue"],
-      "duration": "125ms",
+      "duration_ms": 125,
       "dry_run": false
     }
   ],
   "errors": []
 }
 ```
+
+`dry_run: true` guarantees no state changes. When `dry_run` is `false`, the service persists outcomes before responding. Clients should cache successful responses for 24 hours and reuse the same `Idempotency-Key` if they must retry to avoid duplicate execution.
 
 ### Dry Run Batch
 
@@ -187,7 +192,7 @@ Run batch processing in dry-run mode (no actual changes).
 POST /pipeline/dry-run
 ```
 
-**Response:** Same as process-batch but with `dry_run: true` in all results.
+**Response:** Same as process-batch but with `dry_run: true` in all results and `duration_ms` values reflecting simulated execution time.
 
 ## Rule Management
 
@@ -702,16 +707,24 @@ GET /health
 
 ## Error Responses
 
-All endpoints return standardized error responses:
+All endpoints return standardized error envelopes and emit an `X-Request-ID` header that matches the response body. Clients should log this identifier for support requests.
 
 ```json
 {
+  "code": "rule_not_found",
   "error": "Rule not found",
   "status": 404,
+  "request_id": "3f2c0b0a-4b61-4e12-9a43-0c6af6a27b9d",
   "timestamp": "2024-01-15T10:05:30Z",
   "details": "Rule with ID 'invalid_rule_id' does not exist"
 }
 ```
+
+**Error codes**
+
+- `rule_not_found` — referenced rule id or cursor does not exist
+- `validation_error` — payload failed schema/semantic validation
+- `internal_error` — unexpected server-side failure; contact support with the `request_id`
 
 **Common HTTP Status Codes:**
 - `200 OK` - Successful operation
@@ -733,17 +746,22 @@ API endpoints are rate limited:
 - **Rule modifications**: 60 requests per minute
 
 Rate limit headers are included in responses:
-- `X-RateLimit-Limit`: Request limit per window
-- `X-RateLimit-Remaining`: Remaining requests in current window
-- `X-RateLimit-Reset`: Unix timestamp when window resets
+- `X-RateLimit-Limit`: Requests allowed per window
+- `X-RateLimit-Remaining`: Remaining requests in the active window for the evaluated limit (per-principal or per-IP)
+- `X-RateLimit-Reset`: Unix timestamp (seconds since epoch) when the evaluated window resets
+- `Retry-After`: Present on `429` responses; integer seconds until the next request will be accepted
+
+Limits are enforced per token (principal) and per source IP simultaneously. The stricter limit wins—whichever window is exhausted first returns `429` along with headers describing that window. Clients should back off using `Retry-After` and the `X-RateLimit-*` values from the response that triggered the limit.
 
 ## Pagination
 
-List endpoints support pagination:
+List endpoints support both offset and cursor pagination.
+
+### Offset pagination
 - `limit`: Maximum items per page (default: 50, max: 1000)
 - `offset`: Number of items to skip (default: 0)
 
-Pagination metadata is included in responses:
+Offset responses include:
 ```json
 {
   "data": [...],
@@ -756,6 +774,30 @@ Pagination metadata is included in responses:
   }
 }
 ```
+
+### Cursor pagination
+
+- `cursor`: Opaque Base64 token representing the last item seen (optional)
+- `limit`: Maximum items per page (default: 50, max: 500)
+
+Results are ordered by `failed_at` ascending with `id` as a tie-breaker to guarantee stability under concurrent writes. The service returns the next cursor when more data is available and always includes the `X-Request-ID` header for tracing.
+
+```http
+GET /api/v1/dlq/entries?limit=50&cursor=eyJmYWlsZWRfYXQiOiIyMDI0LTAxLTE1VDEwOjA1OjMwWiIsImlkIjoiZGw5OTgifQ==
+```
+
+```json
+{
+  "data": [...],
+  "page": {
+    "limit": 50,
+    "next_cursor": "eyJmYWlsZWRfYXQiOiIyMDI0LTAxLTE1VDEwOjA2OjAwWiIsImlkIjoiZGwxMDAifQ==",
+    "prev_cursor": "eyJmYWlsZWRfYXQiOiIyMDI0LTAxLTE1VDEwOjA1OjMwWiIsImlkIjoiZGw5OTgifQ=="
+  }
+}
+```
+
+Clients should persist the returned `next_cursor` (and `prev_cursor` when present) and supply it on subsequent calls. To ease migration, offset parameters remain supported, but new integrations should prefer cursors.
 
 ## Rule Matcher Patterns
 
@@ -884,6 +926,40 @@ Pagination metadata is included in responses:
 }
 ```
 
+Outbound notifications honour the following safeguards:
+
+- **Allowlist:** Destinations must appear in `notification.allowlist`. Non-listed endpoints are rejected.
+- **Timeouts:** Each channel enforces `notification.default_timeout_ms` (default `3000`) unless overridden per channel.
+- **Retries:** Failures retry up to `notification.retry.max_attempts` (default `3`) with exponential backoff starting at `notification.retry.initial_delay_ms` (default `500`).
+- **Notification DLQ:** Exhausted attempts enqueue payloads to `notification.dlq_key` (default `rq:dlq:notification`) for later inspection.
+- **Partial failures:** The pipeline reports per-channel success and failure counts. Successful channels are not rolled back when others fail; the job result includes a `notifications` array detailing channel outcomes.
+
+Example configuration:
+
+```yaml
+notification:
+  allowlist:
+    - slack://ops-alerts
+    - email://team@company.com
+  default_timeout_ms: 5000
+  retry:
+    max_attempts: 4
+    initial_delay_ms: 750
+  dlq_key: rq:dlq:notification
+```
+
+Pipeline result payload excerpt with partial failure reporting:
+
+```json
+{
+  "job_id": "job_123",
+  "notifications": [
+    {"channel": "slack://ops-alerts", "status": "sent", "attempts": 1},
+    {"channel": "email://team@company.com", "status": "failed", "attempts": 4, "dlq_enqueued": true}
+  ]
+}
+```
+
 ## WebSocket Events
 
 Real-time pipeline events are available via WebSocket at `/ws/dlq-remediation/events`. Clients must authenticate with `Authorization: Bearer <token>` (or `?token=` for service accounts); tokens follow the DLQ admin scope and expire per RBAC policy.
@@ -904,7 +980,7 @@ Example event payload:
     "rule_id": "rule_abc123",
     "success": true,
     "actions": ["redact", "requeue"],
-    "duration": "145ms"
+    "duration_ms": 145
   }
 }
 ```

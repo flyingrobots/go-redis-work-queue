@@ -8,10 +8,15 @@ The DLQ Remediation UI provides a comprehensive REST API for managing Dead Lette
 
 All endpoints require authentication and RBAC with default-deny posture.
 
-- Requests must supply `Authorization: Bearer <token>` (service tokens) or session cookies protected by CSRF tokens.
+- Requests must supply `Authorization: Bearer <token>` (service tokens) or session cookies protected by CSRF tokens. Example:
+
+  ```http
+  Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+  ```
+
 - Browser clients must include an `X-CSRF-Token` header or double-submit cookie when performing state-changing operations.
 - RBAC scope `dlq_admin` (or equivalent) is required for purge/requeue endpoints; read-only roles are limited to list/peek.
-- All destructive operations are audited with actor, reason, and outcome.
+- All destructive operations are audited with actor, reason, scope, and outcome. Operators should grant least-privilege roles.
 
 ## Base URL
 
@@ -30,7 +35,7 @@ Retrieve a paginated list of DLQ entries with optional filtering and pattern ana
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | `page` | integer | Page number (1-based) | 1 |
-| `page_size` | integer | Number of entries per page (max 1000) | 50 |
+| `page_size` | integer | Number of entries per page (server-enforced max 1000) | 50 |
 | `queue` | string | Filter by queue name | - |
 | `type` | string | Filter by job type | - |
 | `error_pattern` | string | Filter by error message pattern | - |
@@ -46,6 +51,8 @@ Retrieve a paginated list of DLQ entries with optional filtering and pattern ana
 ```bash
 GET /api/dlq/entries?page=1&page_size=20&queue=payment-processing&include_patterns=true
 ```
+
+Requests that exceed the maximum `page_size` or violate rate limits return `400 Bad Request` or `429 Too Many Requests` with field-level details.
 
 **Response:**
 ```json
@@ -231,29 +238,45 @@ Permanently delete all DLQ entries matching the specified filter criteria.
 
 **Endpoint:** `POST /api/dlq/entries/purge-all`
 
+**Required Headers:**
+
+```
+Authorization: Bearer <token>
+Idempotency-Key: 34ff6f98-1d21-45c5-9f83-3f4d5b8e9c62
+Content-Type: application/json
+```
+
 **Request Body:**
 
 ```json
 {
+  "confirm": true,
   "filter": {
     "queue": "payment-processing",
-    "error_pattern": "timeout"
+    "type": "process_payment",
+    "error_pattern": "timeout",
+    "start_time": "2024-01-15T08:00:00Z",
+    "end_time": "2024-01-15T11:00:00Z",
+    "min_attempts": 2,
+    "max_attempts": 5
   },
   "dry_run": false,
-  "confirmation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...",
   "change_reason": "Clearing duplicates after fix"
 }
 ```
 
-- `confirmation_token` — signed JWT issued via `POST /api/dlq/entries/purge-token`; expires in 10 minutes.
-- `dry_run` — required boolean; `true` returns the list of entries without deleting.
-- `change_reason` — required string explaining why purge is being performed; stored in audit log.
+- `confirm` — required boolean; must be `true` to perform the purge (otherwise a `400` is returned).
+- `filter` — required object specifying the subset to purge; omitted fields are ignored.
+- `dry_run` — required boolean; when `true` returns the candidate list without deleting.
+- `change_reason` — required string explaining the purge; recorded in the audit log.
+
+The server persists the `Idempotency-Key` and will return the stored response (HTTP `200`) for duplicate keys; conflicting payloads for the same key return `409 Conflict`.
 
 **Response:**
 ```json
 {
   "total_requested": 23,
-  "successful": ["dlq_entry_12345", "dlq_entry_12346", "..."],
+  "successful": ["dlq_entry_12345", "dlq_entry_12346", "dlq_entry_12347"],
   "failed": [],
   "started_at": "2024-01-15T11:00:00Z",
   "completed_at": "2024-01-15T11:00:05Z",
@@ -261,7 +284,7 @@ Permanently delete all DLQ entries matching the specified filter criteria.
 }
 ```
 
-Requests missing a valid `confirmation_token`, `change_reason`, or `dry_run` flag return `400 Bad Request` with field-level errors.
+Requests missing a valid `Idempotency-Key`, `confirm`, `change_reason`, or `dry_run` flag return `400 Bad Request` with field-level errors. Authorization failures return `403 Forbidden`.
 
 ### Get DLQ Statistics
 
@@ -309,7 +332,10 @@ All endpoints return appropriate HTTP status codes and error details in case of 
 |-------------|-------------|
 | 200 | Success |
 | 400 | Bad Request - Invalid parameters |
+| 401 | Unauthorized - Missing or invalid credentials |
+| 403 | Forbidden - Authenticated but insufficient permissions |
 | 404 | Not Found - Entry not found |
+| 429 | Too Many Requests - Rate limit exceeded |
 | 500 | Internal Server Error |
 
 ## Data Types
@@ -444,5 +470,14 @@ curl -X GET "http://localhost:8080/api/dlq/stats"
 ### Purge all entries for a specific queue (with confirmation)
 
 ```bash
-curl -X POST "http://localhost:8080/api/dlq/entries/purge-all?confirm=true&queue=test-queue"
+curl -X POST "https://api.example.com/api/dlq/entries/purge-all" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{
+    "confirm": true,
+    "filter": {
+      "queue": "test-queue"
+    }
+  }'
 ```

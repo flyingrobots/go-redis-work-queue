@@ -1,3 +1,6 @@
+---
+noteID: 5713fc44-8949-4e4a-a051-8fa5790fa2ee
+---
 # Features Ledger
 
 This is the canonical, grouped snapshot of features — shipped, in‑progress, and planned — including progress, tasks, tests, and remarks. TUI and other feature tasks live here (not in AGENTS.md).
@@ -46,14 +49,14 @@ Update via script
 █████████████████████████████████▓░░░░░░ 84%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.51 features=9 kloc=16.2
+weight=8.51 features=9 kloc=16.3
 ```
 <!-- group-progress:core-platform:end -->
 
-|Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-|🅰️ | [Core Job Queue](../README.md) | Core/Runtime | — | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | Alpha | 80% (conf: high) | ████████░░ | Stable enqueue/consume; retries + metrics present. Conf high from breadth and usage. | Retry/backoff polish; graceful shutdown semantics; perf passes. | Unit + some integration; good. | Foundation is solid. |
-|🅱️ | [Admin API v1 (HTTP)](../docs/ideas/admin-api.md) | Platform/API | [Spec](../docs/ideas/admin-api.md) | [internal/admin-api](../internal/admin-api) | 5.3 | Beta | 90% (conf: high) | █████████░ | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
+| Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
+| ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
+|🅰️ | [Core Job Queue](../README.md) | Core/Runtime | — | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | Alpha | 80% (conf: high) | `████████░░` | Stable enqueue/consume; retries + metrics present. Conf high from breadth and usage. | Retry/backoff polish; graceful shutdown semantics; perf passes. | Unit + some integration; good. | Foundation is solid. |
+|🅱️ | [Admin API v1 (HTTP)](../docs/ideas/admin-api.md) | Platform/API | [Spec](../docs/ideas/admin-api.md) | [internal/admin-api](../internal/admin-api) | 5.3 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules; audit docs for standardized error envelopes; automate request-id emission checks. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | [Storage Backends](../docs/ideas/storage-backends.md) | Core/Storage | [Spec](../docs/ideas/storage-backends.md) | [internal/storage-backends](../internal/storage-backends) | 5.3 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | [RBAC & Tokens](../docs/ideas/rbac-and-tokens.md) | Security | [Spec](../docs/ideas/rbac-and-tokens.md) | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |
 |🅱️ | Observability Core | Observability | — | [internal/obs](../internal/obs) | 1.0 | Beta | 85% (conf: high) | █████████░ | Logger/metrics/tracing wiring. | Dashboards; error budgets; SLO dashboards; alert tuning. | Unit present. | Solid base. |
@@ -68,15 +71,15 @@ weight=8.51 features=9 kloc=16.2
 ### TUI & UX
 <!-- group-progress:tui-ux:begin -->
 ```text
-███████████████████▓░░░░░░░░░░░░░░░░░░░░ 48%
+██████████████████▓░░░░░░░░░░░░░░░░░░░░░ 46%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=14.13 features=12 kloc=43.1
+weight=15.19 features=13 kloc=44.6
 ```
 <!-- group-progress:tui-ux:end -->
 
-|Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Emoji | Feature                                                                 | Area          | Spec                                               | Code                                                                        | KLoC (approx) | Status      | Progress %       | Bar        | Current State                                  | Todo (Tasks)                                                                                 | Tests                       | Remarks                   |
+| ----- | ----------------------------------------------------------------------- | ------------- | -------------------------------------------------- | --------------------------------------------------------------------------- | ------------- | ----------- | ---------------- | ---------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------- | ------------------------- |
 |⏳ | [TUI Shell (Tabs/Layout)](../docs/TUI/README.md) | UX/TUI | [Spec](../docs/TUI/README.md) | [internal/tui](../internal/tui) | 2.6 | In Progress | 65% (conf: high) | ██████░░░░ | Tabs, charts expand, tiny‑term fixes done. | Wire Admin API; persist UI state; help overlay polish; table polish; adjustable panel split. | Manual + some unit; fair. | Incremental polish. |
 |⏳ | [DLQ Remediation UI](../docs/ideas/dlq-remediation-ui.md) | Ops/TUI | [Spec](../docs/ideas/dlq-remediation-ui.md) | [internal/dlq-remediation-ui](../internal/dlq-remediation-ui) | 2.9 | In Progress | 55% (conf: med) | █████░░░░░ | API + TUI model exist; paging/filters pending. | Server‑side paging/filters; TUI list/peek; RBAC/audit hooks. | Unit present; needs e2e. | Prioritize perf. |
 |⏳ | [Workers View (TUI)](../docs/TUI/README.md) | UX/TUI | [Spec](../docs/TUI/README.md) | [internal/tui](../internal/tui) | 2.6 | In Progress | 35% (conf: med) | ███░░░░░░░ | Placeholder; no live list yet. | Use Admin workers endpoint; sort/filter; heartbeat display. | None; add UI tests. | Needs workers API wiring. |
@@ -89,8 +92,7 @@ weight=14.13 features=12 kloc=43.1
 |🚼 | [Terminal Voice Commands](../docs/ideas/terminal-voice-commands.md) | UX/CLI | [Spec](../docs/ideas/terminal-voice-commands.md) | [internal/terminal-voice-commands](../internal/terminal-voice-commands) | 5.8 | MVP | 70% (conf: high) | ███████░░░ | Core + tests done. | Privacy/offline; tutorial; TUI affordances. | Rich unit; good. | Optional, flashy. |
 |⏳ | [Plugin Panel System](../docs/ideas/plugin-panel-system.md) | Extensibility | [Spec](../docs/ideas/plugin-panel-system.md) | [internal/plugin-panel-system](../internal/plugin-panel-system) | 3.7 | In Progress | 50% (conf: med) | █████░░░░░ | Lifecycle + permissions. | Sandbox; TUI registry; SDK docs. | Unit present. | Watch plugin trust. |
 |⏳ | [Visual DAG Builder](../docs/ideas/visual-dag-builder.md) | UX/Flow | [Spec](../docs/ideas/visual-dag-builder.md) | [internal/visual-dag-builder](../internal/visual-dag-builder) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Orchestrator/types; not wired. | Backend validation; DAG execution; TUI builder. | Unit partial. | Longer‑term. |
-
-|🤝 | Collaborative Session | UX/TUI | [Spec](../docs/ideas/collaborative-session.md) | [internal/collaborative-session](../internal/collaborative-session) | 0.3 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
+|⏳ | Collaborative Session | UX/TUI | [Spec](../docs/ideas/collaborative-session.md) | [internal/collaborative-session](../internal/collaborative-session) | 1.5 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
 
 ### Reliability & Ops
 <!-- group-progress:reliability-ops:begin -->
@@ -125,10 +127,10 @@ weight=16.82 features=14 kloc=59.7
 ### Scale & Multi‑Cluster
 <!-- group-progress:scale-multi-cluster:begin -->
 ```text
-████████████████████▓░░░░░░░░░░░░░░░░░░░ 52%
+███████████████████▓░░░░░░░░░░░░░░░░░░░░ 48%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=3.53 features=3 kloc=10.2
+weight=4.50 features=4 kloc=11.0
 ```
 <!-- group-progress:scale-multi-cluster:end -->
 
@@ -137,16 +139,15 @@ weight=3.53 features=3 kloc=10.2
 |⏳ | [Multi‑cluster Control](../docs/ideas/multi-cluster-control.md) | Scale | [Spec](../docs/ideas/multi-cluster-control.md) | [internal/multi-cluster-control](../internal/multi-cluster-control) | 3.6 | In Progress | 60% (conf: med) | ██████░░░░ | Manager/handlers + tests; UI pending. | TUI tabs; Admin fan‑out actions; compare/replicate ops. | Many tests; good. | Solid engine; wire UX. |
 |⏳ | [Kubernetes Operator](../docs/ideas/kubernetes-operator.md) | Platform | [Spec](../docs/ideas/kubernetes-operator.md) | [internal/kubernetes-operator](../internal/kubernetes-operator) | 3.8 | In Progress | 55% (conf: med) | █████░░░░░ | Controllers/webhooks; examples/tests. | CRDs; reconcile backoff; e2e on kind. | Unit + integration; fair. | Mind CRD validation. |
 |⏳ | [Multi‑tenant Isolation](../docs/ideas/multi-tenant-isolation.md) | Security | [Spec](../docs/ideas/multi-tenant-isolation.md) | [internal/multi-tenant-isolation](../internal/multi-tenant-isolation) | 2.8 | In Progress | 40% (conf: med) | ████░░░░░░ | Handlers with RBAC TODOs. | Enforce quotas/keys; authz middleware; tests. | Unit present. | Needs policy decisions. |
-
-| 🧾 | Tenant | Security | — | [internal/tenant](../internal/tenant) | 0.1 | In Progress | 35% (conf: low) | ███░░░░░░░ | Early scaffolding. | Define tenant model; integrate with RBAC/multi-tenant. | Unit minimal. | Tie into isolation. |
+|⏳ | Tenant | Security | — | [internal/tenant](../internal/tenant) | 0.8 | In Progress | 35% (conf: low) | ███░░░░░░░ | Early scaffolding. | Define tenant model; integrate with RBAC/multi-tenant. | Unit minimal. | Tie into isolation. |
 
 ### Observability & Analytics
 <!-- group-progress:observability-analytics:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 54%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 57%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.06 features=7 kloc=20.3
+weight=10.48 features=9 kloc=28.5
 ```
 <!-- group-progress:observability-analytics:end -->
 
@@ -154,11 +155,10 @@ weight=8.06 features=7 kloc=20.3
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |🅰️ | [Distributed Tracing Integration](../docs/ideas/distributed-tracing-integration.md) | Observability | [Spec](../docs/ideas/distributed-tracing-integration.md) | [internal/distributed-tracing-integration](../internal/distributed-tracing-integration) | 3.0 | Alpha | 85% (conf: high) | █████████░ | OTEL propagation + trace URLs done. | Link from TUI; config docs. | Unit + integration; good. | Low risk polish. |
 |⏳ | [Trace Drill‑down + Log Tail](../docs/ideas/trace-drilldown-log-tail.md) | Observability | [Spec](../docs/ideas/trace-drilldown-log-tail.md) | [internal/trace-drilldown-log-tail](../internal/trace-drilldown-log-tail) | 3.9 | In Progress | 50% (conf: med) | █████░░░░░ | Trace links ok; log tail TBD. | Tail with filters; privacy; TUI links. | Unit partial. | Watch PII. |
-|⏳ | [Anomaly Radar + SLO Budget](../docs/ideas/anomaly-radar-slo-budget.md) | Observability | [Spec](../docs/ideas/anomaly-radar-slo-budget.md) | [internal/anomaly-radar-slo-budget](../internal/anomaly-radar-slo-budget) | 2.8 | In Progress | 45% (conf: med) | ████░░░░░░ | Handlers/metrics skeleton. | Define SLO; thresholds; Prom metrics; widget; publish OpenAPI spec + client CI; finalize auth/error/pagination contract. | Unit partial. | Needs calibration. |
+|⏳ | [Anomaly Radar + SLO Budget](../docs/ideas/anomaly-radar-slo-budget.md) | Observability | [Spec](../docs/ideas/anomaly-radar-slo-budget.md) | [internal/anomaly-radar-slo-budget](../internal/anomaly-radar-slo-budget) | 3.2 | In Progress | 60% (conf: med) | ██████░░░░ | Scope-aware handlers, pagination cursors, public pkg wrapper, and OpenAPI/docs alignment landed; SLO maths and widget still pending. | Add SLO budget calc + TUI widget. | Unit + handler tests cover cursors; docs/spec CI validates. | Needs calibration + UI wiring. |
 |⏳ | [Forecasting](../docs/ideas/forecasting.md) | Planning | [Spec](../docs/ideas/forecasting.md) | [internal/forecasting](../internal/forecasting) | 2.7 | In Progress | 40% (conf: med) | ████░░░░░░ | Stubs exist. | Baseline models; eval harness; TUI preview. | Unit partial. | Keep simple first. |
 |⏳ | [Queue Snapshot Testing](../docs/ideas/queue-snapshot-testing.md) | QA | [Spec](../docs/ideas/queue-snapshot-testing.md) | [internal/queue-snapshot-testing](../internal/queue-snapshot-testing) | 2.4 | In Progress | 50% (conf: med) | █████░░░░░ | Framework + snapshots. | Broaden differ; golden tests; docs. | Unit; fair. | Useful for regressions. |
 |⏳ | [Patterned Load Generator](../docs/ideas/patterned-load-generator.md) | Testing | [Spec](../docs/ideas/patterned-load-generator.md) | [internal/patterned-load-generator](../internal/patterned-load-generator) | 2.1 | In Progress | 45% (conf: med) | ████░░░░░░ | Handlers + generator; guardrails missing. | Add sine/burst/ramp; cancel/stop; profiles; TUI overlay. | Unit present; needs e2e. | Add caps; confirmations. |
 |🅰️ | Bench (Basic) | Testing | — | [internal/admin](../internal/admin), [internal/tui](../internal/tui) | 3.3 | Alpha | 60% (conf: med) | ██████░░░░ | Running; progress UI present; baseline delta pending. | Baseline from initial completed list; cancel; ETA/throughput; guardrails. | Manual + some unit. | Guardrails for high rates. |
-
-| 🧭 | [Job Genealogy Navigator](../docs/ideas/job-genealogy-navigator.md) | Analytics | [Spec](../docs/ideas/job-genealogy-navigator.md) | [internal/job-genealogy-navigator](../internal/job-genealogy-navigator) | 2.4 | In Progress | 40% (conf: med) | ████░░░░░░ | Types + traversal; integration TBD. | Admin API; TUI drill‑down; pagination. | Unit present. | Pair with tracing. |
-| 🕰️ | [Time‑Travel Debugger](../docs/ideas/time-travel-debugger.md) | Debugging | [Spec](../docs/ideas/time-travel-debugger.md) | [internal/time-travel-debugger](../internal/time-travel-debugger) | 2.6 | Alpha | 80% (conf: high) | ████████░░ | Capture/replay + simple TUI implemented. | Selective replay; export/import; docs. | Unit rich. | Powerful debugging. |
+|⏳ | [Job Genealogy Navigator](../docs/ideas/job-genealogy-navigator.md) | Analytics | [Spec](../docs/ideas/job-genealogy-navigator.md) | [internal/job-genealogy-navigator](../internal/job-genealogy-navigator) | 3.6 | In Progress | 40% (conf: med) | ████░░░░░░ | Types + traversal; integration TBD. | Admin API; TUI drill‑down; pagination. | Unit present. | Pair with tracing. |
+|🅰️ | [Time‑Travel Debugger](../docs/ideas/time-travel-debugger.md) | Debugging | [Spec](../docs/ideas/time-travel-debugger.md) | [internal/time-travel-debugger](../internal/time-travel-debugger) | 4.2 | Alpha | 80% (conf: high) | ████████░░ | Capture/replay + simple TUI implemented. | Selective replay; export/import; docs. | Unit rich. | Powerful debugging. |
