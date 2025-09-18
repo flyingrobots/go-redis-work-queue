@@ -3,9 +3,7 @@ package voice
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 )
 
 // NewCommandProcessor creates a new command processor with predefined patterns
@@ -116,6 +114,14 @@ func (c *CommandProcessor) initializePatterns() {
 			Examples:    []string{"drain worker 3", "stop worker 1", "shutdown all workers"},
 		},
 		{
+			Pattern:     regexp.MustCompile(`(?:(?:please|kindly|immediately|urgently)\s+)?(?:drain|stop|shutdown)\s+(?:the\s+)?(first|second|third|fourth|fifth|one|two|three|four|five|\d+|all)\s+workers?`),
+			Intent:      IntentWorkerControl,
+			Required:    []EntityType{EntityWorkerID},
+			Optional:    []EntityType{EntityAction},
+			Description: "Drain/stop worker (natural language)",
+			Examples:    []string{"please drain the third worker", "kindly stop the first worker", "immediately stop all workers"},
+		},
+		{
 			Pattern:     regexp.MustCompile(`(?:pause|halt).*worker\s*(\d+|all)`),
 			Intent:      IntentWorkerControl,
 			Required:    []EntityType{EntityWorkerID},
@@ -160,7 +166,7 @@ func (c *CommandProcessor) initializePatterns() {
 
 		// Navigation
 		{
-			Pattern:     regexp.MustCompile(`(?:go to|show|switch to|navigate to).*(?:queue|workers?|dlq|stats?|charts?|logs?|config|settings?)`),
+			Pattern:     regexp.MustCompile(`(?:go to|show|switch to|navigate to|take(?:\s+me)?\s+to|bring\s+me\s+to).*(?:queue|workers?|dlq|stats?|charts?|logs?|config|settings?)`),
 			Intent:      IntentNavigation,
 			Required:    []EntityType{EntityDestination},
 			Optional:    []EntityType{},
@@ -170,7 +176,7 @@ func (c *CommandProcessor) initializePatterns() {
 
 		// Confirmations
 		{
-			Pattern:     regexp.MustCompile(`^(?:yes|yep|yeah|confirm|ok|okay|proceed|do it)$`),
+			Pattern:     regexp.MustCompile(`^(?:yes|yep|yeah)(?:\s+(?:please|sure))?(?:\s+(?:proceed|do it|go ahead|continue))?$|^(?:confirm|ok|okay|proceed|do it)$`),
 			Intent:      IntentConfirmation,
 			Required:    []EntityType{},
 			Optional:    []EntityType{},
@@ -273,7 +279,7 @@ func NewEntityExtractor() (*EntityExtractor, error) {
 // initializePatterns sets up entity extraction patterns
 func (e *EntityExtractor) initializePatterns() {
 	e.patterns = map[EntityType]*regexp.Regexp{
-		EntityWorkerID:    regexp.MustCompile(`worker\s*(?:number\s*)?(\d+|all|one|two|three|four|five)`),
+		EntityWorkerID:    regexp.MustCompile(`(?:worker\s*(?:number\s*)?(\d+|all|one|two|three|four|five|first|second|third|fourth|fifth)|(?:the\s+)?(first|second|third|fourth|fifth|one|two|three|four|five|all)\s+workers?)`),
 		EntityQueueName:   regexp.MustCompile(`(high|medium|low|critical|priority|background|urgent|processing|pending|failed)(?:\s+priority)?\s*queue`),
 		EntityNumber:      regexp.MustCompile(`(\d+)`),
 		EntityTimeRange:   regexp.MustCompile(`(?:last|past)\s*(\d+)\s*(minutes?|hours?|days?)`),
@@ -291,10 +297,17 @@ func (e *EntityExtractor) Extract(text string, matches []string) ([]Entity, erro
 	for entityType, pattern := range e.patterns {
 		if entityMatches := pattern.FindAllStringSubmatch(lowerText, -1); entityMatches != nil {
 			for _, match := range entityMatches {
-				if len(match) > 1 {
+				value := ""
+				for i := 1; i < len(match); i++ {
+					if strings.TrimSpace(match[i]) != "" {
+						value = strings.TrimSpace(match[i])
+						break
+					}
+				}
+				if value != "" {
 					entity := Entity{
 						Type:       entityType,
-						Value:      strings.TrimSpace(match[1]),
+						Value:      value,
 						Confidence: 0.9,
 					}
 
@@ -351,6 +364,7 @@ func (e *EntityExtractor) normalizeEntityValue(entityType EntityType, value stri
 		// Convert word numbers to digits
 		numberMap := map[string]string{
 			"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+			"first": "1", "second": "2", "third": "3", "fourth": "4", "fifth": "5",
 		}
 		if digit, exists := numberMap[value]; exists {
 			return digit
@@ -360,11 +374,11 @@ func (e *EntityExtractor) normalizeEntityValue(entityType EntityType, value stri
 	case EntityDestination:
 		// Normalize destination names
 		destMap := map[string]string{
-			"workers": "workers",
-			"worker":  "workers",
-			"queue":   "queue",
-			"queues":  "queue",
-			"dlq":     "dlq",
+			"workers":     "workers",
+			"worker":      "workers",
+			"queue":       "queue",
+			"queues":      "queue",
+			"dlq":         "dlq",
 			"dead letter": "dlq",
 			"stats":       "stats",
 			"statistics":  "stats",

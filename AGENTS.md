@@ -834,11 +834,14 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Shipped the `tools/requestidlint` analyzer + CLI, wired it into `go test` via `internal/admin-api/requestidlint_test.go`, and extended helpers with `writeErrorWithDetails`.
 > - Swapped the Exactly-Once handler error paths over to `writeError`/`writeErrorWithDetails` so they emit the envelope + headers.
 > - Hooked the analyzer into `make lint` and the pre-commit hook so request-ID regressions block commits automatically.
+> - Normalized trailing newlines across YAML fixtures so `make lint` surfaces only real issues.
+> - Expanded the voice-command command processor to handle natural language worker/nav confirmations and made Whisper recognizers start disabled, restoring `go test ./internal/terminal-voice-commands/...`.
 >
 > Validation
-> - `make lint` (fails fast today on existing YAML newline issues; requestidlint runs after those pass).
+- `make lint`
 > - `go test ./internal/admin-api/...`
 > - `go test ./tools/requestidlint/...`
+> - `go test ./internal/terminal-voice-commands/...`
 > - `go test ./...` still fails elsewhere (pre-existing lint/build issues across forecasting, tui, terminal voice commands, etc.).
 >
 > Outstanding test debt (snapshot — unblock when those areas come back into focus)

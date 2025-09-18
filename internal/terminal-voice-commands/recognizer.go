@@ -18,7 +18,7 @@ func NewWhisperRecognizer(language string) (*WhisperRecognizer, error) {
 		model:      model,
 		language:   language,
 		sampleRate: 16000,
-		enabled:    true,
+		enabled:    false,
 	}, nil
 }
 

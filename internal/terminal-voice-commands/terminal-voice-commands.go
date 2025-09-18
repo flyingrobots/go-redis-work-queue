@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -589,8 +588,8 @@ func (v *VoiceManager) handleConfirmation(cmd *Command, tui TUIController) (*Com
 	v.feedback.SpeakResponse(message)
 
 	return &CommandResponse{
-		Success: true,
-		Message: message,
+		Success:  true,
+		Message:  message,
 		AudioCue: "confirmation",
 	}, nil
 }
@@ -601,8 +600,8 @@ func (v *VoiceManager) handleCancel(cmd *Command, tui TUIController) (*CommandRe
 	v.feedback.SpeakResponse(message)
 
 	return &CommandResponse{
-		Success: true,
-		Message: message,
+		Success:  true,
+		Message:  message,
 		AudioCue: "cancellation",
 	}, nil
 }

@@ -1,6 +1,7 @@
 package voice
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -23,8 +24,8 @@ func TestNewWhisperRecognizer(t *testing.T) {
 		t.Errorf("Expected sample rate 16000, got %d", recognizer.sampleRate)
 	}
 
-	if !recognizer.enabled {
-		t.Error("Expected recognizer to be enabled")
+	if recognizer.enabled {
+		t.Error("Expected recognizer to be disabled until StartListening is called")
 	}
 }
 
@@ -470,6 +471,3 @@ func TestRecognizerErrorHandling(t *testing.T) {
 
 	recognizer.Close()
 }
-
-// Import fmt for test formatting
-import "fmt"
