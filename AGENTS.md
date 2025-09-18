@@ -772,6 +772,21 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Shared error envelope docs prevent API drift—keeping the pattern centralized avoids per-endpoint divergence.
 > - Adding dependency preflight steps in README shortens new contributor setup loops and avoids common module errors.
 
+> [!NOTE]
+> ### 2025-09-17 – Error envelope harmonization
+> Brought the remaining Admin API docs and handlers into alignment with the standardized error envelope.
+>
+> Changes
+> - Updated Admin API, DLQ UI, Worker Fleet, Multi-tenant, and Exactly-Once docs to show `code`, `status`, `request_id`, and `timestamp` in error examples.
+> - Extended `writeError` to propagate/generate request IDs and added tests validating the enriched envelope.
+>
+> Validation
+> - `go test ./internal/admin-api` still hits pre-existing ExactlyOnce handler test failures (missing `PurgeDLQ`/`RunBenchmark`); no new regressions introduced.
+>
+> Important Learnings
+> - Docs drift quickly when multiple teams own surfaces—central helpers/tests anchor expectations.
+> - Request ID coverage is easiest to enforce at the helper level; tests give immediate feedback when handlers regress.
+
 
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
 > [!NOTE]
