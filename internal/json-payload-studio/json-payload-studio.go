@@ -2,13 +2,12 @@
 package jsonpayloadstudio
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -85,7 +84,7 @@ func NewJSONPayloadStudio(config *StudioConfig, redis *redis.Client, logger *zap
 }
 
 // CreateSession creates a new editor session
-func (jps *JSONPayloadStudio) CreateSession() *SessionInfo {
+func (jps *JSONPayloadStudio) CreateSession() string {
 	jps.mu.Lock()
 	defer jps.mu.Unlock()
 
@@ -110,50 +109,371 @@ func (jps *JSONPayloadStudio) CreateSession() *SessionInfo {
 		go jps.autoSaveSession(session.ID)
 	}
 
-	return session
+	return session.ID
 }
 
-// UpdateEditorState updates the editor state for a session
-func (jps *JSONPayloadStudio) UpdateEditorState(sessionID string, content string, cursor Position) (*EditorState, error) {
+// UpdateEditorState updates the editor state for a session using the provided snapshot.
+func (jps *JSONPayloadStudio) UpdateEditorState(sessionID string, newState *EditorState) error {
 	jps.mu.Lock()
 	defer jps.mu.Unlock()
 
 	session, exists := jps.sessions[sessionID]
 	if !exists {
-		return nil, fmt.Errorf("session not found: %s", sessionID)
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+	if newState == nil {
+		return fmt.Errorf("editor state required")
+	}
+
+	if session.EditorState == nil {
+		session.EditorState = &EditorState{
+			History: make([]string, 0, jps.config.HistorySize),
+		}
 	}
 
 	state := session.EditorState
 
-	// Update history if content changed
-	if content != state.Content {
+	if state.History == nil {
+		state.History = make([]string, 0, jps.config.HistorySize)
+	}
+
+	if newState.Content != "" && newState.Content != state.Content {
 		if state.HistoryIndex < len(state.History)-1 {
-			// Truncate history after current position
 			state.History = state.History[:state.HistoryIndex+1]
 		}
 		state.History = append(state.History, state.Content)
-		if len(state.History) > jps.config.HistorySize {
+		if jps.config.HistorySize > 0 && len(state.History) > jps.config.HistorySize {
 			state.History = state.History[1:]
-		} else {
+		} else if len(state.History) > 0 {
 			state.HistoryIndex++
 		}
-		state.Content = content
+		state.Content = newState.Content
 		state.Modified = true
 	}
 
-	state.CursorLine = cursor.Line
-	state.CursorColumn = cursor.Column
+	state.CursorLine = newState.CursorLine
+	state.CursorColumn = newState.CursorColumn
+	state.SelectionStart = newState.SelectionStart
+	state.SelectionEnd = newState.SelectionEnd
+	state.Schema = newState.Schema
+	state.Template = newState.Template
 
-	// Validate if enabled
 	if jps.config.ValidateOnType {
-		result := jps.ValidateJSON(content, state.Schema)
+		result := jps.ValidateJSON(state.Content, state.Schema)
 		state.Errors = result.Errors
 		state.Warnings = result.Warnings
+	} else {
+		state.Errors = newState.Errors
+		state.Warnings = newState.Warnings
 	}
 
 	session.LastActivity = time.Now()
+	return nil
+}
 
-	return state, nil
+// GetSession returns a snapshot of the session by ID.
+func (jps *JSONPayloadStudio) GetSession(sessionID string) (*SessionInfo, error) {
+	jps.mu.RLock()
+	session, exists := jps.sessions[sessionID]
+	jps.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	copy := *session
+	if session.EditorState != nil {
+		stateCopy := *session.EditorState
+		copy.EditorState = &stateCopy
+	}
+	return &copy, nil
+}
+
+// DeleteSession removes a session from the studio.
+func (jps *JSONPayloadStudio) DeleteSession(sessionID string) error {
+	jps.mu.Lock()
+	defer jps.mu.Unlock()
+
+	if _, exists := jps.sessions[sessionID]; !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+	delete(jps.sessions, sessionID)
+	return nil
+}
+
+// GetSchema returns a schema by ID.
+func (jps *JSONPayloadStudio) GetSchema(id string) (*JSONSchema, error) {
+	jps.mu.RLock()
+	schema, exists := jps.schemas[id]
+	jps.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("schema not found: %s", id)
+	}
+	return cloneJSONSchema(schema), nil
+}
+
+// GetTemplate returns a template by ID.
+func (jps *JSONPayloadStudio) GetTemplate(id string) (*Template, error) {
+	jps.mu.RLock()
+	tmpl, exists := jps.templates[id]
+	jps.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("template not found: %s", id)
+	}
+	return cloneTemplate(tmpl), nil
+}
+
+// ListTemplates returns all templates stored in the studio.
+func (jps *JSONPayloadStudio) ListTemplates() []Template {
+	jps.mu.RLock()
+	defer jps.mu.RUnlock()
+
+	result := make([]Template, 0, len(jps.templates))
+	for _, tmpl := range jps.templates {
+		result = append(result, *cloneTemplate(tmpl))
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+	})
+	return result
+}
+
+// SaveTemplate stores or updates a template in memory.
+func (jps *JSONPayloadStudio) SaveTemplate(template *Template) error {
+	if template == nil {
+		return fmt.Errorf("template is nil")
+	}
+
+	jps.mu.Lock()
+	defer jps.mu.Unlock()
+
+	jps.templates[template.ID] = cloneTemplate(template)
+	return nil
+}
+
+// DeleteTemplate removes a template by ID.
+func (jps *JSONPayloadStudio) DeleteTemplate(id string) error {
+	jps.mu.Lock()
+	defer jps.mu.Unlock()
+
+	if _, exists := jps.templates[id]; !exists {
+		return fmt.Errorf("template not found: %s", id)
+	}
+	delete(jps.templates, id)
+	return nil
+}
+
+// ApplyTemplate applies a template with optional variable overrides.
+func (jps *JSONPayloadStudio) ApplyTemplate(templateID string, variables map[string]interface{}) (interface{}, error) {
+	jps.mu.RLock()
+	tmpl, exists := jps.templates[templateID]
+	jps.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("template not found: %s", templateID)
+	}
+
+	resolved := make(map[string]string)
+	for _, variable := range tmpl.Variables {
+		if variable.DefaultValue != nil {
+			resolved[variable.Name] = fmt.Sprint(variable.DefaultValue)
+		}
+	}
+	for k, v := range variables {
+		resolved[k] = fmt.Sprint(v)
+	}
+
+	contentCopy := cloneValue(tmpl.Content)
+	return expandPlaceholders(contentCopy, resolved), nil
+}
+
+// ListSnippets returns all configured snippets.
+func (jps *JSONPayloadStudio) ListSnippets() []Snippet {
+	jps.mu.RLock()
+	defer jps.mu.RUnlock()
+
+	snippets := make([]Snippet, 0, len(jps.snippets))
+	for _, snippet := range jps.snippets {
+		copy := *snippet
+		snippets = append(snippets, copy)
+	}
+	sort.Slice(snippets, func(i, j int) bool {
+		return strings.ToLower(snippets[i].Trigger) < strings.ToLower(snippets[j].Trigger)
+	})
+	return snippets
+}
+
+// ExpandSnippet expands a snippet by trigger and applies optional variable overrides.
+func (jps *JSONPayloadStudio) ExpandSnippet(trigger string, variables map[string]interface{}) (string, error) {
+	jps.mu.RLock()
+	defer jps.mu.RUnlock()
+
+	snippet, ok := jps.snippets[trigger]
+	if !ok {
+		for _, candidate := range jps.snippets {
+			if candidate.Trigger == trigger || candidate.ID == trigger {
+				snippet = candidate
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		return "", fmt.Errorf("snippet not found: %s", trigger)
+	}
+
+	expanded := jps.expandSnippet(snippet)
+	if variables != nil {
+		for k, v := range variables {
+			placeholder := fmt.Sprintf("${%s}", strings.ToUpper(k))
+			expanded = strings.ReplaceAll(expanded, placeholder, fmt.Sprint(v))
+		}
+	}
+
+	return expanded, nil
+}
+
+// DiffPayloads returns a diff between two JSON payloads.
+func (jps *JSONPayloadStudio) DiffPayloads(oldPayload, newPayload interface{}) (*DiffResult, error) {
+	return jps.compareJSON(oldPayload, newPayload), nil
+}
+
+// GeneratePreview renders a simple preview for arbitrary content.
+func (jps *JSONPayloadStudio) GeneratePreview(content interface{}, maxLines int, truncate bool) *PreviewData {
+	preview := &PreviewData{Content: content}
+
+	formatted, err := json.MarshalIndent(content, "", "  ")
+	if err != nil {
+		preview.Valid = false
+		preview.Error = err.Error()
+		return preview
+	}
+
+	preview.Formatted = string(formatted)
+	preview.Size = len(formatted)
+	preview.LineCount = strings.Count(preview.Formatted, "\n") + 1
+	preview.Valid = true
+
+	limit := maxLines
+	if limit <= 0 {
+		limit = jps.config.PreviewLines
+	}
+	if truncate && limit > 0 && preview.LineCount > limit {
+		lines := strings.Split(preview.Formatted, "\n")
+		preview.Formatted = strings.Join(lines[:limit], "\n") + "\n..."
+		preview.Truncated = true
+	}
+
+	return preview
+}
+
+func cloneTemplate(t *Template) *Template {
+	if t == nil {
+		return nil
+	}
+
+	clone := *t
+	if t.Content != nil {
+		if copied, ok := cloneValue(t.Content).(map[string]interface{}); ok {
+			clone.Content = copied
+		}
+	}
+	clone.Tags = append([]string(nil), t.Tags...)
+	clone.Variables = append([]TemplateVariable(nil), t.Variables...)
+	clone.Snippets = append([]Snippet(nil), t.Snippets...)
+	if t.Schema != nil {
+		clone.Schema = cloneJSONSchema(t.Schema)
+	}
+	return &clone
+}
+
+func cloneJSONSchema(schema *JSONSchema) *JSONSchema {
+	if schema == nil {
+		return nil
+	}
+
+	clone := *schema
+	if schema.Properties != nil {
+		if props, ok := cloneValue(schema.Properties).(map[string]interface{}); ok {
+			clone.Properties = props
+		}
+	}
+	clone.Required = append([]string(nil), schema.Required...)
+	if schema.Definitions != nil {
+		if defs, ok := cloneValue(schema.Definitions).(map[string]interface{}); ok {
+			clone.Definitions = defs
+		}
+	}
+	if schema.Additional != nil {
+		if addl, ok := cloneValue(schema.Additional).(map[string]interface{}); ok {
+			clone.Additional = addl
+		}
+	}
+	return &clone
+}
+
+func cloneValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		m := make(map[string]interface{}, len(v))
+		for key, val := range v {
+			m[key] = cloneValue(val)
+		}
+		return m
+	case []interface{}:
+		slice := make([]interface{}, len(v))
+		for i, val := range v {
+			slice[i] = cloneValue(val)
+		}
+		return slice
+	default:
+		return value
+	}
+}
+
+func expandPlaceholders(value interface{}, vars map[string]string) interface{} {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		m := make(map[string]interface{}, len(v))
+		for key, val := range v {
+			m[key] = expandPlaceholders(val, vars)
+		}
+		return m
+	case []interface{}:
+		slice := make([]interface{}, len(v))
+		for i, val := range v {
+			slice[i] = expandPlaceholders(val, vars)
+		}
+		return slice
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if strings.HasPrefix(trimmed, "{{") && strings.HasSuffix(trimmed, "}}") && len(trimmed) >= 4 {
+			token := strings.TrimSpace(trimmed[2 : len(trimmed)-2])
+			return resolvePlaceholder(token, vars)
+		}
+		return v
+	default:
+		return v
+	}
+}
+
+func resolvePlaceholder(token string, vars map[string]string) interface{} {
+	if val, ok := vars[token]; ok {
+		return val
+	}
+	if val, ok := vars[strings.ToUpper(token)]; ok {
+		return val
+	}
+	if val, ok := vars[strings.ToLower(token)]; ok {
+		return val
+	}
+
+	switch strings.ToLower(token) {
+	case "now":
+		return time.Now().UTC().Format(time.RFC3339)
+	case "uuid":
+		return uuid.NewString()
+	}
+
+	return "{{" + token + "}}"
 }
 
 // ValidateJSON validates JSON content
@@ -348,30 +668,25 @@ func (jps *JSONPayloadStudio) PreviewTemplate(templateID string, variables map[s
 	return preview, nil
 }
 
-// GetCompletions returns auto-completion suggestions
-func (jps *JSONPayloadStudio) GetCompletions(sessionID string, position Position) ([]CompletionItem, error) {
+// GetCompletions returns auto-completion suggestions for the provided context.
+func (jps *JSONPayloadStudio) GetCompletions(document string, position *Position, schema *JSONSchema) []CompletionItem {
 	jps.mu.RLock()
 	defer jps.mu.RUnlock()
 
-	session, exists := jps.sessions[sessionID]
-	if !exists {
-		return nil, fmt.Errorf("session not found")
+	pos := Position{Line: 1, Column: 1}
+	if position != nil {
+		pos = *position
 	}
 
+	ctx := jps.getContextAtPosition(document, pos)
 	completions := make([]CompletionItem, 0)
 
-	// Get context at cursor position
-	context := jps.getContextAtPosition(session.EditorState.Content, position)
-
-	// Add schema-based completions
-	if session.EditorState.Schema != nil {
-		schemaCompletions := jps.getSchemaCompletions(session.EditorState.Schema, context)
-		completions = append(completions, schemaCompletions...)
+	if schema != nil {
+		completions = append(completions, jps.getSchemaCompletions(schema, ctx)...)
 	}
 
-	// Add snippet completions
 	for trigger, snippet := range jps.snippets {
-		if strings.HasPrefix(trigger, context.Prefix) {
+		if strings.HasPrefix(trigger, ctx.Prefix) {
 			completions = append(completions, CompletionItem{
 				Label:      snippet.Name,
 				Kind:       "snippet",
@@ -382,14 +697,11 @@ func (jps *JSONPayloadStudio) GetCompletions(sessionID string, position Position
 		}
 	}
 
-	// Add recent values
 	if jps.lastEnqueued != nil {
-		// Add fields from last enqueued payload
-		recentCompletions := jps.getRecentCompletions(jps.lastEnqueued.Payload, context)
-		completions = append(completions, recentCompletions...)
+		completions = append(completions, jps.getRecentCompletions(jps.lastEnqueued.Payload, ctx)...)
 	}
 
-	return completions, nil
+	return completions
 }
 
 // InsertSnippet inserts a snippet at the current position
@@ -588,13 +900,13 @@ func (jps *JSONPayloadStudio) GetDiff(sessionID string) (*DiffResult, error) {
 }
 
 // Undo undoes the last edit
-func (jps *JSONPayloadStudio) Undo(sessionID string) (*EditorState, error) {
+func (jps *JSONPayloadStudio) Undo(sessionID string) error {
 	jps.mu.Lock()
 	defer jps.mu.Unlock()
 
 	session, exists := jps.sessions[sessionID]
 	if !exists {
-		return nil, fmt.Errorf("session not found")
+		return fmt.Errorf("session not found")
 	}
 
 	state := session.EditorState
@@ -604,17 +916,17 @@ func (jps *JSONPayloadStudio) Undo(sessionID string) (*EditorState, error) {
 		state.Modified = true
 	}
 
-	return state, nil
+	return nil
 }
 
 // Redo redoes the last undone edit
-func (jps *JSONPayloadStudio) Redo(sessionID string) (*EditorState, error) {
+func (jps *JSONPayloadStudio) Redo(sessionID string) error {
 	jps.mu.Lock()
 	defer jps.mu.Unlock()
 
 	session, exists := jps.sessions[sessionID]
 	if !exists {
-		return nil, fmt.Errorf("session not found")
+		return fmt.Errorf("session not found")
 	}
 
 	state := session.EditorState
@@ -624,11 +936,11 @@ func (jps *JSONPayloadStudio) Redo(sessionID string) (*EditorState, error) {
 		state.Modified = true
 	}
 
-	return state, nil
+	return nil
 }
 
-// SaveTemplate saves the current content as a template
-func (jps *JSONPayloadStudio) SaveTemplate(sessionID string, name, description, category string, tags []string) (*Template, error) {
+// SaveTemplateFromSession saves the current content as a template
+func (jps *JSONPayloadStudio) SaveTemplateFromSession(sessionID string, name, description, category string, tags []string) (*Template, error) {
 	jps.mu.Lock()
 	defer jps.mu.Unlock()
 

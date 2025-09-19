@@ -244,7 +244,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
 | [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
 | [internal/job-budgeting](internal/job-budgeting/README.md) | BROKEN | API helpers missing; budget manager refactor incomplete. |
-| [internal/json-payload-studio](internal/json-payload-studio/README.md) | BROKEN | Handler methods reference unimplemented studio core. |
+| [internal/json-payload-studio](internal/json-payload-studio/README.md) | BUILDS | Compiles; handlers still rely on in-memory stubs. |
 | [internal/kubernetes-operator](internal/kubernetes-operator/README.md) | BROKEN | Controller-runtime upgrade not finished; envtest scaffolding missing. |
 | [internal/long-term-archives](internal/long-term-archives/README.md) | BROKEN | Archive drivers unfinished; depends on pending storage abstractions. |
 | [internal/storage-backends](internal/storage-backends/README.md) | BUILDS | Compiles; remaining test harness needs go-redis v9 cleanup. |

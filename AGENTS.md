@@ -543,7 +543,7 @@ Notes
 > - Recorded per-module build status READMEs so breakages and fixes stay visible.
 >
 > Follow-ups
-> - Next module target: `internal/distributed-tracing-integration` (unblocks admin/tui).
+> - JSON payload studio now builds with in-memory stubs; next target is `internal/job-budgeting`.
 > - Keep updating the dependency map as we clean additional modules.
 >
 
