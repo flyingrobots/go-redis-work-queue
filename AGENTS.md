@@ -853,6 +853,20 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > Follow-ups
 > - Add the new analyzer invocation to `make lint` / pre-commit so it runs automatically (docs already mention how).
 > - Consider extending `writeErrorWithDetails` to cover success payloads that need custom detail structures (e.g., health checks) for richer semantics.
+> [!NOTE]
+> ### 2025-09-18 – Task chain scaffolding & BUGS breakdown
+> Converted CodeRabbit prompt scrape into structured worksheets, split accepted/rejected/pending buckets, and promoted each BUGS.md punch-list item into standalone tasks under `docs/issues/open`. Generated `task_chains.yaml`/`task_chains.md` using the new prompt set (domain-based waves, no inferred edges yet).
+>
+> Changes
+> - Extracted latest CodeRabbit prompts, merged with chunk decisions, and emitted the worksheet triple (`README/Accepted/Rejected/Pending`).
+> - Moved every pending prompt into its own `docs/issues/open/*.md` file and ran the task chain generator with clean defaults.
+> - Added the seven BUGS.md action items as new task markdown files matching the planner schema.
+>
+> Follow-ups
+> - Review domain waves and add real edges/critical path once dependencies are known.
+> - Flesh out durations/owners for the new BUGS tasks before scheduling.
+> - Decide whether to keep the per-issue markdowns in repo or move to tracking system.
+
 
 ---
 ## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
