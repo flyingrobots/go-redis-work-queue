@@ -1,12 +1,10 @@
 # Event Hooks
 
-- **Status:** BROKEN (`go build ./internal/event-hooks` fails)
+- **Status:** BUILDS (`go build ./internal/event-hooks` passes; handler bodies still TODO)
 - **Last checked:** 2025-09-18
 
-## Why it is broken
-- HTTP handlers were scaffolded but not wired; unused imports and placeholders stop compilation.
-- Replay/test endpoints are unimplemented pending DLQ and webhook integration.
+## Notes
+- Handlers compile, but several endpoints still return TODO errors until the manager layer is implemented.
 
 ## Next steps
-- Decide on the event transport (webhook/NATS) contract, then fill in handler implementations.
-- Wire replay/test endpoints and clean up unused imports before attempting another build.
+- Flesh out webhook/NATS plumbing, replay/test endpoints, and manager wiring before enabling the feature.

@@ -240,7 +240,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/collaborative-session](internal/collaborative-session/README.md) | BUILDS | Compiles after restoring handoff helpers; no tests yet. |
 | [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BUILDS | Compiles; tests still expect legacy OpenTelemetry helpers. |
 | [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BROKEN | Uses removed go-redis v9 options; build blocked by unused variables. |
-| [internal/event-hooks](internal/event-hooks/README.md) | BROKEN | Handlers unfinished; replay/test endpoints not wired. |
+| [internal/event-hooks](internal/event-hooks/README.md) | BUILDS | Compiles; handlers remain TODO for replay/test flows. |
 | [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
 | [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
 | [internal/job-budgeting](internal/job-budgeting/README.md) | BROKEN | API helpers missing; budget manager refactor incomplete. |
