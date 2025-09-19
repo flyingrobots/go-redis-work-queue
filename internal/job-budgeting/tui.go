@@ -47,9 +47,6 @@ func (b *BudgetTUI) setupLayout() {
 	header := b.createHeader()
 	main.AddItem(header, 3, 0, false)
 
-	// Tab container
-	tabContainer := tview.NewFlex().SetDirection(tview.FlexColumn)
-
 	// Create tab content
 	overviewTab := b.createOverviewTab()
 	trendsTab := b.createTrendsTab()

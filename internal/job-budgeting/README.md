@@ -1,6 +1,6 @@
 # Job Budgeting
 
-- **Status:** BROKEN (`go build ./internal/job-budgeting` fails)
+- **Status:** BUILDS (`go build ./internal/job-budgeting` passes; feature still unimplemented)
 - **Last checked:** 2025-09-18
 
 ## Why it is broken
