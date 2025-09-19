@@ -1,6 +1,6 @@
 # DLQ Remediation Pipeline
 
-- **Status:** BROKEN (`go build ./internal/dlq-remediation-pipeline` fails)
+- **Status:** BUILDS (`go build ./internal/dlq-remediation-pipeline` passes; remediation flows still incomplete)
 - **Last checked:** 2025-09-18
 
 ## Why it is broken

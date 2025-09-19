@@ -46,18 +46,17 @@ func NewRemediationPipeline(config *Config, logger *zap.Logger) (*RemediationPip
 
 	// Create Redis client
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:         config.Redis.Addr,
-		Password:     config.Redis.Password,
-		DB:           config.Redis.DB,
-		MaxRetries:   config.Redis.MaxRetries,
-		DialTimeout:  config.Redis.DialTimeout,
-		ReadTimeout:  config.Redis.ReadTimeout,
-		WriteTimeout: config.Redis.WriteTimeout,
-		PoolSize:     config.Redis.PoolSize,
-		MinIdleConns: config.Redis.MinIdleConns,
-		MaxConnAge:   config.Redis.MaxConnAge,
-		PoolTimeout:  config.Redis.PoolTimeout,
-		IdleTimeout:  config.Redis.IdleTimeout,
+		Addr:            config.Redis.Addr,
+		Password:        config.Redis.Password,
+		DB:              config.Redis.DB,
+		MaxRetries:      config.Redis.MaxRetries,
+		DialTimeout:     config.Redis.DialTimeout,
+		ReadTimeout:     config.Redis.ReadTimeout,
+		WriteTimeout:    config.Redis.WriteTimeout,
+		PoolSize:        config.Redis.PoolSize,
+		MinIdleConns:    config.Redis.MinIdleConns,
+		PoolTimeout:     config.Redis.PoolTimeout,
+		ConnMaxIdleTime: config.Redis.IdleTimeout,
 	})
 
 	// Test Redis connection

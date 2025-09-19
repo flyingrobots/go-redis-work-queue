@@ -579,7 +579,7 @@ func (ae *ActionExecutor) setPayloadField(payload map[string]interface{}, path s
 	keys := strings.Split(path, ".")
 	current := payload
 
-	for i, key := range keys[:len(keys)-1] {
+	for _, key := range keys[:len(keys)-1] {
 		if _, exists := current[key]; !exists {
 			current[key] = make(map[string]interface{})
 		}
