@@ -236,7 +236,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | Module | Status | Summary |
 | --- | --- | --- |
 | [internal/automatic-capacity-planning](internal/automatic-capacity-planning/README.md) | BROKEN | Forecasting/simulator tests expect legacy behaviour; new algorithms need history seeding. |
-| [internal/canary-deployments](internal/canary-deployments/README.md) | BROKEN | Router + go-redis v9 migration unfinished; build currently fails. |
+| [internal/canary-deployments](internal/canary-deployments/README.md) | BUILDS | Compiles; API endpoints still stubbed for worker/rollback flows. |
 | [internal/collaborative-session](internal/collaborative-session/README.md) | BUILDS | Compiles after restoring handoff helpers; no tests yet. |
 | [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BUILDS | Compiles; tests still expect legacy OpenTelemetry helpers. |
 | [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BROKEN | Uses removed go-redis v9 options; build blocked by unused variables. |

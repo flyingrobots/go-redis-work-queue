@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"math"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"

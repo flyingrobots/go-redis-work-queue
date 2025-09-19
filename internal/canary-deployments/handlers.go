@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -297,9 +296,7 @@ func (h *HTTPHandler) registerWorker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) getWorker(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-
-	// This would need to be implemented in the manager interface
+	// TODO: implement worker lookup via manager interface
 	h.writeError(w, NewCanaryError(CodeSystemNotReady, "worker lookup not implemented"))
 }
 
@@ -386,19 +383,19 @@ func (h *HTTPHandler) writeError(w http.ResponseWriter, err error) {
 // Request/Response types
 
 type CreateDeploymentRequest struct {
-	QueueName       string                `json:"queue_name"`
-	TenantID        string                `json:"tenant_id,omitempty"`
-	StableVersion   string                `json:"stable_version"`
-	CanaryVersion   string                `json:"canary_version"`
-	RoutingStrategy RoutingStrategy       `json:"routing_strategy,omitempty"`
-	StickyRouting   bool                  `json:"sticky_routing,omitempty"`
-	AutoPromotion   bool                  `json:"auto_promotion,omitempty"`
-	MaxDuration     string                `json:"max_duration,omitempty"`
-	MinDuration     string                `json:"min_duration,omitempty"`
-	DrainTimeout    string                `json:"drain_timeout,omitempty"`
-	MetricsWindow   string                `json:"metrics_window,omitempty"`
-	CreatedBy       string                `json:"created_by,omitempty"`
-	Profile         string                `json:"profile,omitempty"` // "default", "conservative", "aggressive"
+	QueueName       string          `json:"queue_name"`
+	TenantID        string          `json:"tenant_id,omitempty"`
+	StableVersion   string          `json:"stable_version"`
+	CanaryVersion   string          `json:"canary_version"`
+	RoutingStrategy RoutingStrategy `json:"routing_strategy,omitempty"`
+	StickyRouting   bool            `json:"sticky_routing,omitempty"`
+	AutoPromotion   bool            `json:"auto_promotion,omitempty"`
+	MaxDuration     string          `json:"max_duration,omitempty"`
+	MinDuration     string          `json:"min_duration,omitempty"`
+	DrainTimeout    string          `json:"drain_timeout,omitempty"`
+	MetricsWindow   string          `json:"metrics_window,omitempty"`
+	CreatedBy       string          `json:"created_by,omitempty"`
+	Profile         string          `json:"profile,omitempty"` // "default", "conservative", "aggressive"
 }
 
 func (req *CreateDeploymentRequest) Validate() error {

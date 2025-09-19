@@ -309,13 +309,13 @@ func (hr *HashRing) UpdateNodes(stableWeight, canaryWeight int) {
 
 	// Add stable nodes
 	for i := 0; i < stableWeight; i++ {
-		hash := r.hash(fmt.Sprintf("stable-%d", i))
+		hash := hr.hash(fmt.Sprintf("stable-%d", i))
 		hr.nodes = append(hr.nodes, HashNode{Hash: hash, Value: "stable"})
 	}
 
 	// Add canary nodes
 	for i := 0; i < canaryWeight; i++ {
-		hash := r.hash(fmt.Sprintf("canary-%d", i))
+		hash := hr.hash(fmt.Sprintf("canary-%d", i))
 		hr.nodes = append(hr.nodes, HashNode{Hash: hash, Value: "canary"})
 	}
 
@@ -338,7 +338,7 @@ func (hr *HashRing) GetNode(key string) string {
 		return "stable" // Default fallback
 	}
 
-	hash := r.hash(key)
+	hash := hr.hash(key)
 
 	// Find the first node with hash >= key hash
 	for _, node := range hr.nodes {
@@ -483,14 +483,14 @@ func (sgr *StreamGroupRouter) GetRoutingStats(ctx context.Context, queue string)
 }
 
 func (sgr *StreamGroupRouter) getGroupPending(ctx context.Context, stream, group string) (int64, error) {
-	info, err := sgr.redis.XInfoGroup(ctx, stream, group).Result()
+	infos, err := sgr.redis.XInfoGroups(ctx, stream).Result()
 	if err != nil {
 		return 0, err
 	}
 
-	if len(info) > 0 {
-		if pending, ok := info[0]["pending"].(int64); ok {
-			return pending, nil
+	for _, info := range infos {
+		if info.Name == group {
+			return info.Pending, nil
 		}
 	}
 

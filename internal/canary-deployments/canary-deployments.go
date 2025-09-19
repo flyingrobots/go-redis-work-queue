@@ -2,14 +2,10 @@ package canary_deployments
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"log/slog"
-	"math"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 

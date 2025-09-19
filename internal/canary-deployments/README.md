@@ -1,13 +1,11 @@
 # Canary Deployments
 
-- **Status:** BROKEN (`go build ./internal/canary-deployments` fails)
+- **Status:** BUILDS (`go build ./internal/canary-deployments` passes; API still incomplete)
 - **Last checked:** 2025-09-18
 
-## Why it is broken
-- Router rebuild stalled: `router.go` references an `r` mux that no longer exists.
-- Redis client usage still targets go-redis v8 APIs (`XInfoGroup`, `IdleTimeout`, etc.) that were removed when we bumped to go-redis v9.
-- Handler scaffolding imports utilities that are unused / not wired (e.g. feature flag plumbing), causing compile failures.
+## Notes
+- Router modules now compile against go-redis v9; handler stubs still return TODO errors.
 
 ## Next steps
-- Finish the router/handler rewrite and migrate to go-redis v9 equivalents (`XInfoGroups`, `ClientInfo` etc.).
-- Flesh out rollback/abort workflows and audit logging before attempting another build.
+- Flesh out rollback/abort workflows, auditing, and worker lookups before exposing the API.
+- Add real implementations for manager methods that currently return `CodeSystemNotReady`.
