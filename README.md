@@ -238,7 +238,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/automatic-capacity-planning](internal/automatic-capacity-planning/README.md) | BROKEN | Forecasting/simulator tests expect legacy behaviour; new algorithms need history seeding. |
 | [internal/canary-deployments](internal/canary-deployments/README.md) | BROKEN | Router + go-redis v9 migration unfinished; build currently fails. |
 | [internal/collaborative-session](internal/collaborative-session/README.md) | BUILDS | Compiles after restoring handoff helpers; no tests yet. |
-| [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BROKEN | Otel API migration incomplete; missing helpers and outdated event APIs. |
+| [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BUILDS | Compiles; tests still expect legacy OpenTelemetry helpers. |
 | [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BROKEN | Uses removed go-redis v9 options; build blocked by unused variables. |
 | [internal/event-hooks](internal/event-hooks/README.md) | BROKEN | Handlers unfinished; replay/test endpoints not wired. |
 | [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
