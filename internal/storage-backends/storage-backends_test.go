@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockBackend implements QueueBackend for testing
-type MockBackend struct {
+// testBackend implements QueueBackend for testing
+type testBackend struct {
 	jobs         map[string]*Job
 	capabilities BackendCapabilities
 	stats        *BackendStats
@@ -18,8 +18,8 @@ type MockBackend struct {
 	closed       bool
 }
 
-func NewMockBackend(capabilities BackendCapabilities) *MockBackend {
-	return &MockBackend{
+func newTestBackend(capabilities BackendCapabilities) *testBackend {
+	return &testBackend{
 		jobs:         make(map[string]*Job),
 		capabilities: capabilities,
 		stats: &BackendStats{
@@ -35,7 +35,7 @@ func NewMockBackend(capabilities BackendCapabilities) *MockBackend {
 	}
 }
 
-func (m *MockBackend) Enqueue(ctx context.Context, job *Job) error {
+func (m *testBackend) Enqueue(ctx context.Context, job *Job) error {
 	if m.closed {
 		return ErrConnectionFailed
 	}
@@ -45,7 +45,7 @@ func (m *MockBackend) Enqueue(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func (m *MockBackend) Dequeue(ctx context.Context, opts DequeueOptions) (*Job, error) {
+func (m *testBackend) Dequeue(ctx context.Context, opts DequeueOptions) (*Job, error) {
 	if m.closed {
 		return nil, ErrConnectionFailed
 	}
@@ -58,28 +58,28 @@ func (m *MockBackend) Dequeue(ctx context.Context, opts DequeueOptions) (*Job, e
 	return nil, nil // No jobs available
 }
 
-func (m *MockBackend) Ack(ctx context.Context, jobID string) error {
+func (m *testBackend) Ack(ctx context.Context, jobID string) error {
 	if m.closed {
 		return ErrConnectionFailed
 	}
 	return nil
 }
 
-func (m *MockBackend) Nack(ctx context.Context, jobID string, requeue bool) error {
+func (m *testBackend) Nack(ctx context.Context, jobID string, requeue bool) error {
 	if m.closed {
 		return ErrConnectionFailed
 	}
 	return nil
 }
 
-func (m *MockBackend) Length(ctx context.Context) (int64, error) {
+func (m *testBackend) Length(ctx context.Context) (int64, error) {
 	if m.closed {
 		return 0, ErrConnectionFailed
 	}
 	return int64(len(m.jobs)), nil
 }
 
-func (m *MockBackend) Peek(ctx context.Context, offset int64) (*Job, error) {
+func (m *testBackend) Peek(ctx context.Context, offset int64) (*Job, error) {
 	if m.closed {
 		return nil, ErrConnectionFailed
 	}
@@ -93,7 +93,7 @@ func (m *MockBackend) Peek(ctx context.Context, offset int64) (*Job, error) {
 	return nil, nil
 }
 
-func (m *MockBackend) Move(ctx context.Context, jobID string, targetQueue string) error {
+func (m *testBackend) Move(ctx context.Context, jobID string, targetQueue string) error {
 	if m.closed {
 		return ErrConnectionFailed
 	}
@@ -103,7 +103,7 @@ func (m *MockBackend) Move(ctx context.Context, jobID string, targetQueue string
 	return nil
 }
 
-func (m *MockBackend) Iter(ctx context.Context, opts IterOptions) (Iterator, error) {
+func (m *testBackend) Iter(ctx context.Context, opts IterOptions) (Iterator, error) {
 	if m.closed {
 		return nil, ErrConnectionFailed
 	}
@@ -114,18 +114,18 @@ func (m *MockBackend) Iter(ctx context.Context, opts IterOptions) (Iterator, err
 	return NewJobIterator(jobs), nil
 }
 
-func (m *MockBackend) Capabilities() BackendCapabilities {
+func (m *testBackend) Capabilities() BackendCapabilities {
 	return m.capabilities
 }
 
-func (m *MockBackend) Stats(ctx context.Context) (*BackendStats, error) {
+func (m *testBackend) Stats(ctx context.Context) (*BackendStats, error) {
 	if m.closed {
 		return nil, ErrConnectionFailed
 	}
 	return m.stats, nil
 }
 
-func (m *MockBackend) Health(ctx context.Context) HealthStatus {
+func (m *testBackend) Health(ctx context.Context) HealthStatus {
 	if m.closed {
 		return HealthStatus{
 			Status:    HealthStatusUnhealthy,
@@ -136,21 +136,21 @@ func (m *MockBackend) Health(ctx context.Context) HealthStatus {
 	return m.health
 }
 
-func (m *MockBackend) Close() error {
+func (m *testBackend) Close() error {
 	m.closed = true
 	return nil
 }
 
-// MockFactory creates mock backends
-type MockFactory struct {
+// testFactory creates mock backends
+type testFactory struct {
 	capabilities BackendCapabilities
 }
 
-func (f *MockFactory) Create(config interface{}) (QueueBackend, error) {
-	return NewMockBackend(f.capabilities), nil
+func (f *testFactory) Create(config interface{}) (QueueBackend, error) {
+	return newTestBackend(f.capabilities), nil
 }
 
-func (f *MockFactory) Validate(config interface{}) error {
+func (f *testFactory) Validate(config interface{}) error {
 	return nil
 }
 
@@ -158,13 +158,13 @@ func TestBackendRegistry(t *testing.T) {
 	registry := NewBackendRegistry()
 
 	// Test registration
-	factory := &MockFactory{
+	factory := &testFactory{
 		capabilities: BackendCapabilities{
-			AtomicAck:          true,
-			ConsumerGroups:     true,
-			Replay:             true,
-			Persistence:        true,
-			BatchOperations:    true,
+			AtomicAck:       true,
+			ConsumerGroups:  true,
+			Replay:          true,
+			Persistence:     true,
+			BatchOperations: true,
 		},
 	}
 
@@ -197,7 +197,7 @@ func TestBackendRegistry(t *testing.T) {
 
 func TestBackendManager(t *testing.T) {
 	registry := NewBackendRegistry()
-	factory := &MockFactory{
+	factory := &testFactory{
 		capabilities: BackendCapabilities{
 			Persistence: true,
 		},
@@ -279,7 +279,7 @@ func TestJobIterator(t *testing.T) {
 }
 
 func TestMockBackendOperations(t *testing.T) {
-	backend := NewMockBackend(BackendCapabilities{
+	backend := newTestBackend(BackendCapabilities{
 		AtomicAck:       true,
 		Persistence:     true,
 		BatchOperations: true,
@@ -350,7 +350,7 @@ func TestMockBackendOperations(t *testing.T) {
 }
 
 func TestBackendAfterClose(t *testing.T) {
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	// Close the backend
@@ -381,7 +381,7 @@ func TestBackendAfterClose(t *testing.T) {
 }
 
 func TestIteratorOperations(t *testing.T) {
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	// Add some jobs
@@ -414,7 +414,7 @@ func TestIteratorOperations(t *testing.T) {
 }
 
 func TestMoveOperation(t *testing.T) {
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	// Add a job
@@ -433,7 +433,7 @@ func TestMoveOperation(t *testing.T) {
 }
 
 func BenchmarkMockBackendEnqueue(b *testing.B) {
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	job := &Job{
@@ -457,7 +457,7 @@ func BenchmarkMockBackendEnqueue(b *testing.B) {
 }
 
 func BenchmarkMockBackendDequeue(b *testing.B) {
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	// Pre-populate with jobs

@@ -1,3 +1,6 @@
+//go:build tui_experimental
+// +build tui_experimental
+
 package tui
 
 import (
@@ -373,9 +376,9 @@ func (m model) buildEnhancedFooter(styles StyleSet) string {
 func (m model) getQueueSummary() map[string]int64 {
 	// Mock implementation - replace with actual queue data
 	return map[string]int64{
-		"prod-jobs":        1234,
-		"async-emails":     789,
-		"data-processing":  45,
+		"prod-jobs":       1234,
+		"async-emails":    789,
+		"data-processing": 45,
 	}
 }
 

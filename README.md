@@ -231,6 +231,27 @@ To reproduce evidence locally, see `docs/evidence/README.md`.
 
 See `docs/testing-guide.md` for a package-by-package overview and copy/paste commands to run individual tests or the full suite with the race detector.
 
+## Module Status Map
+
+| Module | Status | Summary |
+| --- | --- | --- |
+| [internal/automatic-capacity-planning](internal/automatic-capacity-planning/README.md) | BROKEN | Forecasting/simulator tests expect legacy behaviour; new algorithms need history seeding. |
+| [internal/canary-deployments](internal/canary-deployments/README.md) | BROKEN | Router + go-redis v9 migration unfinished; build currently fails. |
+| [internal/collaborative-session](internal/collaborative-session/README.md) | BUILDS | Compiles after restoring handoff helpers; no tests yet. |
+| [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BROKEN | Otel API migration incomplete; missing helpers and outdated event APIs. |
+| [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BROKEN | Uses removed go-redis v9 options; build blocked by unused variables. |
+| [internal/event-hooks](internal/event-hooks/README.md) | BROKEN | Handlers unfinished; replay/test endpoints not wired. |
+| [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
+| [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
+| [internal/job-budgeting](internal/job-budgeting/README.md) | BROKEN | API helpers missing; budget manager refactor incomplete. |
+| [internal/json-payload-studio](internal/json-payload-studio/README.md) | BROKEN | Handler methods reference unimplemented studio core. |
+| [internal/kubernetes-operator](internal/kubernetes-operator/README.md) | BROKEN | Controller-runtime upgrade not finished; envtest scaffolding missing. |
+| [internal/long-term-archives](internal/long-term-archives/README.md) | BROKEN | Archive drivers unfinished; depends on pending storage abstractions. |
+| [internal/storage-backends](internal/storage-backends/README.md) | BUILDS | Compiles; remaining test harness needs go-redis v9 cleanup. |
+| [internal/tui](internal/tui/README.md) | BUILDS | Legacy view builds cleanly; enhanced view remains behind `tui_experimental`. |
+| [internal/trace-drilldown-log-tail](internal/trace-drilldown-log-tail/README.md) | BUILDS | Compiles; log streaming endpoints still placeholders. |
+| [internal/worker](internal/worker/README.md) | BUILDS | Runtime compiles; lacks dedicated unit tests. |
+
 ----
 
 ## Contributing

@@ -6,38 +6,6 @@
 - Tasklist
 - Ideas
 
-<!-- Table of Contents -->
-# Table of Contents
-1. [AGENTS](#agents)
-	1. [Important Information](#important-information)
-		1. [Sections You Must Actively Maintain](#sections-you-must-actively-maintain)
-		2. [Job Queue](#job-queue)
-		3. [TUI App](#tui-app)
-			1. [TUI stack and structure](#tui-stack-and-structure)
-			2. [Overlays and input behavior](#overlays-and-input-behavior)
-			3. [Current tabs](#current-tabs)
-			4. [Keybindings (important)](#keybindings-important)
-			5. [Redis/admin plumbing](#redisadmin-plumbing)
-			6. [Config + run](#config-run)
-			7. [Observability](#observability)
-				1. [Guardrails](#guardrails)
-		4. [Project Status](#project-status)
-		5. [Notes](#notes)
-	2. [Working Tasklist](#working-tasklist)
-		1. [Prioritized Backlog](#prioritized-backlog)
-		2. [Finished Log](#finished-log)
-	3. [TUI Tasks](#tui-tasks)
-		1. [TUI Task Chains](#tui-task-chains)
-		2. [TUI Parallelization & Priorities](#tui-parallelization-priorities)
-	4. [Daily Activity Logs](#daily-activity-logs)
-		1. [2025-09-13–Rewrote `AGENTS.md`](#2025-09-13-rewrote-agentsmd)
-			1. [##### 06:39 – Starting `AGENTS.md` Enhancements](#0639-starting-agentsmd-enhancements)
-				1. [06:39 – Starting `AGENTS.md` Enhancements](#0639-starting-agentsmd-enhancements)
-	5. [APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM](#appendix-b-wild-ideas-have-a-brainstorm)
-		1. [Codex's Top Picks](#codexs-top-picks)
-	6. [Appendix C: Codex Ideas in Detail](#appendix-c-codex-ideas-in-detail)
-<!-- End of TOC -->
-
 ---
 ## Important Information
 
@@ -121,6 +89,9 @@ Feature status is tracked in `docs/features-ledger.md`.
 
 ### Notes
 
+- HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
+- HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
+
 Near-term TODOs I’m targeting:
 
 - Charts expand-on-click (toggle 2/3 vs 1/3), precise mouse hitboxes (bubblezone), table polish (striping, thresholds, selection glyph), enqueue actions (`e`/`E`), right-click peek.
@@ -128,6 +99,10 @@ Near-term TODOs I’m targeting:
 ---
 
 ## Working Tasklist
+
+> [!WARNING]
+> HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
+
 
 (maintain and use this from now on)
 
@@ -558,6 +533,19 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2025-09-18 – GREEN MACHINE progress
+> Focused on making the build green module-by-module.
+>
+> Changes
+> - Documented the internal module dependency DAG and stabilization order in AGENTS.md/README.
+> - Brought `internal/storage-backends`, `internal/trace-drilldown-log-tail`, and `cmd/tui` back to a clean `go build`; experimental TUI view now lives behind `tui_experimental`.
+> - Recorded per-module build status READMEs so breakages and fixes stay visible.
+>
+> Follow-ups
+> - Next module target: `internal/distributed-tracing-integration` (unblocks admin/tui).
+> - Keep updating the dependency map as we clean additional modules.
+>
 
 (maintain and use this from now on)
 
@@ -788,136 +776,59 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Request ID coverage is easiest to enforce at the helper level; tests give immediate feedback when handlers regress.
 
 
-## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
-> [!NOTE]
-> ### 2025-09-16 – Code Review Worksheet automation, CI hardening, prompt archival
-> Summary of today’s session focused on preserving review artifacts, improving CI hygiene, and preparing merges.
->
-> Changes
-> - Added `scripts/generate_cr_worksheet.py` — one‑shot generator that scrapes CodeRabbit “Prompt for AI Agents” items for any PR via `gh` and emits a fill‑in worksheet under `docs/audits/code-reviews/PR{n}/{head_sha}.md`.
-> - Fixed prompt scraping to ignore HTML‑only artifacts (e.g., stray `</summary>`) by extracting fenced blocks following the “Prompt for AI Agents” header.
-> - Regenerated PR#3 worksheet with 300+ items and section separator (`---`) before Conclusion: `docs/audits/code-reviews/PR3/a493f9d...60f12d72.md`.
-> - Documented usage in `docs/tools/README.md` (generator options, output path, requirements).
-> - CI/workflows hardening applied per CodeRabbit prompts:
->   - changelog: add top‑level `concurrency`, quote `$(go env GOPATH)` path.
->   - ci: add Redis readiness gate before E2E loop.
->   - goreleaser: set up QEMU + Buildx; quote `$GITHUB_ENV` appends.
->   - markdownlint: least‑privilege `permissions`, `concurrency`, compact `branches`, pinned action SHAs.
->
-> Important learnings
-> - Prefer fenced‑block extraction after the prompt header to avoid noisy HTML fragments in reviews.
-> - Serialize GitHub workflows that push to default branches; add readiness gates for external deps (Redis) to deflake CI.
-> - Quote env file writes (e.g., `$GITHUB_ENV`) and command substitutions for safety and portability.
-> - Repo still mixes `go-redis` v8 and v9; Features Ledger currently claims v9‑only — reconcile during the v9 unification pass.
->
-> Activity log
-> - Extracted PR#3 prompts → archived at `docs/audits/coderabbit-pr3-prompts.md`.
-> - Generated Code Review Worksheet → `docs/audits/code-reviews/PR3/a493f9d...60f12d72.md`.
-> - Updated workflows (`changelog.yml`, `ci.yml`, `goreleaser.yml`, `markdownlint.yml`).
-> - Added generator script and updated tooling docs.
-> - Pushed branch `unify/chaos-main` to update PR#3 (no merge yet).
->
-> Next steps (micro‑PR cadence)
-> - Review worksheet items; accept/reject and turn top items into issues/micro PRs.
-> - Complete Redis v9 unification (remove v8), fix imports/options, and run `go test ./...` to shake out failures.
-> - Merge PR#3 after review → then PR#2 (ledger/devx), PR#4 (redis v9), PR#1 (release), ensuring `origin/main` is always the base.
-> - Align Features Ledger “Redis Client” row with actual v9 status; run `scripts/update_progress.py` to refresh bars.
-> - Consider concurrency/min‑permissions for `update-progress.yml` to avoid redundant runs.
+## Module Dependency Map
+- Captured on 2025-09-18
+- Keep this section updated as dependencies shift
 
-> [!NOTE]
-> ### 2025-09-18 – Error envelope audit & Request ID guardrail plan
-> Picked up post chunk_011 clean-up to finish the doc audit and outline automation for request IDs.
->
-> Changes
-> - Updated `docs/api/anomaly-radar-slo-budget.md` and `docs/api/chaos-harness.md` to call out the shared error envelope and matching `X-Request-ID` header.
-> - Repaired the admin handler tests (bad helper usage) so `go test ./internal/admin-api/...` compiles cleanly.
-> - Shipped the `tools/requestidlint` analyzer + CLI, wired it into `go test` via `internal/admin-api/requestidlint_test.go`, and extended helpers with `writeErrorWithDetails`.
-> - Swapped the Exactly-Once handler error paths over to `writeError`/`writeErrorWithDetails` so they emit the envelope + headers.
-> - Hooked the analyzer into `make lint` and the pre-commit hook so request-ID regressions block commits automatically.
-> - Normalized trailing newlines across YAML fixtures so `make lint` surfaces only real issues.
-> - Expanded the voice-command command processor to handle natural language worker/nav confirmations and made Whisper recognizers start disabled, restoring `go test ./internal/terminal-voice-commands/...`.
->
-> Validation
-- `make lint`
-> - `go test ./internal/admin-api/...`
-> - `go test ./tools/requestidlint/...`
-> - `go test ./internal/terminal-voice-commands/...`
-> - `go test ./...` still fails elsewhere (pre-existing lint/build issues across forecasting, tui, terminal voice commands, etc.).
->
-> Outstanding test debt (snapshot — unblock when those areas come back into focus)
-> - Build breakers: `internal/terminal-voice-commands`, `internal/canary-deployments`, `internal/tui`, `cmd/job-queue-system`, `internal/collaborative-session`, `internal/json-payload-studio`, `internal/kubernetes-operator`, `internal/storage-backends`, `internal/trace-drilldown-log-tail`, `internal/worker-fleet-controls`, `test/fixtures`.
-> - Redis API drift: several packages (`internal/dlq-remediation-pipeline`, `internal/storage-backends`) still reference removed `IdleTimeout`/`MaxConnAge` fields.
-> - Behavioral test flakes: `internal/advanced-rate-limiting`, `internal/anomaly-radar-slo-budget`, `internal/chaos-harness`, `internal/exactly_once`, `internal/forecasting` fail assertions/panic.
-> - Misc hygiene: numerous unused imports/vars in `internal/automatic-capacity-planning`, `internal/calendar-view`, `internal/event-hooks`, etc.—needs cleanup pass before end-to-end tests will go green.
->
-> Follow-ups
-> - Add the new analyzer invocation to `make lint` / pre-commit so it runs automatically (docs already mention how).
-> - Consider extending `writeErrorWithDetails` to cover success payloads that need custom detail structures (e.g., health checks) for richer semantics.
-> [!NOTE]
-> ### 2025-09-18 – Task chain scaffolding & BUGS breakdown
-> Converted CodeRabbit prompt scrape into structured worksheets, split accepted/rejected/pending buckets, and promoted each BUGS.md punch-list item into standalone tasks under `docs/issues/open`. Generated `task_chains.yaml`/`task_chains.md` using the new prompt set (domain-based waves, no inferred edges yet).
->
-> Changes
-> - Extracted latest CodeRabbit prompts, merged with chunk decisions, and emitted the worksheet triple (`README/Accepted/Rejected/Pending`).
-> - Moved every pending prompt into its own `docs/issues/open/*.md` file and ran the task chain generator with clean defaults.
-> - Added the seven BUGS.md action items as new task markdown files matching the planner schema.
->
-> Follow-ups
-> - Review domain waves and add real edges/critical path once dependencies are known.
-> - Flesh out durations/owners for the new BUGS tasks before scheduling.
-> - Decide whether to keep the per-issue markdowns in repo or move to tracking system.
+### Dependency Graph (module → direct internal deps)
+- admin → config, distributed-tracing-integration
+- admin-api → admin, anomaly-radar-slo-budget, config, exactly-once-patterns, exactly_once
+- anomaly-radar-slo-budget → (none)
+- automatic-capacity-planning → (none)
+- breaker → (none)
+- calendar-view → (none)
+- canary-deployments → (none)
+- chaos-harness → (none)
+- collaborative-session → (none)
+- config → (none)
+- distributed-tracing-integration → config
+- dlq-remediation-pipeline → (none)
+- event-hooks → (none)
+- exactly-once-patterns → (none)
+- exactly_once → (none)
+- forecasting → (none)
+- job-budgeting → (none)
+- job-genealogy-navigator → (none)
+- json-payload-studio → (none)
+- kubernetes-operator → (none)
+- long-term-archives → (none)
+- multi-cluster-control → admin, config
+- multi-tenant-isolation → (none)
+- obs → config, queue
+- patterned-load-generator → (none)
+- plugin-panel-system → (none)
+- policy-simulator → (none)
+- producer → config, obs, queue
+- producer-backpressure → (none)
+- queue → (none)
+- queue-snapshot-testing → (none)
+- rbac-and-tokens → (none)
+- reaper → config, obs, queue
+- redisclient → config
+- right-click-context-menus → (none)
+- smart-payload-deduplication → (none)
+- smart-retry-strategies → (none)
+- storage-backends → (none)
+- tenant → (none)
+- terminal-voice-commands → (none)
+- theme-playground → (none)
+- time-travel-debugger → (none)
+- trace-drilldown-log-tail → admin, config, distributed-tracing-integration
+- tui → admin, config
+- visual-dag-builder → (none)
+- worker → breaker, config, obs, queue
+- worker-fleet-controls → (none)
 
+### Suggested Stabilization Order
+advanced-rate-limiting → anomaly-radar-slo-budget → automatic-capacity-planning → breaker → calendar-view → canary-deployments → chaos-harness → collaborative-session → config → dlq-remediation-pipeline → event-hooks → exactly-once-patterns → exactly_once → forecasting → job-budgeting → job-genealogy-navigator → json-payload-studio → kubernetes-operator → long-term-archives → multi-tenant-isolation → patterned-load-generator → plugin-panel-system → policy-simulator → producer-backpressure → queue → queue-snapshot-testing → rbac-and-tokens → right-click-context-menus → smart-payload-deduplication → smart-retry-strategies → storage-backends → tenant → terminal-voice-commands → theme-playground → time-travel-debugger → visual-dag-builder → worker-fleet-controls → distributed-tracing-integration → redisclient → obs → admin → producer → reaper → worker → admin-api → multi-cluster-control → trace-drilldown-log-tail → tui
 
----
-## APPENDIX B: WILD IDEAS — HAVE A BRAINSTORM
-
-Capture ambitious, unconventional ideas. Some may be long-term or require new components; still worth recording for future exploration.
-
-- TUI: Live log tail + trace drill-down — attach to worker logs, show correlated OpenTelemetry spans; press a job to open its trace waterfall.
-- TUI: Visual DAG builder for multi-step workflows — drag-and-drop stages with dependencies, retries, and compensation actions; submit as a reusable pipeline.
-- TUI: Anomaly radar — backlog growth, p95 latency spikes, failure-rate heatmap; SLO error budget meter with burn alerts.
-- TUI: Interactive policy tuning — edit retry/backoff, rate limits, concurrency caps; preview impact with a simulator; apply with one keystroke.
-- TUI: Patterned load generator — sine/burst/ramp traffic models; schedule runs; export reproducible profiles for CI.
-- TUI: Multi-cluster control — tabs for multiple Redis endpoints; quick switch and side-by-side compare; propagate admin actions across clusters.
-- TUI: Plugin panel system — drop-in panels (Go, WASM, or Lua) for custom org metrics, transforms, or actions; hot-reload safely.
-- TUI: JSON payload studio — pretty-edit, validate, and enqueue; templates and snippets; schedule run-at/cron.
-- TUI: Calendar view — visualize scheduled and recurring jobs; click to reschedule or pause a rule.
-- TUI: Worker fleet controls — pause/resume/drain nodes; rolling restarts; live CPU/mem/net graphs per worker.
-- TUI: Right-click context menus everywhere — requeue, purge, copy payload, copy Redis key, open trace, export sample.
-- TUI: Collaborative session — multiplexed read-only share over SSH; presenter hands control with a key.
-- Project: Kubernetes Operator — CRDs for queues/workers; reconcile deployments; autoscale by backlog and SLA targets; preemption policies.
-- Project: Advanced rate limiting — token-bucket with priority fairness; global and per-tenant budgets; dynamic tuning via feedback signals.
-- Project: Producer backpressure — SDK hints when queues are saturated; adaptive rate; circuit breaking by priority.
-- Project: Multi-tenant isolation — quotas, per-tenant keys, encryption at rest (payload), audit logs, privacy scrubbing hooks.
-- Project: DLQ remediation pipeline — automatic classifiers to cluster failures; rules to auto-retry, transform, or quarantine.
-- Project: Long-term archives — stream completed jobs to ClickHouse/S3; TTL retention; fast query for forensics.
-- Project: Event hooks — webhooks or NATS for job state changes; Slack/PagerDuty notifications with deep links to TUI.
-- Project: Chaos harness — inject latency, drops, and Redis failovers; visualize recovery; automate soak/chaos scenarios.
-- Project: Forecasting — simple ARIMA/Prophet on backlog/throughput; recommend scale-up/down and SLA adjustments.
-- Project: Exactly-once patterns — idempotency keys, dedup sets, and transactional outbox patterns documented and optionally enforced.
-
-### Codex's Top Picks
-
-High‑leverage, high‑impact items to pursue first. Keep this table updated as priorities shift.
-
-| Idea                                  | Why                                        | First Steps                                                                 | Remarks                                                      | Difficulty | Complexity  | Wow factor  | Leverage Factor |
-| ------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- | ----------- | ----------- | --------------- |
-| HTTP/gRPC Admin API                   | Core enabler for TUI/web/automation/RBAC   | Define API (proto/OpenAPI); wrap existing admin funcs; add basic auth       | Version the API; unlocks Workers/DLQ features and remote ops | Medium     | Medium‑High | Medium      | High            |
-| DLQ Remediation UI                    | Reduces incident toil; fast, visible value | List/paginate DLQ; peek; requeue/purge; add filters/search                  | Needs admin endpoints; great demo for reliability wins       | Medium     | Medium      | High        | High            |
-| Trace Drill‑down + Log Tail           | Deep observability; faster RCA             | Ensure trace IDs; link to tracing UI; basic worker log tail with filters    | Start with external trace links; mind privacy/log volume     | Medium     | Medium      | High        | Medium          |
-| Interactive Policy Tuning + Simulator | Prevents outages; safe “what‑if”           | Read‑only preview; simple backlog/throughput model; dry‑run apply; rollback | Requires admin API to apply; start simulation offline        | High       | High        | High        | High            |
-| Patterned Load Generator              | Validates perf; great for demos            | Add sine/burst/ramp patterns; save/load profiles; chart overlay             | Build on bench; add guardrails (limits/jitter)               | Low        | Medium      | Medium      | Medium          |
-| Anomaly Radar + SLO Budget            | At‑a‑glance health; actionable signals     | Compute backlog growth, p95, failure rate; thresholds; status widget        | Define SLO; calibrate thresholds; integrate metrics          | Medium     | Medium      | Medium‑High | Medium‑High     |
-
----
-## Appendix C: Codex Ideas in Detail
-
-The detailed mini design specs have been moved to separate documents under `docs/ideas/`:
-
-- DLQ Remediation UI: `docs/ideas/dlq-remediation-ui.md`
-- Trace Drill‑down + Log Tail: `docs/ideas/trace-drilldown-log-tail.md`
-- Interactive Policy Tuning + Simulator: `docs/ideas/policy-simulator.md`
-- Patterned Load Generator: `docs/ideas/patterned-load-generator.md`
-- Anomaly Radar + SLO Budget: `docs/ideas/anomaly-radar-slo-budget.md`
-
-Keep the “Codex’s Top Picks” table above in sync with these docs.

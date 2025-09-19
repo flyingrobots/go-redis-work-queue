@@ -106,20 +106,20 @@ func TestRedisListsCapabilities(t *testing.T) {
 	// We can't actually connect to Redis in tests, so we'll create a mock
 	// but test the capability structure
 	expectedCaps := BackendCapabilities{
-		AtomicAck:          false,
-		ConsumerGroups:     false,
-		Replay:             false,
-		IdempotentEnqueue:  false,
-		Transactions:       true,
-		Persistence:        true,
-		Clustering:         false,
-		TimeToLive:         false,
-		Prioritization:     false,
-		BatchOperations:    true,
+		AtomicAck:         false,
+		ConsumerGroups:    false,
+		Replay:            false,
+		IdempotentEnqueue: false,
+		Transactions:      true,
+		Persistence:       true,
+		Clustering:        false,
+		TimeToLive:        false,
+		Prioritization:    false,
+		BatchOperations:   true,
 	}
 
 	// Create a mock backend with the same capabilities as Redis Lists
-	backend := NewMockBackend(expectedCaps)
+	backend := newTestBackend(expectedCaps)
 	caps := backend.Capabilities()
 
 	assert.Equal(t, expectedCaps.AtomicAck, caps.AtomicAck)
@@ -132,20 +132,20 @@ func TestRedisListsCapabilities(t *testing.T) {
 
 func TestRedisStreamsCapabilities(t *testing.T) {
 	expectedCaps := BackendCapabilities{
-		AtomicAck:          true,
-		ConsumerGroups:     true,
-		Replay:             true,
-		IdempotentEnqueue:  false,
-		Transactions:       true,
-		Persistence:        true,
-		Clustering:         false,
-		TimeToLive:         false,
-		Prioritization:     false,
-		BatchOperations:    true,
+		AtomicAck:         true,
+		ConsumerGroups:    true,
+		Replay:            true,
+		IdempotentEnqueue: false,
+		Transactions:      true,
+		Persistence:       true,
+		Clustering:        false,
+		TimeToLive:        false,
+		Prioritization:    false,
+		BatchOperations:   true,
 	}
 
 	// Create a mock backend with the same capabilities as Redis Streams
-	backend := NewMockBackend(expectedCaps)
+	backend := newTestBackend(expectedCaps)
 	caps := backend.Capabilities()
 
 	assert.Equal(t, expectedCaps.AtomicAck, caps.AtomicAck)
@@ -211,7 +211,7 @@ func TestRedisBackendRegistration(t *testing.T) {
 
 func TestRedisListsSimulatedOperations(t *testing.T) {
 	// Simulate Redis Lists behavior with mock backend
-	backend := NewMockBackend(BackendCapabilities{
+	backend := newTestBackend(BackendCapabilities{
 		Transactions:    true,
 		Persistence:     true,
 		BatchOperations: true,
@@ -234,7 +234,7 @@ func TestRedisListsSimulatedOperations(t *testing.T) {
 		RetryCount: 0,
 		MaxRetries: 3,
 		Metadata: map[string]interface{}{
-			"source": "api",
+			"source":  "api",
 			"user_id": 12345,
 		},
 		Tags: []string{"urgent", "notification"},
@@ -262,7 +262,7 @@ func TestRedisListsSimulatedOperations(t *testing.T) {
 
 func TestRedisStreamsSimulatedOperations(t *testing.T) {
 	// Simulate Redis Streams behavior with mock backend
-	backend := NewMockBackend(BackendCapabilities{
+	backend := newTestBackend(BackendCapabilities{
 		AtomicAck:       true,
 		ConsumerGroups:  true,
 		Replay:          true,
@@ -338,7 +338,7 @@ func TestRedisClusterKeyTagging(t *testing.T) {
 
 func TestRedisBackendErrorHandling(t *testing.T) {
 	// Test various error conditions
-	backend := NewMockBackend(BackendCapabilities{})
+	backend := newTestBackend(BackendCapabilities{})
 	ctx := context.Background()
 
 	// Test operations after backend is closed
@@ -380,7 +380,7 @@ func TestRedisBackendErrorHandling(t *testing.T) {
 }
 
 func BenchmarkRedisListsSimulation(b *testing.B) {
-	backend := NewMockBackend(BackendCapabilities{
+	backend := newTestBackend(BackendCapabilities{
 		Transactions:    true,
 		Persistence:     true,
 		BatchOperations: true,
@@ -405,7 +405,7 @@ func BenchmarkRedisListsSimulation(b *testing.B) {
 	})
 
 	// Reset backend for dequeue benchmark
-	backend = NewMockBackend(BackendCapabilities{
+	backend = newTestBackend(BackendCapabilities{
 		Transactions:    true,
 		Persistence:     true,
 		BatchOperations: true,
@@ -429,7 +429,7 @@ func BenchmarkRedisListsSimulation(b *testing.B) {
 }
 
 func BenchmarkRedisStreamsSimulation(b *testing.B) {
-	backend := NewMockBackend(BackendCapabilities{
+	backend := newTestBackend(BackendCapabilities{
 		AtomicAck:       true,
 		ConsumerGroups:  true,
 		Replay:          true,
@@ -457,7 +457,7 @@ func BenchmarkRedisStreamsSimulation(b *testing.B) {
 	})
 
 	// Reset backend for dequeue benchmark
-	backend = NewMockBackend(BackendCapabilities{
+	backend = newTestBackend(BackendCapabilities{
 		AtomicAck:       true,
 		ConsumerGroups:  true,
 		Replay:          true,

@@ -1,3 +1,6 @@
+//go:build tui_experimental
+// +build tui_experimental
+
 package tui
 
 import (

@@ -98,14 +98,14 @@ func NewRedisStreamsBackend(config RedisStreamsConfig) (*RedisStreamsBackend, er
 	if config.ClusterMode && len(config.ClusterAddrs) > 0 {
 		// Redis Cluster client
 		clusterClient := redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:        config.ClusterAddrs,
-			Password:     config.Password,
-			MaxRetries:   config.MaxRetries,
-			DialTimeout:  config.ConnTimeout,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-			PoolTimeout:  config.PoolTimeout,
-			IdleTimeout:  config.IdleTimeout,
+			Addrs:           config.ClusterAddrs,
+			Password:        config.Password,
+			MaxRetries:      config.MaxRetries,
+			DialTimeout:     config.ConnTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
+			PoolTimeout:     config.PoolTimeout,
+			ConnMaxIdleTime: config.IdleTimeout,
 		})
 		client = clusterClient
 	} else {
@@ -122,7 +122,7 @@ func NewRedisStreamsBackend(config RedisStreamsConfig) (*RedisStreamsBackend, er
 		opt.ReadTimeout = config.ReadTimeout
 		opt.WriteTimeout = config.WriteTimeout
 		opt.PoolTimeout = config.PoolTimeout
-		opt.IdleTimeout = config.IdleTimeout
+		opt.ConnMaxIdleTime = config.IdleTimeout
 
 		if config.MaxConnections > 0 {
 			opt.PoolSize = config.MaxConnections
@@ -248,7 +248,7 @@ func (r *RedisStreamsBackend) Enqueue(ctx context.Context, job *Job) error {
 
 	if r.config.MaxLength > 0 {
 		args.MaxLen = r.config.MaxLength
-		args.MaxLenApprox = 1
+		args.Approx = true
 	}
 
 	_, err := r.client.XAdd(ctx, args).Result()

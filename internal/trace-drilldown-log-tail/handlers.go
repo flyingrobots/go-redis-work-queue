@@ -216,8 +216,6 @@ func (h *HTTPHandlers) handleLogStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandlers) handleExtractJobTrace(w http.ResponseWriter, r *http.Request) {
-	jobPayload := mux.Vars(r)["jobPayload"]
-
 	// For now, expect the job payload to be passed in the request body
 	var payload struct {
 		JobData string `json:"job_data"`
@@ -271,7 +269,7 @@ func (h *HTTPHandlers) writeJSON(w http.ResponseWriter, status int, data interfa
 func (h *HTTPHandlers) writeError(w http.ResponseWriter, status int, message string, err error) {
 	h.logger.Error(message, zap.Error(err))
 	h.writeJSON(w, status, map[string]interface{}{
-		"error":   message,
+		"error": message,
 		"details": func() string {
 			if err != nil {
 				return err.Error()
@@ -336,30 +334,19 @@ func (tcr *TailConfigRequest) ToTailConfig() TailConfig {
 
 // EnhancedPeekRequest includes trace enhancement options
 type EnhancedPeekRequest struct {
-	Queue           string `json:"queue"`
-	Count           int    `json:"count,omitempty"`
-	IncludeTraces   bool   `json:"include_traces,omitempty"`
-	IncludeActions  bool   `json:"include_actions,omitempty"`
+	Queue          string `json:"queue"`
+	Count          int    `json:"count,omitempty"`
+	IncludeTraces  bool   `json:"include_traces,omitempty"`
+	IncludeActions bool   `json:"include_actions,omitempty"`
 }
 
 // EnhancedPeekResponse includes trace information with jobs
 type EnhancedPeekResponse struct {
-	Queue         string                     `json:"queue"`
-	Items         []string                   `json:"items"`
-	TraceInfo     map[string]*TraceInfo      `json:"trace_info,omitempty"`
-	TraceActions  map[string][]TraceLink     `json:"trace_actions,omitempty"`
-	JobsWithTrace []JobWithTraceInfo         `json:"jobs_with_trace,omitempty"`
-}
-
-// JobWithTraceInfo represents a job with its associated trace information
-type JobWithTraceInfo struct {
-	JobID        string       `json:"job_id"`
-	JobData      string       `json:"job_data"`
-	TraceID      string       `json:"trace_id,omitempty"`
-	SpanID       string       `json:"span_id,omitempty"`
-	TraceInfo    *TraceInfo   `json:"trace_info,omitempty"`
-	TraceLinks   []TraceLink  `json:"trace_links,omitempty"`
-	LogEntries   []LogEntry   `json:"log_entries,omitempty"`
+	Queue         string                 `json:"queue"`
+	Items         []string               `json:"items"`
+	TraceInfo     map[string]*TraceInfo  `json:"trace_info,omitempty"`
+	TraceActions  map[string][]TraceLink `json:"trace_actions,omitempty"`
+	JobsWithTrace []JobWithTraceInfo     `json:"jobs_with_trace,omitempty"`
 }
 
 // Enhanced peek handler that includes trace information

@@ -127,7 +127,7 @@ func TestCoverageBasics(t *testing.T) {
 	}
 
 	// Test global functions
-	RegisterBackend("test-backend", &MockFactory{})
+	RegisterBackend("test-backend", &coverageMockFactory{})
 	allBackends := defaultReg.List()
 	found := false
 	for _, name := range allBackends {
@@ -334,7 +334,7 @@ func testErrorCodeCoverage(t *testing.T) {
 
 func testBackendConfigAndCRUD(t *testing.T, manager *BackendManager) {
 	// Test backend registration and creation
-	factory := &MockFactory{}
+	factory := &coverageMockFactory{}
 	config := MockConfig{URL: "test://localhost"}
 
 	// Test factory create
@@ -491,29 +491,39 @@ type MockConfig struct {
 	URL string
 }
 
-// MockFactory for testing
-type MockFactory struct{}
+// coverageMockFactory for testing
+type coverageMockFactory struct{}
 
-func (f *MockFactory) Create(config interface{}) (QueueBackend, error) {
-	return &MockBackend{}, nil
+func (f *coverageMockFactory) Create(config interface{}) (QueueBackend, error) {
+	return &coverageMockBackend{}, nil
 }
 
-func (f *MockFactory) Validate(config interface{}) error {
+func (f *coverageMockFactory) Validate(config interface{}) error {
 	return nil
 }
 
-// MockBackend for testing
-type MockBackend struct{}
+// coverageMockBackend for testing
+type coverageMockBackend struct{}
 
-func (m *MockBackend) Enqueue(ctx context.Context, job *Job) error { return nil }
-func (m *MockBackend) Dequeue(ctx context.Context, opts DequeueOptions) (*Job, error) { return nil, nil }
-func (m *MockBackend) Ack(ctx context.Context, jobID string) error { return nil }
-func (m *MockBackend) Nack(ctx context.Context, jobID string, requeue bool) error { return nil }
-func (m *MockBackend) Length(ctx context.Context) (int64, error) { return 0, nil }
-func (m *MockBackend) Peek(ctx context.Context, offset int64) (*Job, error) { return nil, nil }
-func (m *MockBackend) Move(ctx context.Context, jobID string, targetQueue string) error { return nil }
-func (m *MockBackend) Iter(ctx context.Context, opts IterOptions) (Iterator, error) { return NewJobIterator([]*Job{}), nil }
-func (m *MockBackend) Capabilities() BackendCapabilities { return BackendCapabilities{} }
-func (m *MockBackend) Stats(ctx context.Context) (*BackendStats, error) { return &BackendStats{}, nil }
-func (m *MockBackend) Health(ctx context.Context) HealthStatus { return HealthStatus{Status: HealthStatusHealthy} }
-func (m *MockBackend) Close() error { return nil }
+func (m *coverageMockBackend) Enqueue(ctx context.Context, job *Job) error { return nil }
+func (m *coverageMockBackend) Dequeue(ctx context.Context, opts DequeueOptions) (*Job, error) {
+	return nil, nil
+}
+func (m *coverageMockBackend) Ack(ctx context.Context, jobID string) error                { return nil }
+func (m *coverageMockBackend) Nack(ctx context.Context, jobID string, requeue bool) error { return nil }
+func (m *coverageMockBackend) Length(ctx context.Context) (int64, error)                  { return 0, nil }
+func (m *coverageMockBackend) Peek(ctx context.Context, offset int64) (*Job, error)       { return nil, nil }
+func (m *coverageMockBackend) Move(ctx context.Context, jobID string, targetQueue string) error {
+	return nil
+}
+func (m *coverageMockBackend) Iter(ctx context.Context, opts IterOptions) (Iterator, error) {
+	return NewJobIterator([]*Job{}), nil
+}
+func (m *coverageMockBackend) Capabilities() BackendCapabilities { return BackendCapabilities{} }
+func (m *coverageMockBackend) Stats(ctx context.Context) (*BackendStats, error) {
+	return &BackendStats{}, nil
+}
+func (m *coverageMockBackend) Health(ctx context.Context) HealthStatus {
+	return HealthStatus{Status: HealthStatusHealthy}
+}
+func (m *coverageMockBackend) Close() error { return nil }

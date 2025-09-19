@@ -7,18 +7,18 @@ import (
 // Color Palette - Professional Terminal Colors
 var (
 	// Base Colors
-	colorPrimary      = lipgloss.AdaptiveColor{Light: "#0969da", Dark: "#58a6ff"}
-	colorSecondary    = lipgloss.AdaptiveColor{Light: "#6f42c1", Dark: "#d2a8ff"}
-	colorSuccess      = lipgloss.AdaptiveColor{Light: "#1a7f37", Dark: "#56d364"}
-	colorWarning      = lipgloss.AdaptiveColor{Light: "#bf8700", Dark: "#f9e71e"}
-	colorError        = lipgloss.AdaptiveColor{Light: "#cf222e", Dark: "#f85149"}
-	colorInfo         = lipgloss.AdaptiveColor{Light: "#0969da", Dark: "#79c0ff"}
+	colorPrimary   = lipgloss.AdaptiveColor{Light: "#0969da", Dark: "#58a6ff"}
+	colorSecondary = lipgloss.AdaptiveColor{Light: "#6f42c1", Dark: "#d2a8ff"}
+	colorSuccess   = lipgloss.AdaptiveColor{Light: "#1a7f37", Dark: "#56d364"}
+	colorWarning   = lipgloss.AdaptiveColor{Light: "#bf8700", Dark: "#f9e71e"}
+	colorError     = lipgloss.AdaptiveColor{Light: "#cf222e", Dark: "#f85149"}
+	colorInfo      = lipgloss.AdaptiveColor{Light: "#0969da", Dark: "#79c0ff"}
 
 	// Background Colors
-	colorBgPrimary    = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#0d1117"}
-	colorBgSecondary  = lipgloss.AdaptiveColor{Light: "#f6f8fa", Dark: "#21262d"}
-	colorBgAccent     = lipgloss.AdaptiveColor{Light: "#e1f5fe", Dark: "#161b22"}
-	colorBgMuted      = lipgloss.AdaptiveColor{Light: "#f0f6fc", Dark: "#1c2128"}
+	colorBgPrimary   = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#0d1117"}
+	colorBgSecondary = lipgloss.AdaptiveColor{Light: "#f6f8fa", Dark: "#21262d"}
+	colorBgAccent    = lipgloss.AdaptiveColor{Light: "#e1f5fe", Dark: "#161b22"}
+	colorBgMuted     = lipgloss.AdaptiveColor{Light: "#f0f6fc", Dark: "#1c2128"}
 
 	// Border Colors
 	colorBorderPrimary   = lipgloss.AdaptiveColor{Light: "#d0d7de", Dark: "#30363d"}
@@ -36,9 +36,9 @@ var (
 // Responsive Styles - Adapt to terminal width
 type StyleSet struct {
 	// Headers and Titles
-	AppTitle    lipgloss.Style
+	AppTitle     lipgloss.Style
 	SectionTitle lipgloss.Style
-	SubTitle    lipgloss.Style
+	SubTitle     lipgloss.Style
 
 	// Content Containers
 	Panel       lipgloss.Style
@@ -54,16 +54,16 @@ type StyleSet struct {
 	StatusMuted   lipgloss.Style
 
 	// Interactive Elements
-	Button        lipgloss.Style
-	ButtonActive  lipgloss.Style
-	ButtonDanger  lipgloss.Style
-	TabActive     lipgloss.Style
-	TabInactive   lipgloss.Style
+	Button       lipgloss.Style
+	ButtonActive lipgloss.Style
+	ButtonDanger lipgloss.Style
+	TabActive    lipgloss.Style
+	TabInactive  lipgloss.Style
 
 	// Layout Elements
-	Separator     lipgloss.Style
-	Progress      lipgloss.Style
-	Loading       lipgloss.Style
+	Separator lipgloss.Style
+	Progress  lipgloss.Style
+	Loading   lipgloss.Style
 
 	// Terminal Breakpoint Info
 	Breakpoint string
@@ -449,7 +449,6 @@ func (s StyleSet) CreateMetricDisplay(label, value, trend string) string {
 
 // CreateLoadingSpinner creates animated loading indicators
 func (s StyleSet) CreateLoadingSpinner(text string) string {
-	spinner := "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏" // Braille spinner
-	// In real implementation, you'd cycle through these characters
+	// TODO: animate through a spinner sequence once the rendering loop is wired up.
 	return s.Loading.Render("⠋ " + text)
 }

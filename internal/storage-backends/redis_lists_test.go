@@ -476,26 +476,26 @@ func createRedisListsBackend(config RedisListsConfig, queueName string) (*RedisL
 
 	if config.ClusterMode {
 		client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:        config.ClusterAddrs,
-			Password:     config.Password,
-			DialTimeout:  config.ConnTimeout,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-			PoolTimeout:  config.PoolTimeout,
-			IdleTimeout:  config.IdleTimeout,
-			MaxRetries:   config.MaxRetries,
+			Addrs:           config.ClusterAddrs,
+			Password:        config.Password,
+			DialTimeout:     config.ConnTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
+			PoolTimeout:     config.PoolTimeout,
+			ConnMaxIdleTime: config.IdleTimeout,
+			MaxRetries:      config.MaxRetries,
 		})
 	} else {
 		client = redis.NewClient(&redis.Options{
-			Addr:         config.URL[8:], // Remove redis:// prefix
-			Password:     config.Password,
-			DB:           config.Database,
-			DialTimeout:  config.ConnTimeout,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-			PoolTimeout:  config.PoolTimeout,
-			IdleTimeout:  config.IdleTimeout,
-			MaxRetries:   config.MaxRetries,
+			Addr:            config.URL[8:], // Remove redis:// prefix
+			Password:        config.Password,
+			DB:              config.Database,
+			DialTimeout:     config.ConnTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
+			PoolTimeout:     config.PoolTimeout,
+			ConnMaxIdleTime: config.IdleTimeout,
+			MaxRetries:      config.MaxRetries,
 		})
 	}
 

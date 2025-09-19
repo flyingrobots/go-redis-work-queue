@@ -108,7 +108,7 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 		help2:         help2,
 		pb:            bubprog.New(bubprog.WithDefaultGradient()),
 		activeTab:     tabJobs,
-		spring:        harmonica.NewSpring(harmonica.FPS(float64(fps)), 6.0, 0.25),
+		spring:        harmonica.NewSpring(harmonica.FPS(fps), 6.0, 0.25),
 		expPos:        0.0,
 		expVel:        0.0,
 		expTarget:     0.0,

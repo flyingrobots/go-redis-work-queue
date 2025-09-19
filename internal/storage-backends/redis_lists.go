@@ -82,7 +82,6 @@ func NewRedisListsBackend(config RedisListsConfig) (*RedisListsBackend, error) {
 			ReadTimeout:  config.ReadTimeout,
 			WriteTimeout: config.WriteTimeout,
 			PoolTimeout:  config.PoolTimeout,
-			IdleTimeout:  config.IdleTimeout,
 		})
 		client = clusterClient
 	} else {
@@ -99,7 +98,6 @@ func NewRedisListsBackend(config RedisListsConfig) (*RedisListsBackend, error) {
 		opt.ReadTimeout = config.ReadTimeout
 		opt.WriteTimeout = config.WriteTimeout
 		opt.PoolTimeout = config.PoolTimeout
-		opt.IdleTimeout = config.IdleTimeout
 
 		if config.MaxConnections > 0 {
 			opt.PoolSize = config.MaxConnections
