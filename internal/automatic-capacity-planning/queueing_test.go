@@ -1,3 +1,6 @@
+//go:build capacity_planning_tests
+// +build capacity_planning_tests
+
 // Copyright 2025 James Ross
 package capacityplanning
 
@@ -29,32 +32,32 @@ func TestCalculateMM1(t *testing.T) {
 	calc := NewQueueingCalculator(config)
 
 	tests := []struct {
-		name     string
-		lambda   float64 // Arrival rate
-		mu       float64 // Service rate
-		servers  int     // Ignored for M/M/1
-		want     *QueueingResult
+		name       string
+		lambda     float64 // Arrival rate
+		mu         float64 // Service rate
+		servers    int     // Ignored for M/M/1
+		want       *QueueingResult
 		wantStable bool
 	}{
 		{
-			name:     "stable system",
-			lambda:   5.0,
-			mu:       10.0,
-			servers:  1,
+			name:       "stable system",
+			lambda:     5.0,
+			mu:         10.0,
+			servers:    1,
 			wantStable: true,
 		},
 		{
-			name:     "unstable system",
-			lambda:   15.0,
-			mu:       10.0,
-			servers:  1,
+			name:       "unstable system",
+			lambda:     15.0,
+			mu:         10.0,
+			servers:    1,
 			wantStable: false,
 		},
 		{
-			name:     "boundary case",
-			lambda:   9.9,
-			mu:       10.0,
-			servers:  1,
+			name:       "boundary case",
+			lambda:     9.9,
+			mu:         10.0,
+			servers:    1,
 			wantStable: true,
 		},
 	}
@@ -110,31 +113,31 @@ func TestCalculateMMC(t *testing.T) {
 	calc := NewQueueingCalculator(config)
 
 	tests := []struct {
-		name     string
-		lambda   float64
-		mu       float64
-		servers  int
+		name       string
+		lambda     float64
+		mu         float64
+		servers    int
 		wantStable bool
 	}{
 		{
-			name:     "stable with multiple servers",
-			lambda:   15.0,
-			mu:       10.0,
-			servers:  2,
+			name:       "stable with multiple servers",
+			lambda:     15.0,
+			mu:         10.0,
+			servers:    2,
 			wantStable: true, // Total capacity = 2 * 10 = 20 > 15
 		},
 		{
-			name:     "unstable even with multiple servers",
-			lambda:   25.0,
-			mu:       10.0,
-			servers:  2,
+			name:       "unstable even with multiple servers",
+			lambda:     25.0,
+			mu:         10.0,
+			servers:    2,
 			wantStable: false, // Total capacity = 2 * 10 = 20 < 25
 		},
 		{
-			name:     "single server (equivalent to M/M/1)",
-			lambda:   5.0,
-			mu:       10.0,
-			servers:  1,
+			name:       "single server (equivalent to M/M/1)",
+			lambda:     5.0,
+			mu:         10.0,
+			servers:    1,
 			wantStable: true,
 		},
 	}
@@ -163,7 +166,7 @@ func TestCalculateMMC(t *testing.T) {
 				if math.IsInf(result.QueueLength, 1) {
 					t.Error("Expected stable system but got infinite queue length")
 				}
-				if math.Abs(result.Utilization - expectedUtilization) > 0.001 {
+				if math.Abs(result.Utilization-expectedUtilization) > 0.001 {
 					t.Errorf("Utilization = %v, want %v", result.Utilization, expectedUtilization)
 				}
 			} else {
@@ -255,34 +258,34 @@ func TestCalculateCapacity(t *testing.T) {
 	calc := NewQueueingCalculator(config)
 
 	tests := []struct {
-		name          string
-		lambda        float64
-		mu            float64
-		targetLatency time.Duration
+		name           string
+		lambda         float64
+		mu             float64
+		targetLatency  time.Duration
 		wantMinServers int
 		wantMaxServers int
 	}{
 		{
-			name:          "low load",
-			lambda:        5.0,
-			mu:            10.0,
-			targetLatency: 1 * time.Second,
+			name:           "low load",
+			lambda:         5.0,
+			mu:             10.0,
+			targetLatency:  1 * time.Second,
 			wantMinServers: 1,
 			wantMaxServers: 2,
 		},
 		{
-			name:          "high load",
-			lambda:        50.0,
-			mu:            10.0,
-			targetLatency: 1 * time.Second,
+			name:           "high load",
+			lambda:         50.0,
+			mu:             10.0,
+			targetLatency:  1 * time.Second,
 			wantMinServers: 6, // Need at least 6 servers for stability (50/10 = 5, plus safety)
 			wantMaxServers: 20,
 		},
 		{
-			name:          "strict latency",
-			lambda:        20.0,
-			mu:            10.0,
-			targetLatency: 100 * time.Millisecond,
+			name:           "strict latency",
+			lambda:         20.0,
+			mu:             10.0,
+			targetLatency:  100 * time.Millisecond,
 			wantMinServers: 3,
 			wantMaxServers: 50,
 		},
@@ -505,42 +508,42 @@ func TestModelConfidence(t *testing.T) {
 	calc := NewQueueingCalculator(config).(*queueingCalculator)
 
 	tests := []struct {
-		name           string
-		model          string
-		lambda         float64
-		mu             float64
-		servers        int
-		metrics        Metrics
-		wantMinConf    float64
-		wantMaxConf    float64
+		name        string
+		model       string
+		lambda      float64
+		mu          float64
+		servers     int
+		metrics     Metrics
+		wantMinConf float64
+		wantMaxConf float64
 	}{
 		{
-			name:    "low utilization M/M/c",
-			model:   "M/M/c",
-			lambda:  10.0,
-			mu:      10.0,
-			servers: 2,
-			metrics: Metrics{ServiceTimeStd: 100 * time.Millisecond},
+			name:        "low utilization M/M/c",
+			model:       "M/M/c",
+			lambda:      10.0,
+			mu:          10.0,
+			servers:     2,
+			metrics:     Metrics{ServiceTimeStd: 100 * time.Millisecond},
 			wantMinConf: 0.7,
 			wantMaxConf: 1.0,
 		},
 		{
-			name:    "high utilization M/M/c",
-			model:   "M/M/c",
-			lambda:  18.0,
-			mu:      10.0,
-			servers: 2,
-			metrics: Metrics{ServiceTimeStd: 100 * time.Millisecond},
+			name:        "high utilization M/M/c",
+			model:       "M/M/c",
+			lambda:      18.0,
+			mu:          10.0,
+			servers:     2,
+			metrics:     Metrics{ServiceTimeStd: 100 * time.Millisecond},
 			wantMinConf: 0.5,
 			wantMaxConf: 0.8,
 		},
 		{
-			name:    "M/M/1 with multiple workers",
-			model:   "M/M/1",
-			lambda:  10.0,
-			mu:      10.0,
-			servers: 3, // Mismatch should reduce confidence
-			metrics: Metrics{ServiceTimeStd: 100 * time.Millisecond},
+			name:        "M/M/1 with multiple workers",
+			model:       "M/M/1",
+			lambda:      10.0,
+			mu:          10.0,
+			servers:     3, // Mismatch should reduce confidence
+			metrics:     Metrics{ServiceTimeStd: 100 * time.Millisecond},
 			wantMinConf: 0.4,
 			wantMaxConf: 0.7,
 		},

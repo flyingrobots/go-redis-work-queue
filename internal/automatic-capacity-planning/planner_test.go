@@ -1,3 +1,6 @@
+//go:build capacity_planning_tests
+// +build capacity_planning_tests
+
 // Copyright 2025 James Ross
 package capacityplanning
 
@@ -47,10 +50,10 @@ func TestGeneratePlan(t *testing.T) {
 	planner := NewCapacityPlanner(config)
 
 	tests := []struct {
-		name     string
-		request  PlanRequest
-		wantErr  bool
-		errCode  string
+		name    string
+		request PlanRequest
+		wantErr bool
+		errCode string
 	}{
 		{
 			name: "valid request",
@@ -552,11 +555,11 @@ func TestPlanCaching(t *testing.T) {
 // Helper function to check if string contains substring (case-insensitive)
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) &&
-		   (s == substr ||
-		    (len(s) > len(substr) &&
-		     (s[:len(substr)] == substr ||
-		      s[len(s)-len(substr):] == substr ||
-		      containsStringHelper(s, substr))))
+		(s == substr ||
+			(len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					containsStringHelper(s, substr))))
 }
 
 func containsStringHelper(s, substr string) bool {

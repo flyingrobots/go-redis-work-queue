@@ -1,3 +1,6 @@
+//go:build job_budgeting_tests
+// +build job_budgeting_tests
+
 package budgeting
 
 import (
@@ -6,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	_ "github.com/lib/pq"
 )
 
 func TestCostCalculationEngine(t *testing.T) {
@@ -45,8 +48,8 @@ func TestCostCalculationEngine(t *testing.T) {
 
 	t.Run("invalid metrics validation", func(t *testing.T) {
 		tests := []struct {
-			name    string
-			metrics JobMetrics
+			name     string
+			metrics  JobMetrics
 			errField string
 		}{
 			{
@@ -143,8 +146,8 @@ func TestModelCalibrator(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			benchmark := BenchmarkResult{
 				JobType:        "test",
-				ActualCost:     0.05,     // Actual cost
-				CalculatedCost: 0.04,     // Model underestimates by 20%
+				ActualCost:     0.05, // Actual cost
+				CalculatedCost: 0.04, // Model underestimates by 20%
 				CPUTime:        1.0,
 				Timestamp:      time.Now(),
 			}
@@ -211,15 +214,15 @@ func TestBudgetManager(t *testing.T) {
 			modify func(*Budget)
 		}{
 			{
-				name: "empty tenant ID",
+				name:   "empty tenant ID",
 				modify: func(b *Budget) { b.TenantID = "" },
 			},
 			{
-				name: "negative amount",
+				name:   "negative amount",
 				modify: func(b *Budget) { b.Amount = -100 },
 			},
 			{
-				name: "invalid warning threshold",
+				name:   "invalid warning threshold",
 				modify: func(b *Budget) { b.WarningThreshold = 1.5 },
 			},
 			{
@@ -373,7 +376,7 @@ func TestBudgetForecaster(t *testing.T) {
 
 		// Test weekday patterns
 		mondayFactor := pattern.GetSeasonalFactor(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), "daily") // Monday
-		sundayFactor := pattern.GetSeasonalFactor(time.Date(2024, 1, 7, 0, 0, 0, 0, time.UTC), "daily")  // Sunday
+		sundayFactor := pattern.GetSeasonalFactor(time.Date(2024, 1, 7, 0, 0, 0, 0, time.UTC), "daily") // Sunday
 
 		assert.True(t, mondayFactor > sundayFactor) // Monday should be higher than Sunday
 

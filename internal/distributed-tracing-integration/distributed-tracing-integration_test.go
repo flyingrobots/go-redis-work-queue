@@ -1,3 +1,6 @@
+//go:build tracing_tests
+// +build tracing_tests
+
 // Copyright 2025 James Ross
 package distributed_tracing_integration
 

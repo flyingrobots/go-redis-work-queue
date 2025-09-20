@@ -68,9 +68,16 @@ func (c *TracingUIConfig) GetTraceURL(traceID string) string {
 
 // replaceTraceID replaces {traceID} placeholder in URL template
 func replaceTraceID(template, traceID string) string {
-	result := strings.ReplaceAll(template, "{traceID}", traceID)
-	result = strings.ReplaceAll(result, "{trace_id}", traceID)
-	result = strings.ReplaceAll(result, "{{traceID}}", traceID)
-	result = strings.ReplaceAll(result, "{{trace_id}}", traceID)
+	replacements := []string{
+		"{{traceID}}",
+		"{{trace_id}}",
+		"{traceID}",
+		"{trace_id}",
+	}
+
+	result := template
+	for _, pattern := range replacements {
+		result = strings.ReplaceAll(result, pattern, traceID)
+	}
 	return result
 }

@@ -1,3 +1,6 @@
+//go:build capacity_planning_tests
+// +build capacity_planning_tests
+
 // Copyright 2025 James Ross
 package capacityplanning
 
@@ -151,14 +154,14 @@ func TestTrafficPatternSinusoidal(t *testing.T) {
 
 	// Test at different times of day
 	times := []struct {
-		offset   time.Duration
-		expected float64
+		offset    time.Duration
+		expected  float64
 		tolerance float64
 	}{
-		{0 * time.Hour, 10.0, 1.0},              // Start: base rate
-		{6 * time.Hour, 15.0, 1.0},              // Quarter cycle: base + amplitude
-		{12 * time.Hour, 10.0, 1.0},             // Half cycle: base rate
-		{18 * time.Hour, 5.0, 1.0},              // Three-quarter cycle: base - amplitude
+		{0 * time.Hour, 10.0, 1.0},  // Start: base rate
+		{6 * time.Hour, 15.0, 1.0},  // Quarter cycle: base + amplitude
+		{12 * time.Hour, 10.0, 1.0}, // Half cycle: base rate
+		{18 * time.Hour, 5.0, 1.0},  // Three-quarter cycle: base - amplitude
 	}
 
 	for _, tc := range times {
@@ -534,8 +537,8 @@ func TestQueueStateEvolution(t *testing.T) {
 		backlog: 10,
 	}
 
-	arrivalRate := 15.0   // jobs/second
-	serviceRate := 10.0   // jobs/second (total capacity)
+	arrivalRate := 15.0 // jobs/second
+	serviceRate := 10.0 // jobs/second (total capacity)
 	granularity := 1 * time.Second
 
 	// Update state

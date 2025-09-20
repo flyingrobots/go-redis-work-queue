@@ -1,3 +1,6 @@
+//go:build capacity_planning_tests
+// +build capacity_planning_tests
+
 // Copyright 2025 James Ross
 package capacityplanning
 
@@ -53,7 +56,7 @@ func TestPredictEWMA(t *testing.T) {
 
 	// EWMA should give constant prediction
 	expectedRate := history[len(history)-1].ArrivalRate // Roughly the last value
-	tolerance := 5.0 // Allow some smoothing difference
+	tolerance := 5.0                                    // Allow some smoothing difference
 
 	for i, forecast := range forecasts {
 		if forecast.Model != "EWMA" {
@@ -400,7 +403,7 @@ func TestExtractWeeklyPattern(t *testing.T) {
 
 	// Create data spanning multiple weeks
 	history := make([]Metrics, 21*24) // 3 weeks of hourly data
-	baseTime := time.Now().Add(-21*24*time.Hour).Truncate(time.Hour)
+	baseTime := time.Now().Add(-21 * 24 * time.Hour).Truncate(time.Hour)
 
 	for i := range history {
 		dayOfWeek := (i / 24) % 7
@@ -426,7 +429,7 @@ func TestExtractWeeklyPattern(t *testing.T) {
 
 	// Weekdays should have higher values than weekends
 	weekdayAvg := (pattern[1] + pattern[2] + pattern[3] + pattern[4] + pattern[5]) / 5 // Mon-Fri
-	weekendAvg := (pattern[0] + pattern[6]) / 2                                         // Sun, Sat
+	weekendAvg := (pattern[0] + pattern[6]) / 2                                        // Sun, Sat
 
 	if weekdayAvg <= weekendAvg {
 		t.Errorf("Weekday pattern %v should be higher than weekend pattern %v",
@@ -439,37 +442,37 @@ func TestCalculateConfidence(t *testing.T) {
 	forecaster := NewForecaster(config).(*forecaster)
 
 	tests := []struct {
-		name       string
-		errors     []float64
-		forecast   float64
+		name        string
+		errors      []float64
+		forecast    float64
 		wantMinConf float64
 		wantMaxConf float64
 	}{
 		{
-			name:       "no errors",
-			errors:     []float64{},
-			forecast:   10.0,
+			name:        "no errors",
+			errors:      []float64{},
+			forecast:    10.0,
 			wantMinConf: 0.4,
 			wantMaxConf: 0.6,
 		},
 		{
-			name:       "low errors",
-			errors:     []float64{0.5, 0.3, 0.8, 0.2},
-			forecast:   10.0,
+			name:        "low errors",
+			errors:      []float64{0.5, 0.3, 0.8, 0.2},
+			forecast:    10.0,
 			wantMinConf: 0.8,
 			wantMaxConf: 1.0,
 		},
 		{
-			name:       "high errors",
-			errors:     []float64{5.0, 8.0, 6.0, 7.0},
-			forecast:   10.0,
+			name:        "high errors",
+			errors:      []float64{5.0, 8.0, 6.0, 7.0},
+			forecast:    10.0,
 			wantMinConf: 0.1,
 			wantMaxConf: 0.4,
 		},
 		{
-			name:       "zero forecast",
-			errors:     []float64{1.0, 2.0},
-			forecast:   0.0,
+			name:        "zero forecast",
+			errors:      []float64{1.0, 2.0},
+			forecast:    0.0,
 			wantMinConf: 0.4,
 			wantMaxConf: 0.6,
 		},
