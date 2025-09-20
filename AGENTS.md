@@ -134,6 +134,33 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
+- [ ] Real green: capacity planning/forecasting/policy simulator suite
+- [ ] Real green: distributed tracing integration suite
+- [ ] Real green: job budgeting suite
+- [ ] Real green: JSON payload studio suite
+- [ ] Real green: long-term archives suite
+- [ ] Real green: advanced rate limiting suite
+- [ ] Real green: anomaly radar / SLO budget suite
+- [ ] Real green: canary deployments suite
+- [ ] Real green: chaos harness suite
+- [ ] Real green: multi-cluster control suite
+- [ ] Real green: multi-tenant isolation suite
+- [ ] Real green: smart payload deduplication suite
+- [ ] Real green: smart retry strategies suite
+- [ ] Real green: storage backends suite
+- [ ] Real green: tenant manager suite
+- [ ] Real green: trace drilldown log tail suite
+- [ ] Real green: worker suite
+- [ ] Real green: patterned load generator suite
+- [ ] Real green: plugin panel system suite
+- [ ] Real green: e2e suite
+- [ ] Real green: integration suite
+- [ ] Real green: forecasting suite
+- [ ] Real green: queue snapshot testing suite
+- [ ] Real green: policy simulator suite
+- [ ] Real green: kubernetes operator suite
+- [ ] Real green: time travel debugger suite
+
 - [ ] TUI: Table polish — colorized counts by thresholds (green/yellow/red), selection glyph, alternating row striping
 - [ ] TUI: Enqueue actions — `e` enqueue 1 to selected; `E` prompt for count (inline in Info panel)
 - [ ] TUI: Right-click on Queues — peek selected (later: context menu with actions)
