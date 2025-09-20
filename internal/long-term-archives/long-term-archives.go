@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -512,6 +514,21 @@ func (m *manager) GetStats(ctx context.Context, window time.Duration) (*ArchiveS
 	return m.getRedisStats(ctx, window)
 }
 
+func streamIDToTime(id string) time.Time {
+	if id == "" {
+		return time.Time{}
+	}
+	parts := strings.SplitN(id, "-", 2)
+	if len(parts) == 0 || parts[0] == "" {
+		return time.Time{}
+	}
+	ms, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return time.Time{}
+	}
+	return time.UnixMilli(ms)
+}
+
 // getRedisStats gets statistics from Redis
 func (m *manager) getRedisStats(ctx context.Context, window time.Duration) (*ArchiveStats, error) {
 	streamKey := m.config.Archive.RedisStreamKey
@@ -525,15 +542,23 @@ func (m *manager) getRedisStats(ctx context.Context, window time.Duration) (*Arc
 		return nil, fmt.Errorf("failed to get stream info: %w", err)
 	}
 
-	return &ArchiveStats{
+	oldest := streamIDToTime(info.FirstEntry.ID)
+	newest := streamIDToTime(info.LastEntry.ID)
+
+	stats := &ArchiveStats{
 		TotalJobs:     info.Length,
 		JobsByOutcome: make(map[JobOutcome]int64),
 		JobsByQueue:   make(map[string]int64),
-		OldestJob:     time.Unix(0, info.FirstEntry.ID.Time*int64(time.Millisecond)),
-		NewestJob:     time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond)),
+		OldestJob:     oldest,
+		NewestJob:     newest,
 		LastExportAt:  time.Now(),
-		ExportLag:     time.Since(time.Unix(0, info.LastEntry.ID.Time*int64(time.Millisecond))),
-	}, nil
+	}
+
+	if !newest.IsZero() {
+		stats.ExportLag = time.Since(newest)
+	}
+
+	return stats, nil
 }
 
 // GetSchemaVersion returns the current schema version
@@ -741,7 +766,7 @@ func (m *manager) ExecuteQuery(ctx context.Context, templateName string, params 
 
 	// Execute query using ClickHouse exporter if available
 	if chExporter, exists := m.exporters[ExportTypeClickHouse]; exists {
-		if ch, ok := chExporter.(*ClickHouseExporter); ok {
+		if _, ok := chExporter.(*ClickHouseExporter); ok {
 			// In a real implementation, you'd parse the SQL and execute it
 			// For now, we'll return a placeholder result
 			return map[string]interface{}{

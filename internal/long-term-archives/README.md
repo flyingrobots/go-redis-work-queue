@@ -1,10 +1,12 @@
 # Long-Term Archives
 
-- **Status:** BROKEN (`go build ./internal/long-term-archives` fails)
+- **Status:** BUILDS (`go build ./internal/long-term-archives` passes; archival flows remain stubbed)
 - **Last checked:** 2025-09-18
 
-## Why it is broken
-- Archive drivers depend on storage abstractions that are still being redesigned; code does not compile without the missing packages.
+## Notes
+- Redis stats, exporters, and retention helpers compile but still use in-memory or no-op paths.
+- ClickHouse/S3 exporters remain placeholders; real storage integration is pending.
 
 ## Next steps
-- Finalise the archive driver interfaces and re-enable the package when they are stable.
+- Flesh out exporter implementations and wire actual storage writes before enabling in production.
+- Add integration tests once storage backends stabilise.

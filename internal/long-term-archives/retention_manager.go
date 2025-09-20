@@ -434,6 +434,7 @@ func (rm *retentionManager) deleteFromS3(ctx context.Context, exporter Exporter,
 
 	deleted := int64(0)
 	for _, objKey := range objects {
+		_ = objKey
 		// This is a simplified approach - in reality you'd need to:
 		// 1. Download the object
 		// 2. Parse the data
