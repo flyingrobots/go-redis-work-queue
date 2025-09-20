@@ -74,7 +74,7 @@ weight=8.51 features=9 kloc=16.4
 ██████████████████▓░░░░░░░░░░░░░░░░░░░░░ 46%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=15.19 features=13 kloc=44.6
+weight=15.20 features=13 kloc=44.9
 ```
 <!-- group-progress:tui-ux:end -->
 
@@ -86,13 +86,13 @@ weight=15.19 features=13 kloc=44.6
 |⏳ | [Settings View (TUI)](../docs/TUI/README.md) | UX/TUI | [Spec](../docs/TUI/README.md) | [internal/tui](../internal/tui) | 2.6 | In Progress | 40% (conf: med) | ████░░░░░░ | Minimal snapshot. | Theme toggle; config path; copy/open shortcuts. | None; add snapshot tests. | Quick win. |
 |⏳ | [Right‑click Context Menus](../docs/ideas/right-click-context-menus.md) | UX/TUI | [Spec](../docs/ideas/right-click-context-menus.md) | [internal/right-click-context-menus](../internal/right-click-context-menus) | 2.3 | In Progress | 50% (conf: med) | █████░░░░░ | Menus/zones exist; focus wiring pending. | Connect to table rows; actions; tests; double‑click peek; header sort. | Unit present; needs UI/e2e. | Pair with bubblezone. |
 |📋 | Bubblezone Hitboxes | UX/TUI | — | [internal/right-click-context-menus](../internal/right-click-context-menus) | 2.3 | Planned | 10% (conf: med) | █░░░░░░░░░ | Not started; design known. | Integrate bubblezone; zone mapping for tabs/rows/splitter. | None. | Enables precise mouse UX. |
-|⏳ | [JSON Payload Studio](../docs/ideas/json-payload-studio.md) | UX/TUI | [Spec](../docs/ideas/json-payload-studio.md) | [internal/json-payload-studio](../internal/json-payload-studio) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Core handlers; not in TUI. | TUI editor; schemas/templates; enqueue path. | Unit present. | UX heavy. |
+|⏳ | [JSON Payload Studio](../docs/ideas/json-payload-studio.md) | UX/TUI | [Spec](../docs/ideas/json-payload-studio.md) | [internal/json-payload-studio](../internal/json-payload-studio) | 4.4 | In Progress | 40% (conf: med) | ████░░░░░░ | Core handlers; not in TUI. | TUI editor; schemas/templates; enqueue path. | Unit present. | UX heavy. |
 |⏳ | [Calendar View](../docs/ideas/calendar-view.md) | UX/TUI | [Spec](../docs/ideas/calendar-view.md) | [internal/calendar-view](../internal/calendar-view) | 5.0 | In Progress | 45% (conf: med) | ████░░░░░░ | Routes/UI; auth/multi‑queue TODOs. | Add auth context; filters; paging. | Unit + TODOs. | Verify perf. |
 |🚼 | [Theme Playground](../docs/ideas/theme-playground.md) | UX/TUI | [Spec](../docs/ideas/theme-playground.md) | [internal/theme-playground](../internal/theme-playground) | 5.3 | MVP | 70% (conf: high) | ███████░░░ | Persistence + tests shipped. | Centralize styles; Settings toggle; accessible palettes. | Unit + integration; good. | Accessibility focus. |
 |🚼 | [Terminal Voice Commands](../docs/ideas/terminal-voice-commands.md) | UX/CLI | [Spec](../docs/ideas/terminal-voice-commands.md) | [internal/terminal-voice-commands](../internal/terminal-voice-commands) | 5.9 | MVP | 70% (conf: high) | ███████░░░ | Core + tests done. | Privacy/offline; tutorial; TUI affordances. | Rich unit; good. | Optional, flashy. |
 |⏳ | [Plugin Panel System](../docs/ideas/plugin-panel-system.md) | Extensibility | [Spec](../docs/ideas/plugin-panel-system.md) | [internal/plugin-panel-system](../internal/plugin-panel-system) | 3.7 | In Progress | 50% (conf: med) | █████░░░░░ | Lifecycle + permissions. | Sandbox; TUI registry; SDK docs. | Unit present. | Watch plugin trust. |
 |⏳ | [Visual DAG Builder](../docs/ideas/visual-dag-builder.md) | UX/Flow | [Spec](../docs/ideas/visual-dag-builder.md) | [internal/visual-dag-builder](../internal/visual-dag-builder) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Orchestrator/types; not wired. | Backend validation; DAG execution; TUI builder. | Unit partial. | Longer‑term. |
-|⏳ | Collaborative Session | UX/TUI | [Spec](../docs/ideas/collaborative-session.md) | [internal/collaborative-session](../internal/collaborative-session) | 1.5 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
+|⏳ | Collaborative Session | UX/TUI | [Spec](../docs/ideas/collaborative-session.md) | [internal/collaborative-session](../internal/collaborative-session) | 1.4 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
 
 ### Reliability & Ops
 <!-- group-progress:reliability-ops:begin -->
@@ -100,7 +100,7 @@ weight=15.19 features=13 kloc=44.6
 ████████████████████▓░░░░░░░░░░░░░░░░░░░ 51%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=16.82 features=14 kloc=59.7
+weight=16.82 features=14 kloc=59.8
 ```
 <!-- group-progress:reliability-ops:end -->
 
@@ -130,14 +130,14 @@ weight=16.82 features=14 kloc=59.7
 ███████████████████▓░░░░░░░░░░░░░░░░░░░░ 48%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=4.50 features=4 kloc=11.0
+weight=4.51 features=4 kloc=11.1
 ```
 <!-- group-progress:scale-multi-cluster:end -->
 
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |⏳ | [Multi‑cluster Control](../docs/ideas/multi-cluster-control.md) | Scale | [Spec](../docs/ideas/multi-cluster-control.md) | [internal/multi-cluster-control](../internal/multi-cluster-control) | 3.6 | In Progress | 60% (conf: med) | ██████░░░░ | Manager/handlers + tests; UI pending. | TUI tabs; Admin fan‑out actions; compare/replicate ops. | Many tests; good. | Solid engine; wire UX. |
-|⏳ | [Kubernetes Operator](../docs/ideas/kubernetes-operator.md) | Platform | [Spec](../docs/ideas/kubernetes-operator.md) | [internal/kubernetes-operator](../internal/kubernetes-operator) | 3.8 | In Progress | 55% (conf: med) | █████░░░░░ | Controllers/webhooks; examples/tests. | CRDs; reconcile backoff; e2e on kind. | Unit + integration; fair. | Mind CRD validation. |
+|⏳ | [Kubernetes Operator](../docs/ideas/kubernetes-operator.md) | Platform | [Spec](../docs/ideas/kubernetes-operator.md) | [internal/kubernetes-operator](../internal/kubernetes-operator) | 3.9 | In Progress | 55% (conf: med) | █████░░░░░ | Controllers/webhooks; examples/tests. | CRDs; reconcile backoff; e2e on kind. | Unit + integration; fair. | Mind CRD validation. |
 |⏳ | [Multi‑tenant Isolation](../docs/ideas/multi-tenant-isolation.md) | Security | [Spec](../docs/ideas/multi-tenant-isolation.md) | [internal/multi-tenant-isolation](../internal/multi-tenant-isolation) | 2.8 | In Progress | 40% (conf: med) | ████░░░░░░ | Handlers with RBAC TODOs. | Enforce quotas/keys; authz middleware; tests. | Unit present. | Needs policy decisions. |
 |⏳ | Tenant | Security | — | [internal/tenant](../internal/tenant) | 0.8 | In Progress | 35% (conf: low) | ███░░░░░░░ | Early scaffolding. | Define tenant model; integrate with RBAC/multi-tenant. | Unit minimal. | Tie into isolation. |
 
@@ -147,7 +147,7 @@ weight=4.50 features=4 kloc=11.0
 ██████████████████████▓░░░░░░░░░░░░░░░░░ 57%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=10.48 features=9 kloc=28.5
+weight=10.48 features=9 kloc=28.6
 ```
 <!-- group-progress:observability-analytics:end -->
 
