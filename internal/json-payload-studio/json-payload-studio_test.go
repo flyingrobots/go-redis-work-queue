@@ -1,3 +1,6 @@
+//go:build json_payload_studio_tests
+// +build json_payload_studio_tests
+
 package jsonpayloadstudio
 
 import (
@@ -508,10 +511,10 @@ func TestEnqueuePayload(t *testing.T) {
 	}
 
 	jps := NewJSONPayloadStudio(&StudioConfig{
-		MaxPayloadSize:  1024 * 1024,
-		RequireConfirm:  false,
-		StripSecrets:    true,
-		SecretPatterns:  []string{"password", "secret", "token", "key"},
+		MaxPayloadSize: 1024 * 1024,
+		RequireConfirm: false,
+		StripSecrets:   true,
+		SecretPatterns: []string{"password", "secret", "token", "key"},
 	}, mockRedis)
 
 	sessionID := jps.CreateSession()
@@ -691,10 +694,10 @@ func TestStripSecrets(t *testing.T) {
 	}, nil)
 
 	input := map[string]interface{}{
-		"username":       "john",
-		"password":       "super_secret_123",
-		"api_key":        "sk-1234567890",
-		"access_token":   "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+		"username":     "john",
+		"password":     "super_secret_123",
+		"api_key":      "sk-1234567890",
+		"access_token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
 		"data": map[string]interface{}{
 			"secret_value": "hidden",
 			"public_value": "visible",

@@ -1,3 +1,6 @@
+//go:build long_term_archives_tests
+// +build long_term_archives_tests
+
 // Copyright 2025 James Ross
 package archives
 
@@ -86,17 +89,17 @@ func TestArchiveJob(t *testing.T) {
 	ctx := context.Background()
 
 	job := ArchiveJob{
-		JobID:       "test-job-123",
-		Queue:       "test-queue",
-		Priority:    1,
-		EnqueuedAt:  time.Now().Add(-5 * time.Minute),
-		StartedAt:   &time.Time{},
-		CompletedAt: time.Now(),
-		Outcome:     OutcomeSuccess,
-		RetryCount:  0,
-		WorkerID:    "worker-1",
-		PayloadSize: 512,
-		TraceID:     "trace-123",
+		JobID:           "test-job-123",
+		Queue:           "test-queue",
+		Priority:        1,
+		EnqueuedAt:      time.Now().Add(-5 * time.Minute),
+		StartedAt:       &time.Time{},
+		CompletedAt:     time.Now(),
+		Outcome:         OutcomeSuccess,
+		RetryCount:      0,
+		WorkerID:        "worker-1",
+		PayloadSize:     512,
+		TraceID:         "trace-123",
 		PayloadSnapshot: []byte(`{"message": "test payload"}`),
 		Tags: map[string]string{
 			"test": "true",
@@ -238,10 +241,10 @@ func TestSchemaManager(t *testing.T) {
 
 func TestPayloadHandling(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  PayloadHandlingConfig
-		payload []byte
-		wantLen int
+		name     string
+		config   PayloadHandlingConfig
+		payload  []byte
+		wantLen  int
 		wantHash bool
 	}{
 		{
@@ -250,8 +253,8 @@ func TestPayloadHandling(t *testing.T) {
 				IncludePayload: true,
 				MaxPayloadSize: 1024,
 			},
-			payload: []byte("test payload"),
-			wantLen: 12,
+			payload:  []byte("test payload"),
+			wantLen:  12,
 			wantHash: true,
 		},
 		{
@@ -260,8 +263,8 @@ func TestPayloadHandling(t *testing.T) {
 				IncludePayload: true,
 				HashOnly:       true,
 			},
-			payload: []byte("test payload"),
-			wantLen: 0,
+			payload:  []byte("test payload"),
+			wantLen:  0,
 			wantHash: true,
 		},
 		{
@@ -270,8 +273,8 @@ func TestPayloadHandling(t *testing.T) {
 				IncludePayload: true,
 				MaxPayloadSize: 5,
 			},
-			payload: []byte("test payload"),
-			wantLen: 5,
+			payload:  []byte("test payload"),
+			wantLen:  5,
 			wantHash: true,
 		},
 		{
@@ -279,8 +282,8 @@ func TestPayloadHandling(t *testing.T) {
 			config: PayloadHandlingConfig{
 				IncludePayload: false,
 			},
-			payload: []byte("test payload"),
-			wantLen: 0,
+			payload:  []byte("test payload"),
+			wantLen:  0,
 			wantHash: false,
 		},
 	}

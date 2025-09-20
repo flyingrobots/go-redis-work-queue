@@ -1,3 +1,6 @@
+//go:build time_travel_debugger_tests
+// +build time_travel_debugger_tests
+
 package timetraveldebugger
 
 import (

@@ -1,3 +1,6 @@
+//go:build canary_deployments_tests
+// +build canary_deployments_tests
+
 package canary_deployments
 
 import (

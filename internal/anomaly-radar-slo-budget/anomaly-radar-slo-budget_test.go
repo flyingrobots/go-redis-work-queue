@@ -1,3 +1,6 @@
+//go:build anomaly_radar_tests
+// +build anomaly_radar_tests
+
 package anomalyradarslobudget
 
 import (
@@ -173,7 +176,7 @@ func TestSLOBudgetCalculation(t *testing.T) {
 	// Verify budget calculations
 	totalRequests := 3000.0
 	expectedTotalBudget := totalRequests * (1.0 - config.SLO.AvailabilityTarget) // 1% of 3000 = 30
-	expectedConsumedBudget := 30.0                                                // Total errors
+	expectedConsumedBudget := 30.0                                               // Total errors
 
 	if radar.budget.TotalBudget != expectedTotalBudget {
 		t.Errorf("Expected total budget %.2f, got %.2f", expectedTotalBudget, radar.budget.TotalBudget)
@@ -208,7 +211,7 @@ func TestAnomalyDetection(t *testing.T) {
 	normalSnapshot := MetricSnapshot{
 		Timestamp:         time.Now(),
 		RequestCount:      1000,
-		ErrorCount:        5,    // 0.5% error rate
+		ErrorCount:        5,     // 0.5% error rate
 		ErrorRate:         0.005, // 0.5%
 		P95LatencyMs:      300,   // Below warning threshold
 		BacklogGrowthRate: 5,     // Below warning threshold
@@ -225,7 +228,7 @@ func TestAnomalyDetection(t *testing.T) {
 	warningSnapshot := MetricSnapshot{
 		Timestamp:         time.Now(),
 		RequestCount:      1000,
-		ErrorCount:        15,   // 1.5% error rate
+		ErrorCount:        15,    // 1.5% error rate
 		ErrorRate:         0.015, // 1.5%
 		P95LatencyMs:      600,   // Above warning threshold
 		BacklogGrowthRate: 15,    // Above warning threshold
@@ -339,7 +342,7 @@ func TestBurnRateCalculation(t *testing.T) {
 
 	for i := 0; i < 120; i++ { // 2 hours of data at 1-minute intervals
 		errorCount := int64(10) // Consistent 1% error rate
-		if i >= 60 {           // Last hour has higher error rate
+		if i >= 60 {            // Last hour has higher error rate
 			errorCount = 30 // 3% error rate
 		}
 

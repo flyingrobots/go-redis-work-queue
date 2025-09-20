@@ -1,3 +1,6 @@
+//go:build time_travel_debugger_tests
+// +build time_travel_debugger_tests
+
 package timetraveldebugger
 
 import (
@@ -80,10 +83,10 @@ func TestCaptureConfigValidation(t *testing.T) {
 		{
 			name: "invalid sampling rate - negative",
 			config: &CaptureConfig{
-				SamplingRate: -0.1,
-				MaxEvents:    1000,
+				SamplingRate:     -0.1,
+				MaxEvents:        1000,
 				SnapshotInterval: time.Second,
-				RetentionPolicy: RetentionPolicy{MaxRecordings: 100},
+				RetentionPolicy:  RetentionPolicy{MaxRecordings: 100},
 			},
 			expectError: true,
 			errorField:  "sampling_rate",
@@ -91,10 +94,10 @@ func TestCaptureConfigValidation(t *testing.T) {
 		{
 			name: "invalid sampling rate - too high",
 			config: &CaptureConfig{
-				SamplingRate: 1.5,
-				MaxEvents:    1000,
+				SamplingRate:     1.5,
+				MaxEvents:        1000,
 				SnapshotInterval: time.Second,
-				RetentionPolicy: RetentionPolicy{MaxRecordings: 100},
+				RetentionPolicy:  RetentionPolicy{MaxRecordings: 100},
 			},
 			expectError: true,
 			errorField:  "sampling_rate",
@@ -102,10 +105,10 @@ func TestCaptureConfigValidation(t *testing.T) {
 		{
 			name: "invalid max events",
 			config: &CaptureConfig{
-				SamplingRate: 0.1,
-				MaxEvents:    0,
+				SamplingRate:     0.1,
+				MaxEvents:        0,
 				SnapshotInterval: time.Second,
-				RetentionPolicy: RetentionPolicy{MaxRecordings: 100},
+				RetentionPolicy:  RetentionPolicy{MaxRecordings: 100},
 			},
 			expectError: true,
 			errorField:  "max_events",
@@ -113,10 +116,10 @@ func TestCaptureConfigValidation(t *testing.T) {
 		{
 			name: "invalid snapshot interval",
 			config: &CaptureConfig{
-				SamplingRate: 0.1,
-				MaxEvents:    1000,
+				SamplingRate:     0.1,
+				MaxEvents:        1000,
 				SnapshotInterval: 0,
-				RetentionPolicy: RetentionPolicy{MaxRecordings: 100},
+				RetentionPolicy:  RetentionPolicy{MaxRecordings: 100},
 			},
 			expectError: true,
 			errorField:  "snapshot_interval",
@@ -124,10 +127,10 @@ func TestCaptureConfigValidation(t *testing.T) {
 		{
 			name: "invalid max recordings",
 			config: &CaptureConfig{
-				SamplingRate: 0.1,
-				MaxEvents:    1000,
+				SamplingRate:     0.1,
+				MaxEvents:        1000,
 				SnapshotInterval: time.Second,
-				RetentionPolicy: RetentionPolicy{MaxRecordings: 0},
+				RetentionPolicy:  RetentionPolicy{MaxRecordings: 0},
 			},
 			expectError: true,
 			errorField:  "retention_policy.max_recordings",

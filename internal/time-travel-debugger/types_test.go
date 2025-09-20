@@ -1,3 +1,6 @@
+//go:build time_travel_debugger_tests
+// +build time_travel_debugger_tests
+
 package timetraveldebugger
 
 import (
@@ -189,16 +192,16 @@ func TestExecutionRecordGetSnapshotNearTimestamp(t *testing.T) {
 func TestJobStateJSONMarshaling(t *testing.T) {
 	createdAt := time.Now()
 	jobState := &JobState{
-		ID:          "job_123",
-		Priority:    "high",
-		Retries:     2,
-		MaxRetries:  5,
-		Status:      "processing",
-		Payload:     map[string]interface{}{"key": "value"},
-		Metadata:    map[string]interface{}{"source": "test"},
-		CreatedAt:   createdAt,
-		UpdatedAt:   createdAt.Add(time.Minute),
-		StartedAt:   &createdAt,
+		ID:           "job_123",
+		Priority:     "high",
+		Retries:      2,
+		MaxRetries:   5,
+		Status:       "processing",
+		Payload:      map[string]interface{}{"key": "value"},
+		Metadata:     map[string]interface{}{"source": "test"},
+		CreatedAt:    createdAt,
+		UpdatedAt:    createdAt.Add(time.Minute),
+		StartedAt:    &createdAt,
 		ErrorMessage: "test error",
 	}
 

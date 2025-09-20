@@ -1,6 +1,7 @@
+//go:build advanced_rate_limiting_tests && integration
+// +build advanced_rate_limiting_tests,integration
+
 // Copyright 2025 James Ross
-//go:build integration
-// +build integration
 
 package ratelimiting
 

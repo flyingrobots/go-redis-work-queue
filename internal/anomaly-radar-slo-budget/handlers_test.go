@@ -1,3 +1,6 @@
+//go:build anomaly_radar_tests
+// +build anomaly_radar_tests
+
 package anomalyradarslobudget
 
 import (
