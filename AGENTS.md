@@ -133,7 +133,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 ### Prioritized Backlog
 
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
-- [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
+- [x] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] Real green: capacity planning/forecasting/policy simulator suite
 - [ ] Real green: distributed tracing integration suite
 - [ ] Real green: job budgeting suite
@@ -858,4 +858,3 @@ Please keep this document up-to-date with records of what you've worked on as yo
 
 ### Suggested Stabilization Order
 advanced-rate-limiting → anomaly-radar-slo-budget → automatic-capacity-planning → breaker → calendar-view → canary-deployments → chaos-harness → collaborative-session → config → dlq-remediation-pipeline → event-hooks → exactly-once-patterns → exactly_once → forecasting → job-budgeting → job-genealogy-navigator → json-payload-studio → kubernetes-operator → long-term-archives → multi-tenant-isolation → patterned-load-generator → plugin-panel-system → policy-simulator → producer-backpressure → queue → queue-snapshot-testing → rbac-and-tokens → right-click-context-menus → smart-payload-deduplication → smart-retry-strategies → storage-backends → tenant → terminal-voice-commands → theme-playground → time-travel-debugger → visual-dag-builder → worker-fleet-controls → distributed-tracing-integration → redisclient → obs → admin → producer → reaper → worker → admin-api → multi-cluster-control → trace-drilldown-log-tail → tui
-

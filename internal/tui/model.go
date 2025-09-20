@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 	tchelp "github.com/mistakenelf/teacup/help"
 	"github.com/mistakenelf/teacup/statusbar"
 	"github.com/redis/go-redis/v9"
@@ -132,6 +133,11 @@ type model struct {
 
 	// Tabs
 	activeTab tabID
+
+	// Bubblezone manager + prefixes for zones
+	zones           *zone.Manager
+	tabZonePrefix   string
+	tableZonePrefix string
 
 	// Expansion animation (Jobs: Queues | Charts)
 	spring    harmonica.Spring

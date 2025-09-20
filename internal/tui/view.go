@@ -16,7 +16,7 @@ import (
 
 func (m model) View() string {
 	// Tab bar
-	tabBar, _ := m.buildTabBar()
+	tabBar := m.buildTabBar()
 
 	headerText := fmt.Sprintf("Job Queue TUI — Redis %s", m.cfg.Redis.Addr)
 	if m.opts.Cluster != "" {
@@ -137,7 +137,7 @@ func (m model) View() string {
 			tblH = 3
 		}
 		m.tbl.SetHeight(tblH)
-		leftBody := m.tbl.View()
+		leftBody := m.markTableZones(m.tbl.View())
 		if fb := renderFilterBar(m); fb != "" {
 			leftBody = fb + "\n" + leftBody
 		}
@@ -256,7 +256,7 @@ func (m model) View() string {
 	base := tabBar + "\n" + header + "\n" + sub + "\n\n" + body
 	if m.confirmOpen {
 		// Use a full-screen scrim overlay that centers the modal and preserves header/body
-		return renderOverlayScreen(m)
+		return m.zones.Scan(renderOverlayScreen(m))
 	}
 	now := time.Now().Format("15:04:05")
 	m.sb.SetContent("Redis "+m.cfg.Redis.Addr, "focus:"+focusName(m.focus), m.spinner.View(), now)
@@ -265,7 +265,7 @@ func (m model) View() string {
 		// Dim with scrim and center the help content
 		out = renderHelpOverlay(m, "")
 	}
-	return out
+	return m.zones.Scan(out)
 }
 
 func summarizeKeys(k admin.KeysStats) string {
@@ -379,4 +379,44 @@ func renderFilterBar(m model) string {
 		return "Filter: " + m.filter.View() + "  (press f to edit, esc to clear)"
 	}
 	return "Press 'f' to filter queues"
+}
+
+func (m model) tabZoneID(id tabID) string {
+	return fmt.Sprintf("%s-tab-%d", m.tabZonePrefix, id)
+}
+
+func (m model) tableRowZoneID(idx int) string {
+	return fmt.Sprintf("%s-row-%d", m.tableZonePrefix, idx)
+}
+
+func (m model) visibleRowRange() (int, int) {
+	rows := m.tbl.Rows()
+	if len(rows) == 0 {
+		return 0, 0
+	}
+	height := m.tbl.Height()
+	cursor := clamp(m.tbl.Cursor(), 0, len(rows)-1)
+	start := clamp(cursor-height, 0, cursor)
+	end := clamp(cursor+height, cursor, len(rows))
+	if start > end {
+		start = end
+	}
+	return start, end
+}
+
+func (m model) markTableZones(tableView string) string {
+	lines := strings.Split(tableView, "\n")
+	if len(lines) <= 1 {
+		return tableView
+	}
+	start, end := m.visibleRowRange()
+	rowIdx := start
+	for i := 1; i < len(lines) && rowIdx < end; i++ {
+		if strings.TrimSpace(lines[i]) == "" {
+			continue
+		}
+		lines[i] = m.zones.Mark(m.tableRowZoneID(rowIdx), lines[i])
+		rowIdx++
+	}
+	return strings.Join(lines, "\n")
 }

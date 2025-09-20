@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 	tchelp "github.com/mistakenelf/teacup/help"
 	"github.com/mistakenelf/teacup/statusbar"
 	"github.com/redis/go-redis/v9"
@@ -22,6 +23,7 @@ import (
 
 func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, refreshEvery time.Duration, opts Options) model {
 	ctx, cancel := context.WithCancel(context.Background())
+	zones := zone.New()
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -81,37 +83,40 @@ func initialModel(cfg *config.Config, rdb *redis.Client, logger *zap.Logger, ref
 	}
 
 	return model{
-		ctx:           ctx,
-		cancel:        cancel,
-		cfg:           cfg,
-		rdb:           rdb,
-		logger:        logger,
-		opts:          opts,
-		focus:         focusQueues,
-		help:          help.New(),
-		spinner:       sp,
-		tbl:           t,
-		benchCount:    bi,
-		benchRate:     br,
-		benchPriority: bp,
-		benchTimeout:  bt,
-		refreshEvery:  refreshEvery,
-		tableTopY:     3,
-		series:        map[string][]float64{"high": {}, "low": {}, "completed": {}, "dead_letter": {}},
-		seriesMax:     180,
-		filter:        fi,
-		vpCharts:      viewport.New(0, 10),
-		vpInfo:        viewport.New(0, 10),
-		boxTitle:      boxTitle,
-		boxBody:       boxBody,
-		sb:            sb,
-		help2:         help2,
-		pb:            bubprog.New(bubprog.WithDefaultGradient()),
-		activeTab:     tabJobs,
-		spring:        harmonica.NewSpring(harmonica.FPS(fps), 6.0, 0.25),
-		expPos:        0.0,
-		expVel:        0.0,
-		expTarget:     0.0,
-		expActive:     false,
+		ctx:             ctx,
+		cancel:          cancel,
+		cfg:             cfg,
+		rdb:             rdb,
+		logger:          logger,
+		opts:            opts,
+		zones:           zones,
+		tabZonePrefix:   zones.NewPrefix(),
+		tableZonePrefix: zones.NewPrefix(),
+		focus:           focusQueues,
+		help:            help.New(),
+		spinner:         sp,
+		tbl:             t,
+		benchCount:      bi,
+		benchRate:       br,
+		benchPriority:   bp,
+		benchTimeout:    bt,
+		refreshEvery:    refreshEvery,
+		tableTopY:       3,
+		series:          map[string][]float64{"high": {}, "low": {}, "completed": {}, "dead_letter": {}},
+		seriesMax:       180,
+		filter:          fi,
+		vpCharts:        viewport.New(0, 10),
+		vpInfo:          viewport.New(0, 10),
+		boxTitle:        boxTitle,
+		boxBody:         boxBody,
+		sb:              sb,
+		help2:           help2,
+		pb:              bubprog.New(bubprog.WithDefaultGradient()),
+		activeTab:       tabJobs,
+		spring:          harmonica.NewSpring(harmonica.FPS(fps), 6.0, 0.25),
+		expPos:          0.0,
+		expVel:          0.0,
+		expTarget:       0.0,
+		expActive:       false,
 	}
 }
