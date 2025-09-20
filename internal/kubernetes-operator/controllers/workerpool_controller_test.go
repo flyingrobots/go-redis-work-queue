@@ -1,3 +1,6 @@
+//go:build k8s_operator_tests
+// +build k8s_operator_tests
+
 package controllers
 
 import (
@@ -24,18 +27,18 @@ import (
 
 // MockMetricsClient for testing
 type MockMetricsClient struct {
-	backlogs map[string]int64
-	latencies map[string]float64
+	backlogs      map[string]int64
+	latencies     map[string]float64
 	workerMetrics map[string]*WorkerMetrics
-	errors map[string]error
+	errors        map[string]error
 }
 
 func NewMockMetricsClient() *MockMetricsClient {
 	return &MockMetricsClient{
-		backlogs: make(map[string]int64),
-		latencies: make(map[string]float64),
+		backlogs:      make(map[string]int64),
+		latencies:     make(map[string]float64),
 		workerMetrics: make(map[string]*WorkerMetrics),
-		errors: make(map[string]error),
+		errors:        make(map[string]error),
 	}
 }
 
@@ -70,8 +73,8 @@ func (m *MockMetricsClient) GetWorkerMetrics(ctx context.Context, namespace, wor
 	return &WorkerMetrics{
 		ProcessingRate: 10.0,
 		AverageLatency: 100.0,
-		ActiveWorkers: 1,
-		LastUpdated: time.Now(),
+		ActiveWorkers:  1,
+		LastUpdated:    time.Now(),
 	}, nil
 }
 
@@ -94,12 +97,12 @@ func TestWorkerPoolController(t *testing.T) {
 
 var _ = Describe("WorkerPoolController", func() {
 	var (
-		ctx           context.Context
-		k8sClient     client.Client
-		reconciler    *WorkerPoolReconciler
-		mockAdminAPI  *MockAdminAPIClient
-		mockMetrics   *MockMetricsClient
-		scheme        *runtime.Scheme
+		ctx          context.Context
+		k8sClient    client.Client
+		reconciler   *WorkerPoolReconciler
+		mockAdminAPI *MockAdminAPIClient
+		mockMetrics  *MockMetricsClient
+		scheme       *runtime.Scheme
 	)
 
 	BeforeEach(func() {
@@ -493,15 +496,15 @@ var _ = Describe("WorkerPoolController", func() {
 			workerPool = &queuev1.WorkerPool{
 				Spec: queuev1.WorkerPoolSpec{
 					QueueSelector: queuev1.QueueSelector{
-						Queue: "test-queue",
+						Queue:      "test-queue",
 						Priorities: []string{"high", "medium"},
 					},
 					Template: queuev1.WorkerPodTemplate{
 						Spec: queuev1.WorkerPodSpec{
-							Image:           "worker:v1.0",
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Concurrency:     20,
-							MaxInFlight:     200,
+							Image:              "worker:v1.0",
+							ImagePullPolicy:    corev1.PullIfNotPresent,
+							Concurrency:        20,
+							MaxInFlight:        200,
 							ServiceAccountName: "worker-sa",
 							Env: []corev1.EnvVar{
 								{Name: "CUSTOM_VAR", Value: "custom-value"},

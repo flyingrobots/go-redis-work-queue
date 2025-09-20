@@ -1,3 +1,6 @@
+//go:build patterned_load_tests
+// +build patterned_load_tests
+
 // Copyright 2025 James Ross
 package patternedloadgenerator
 

@@ -1,3 +1,6 @@
+//go:build k8s_operator_tests
+// +build k8s_operator_tests
+
 package controllers
 
 import (
@@ -21,10 +24,10 @@ import (
 
 // MockAdminAPIClient for testing
 type MockAdminAPIClient struct {
-	queues map[string]*QueueConfig
-	status map[string]*QueueStatus
+	queues  map[string]*QueueConfig
+	status  map[string]*QueueStatus
 	metrics map[string]*QueueMetrics
-	errors map[string]error
+	errors  map[string]error
 }
 
 func NewMockAdminAPIClient() *MockAdminAPIClient {
@@ -105,11 +108,11 @@ func TestQueueController(t *testing.T) {
 
 var _ = Describe("QueueController", func() {
 	var (
-		ctx           context.Context
-		k8sClient     client.Client
-		reconciler    *QueueReconciler
-		mockAdminAPI  *MockAdminAPIClient
-		scheme        *runtime.Scheme
+		ctx          context.Context
+		k8sClient    client.Client
+		reconciler   *QueueReconciler
+		mockAdminAPI *MockAdminAPIClient
+		scheme       *runtime.Scheme
 	)
 
 	BeforeEach(func() {

@@ -1,4 +1,6 @@
+//go:build k8s_operator_tests
 //go:build integration
+// +build k8s_operator_tests
 
 package main
 
@@ -328,12 +330,12 @@ var _ = Describe("Policy Controller Integration", func() {
 // End-to-end scenario test
 var _ = Describe("End-to-End Queue System", func() {
 	const (
-		QueueName           = "e2e-queue"
-		WorkerPoolName      = "e2e-workers"
-		PolicyName          = "e2e-policy"
-		Namespace           = "default"
-		timeout             = time.Second * 60
-		interval            = time.Millisecond * 500
+		QueueName      = "e2e-queue"
+		WorkerPoolName = "e2e-workers"
+		PolicyName     = "e2e-policy"
+		Namespace      = "default"
+		timeout        = time.Second * 60
+		interval       = time.Millisecond * 500
 	)
 
 	Context("When setting up a complete queue system", func() {
