@@ -245,6 +245,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
 | [internal/job-budgeting](internal/job-budgeting/README.md) | BUILDS | Compiles; budgeting enforcement still TODO. |
 | [internal/json-payload-studio](internal/json-payload-studio/README.md) | BUILDS | Compiles; handlers still rely on in-memory stubs. |
+| [internal/calendar-view](internal/calendar-view/README.md) | BUILDS | Compiles; calendar panel still awaits TUI wiring. |
 | [internal/kubernetes-operator](internal/kubernetes-operator/README.md) | BUILDS | Compiles; controllers/webhooks still stubbed out. |
 | [internal/long-term-archives](internal/long-term-archives/README.md) | BUILDS | Compiles; exporters/storage integrations still TODO. |
 | [internal/storage-backends](internal/storage-backends/README.md) | BUILDS | Compiles; remaining test harness needs go-redis v9 cleanup. |
