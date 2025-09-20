@@ -21,7 +21,7 @@ import (
 // QueueReconciler reconciles a Queue object
 type QueueReconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
+	Scheme         *runtime.Scheme
 	AdminAPIClient AdminAPIClient
 }
 
@@ -36,12 +36,12 @@ type AdminAPIClient interface {
 
 // QueueConfig represents queue configuration for Admin API
 type QueueConfig struct {
-	Name            string                     `json:"name"`
-	Priority        string                     `json:"priority"`
-	RateLimit       *RateLimitConfig          `json:"rateLimit,omitempty"`
-	DeadLetterQueue *DeadLetterQueueConfig    `json:"deadLetterQueue,omitempty"`
-	Retention       *RetentionConfig          `json:"retention,omitempty"`
-	Redis           *RedisConfig              `json:"redis,omitempty"`
+	Name            string                 `json:"name"`
+	Priority        string                 `json:"priority"`
+	RateLimit       *RateLimitConfig       `json:"rateLimit,omitempty"`
+	DeadLetterQueue *DeadLetterQueueConfig `json:"deadLetterQueue,omitempty"`
+	Retention       *RetentionConfig       `json:"retention,omitempty"`
+	Redis           *RedisConfig           `json:"redis,omitempty"`
 }
 
 // RateLimitConfig represents rate limiting configuration
@@ -53,7 +53,7 @@ type RateLimitConfig struct {
 
 // DeadLetterQueueConfig represents DLQ configuration
 type DeadLetterQueueConfig struct {
-	Enabled      bool                 `json:"enabled"`
+	Enabled      bool                `json:"enabled"`
 	MaxRetries   int32               `json:"maxRetries"`
 	RetryBackoff *RetryBackoffConfig `json:"retryBackoff,omitempty"`
 }
@@ -74,9 +74,9 @@ type RetentionConfig struct {
 
 // RedisConfig represents Redis connection configuration
 type RedisConfig struct {
-	Addresses []string `json:"addresses"`
-	Database  int32    `json:"database"`
-	Password  string   `json:"password,omitempty"`
+	Addresses []string   `json:"addresses"`
+	Database  int32      `json:"database"`
+	Password  string     `json:"password,omitempty"`
 	TLS       *TLSConfig `json:"tls,omitempty"`
 }
 
@@ -98,8 +98,8 @@ type QueueMetrics struct {
 
 // QueueStatus represents queue status from Admin API
 type QueueStatus struct {
-	State       string `json:"state"`
-	Message     string `json:"message,omitempty"`
+	State       string    `json:"state"`
+	Message     string    `json:"message,omitempty"`
 	LastUpdated time.Time `json:"lastUpdated"`
 }
 
@@ -189,12 +189,15 @@ func (r *QueueReconciler) reconcileQueue(ctx context.Context, queue *queuev1.Que
 		logger.Info("Created queue", "queue", queue.Spec.Name)
 	} else {
 		// Queue exists, update if needed
+		if status == nil {
+			status = &QueueStatus{}
+		}
 		if err := r.AdminAPIClient.UpdateQueue(ctx, queue.Spec.Name, *config); err != nil {
 			logger.Error(err, "Failed to update queue", "queue", queue.Spec.Name)
 			r.updateQueueStatus(ctx, queue, queuev1.QueuePhaseFailed, fmt.Sprintf("Failed to update queue: %v", err), nil)
 			return ctrl.Result{RequeueAfter: time.Minute}, err
 		}
-		logger.Info("Updated queue", "queue", queue.Spec.Name)
+		logger.Info("Updated queue", "queue", queue.Spec.Name, "state", status.State, "message", status.Message)
 	}
 
 	// Get current metrics

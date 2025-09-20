@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	queuev1 "github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
@@ -18,45 +19,50 @@ import (
 // QueueWebhook handles validation and mutation for Queue resources
 type QueueWebhook struct {
 	Client  client.Client
-	decoder *admission.Decoder
+	decoder admission.Decoder
 }
 
 // +kubebuilder:webhook:path=/validate-queue-example-com-v1-queue,mutating=false,failurePolicy=fail,sideEffects=None,groups=queue.example.com,resources=queues,verbs=create;update,versions=v1,name=vqueue.kb.io,admissionReviewVersions=v1
 
 // +kubebuilder:webhook:path=/mutate-queue-example-com-v1-queue,mutating=true,failurePolicy=fail,sideEffects=None,groups=queue.example.com,resources=queues,verbs=create;update,versions=v1,name=mqueue.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &QueueWebhook{}
-var _ webhook.Defaulter = &QueueWebhook{}
-
 // ValidateCreate implements webhook.Validator
-func (w *QueueWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (w *QueueWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	queue, ok := obj.(*queuev1.Queue)
 	if !ok {
-		return fmt.Errorf("expected a Queue object")
+		return nil, fmt.Errorf("expected a Queue object")
 	}
 
-	return w.validateQueue(ctx, queue, nil)
+	if err := w.validateQueue(ctx, queue, nil); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator
-func (w *QueueWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+func (w *QueueWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	newQueue, ok := newObj.(*queuev1.Queue)
 	if !ok {
-		return fmt.Errorf("expected a Queue object")
+		return nil, fmt.Errorf("expected a Queue object")
 	}
 
 	oldQueue, ok := oldObj.(*queuev1.Queue)
 	if !ok {
-		return fmt.Errorf("expected a Queue object")
+		return nil, fmt.Errorf("expected a Queue object")
 	}
 
-	return w.validateQueue(ctx, newQueue, oldQueue)
+	if err := w.validateQueue(ctx, newQueue, oldQueue); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator
-func (w *QueueWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (w *QueueWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	// Allow all deletions
-	return nil
+	return nil, nil
 }
 
 // Default implements webhook.Defaulter
@@ -282,7 +288,7 @@ func (w *QueueWebhook) validateRedis(ctx context.Context, redis *queuev1.RedisSp
 }
 
 // validateSecretReference validates that a secret reference is valid
-func (w *QueueWebhook) validateSecretReference(ctx context.Context, secretRef *queuev1.SecretKeySelector, namespace string) error {
+func (w *QueueWebhook) validateSecretReference(ctx context.Context, secretRef *corev1.SecretKeySelector, namespace string) error {
 	if secretRef.Name == "" {
 		return fmt.Errorf("secret name cannot be empty")
 	}

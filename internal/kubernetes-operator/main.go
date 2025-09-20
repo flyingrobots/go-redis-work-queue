@@ -17,6 +17,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	queuev1 "github.com/flyingrobots/go-redis-work-queue/internal/kubernetes-operator/apis/v1"
@@ -85,6 +86,14 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
+	metricsOptions := metricsserver.Options{
+		BindAddress:   metricsAddr,
+		SecureServing: secureMetrics,
+	}
+	if secureMetrics && !enableHTTP2 {
+		metricsOptions.TLSOpts = append(metricsOptions.TLSOpts, disableHTTP2)
+	}
+
 	webhookServer := webhook.NewServer(webhook.Options{
 		Port:    webhookPort,
 		TLSOpts: tlsOpts,
@@ -92,8 +101,7 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   webhookPort,
+		Metrics:                metricsOptions,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "kubernetes-operator.example.com",
@@ -150,7 +158,7 @@ func main() {
 	}
 
 	// Set up webhooks
-	if err = (&webhooks.QueueWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&webhooks.QueueWebhook{}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Queue")
 		os.Exit(1)
 	}

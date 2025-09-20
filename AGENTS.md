@@ -543,7 +543,7 @@ Notes
 > - Recorded per-module build status READMEs so breakages and fixes stay visible.
 >
 > Follow-ups
-> - JSON payload studio and job budgeting now build with in-memory stubs; next target is `internal/kubernetes-operator`.
+> - JSON payload studio, job budgeting, and the kubernetes operator now build with scaffolding; next target is `internal/long-term-archives`.
 > - Keep updating the dependency map as we clean additional modules.
 >
 

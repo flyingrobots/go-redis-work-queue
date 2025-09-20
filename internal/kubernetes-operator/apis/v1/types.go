@@ -3,6 +3,7 @@ package v1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -620,4 +621,70 @@ func init() {
 	SchemeBuilder.Register(&Queue{}, &QueueList{})
 	SchemeBuilder.Register(&WorkerPool{}, &WorkerPoolList{})
 	SchemeBuilder.Register(&Policy{}, &PolicyList{})
+}
+
+// DeepCopyObject implements runtime.Object for Queue.
+func (in *Queue) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
+// DeepCopyObject implements runtime.Object for QueueList.
+func (in *QueueList) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	if in.Items != nil {
+		out.Items = make([]Queue, len(in.Items))
+		copy(out.Items, in.Items)
+	}
+	return &out
+}
+
+// DeepCopyObject implements runtime.Object for WorkerPool.
+func (in *WorkerPool) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
+// DeepCopyObject implements runtime.Object for WorkerPoolList.
+func (in *WorkerPoolList) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	if in.Items != nil {
+		out.Items = make([]WorkerPool, len(in.Items))
+		copy(out.Items, in.Items)
+	}
+	return &out
+}
+
+// DeepCopyObject implements runtime.Object for Policy.
+func (in *Policy) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
+// DeepCopyObject implements runtime.Object for PolicyList.
+func (in *PolicyList) DeepCopyObject() runtime.Object {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	if in.Items != nil {
+		out.Items = make([]Policy, len(in.Items))
+		copy(out.Items, in.Items)
+	}
+	return &out
 }
