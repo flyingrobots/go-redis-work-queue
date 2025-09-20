@@ -11,17 +11,17 @@ import (
 
 // SessionManager manages collaborative sessions
 type SessionManager struct {
-	sessions       map[SessionID]*Session
-	participants   map[ParticipantID]*Participant
+	sessions        map[SessionID]*Session
+	participants    map[ParticipantID]*Participant
 	handoffRequests map[string]*ControlHandoffRequest
-	tokenGenerator TokenGenerator
-	frameRedactor  FrameRedactor
-	transport      Transport
-	config         *Config
-	mutex          sync.RWMutex
-	eventChannels  map[string]chan SessionEvent // key: sessionID:participantID
-	stopChan       chan struct{}
-	logger         Logger
+	tokenGenerator  TokenGenerator
+	frameRedactor   FrameRedactor
+	transport       Transport
+	config          *Config
+	mutex           sync.RWMutex
+	eventChannels   map[string]chan SessionEvent // key: sessionID:participantID
+	stopChan        chan struct{}
+	logger          Logger
 }
 
 // Logger interface for session logging
@@ -342,41 +342,10 @@ func (sm *SessionManager) HandleInput(ctx context.Context, sessionID SessionID, 
 
 // RequestControlHandoff initiates control transfer
 func (sm *SessionManager) RequestControlHandoff(ctx context.Context, req ControlHandoffRequest) error {
-	// TODO: Need to find the session that contains this participant
-	// For now, return an error to fix compilation
+	// Placeholder until control handoff discovery logic is restored.
+	// The full implementation needs to locate the session, persist the request,
+	// and fan out a handoff event; for now we surface a clear not-implemented error.
 	return fmt.Errorf("control handoff not implemented - participant %s", req.FromParticipant)
-
-	/* Original code that needs fixing:
-	sm.mutex.RLock()
-	session, exists := sm.sessions[req.FromParticipant]
-	sm.mutex.RUnlock()
-
-	if !exists {
-		return ErrSessionNotFound
-	}
-
-	if !session.Settings.AllowControlHandoff {
-		return ErrHandoffNotAllowed
-	}
-
-	sm.mutex.Lock()
-	sm.handoffRequests[req.ID] = &req
-	sm.mutex.Unlock()
-
-	// Send handoff request to target participant
-	event := SessionEvent{
-		ID:        sm.generateID(),
-		SessionID: session.ID,
-		Type:      EventControlHandoff,
-		Timestamp: time.Now(),
-		Data:      req,
-	}
-
-	channelKey := fmt.Sprintf("%s:%s", session.ID, req.ToParticipant)
-	sm.sendToChannel(channelKey, event)
-
-	sm.logger.Info("control handoff requested", "from", req.FromParticipant, "to", req.ToParticipant)
-	return nil
 }
 
 // RespondToHandoff responds to a control handoff request

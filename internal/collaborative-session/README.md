@@ -1,10 +1,10 @@
 # Collaborative Session Service
 
-- **Status:** BUILDS (`go test ./internal/collaborative-session` succeeds; package contains runtime code only)
+- **Status:** BUILDS (`go build ./internal/collaborative-session` passes; control handoff remains stubbed)
 - **Last checked:** 2025-09-18
 
 ## Notes
-- Core session manager compiles after restoring handoff helpers and transport hooks.
+- Core session manager compiles; control handoff currently returns a not-implemented error while transport/Event fan-out gets rebuilt.
 - No unit tests yet; behaviour still needs coverage once multiplayer UX stabilises.
 
 ## Next steps

@@ -543,7 +543,7 @@ Notes
 > - Recorded per-module build status READMEs so breakages and fixes stay visible.
 >
 > Follow-ups
-> - JSON payload studio, job budgeting, kubernetes operator, and long-term archives now build with scaffolding; next target is `internal/collaborative-session`.
+> - JSON payload studio, job budgeting, kubernetes operator, long-term archives, and collaborative session now build; next target is `internal/worker-fleet-controls`.
 > - Keep updating the dependency map as we clean additional modules.
 >
 
