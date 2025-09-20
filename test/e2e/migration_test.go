@@ -1,3 +1,6 @@
+//go:build e2e_tests
+// +build e2e_tests
+
 package e2e
 
 import (
@@ -502,12 +505,12 @@ func (suite *MigrationE2ETestSuite) createTestJobs(count int) []*storage.Job {
 	jobs := make([]*storage.Job, count)
 	for i := 0; i < count; i++ {
 		jobs[i] = &storage.Job{
-			ID:       suite.generateJobID(i),
-			Type:     "test_job",
-			Queue:    "test_queue",
-			Payload:  map[string]interface{}{"index": i, "data": "test data"},
-			Priority: i % 3, // Mix of priorities
-			CreatedAt: time.Now(),
+			ID:         suite.generateJobID(i),
+			Type:       "test_job",
+			Queue:      "test_queue",
+			Payload:    map[string]interface{}{"index": i, "data": "test data"},
+			Priority:   i % 3, // Mix of priorities
+			CreatedAt:  time.Now(),
 			RetryCount: 0,
 			MaxRetries: 3,
 			Metadata: map[string]interface{}{
@@ -523,7 +526,7 @@ func (suite *MigrationE2ETestSuite) createTestJobs(count int) []*storage.Job {
 // generateJobID generates a unique job ID
 func (suite *MigrationE2ETestSuite) generateJobID(index int) string {
 	return suite.T().Name() + "_job_" + time.Now().Format("20060102150405") + "_" +
-		   string(rune('0'+index%10))
+		string(rune('0'+index%10))
 }
 
 // waitForMigrationCompletion waits for migration to complete or timeout
@@ -544,7 +547,7 @@ func (suite *MigrationE2ETestSuite) waitForMigrationCompletion(ctx context.Conte
 				return
 			}
 			if status.Phase == storage.MigrationPhaseCompleted ||
-			   status.Phase == storage.MigrationPhaseFailed {
+				status.Phase == storage.MigrationPhaseFailed {
 				return
 			}
 		}

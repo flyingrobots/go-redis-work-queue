@@ -1,3 +1,6 @@
+//go:build smart_retry_tests
+// +build smart_retry_tests
+
 // Copyright 2025 James Ross
 package smartretry
 
@@ -10,10 +13,10 @@ import (
 
 func TestRetryPolicy_BasicErrorMatching(t *testing.T) {
 	tests := []struct {
-		name         string
-		policy       RetryPolicy
-		features     RetryFeatures
-		shouldMatch  bool
+		name        string
+		policy      RetryPolicy
+		features    RetryFeatures
+		shouldMatch bool
 	}{
 		{
 			name: "exact error class match",
@@ -59,32 +62,32 @@ func TestRetryPolicy_BasicErrorMatching(t *testing.T) {
 
 func TestBayesianBucket_BasicProbabilityCalculation(t *testing.T) {
 	tests := []struct {
-		name        string
-		successes   int
-		failures    int
-		expectProb  float64
-		tolerance   float64
+		name       string
+		successes  int
+		failures   int
+		expectProb float64
+		tolerance  float64
 	}{
 		{
-			name:        "equal successes and failures",
-			successes:   10,
-			failures:    10,
-			expectProb:  0.5,
-			tolerance:   0.05,
+			name:       "equal successes and failures",
+			successes:  10,
+			failures:   10,
+			expectProb: 0.5,
+			tolerance:  0.05,
 		},
 		{
-			name:        "high success rate",
-			successes:   90,
-			failures:    10,
-			expectProb:  0.9,
-			tolerance:   0.05,
+			name:       "high success rate",
+			successes:  90,
+			failures:   10,
+			expectProb: 0.9,
+			tolerance:  0.05,
 		},
 		{
-			name:        "low success rate",
-			successes:   10,
-			failures:    90,
-			expectProb:  0.1,
-			tolerance:   0.05,
+			name:       "low success rate",
+			successes:  10,
+			failures:   90,
+			expectProb: 0.1,
+			tolerance:  0.05,
 		},
 	}
 
@@ -113,10 +116,10 @@ func TestBayesianBucket_BasicProbabilityCalculation(t *testing.T) {
 
 func TestDelayCalculation_Basic(t *testing.T) {
 	tests := []struct {
-		name           string
-		baseDelayMs    int64
-		multiplier     float64
-		attemptNumber  int
+		name            string
+		baseDelayMs     int64
+		multiplier      float64
+		attemptNumber   int
 		expectedDelayMs int64
 		tolerance       int64
 	}{

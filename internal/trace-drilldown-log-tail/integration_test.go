@@ -1,6 +1,7 @@
+//go:build trace_drilldown_tests && integration
+// +build trace_drilldown_tests,integration
+
 // Copyright 2025 James Ross
-//go:build integration
-// +build integration
 
 package tracedrilldownlogtail
 

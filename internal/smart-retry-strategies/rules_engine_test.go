@@ -1,3 +1,6 @@
+//go:build smart_retry_tests
+// +build smart_retry_tests
+
 // Copyright 2025 James Ross
 package smartretry
 
@@ -11,10 +14,10 @@ import (
 
 func TestRetryPolicy_ErrorMatching(t *testing.T) {
 	tests := []struct {
-		name         string
-		policy       RetryPolicy
-		features     RetryFeatures
-		shouldMatch  bool
+		name        string
+		policy      RetryPolicy
+		features    RetryFeatures
+		shouldMatch bool
 	}{
 		{
 			name: "exact error class match",
@@ -80,9 +83,9 @@ func TestRetryPolicy_ErrorMatching(t *testing.T) {
 
 func TestRetryPolicy_DelayCalculation(t *testing.T) {
 	tests := []struct {
-		name           string
-		policy         RetryPolicy
-		attemptNumber  int
+		name            string
+		policy          RetryPolicy
+		attemptNumber   int
 		expectedDelayMs int64
 		tolerance       int64
 	}{
@@ -129,7 +132,7 @@ func TestRetryPolicy_DelayCalculation(t *testing.T) {
 			},
 			attemptNumber:   2,
 			expectedDelayMs: 2000, // Base calculation
-			tolerance:       800,   // Allow for 20% jitter ± extra tolerance
+			tolerance:       800,  // Allow for 20% jitter ± extra tolerance
 		},
 	}
 

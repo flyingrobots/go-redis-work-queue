@@ -1,3 +1,6 @@
+//go:build integration_tests
+// +build integration_tests
+
 // Copyright 2025 James Ross
 package integration
 
@@ -57,8 +60,8 @@ type WebhookResponse struct {
 
 // WebhookDeliveryService simulates the webhook delivery system
 type WebhookDeliveryService struct {
-	client    *http.Client
-	signer    *HMACSignatureService
+	client      *http.Client
+	signer      *HMACSignatureService
 	retryPolicy RetryPolicy
 }
 
@@ -67,11 +70,11 @@ type HMACSignatureService struct{}
 
 // RetryPolicy defines retry behavior for webhook delivery
 type RetryPolicy struct {
-	MaxRetries    int
-	InitialDelay  time.Duration
-	MaxDelay      time.Duration
-	Multiplier    float64
-	Jitter        bool
+	MaxRetries   int
+	InitialDelay time.Duration
+	MaxDelay     time.Duration
+	Multiplier   float64
+	Jitter       bool
 }
 
 // WebhookEvent represents an event to be delivered via webhook

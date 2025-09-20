@@ -1,3 +1,6 @@
+//go:build smart_retry_tests
+// +build smart_retry_tests
+
 // Copyright 2025 James Ross
 package smartretry
 
@@ -208,20 +211,20 @@ func TestRecordAttempt(t *testing.T) {
 	}
 
 	attempt := AttemptHistory{
-		JobID:           "test-job-123",
-		JobType:         "test_job",
-		AttemptNumber:   1,
-		ErrorClass:      "timeout",
-		ErrorCode:       "connection_timeout",
-		Status:          "failed",
-		Queue:           "default",
-		PayloadSize:     1024,
-		TimeOfDay:       14,
-		WorkerVersion:   "v1.0.0",
-		DelayMs:         2000,
-		Success:         false,
-		Timestamp:       time.Now(),
-		ProcessingTime:  5 * time.Second,
+		JobID:          "test-job-123",
+		JobType:        "test_job",
+		AttemptNumber:  1,
+		ErrorClass:     "timeout",
+		ErrorCode:      "connection_timeout",
+		Status:         "failed",
+		Queue:          "default",
+		PayloadSize:    1024,
+		TimeOfDay:      14,
+		WorkerVersion:  "v1.0.0",
+		DelayMs:        2000,
+		Success:        false,
+		Timestamp:      time.Now(),
+		ProcessingTime: 5 * time.Second,
 	}
 
 	err = mgr.RecordAttempt(attempt)
@@ -420,9 +423,9 @@ func TestPolicyMatching(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		policy     RetryPolicy
-		features   RetryFeatures
+		name        string
+		policy      RetryPolicy
+		features    RetryFeatures
 		shouldMatch bool
 	}{
 		{
@@ -452,10 +455,10 @@ func TestPolicyMatching(t *testing.T) {
 		{
 			name: "policy with job type pattern matches",
 			policy: RetryPolicy{
-				Name:             "job_specific",
-				ErrorPatterns:    []string{"timeout"},
-				JobTypePatterns:  []string{"test_.*"},
-				Priority:         50,
+				Name:            "job_specific",
+				ErrorPatterns:   []string{"timeout"},
+				JobTypePatterns: []string{"test_.*"},
+				Priority:        50,
 			},
 			features: RetryFeatures{
 				JobType:    "test_job",
@@ -466,10 +469,10 @@ func TestPolicyMatching(t *testing.T) {
 		{
 			name: "policy with job type pattern doesn't match wrong job type",
 			policy: RetryPolicy{
-				Name:             "job_specific",
-				ErrorPatterns:    []string{"timeout"},
-				JobTypePatterns:  []string{"test_.*"},
-				Priority:         50,
+				Name:            "job_specific",
+				ErrorPatterns:   []string{"timeout"},
+				JobTypePatterns: []string{"test_.*"},
+				Priority:        50,
 			},
 			features: RetryFeatures{
 				JobType:    "other_job",

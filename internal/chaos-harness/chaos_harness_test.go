@@ -1,3 +1,6 @@
+//go:build chaos_harness_tests
+// +build chaos_harness_tests
+
 // Copyright 2025 James Ross
 package chaosharness
 

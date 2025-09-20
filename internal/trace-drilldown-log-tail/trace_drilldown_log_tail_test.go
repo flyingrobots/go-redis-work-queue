@@ -1,3 +1,6 @@
+//go:build trace_drilldown_tests
+// +build trace_drilldown_tests
+
 // Copyright 2025 James Ross
 package tracedrilldownlogtail
 

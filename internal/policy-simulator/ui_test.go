@@ -1,3 +1,6 @@
+//go:build policy_simulator_tests
+// +build policy_simulator_tests
+
 // Copyright 2025 James Ross
 package policysimulator
 
@@ -15,9 +18,9 @@ import (
 func TestNewPolicySimulatorUI(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -35,9 +38,9 @@ func TestNewPolicySimulatorUI(t *testing.T) {
 func TestUITabNavigation(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -79,9 +82,9 @@ func TestUITabNavigation(t *testing.T) {
 func TestUIQuitCommand(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -101,9 +104,9 @@ func TestUIQuitCommand(t *testing.T) {
 func TestUIRenderPoliciesTab(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -125,9 +128,9 @@ func TestUIRenderPoliciesTab(t *testing.T) {
 func TestUIRenderTrafficTab(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -149,9 +152,9 @@ func TestUIRenderTrafficTab(t *testing.T) {
 func TestUIRenderSimulationTab(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -170,9 +173,9 @@ func TestUIRenderSimulationTab(t *testing.T) {
 func TestUIRenderResultsTab(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -191,9 +194,9 @@ func TestUIRenderResultsTab(t *testing.T) {
 func TestUIRenderChartsTab(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -212,9 +215,9 @@ func TestUIRenderChartsTab(t *testing.T) {
 func TestUIWithSimulationResults(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -254,9 +257,9 @@ func TestUIWithSimulationResults(t *testing.T) {
 func TestUIInputHandling(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -284,9 +287,9 @@ func TestUIStyleConstants(t *testing.T) {
 	// Test that UI can be rendered without errors
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -299,9 +302,9 @@ func TestUIStyleConstants(t *testing.T) {
 func TestUIHeaderRendering(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -322,9 +325,9 @@ func TestUIHeaderRendering(t *testing.T) {
 func TestUITabHighlighting(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -346,9 +349,9 @@ func TestUITabHighlighting(t *testing.T) {
 func TestUIWindowSizeHandling(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -372,9 +375,9 @@ func TestUIWindowSizeHandling(t *testing.T) {
 func TestUIRunSimulationAction(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 10 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -397,9 +400,9 @@ func TestUIRunSimulationAction(t *testing.T) {
 func TestUIDefaultPolicyValues(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -415,9 +418,9 @@ func TestUIDefaultPolicyValues(t *testing.T) {
 func TestUIDefaultTrafficValues(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -433,9 +436,9 @@ func TestUIDefaultTrafficValues(t *testing.T) {
 func TestUIContentWrapping(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)

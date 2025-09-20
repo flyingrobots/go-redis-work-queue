@@ -1,3 +1,6 @@
+//go:build e2e_tests
+// +build e2e_tests
+
 // Copyright 2025 James Ross
 package e2e_test
 

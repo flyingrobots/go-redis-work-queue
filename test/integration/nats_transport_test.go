@@ -1,3 +1,6 @@
+//go:build integration_tests
+// +build integration_tests
+
 // Copyright 2025 James Ross
 package integration
 
@@ -16,10 +19,10 @@ import (
 
 // MockNATSServer simulates a NATS server for testing
 type MockNATSServer struct {
-	subjects     map[string][]MockMessage
-	subscribers  map[string][]MockSubscription
-	isConnected  bool
-	mu           sync.RWMutex
+	subjects    map[string][]MockMessage
+	subscribers map[string][]MockSubscription
+	isConnected bool
+	mu          sync.RWMutex
 }
 
 // MockMessage represents a NATS message
@@ -53,13 +56,13 @@ type NATSPublisher struct {
 
 // NATSConfig defines NATS transport configuration
 type NATSConfig struct {
-	URL             string
-	SubjectPrefix   string
-	MaxReconnect    int
-	ReconnectWait   time.Duration
-	Timeout         time.Duration
+	URL                string
+	SubjectPrefix      string
+	MaxReconnect       int
+	ReconnectWait      time.Duration
+	Timeout            time.Duration
 	MaxPubAcksInflight int
-	EnableJetStream bool
+	EnableJetStream    bool
 }
 
 // EventMessage represents an event published to NATS
@@ -79,10 +82,10 @@ type EventMessage struct {
 
 // SubjectPattern defines NATS subject naming patterns
 type SubjectPattern struct {
-	Prefix    string
-	Event     string
-	Queue     string
-	Priority  string
+	Prefix   string
+	Event    string
+	Queue    string
+	Priority string
 }
 
 // NewMockNATSServer creates a new mock NATS server
@@ -244,10 +247,10 @@ func (t *NATSTransport) PublishEvent(ctx context.Context, event EventMessage) er
 
 	// Prepare headers
 	headers := map[string]string{
-		"Event-ID":    event.ID,
-		"Event-Type":  event.Event,
-		"Job-ID":      event.JobID,
-		"Queue":       event.Queue,
+		"Event-ID":     event.ID,
+		"Event-Type":   event.Event,
+		"Job-ID":       event.JobID,
+		"Queue":        event.Queue,
 		"Content-Type": "application/json",
 	}
 
@@ -303,12 +306,12 @@ func (t *NATSTransport) GetSubjectPatterns() []string {
 	}
 
 	return []string{
-		prefix + ".*",                    // All events
-		prefix + ".*.job_failed.*",       // All job failures
-		prefix + ".*.job_dlq.*",         // All DLQ events
-		prefix + ".*.*",                 // All events (explicit wildcard)
-		prefix + ".priority_queue.*.*",   // All priority queue events
-		prefix + ".*.*.high",            // All high priority events
+		prefix + ".*",                  // All events
+		prefix + ".*.job_failed.*",     // All job failures
+		prefix + ".*.job_dlq.*",        // All DLQ events
+		prefix + ".*.*",                // All events (explicit wildcard)
+		prefix + ".priority_queue.*.*", // All priority queue events
+		prefix + ".*.*.high",           // All high priority events
 	}
 }
 
@@ -317,10 +320,10 @@ func (t *NATSTransport) GetSubjectPatterns() []string {
 func TestNATSTransport_BasicEventPublishing(t *testing.T) {
 	server := NewMockNATSServer()
 	config := NATSConfig{
-		SubjectPrefix:   "test.events",
-		MaxReconnect:    5,
-		ReconnectWait:   time.Second,
-		Timeout:         10 * time.Second,
+		SubjectPrefix: "test.events",
+		MaxReconnect:  5,
+		ReconnectWait: time.Second,
+		Timeout:       10 * time.Second,
 	}
 
 	transport := NewNATSTransport(server, config)
@@ -596,9 +599,9 @@ func TestNATSTransport_ConnectionFailure(t *testing.T) {
 	server.Disconnect()
 
 	event := EventMessage{
-		ID:    "evt_disconnect",
-		Event: "job_failed",
-		Queue: "test_queue",
+		ID:       "evt_disconnect",
+		Event:    "job_failed",
+		Queue:    "test_queue",
 		Priority: 5,
 	}
 

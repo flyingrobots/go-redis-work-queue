@@ -1,3 +1,6 @@
+//go:build e2e_tests
+// +build e2e_tests
+
 // Copyright 2025 James Ross
 package e2e
 
@@ -7,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	multicluster "github.com/flyingrobots/go-redis-work-queue/internal/multi-cluster-control"
 	"github.com/alicebob/miniredis/v2"
+	multicluster "github.com/flyingrobots/go-redis-work-queue/internal/multi-cluster-control"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"

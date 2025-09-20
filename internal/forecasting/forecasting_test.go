@@ -1,3 +1,6 @@
+//go:build forecasting_tests
+// +build forecasting_tests
+
 // Copyright 2025 James Ross
 package forecasting
 

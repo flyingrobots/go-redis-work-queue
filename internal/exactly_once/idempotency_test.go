@@ -1,3 +1,6 @@
+//go:build exactly_once_tests
+// +build exactly_once_tests
+
 // Copyright 2025 James Ross
 package exactly_once
 

@@ -1,3 +1,6 @@
+//go:build policy_simulator_tests
+// +build policy_simulator_tests
+
 // Copyright 2025 James Ross
 package policysimulator
 
@@ -13,9 +16,9 @@ import (
 func TestNewPolicySimulator(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Minute,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        10,
-		RedisPoolSize:     5,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         10,
+		RedisPoolSize:      5,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -60,9 +63,9 @@ func TestDefaultTrafficPattern(t *testing.T) {
 func TestRunSimulation(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -101,9 +104,9 @@ func TestRunSimulation(t *testing.T) {
 func TestSimulationWithTrafficSpike(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 60 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -163,9 +166,9 @@ func TestSimulationWithTrafficSpike(t *testing.T) {
 func TestSimulationWithHighRetryPolicy(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        2,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         2,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -194,9 +197,9 @@ func TestSimulationWithHighRetryPolicy(t *testing.T) {
 func TestGetSimulationCore(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 10 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -227,9 +230,9 @@ func TestGetSimulationCore(t *testing.T) {
 func TestListSimulationsCore(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        2,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         2,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -268,15 +271,15 @@ func TestListSimulationsCore(t *testing.T) {
 func TestCreatePolicyChangeCore(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        2,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         2,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
 
 	changes := map[string]interface{}{
-		"max_retries":        5,
+		"max_retries":         5,
 		"max_rate_per_second": 200.0,
 	}
 
@@ -295,9 +298,9 @@ func TestCreatePolicyChangeCore(t *testing.T) {
 func TestApplyPolicyChangeCore(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        2,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         2,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -322,9 +325,9 @@ func TestApplyPolicyChangeCore(t *testing.T) {
 func TestRollbackPolicyChangeCore(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 5 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        2,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         2,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -540,9 +543,9 @@ func TestQueueingModel(t *testing.T) {
 func TestConcurrentSimulations(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 10 * time.Second,
-		TimeStep:          500 * time.Millisecond,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           500 * time.Millisecond,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)

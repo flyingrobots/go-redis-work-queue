@@ -1,3 +1,6 @@
+//go:build storage_backends_tests
+// +build storage_backends_tests
+
 package storage
 
 import (

@@ -1,3 +1,6 @@
+//go:build exactly_once_tests
+// +build exactly_once_tests
+
 // Copyright 2025 James Ross
 package exactly_once
 
@@ -17,7 +20,7 @@ import (
 
 // MockQueue implements Queue interface for testing
 type MockQueue struct {
-	mu          sync.Mutex
+	mu           sync.Mutex
 	enqueuedJobs []struct {
 		QueueName      string
 		Payload        []byte

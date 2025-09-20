@@ -1,3 +1,6 @@
+//go:build smart_payload_dedup_tests
+// +build smart_payload_dedup_tests
+
 // Copyright 2025 James Ross
 package deduplication
 

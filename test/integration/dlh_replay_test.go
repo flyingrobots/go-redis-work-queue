@@ -1,3 +1,6 @@
+//go:build integration_tests
+// +build integration_tests
+
 // Copyright 2025 James Ross
 package integration
 
@@ -14,10 +17,10 @@ import (
 
 // DeadLetterHook manages failed webhook deliveries and replay functionality
 type DeadLetterHook struct {
-	storage    DLHStorage
-	replayMgr  *ReplayManager
-	config     DLHConfig
-	mu         sync.RWMutex
+	storage   DLHStorage
+	replayMgr *ReplayManager
+	config    DLHConfig
+	mu        sync.RWMutex
 }
 
 // DLHStorage interface for dead letter hook storage
@@ -88,21 +91,21 @@ const (
 
 // DLHFilter defines filtering criteria for DLH entries
 type DLHFilter struct {
-	WebhookID    string     `json:"webhook_id,omitempty"`
-	Status       DLHStatus  `json:"status,omitempty"`
-	CreatedAfter *time.Time `json:"created_after,omitempty"`
+	WebhookID     string     `json:"webhook_id,omitempty"`
+	Status        DLHStatus  `json:"status,omitempty"`
+	CreatedAfter  *time.Time `json:"created_after,omitempty"`
 	CreatedBefore *time.Time `json:"created_before,omitempty"`
-	Limit        int        `json:"limit,omitempty"`
-	Offset       int        `json:"offset,omitempty"`
+	Limit         int        `json:"limit,omitempty"`
+	Offset        int        `json:"offset,omitempty"`
 }
 
 // DLHMetrics provides statistics about DLH entries
 type DLHMetrics struct {
-	TotalEntries     int64              `json:"total_entries"`
-	StatusCounts     map[DLHStatus]int64 `json:"status_counts"`
-	AvgFailureCount  float64            `json:"avg_failure_count"`
-	OldestEntry      *time.Time         `json:"oldest_entry,omitempty"`
-	RecentActivity   []DLHActivity      `json:"recent_activity"`
+	TotalEntries    int64               `json:"total_entries"`
+	StatusCounts    map[DLHStatus]int64 `json:"status_counts"`
+	AvgFailureCount float64             `json:"avg_failure_count"`
+	OldestEntry     *time.Time          `json:"oldest_entry,omitempty"`
+	RecentActivity  []DLHActivity       `json:"recent_activity"`
 }
 
 // DLHActivity represents recent DLH activity
@@ -115,20 +118,20 @@ type DLHActivity struct {
 
 // DLHConfig configures the Dead Letter Hook system
 type DLHConfig struct {
-	MaxRetries       int           `json:"max_retries"`
-	RetryDelay       time.Duration `json:"retry_delay"`
-	CleanupInterval  time.Duration `json:"cleanup_interval"`
-	ArchiveAfter     time.Duration `json:"archive_after"`
-	EnableReplay     bool          `json:"enable_replay"`
-	ReplayBatchSize  int           `json:"replay_batch_size"`
+	MaxRetries      int           `json:"max_retries"`
+	RetryDelay      time.Duration `json:"retry_delay"`
+	CleanupInterval time.Duration `json:"cleanup_interval"`
+	ArchiveAfter    time.Duration `json:"archive_after"`
+	EnableReplay    bool          `json:"enable_replay"`
+	ReplayBatchSize int           `json:"replay_batch_size"`
 }
 
 // ReplayConfig configures replay behavior
 type ReplayConfig struct {
-	BatchSize       int           `json:"batch_size"`
+	BatchSize           int           `json:"batch_size"`
 	DelayBetweenBatches time.Duration `json:"delay_between_batches"`
-	MaxConcurrent   int           `json:"max_concurrent"`
-	TimeoutPerItem  time.Duration `json:"timeout_per_item"`
+	MaxConcurrent       int           `json:"max_concurrent"`
+	TimeoutPerItem      time.Duration `json:"timeout_per_item"`
 }
 
 // WebhookDelivery represents a webhook delivery attempt

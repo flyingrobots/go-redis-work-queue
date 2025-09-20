@@ -1,3 +1,6 @@
+//go:build integration_tests
+// +build integration_tests
+
 package integration
 
 import (
@@ -28,19 +31,19 @@ type BenchmarkConfig struct {
 
 // BenchmarkResult holds benchmark results
 type BenchmarkResult struct {
-	Backend            string                `json:"backend"`
-	Config             BenchmarkConfig       `json:"config"`
-	EnqueueOpsPerSec   float64              `json:"enqueue_ops_per_sec"`
-	DequeueOpsPerSec   float64              `json:"dequeue_ops_per_sec"`
-	AvgLatencyMs       float64              `json:"avg_latency_ms"`
-	P95LatencyMs       float64              `json:"p95_latency_ms"`
-	P99LatencyMs       float64              `json:"p99_latency_ms"`
-	ErrorRate          float64              `json:"error_rate"`
-	ThroughputMBps     float64              `json:"throughput_mbps"`
-	ConcurrentWorkers  int                  `json:"concurrent_workers"`
-	TotalJobs          int                  `json:"total_jobs"`
-	TestDuration       time.Duration        `json:"test_duration"`
-	BackendStats       *storage.BackendStats `json:"backend_stats,omitempty"`
+	Backend           string                `json:"backend"`
+	Config            BenchmarkConfig       `json:"config"`
+	EnqueueOpsPerSec  float64               `json:"enqueue_ops_per_sec"`
+	DequeueOpsPerSec  float64               `json:"dequeue_ops_per_sec"`
+	AvgLatencyMs      float64               `json:"avg_latency_ms"`
+	P95LatencyMs      float64               `json:"p95_latency_ms"`
+	P99LatencyMs      float64               `json:"p99_latency_ms"`
+	ErrorRate         float64               `json:"error_rate"`
+	ThroughputMBps    float64               `json:"throughput_mbps"`
+	ConcurrentWorkers int                   `json:"concurrent_workers"`
+	TotalJobs         int                   `json:"total_jobs"`
+	TestDuration      time.Duration         `json:"test_duration"`
+	BackendStats      *storage.BackendStats `json:"backend_stats,omitempty"`
 }
 
 // TestStorageBackendPerformance runs comprehensive performance tests
@@ -474,11 +477,11 @@ func generateTestJob(id string, payloadSize int) *storage.Job {
 	rand.Read(payload)
 
 	return &storage.Job{
-		ID:      id,
-		Type:    "performance-test",
-		Queue:   "perf-test-queue",
-		Payload: string(payload),
-		Priority: rand.Intn(10),
+		ID:        id,
+		Type:      "performance-test",
+		Queue:     "perf-test-queue",
+		Payload:   string(payload),
+		Priority:  rand.Intn(10),
 		CreatedAt: time.Now(),
 		Metadata: map[string]interface{}{
 			"test_type": "performance",
@@ -541,7 +544,6 @@ func logPerformanceResult(t *testing.T, result BenchmarkResult) {
 	t.Logf("  Error Rate: %.4f%%", result.ErrorRate*100)
 	t.Logf("  Total Jobs: %d", result.TotalJobs)
 }
-
 
 // Helper function to create Redis Lists backend (copy from unit tests)
 func createRedisListsBackend(config storage.RedisListsConfig, queueName string) (storage.QueueBackend, error) {

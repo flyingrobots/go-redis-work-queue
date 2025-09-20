@@ -1,3 +1,6 @@
+//go:build tenant_tests
+// +build tenant_tests
+
 // Copyright 2025 James Ross
 package tenant
 

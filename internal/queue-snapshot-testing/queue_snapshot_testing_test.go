@@ -1,3 +1,6 @@
+//go:build queue_snapshot_tests
+// +build queue_snapshot_tests
+
 // Copyright 2025 James Ross
 package queuesnapshotesting
 

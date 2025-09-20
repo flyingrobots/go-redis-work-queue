@@ -3,6 +3,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -232,7 +233,7 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	if canceled {
 		failureReason = "canceled"
 	}
-	obs.RecordError(ctx, fmt.Errorf(failureReason))
+	obs.RecordError(ctx, errors.New(failureReason))
 	obs.AddEvent(ctx, "job.processing.failed",
 		obs.KeyValue("job.id", job.ID),
 		obs.KeyValue("reason", failureReason),

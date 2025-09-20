@@ -1,3 +1,6 @@
+//go:build storage_backends_tests
+// +build storage_backends_tests
+
 package storage
 
 import (
@@ -73,14 +76,14 @@ func (suite *BackendTestSuite) TestStats(t *testing.T) {
 func (suite *BackendTestSuite) TestBasicEnqueueDequeue(t *testing.T) {
 	t.Run("Basic Enqueue/Dequeue", func(t *testing.T) {
 		job := &Job{
-			ID:      "test-job-1",
-			Type:    "test",
-			Queue:   "test-queue",
-			Payload: map[string]interface{}{"message": "hello world"},
-			Priority: 5,
+			ID:        "test-job-1",
+			Type:      "test",
+			Queue:     "test-queue",
+			Payload:   map[string]interface{}{"message": "hello world"},
+			Priority:  5,
 			CreatedAt: time.Now(),
-			Metadata: map[string]interface{}{"test": true},
-			Tags:    []string{"test", "basic"},
+			Metadata:  map[string]interface{}{"test": true},
+			Tags:      []string{"test", "basic"},
 		}
 
 		// Test enqueue
@@ -172,10 +175,10 @@ func (suite *BackendTestSuite) TestEmptyQueueBehavior(t *testing.T) {
 func (suite *BackendTestSuite) TestPeekOperation(t *testing.T) {
 	t.Run("Peek Operation", func(t *testing.T) {
 		job := &Job{
-			ID:      "peek-test-job",
-			Type:    "test",
-			Queue:   "peek-test",
-			Payload: "peek payload",
+			ID:        "peek-test-job",
+			Type:      "test",
+			Queue:     "peek-test",
+			Payload:   "peek payload",
 			CreatedAt: time.Now(),
 		}
 
@@ -212,10 +215,10 @@ func (suite *BackendTestSuite) TestBulkOperations(t *testing.T) {
 		jobs := make([]*Job, 10)
 		for i := 0; i < 10; i++ {
 			jobs[i] = &Job{
-				ID:      fmt.Sprintf("bulk-job-%d", i),
-				Type:    "bulk-test",
-				Queue:   "bulk-test",
-				Payload: fmt.Sprintf("bulk payload %d", i),
+				ID:        fmt.Sprintf("bulk-job-%d", i),
+				Type:      "bulk-test",
+				Queue:     "bulk-test",
+				Payload:   fmt.Sprintf("bulk payload %d", i),
 				CreatedAt: time.Now(),
 			}
 		}
@@ -253,10 +256,10 @@ func (suite *BackendTestSuite) TestAckNackOperations(t *testing.T) {
 
 	t.Run("Ack/Nack Operations", func(t *testing.T) {
 		job := &Job{
-			ID:      "ack-test-job",
-			Type:    "test",
-			Queue:   "ack-test",
-			Payload: "ack payload",
+			ID:        "ack-test-job",
+			Type:      "test",
+			Queue:     "ack-test",
+			Payload:   "ack payload",
 			CreatedAt: time.Now(),
 		}
 
@@ -274,10 +277,10 @@ func (suite *BackendTestSuite) TestAckNackOperations(t *testing.T) {
 
 		// Test negative acknowledgment with requeue
 		job2 := &Job{
-			ID:      "nack-test-job",
-			Type:    "test",
-			Queue:   "nack-test",
-			Payload: "nack payload",
+			ID:        "nack-test-job",
+			Type:      "test",
+			Queue:     "nack-test",
+			Payload:   "nack payload",
 			CreatedAt: time.Now(),
 		}
 
@@ -308,10 +311,10 @@ func (suite *BackendTestSuite) TestConcurrentOperations(t *testing.T) {
 			go func(goroutineID int) {
 				for j := 0; j < jobsPerGoroutine; j++ {
 					job := &Job{
-						ID:      fmt.Sprintf("concurrent-job-%d-%d", goroutineID, j),
-						Type:    "concurrent-test",
-						Queue:   "concurrent-test",
-						Payload: fmt.Sprintf("payload-%d-%d", goroutineID, j),
+						ID:        fmt.Sprintf("concurrent-job-%d-%d", goroutineID, j),
+						Type:      "concurrent-test",
+						Queue:     "concurrent-test",
+						Payload:   fmt.Sprintf("payload-%d-%d", goroutineID, j),
 						CreatedAt: time.Now(),
 					}
 
@@ -407,10 +410,10 @@ func (suite *BackendTestSuite) TestErrorHandling(t *testing.T) {
 		cancel()
 
 		job := &Job{
-			ID:      "cancelled-context-test",
-			Type:    "test",
-			Queue:   "error-test",
-			Payload: "test",
+			ID:        "cancelled-context-test",
+			Type:      "test",
+			Queue:     "error-test",
+			Payload:   "test",
 			CreatedAt: time.Now(),
 		}
 

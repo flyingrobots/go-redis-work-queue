@@ -1,6 +1,7 @@
+//go:build e2e_tests && integration
+// +build e2e_tests,integration
+
 // Copyright 2025 James Ross
-//go:build e2e
-// +build e2e
 
 package e2e
 

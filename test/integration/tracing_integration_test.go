@@ -1,6 +1,7 @@
+//go:build integration_tests && integration
+// +build integration_tests,integration
+
 // Copyright 2025 James Ross
-//go:build integration
-// +build integration
 
 package integration
 

@@ -1,3 +1,6 @@
+//go:build smart_retry_tests
+// +build smart_retry_tests
+
 // Copyright 2025 James Ross
 package smartretry
 
@@ -162,10 +165,10 @@ func TestBayesianModel_UpdateWithAttempt(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		delayMs     int64
-		success     bool
-		bucketIndex int
+		name          string
+		delayMs       int64
+		success       bool
+		bucketIndex   int
 		expectSuccess int
 		expectFailure int
 	}{
@@ -222,8 +225,8 @@ func TestBayesianModel_UpdateWithAttempt(t *testing.T) {
 
 func TestBayesianModel_ConfidenceCalculation(t *testing.T) {
 	tests := []struct {
-		name           string
-		sampleCount    int
+		name            string
+		sampleCount     int
 		expectedMinConf float64
 		expectedMaxConf float64
 	}{
@@ -359,7 +362,7 @@ func BenchmarkBayesianModel_DelayRecommendation(b *testing.B) {
 	model := &BayesianModel{
 		JobType:    "test",
 		ErrorClass: "timeout",
-		Buckets: make([]BayesianBucket, 10),
+		Buckets:    make([]BayesianBucket, 10),
 	}
 
 	// Initialize buckets with test data

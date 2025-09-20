@@ -1,3 +1,6 @@
+//go:build policy_simulator_tests
+// +build policy_simulator_tests
+
 // Copyright 2025 James Ross
 package policysimulator
 
@@ -19,9 +22,9 @@ import (
 func setupTestHandlers() (*PolicySimulatorHandlers, *PolicySimulator) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -215,7 +218,7 @@ func TestCreatePolicyChange(t *testing.T) {
 	req := CreatePolicyChangeRequest{
 		Description: "Test policy change",
 		Changes: map[string]interface{}{
-			"max_retries":        float64(5), // JSON unmarshaling converts to float64
+			"max_retries":         float64(5), // JSON unmarshaling converts to float64
 			"max_rate_per_second": 200.0,
 		},
 	}

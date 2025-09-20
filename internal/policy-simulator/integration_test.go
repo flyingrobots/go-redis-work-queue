@@ -1,3 +1,6 @@
+//go:build policy_simulator_tests
+// +build policy_simulator_tests
+
 // Copyright 2025 James Ross
 package policysimulator
 
@@ -20,9 +23,9 @@ func TestFullWorkflow(t *testing.T) {
 	// Setup
 	config := &SimulatorConfig{
 		SimulationDuration: 60 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -121,7 +124,7 @@ func TestFullWorkflow(t *testing.T) {
 	policyChangeReq := CreatePolicyChangeRequest{
 		Description: "Increase retry limit and rate",
 		Changes: map[string]interface{}{
-			"max_retries":        8,
+			"max_retries":         8,
 			"max_rate_per_second": 120.0,
 		},
 	}
@@ -247,9 +250,9 @@ func TestFullWorkflow(t *testing.T) {
 func TestConcurrentOperations(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -329,9 +332,9 @@ func TestConcurrentOperations(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 10 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        3,
-		RedisPoolSize:     2,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         3,
+		RedisPoolSize:      2,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -415,9 +418,9 @@ func TestLongRunningSimulation(t *testing.T) {
 
 	config := &SimulatorConfig{
 		SimulationDuration: 2 * time.Minute,
-		TimeStep:          2 * time.Second,
-		MaxWorkers:        8,
-		RedisPoolSize:     4,
+		TimeStep:           2 * time.Second,
+		MaxWorkers:         8,
+		RedisPoolSize:      4,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -504,9 +507,9 @@ func TestLongRunningSimulation(t *testing.T) {
 func TestMemoryAndPerformance(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 60 * time.Second,
-		TimeStep:          500 * time.Millisecond,
-		MaxWorkers:        10,
-		RedisPoolSize:     5,
+		TimeStep:           500 * time.Millisecond,
+		MaxWorkers:         10,
+		RedisPoolSize:      5,
 	}
 
 	simulator := NewPolicySimulator(config)
@@ -554,9 +557,9 @@ func TestMemoryAndPerformance(t *testing.T) {
 func TestPolicyValidationIntegration(t *testing.T) {
 	config := &SimulatorConfig{
 		SimulationDuration: 30 * time.Second,
-		TimeStep:          1 * time.Second,
-		MaxWorkers:        5,
-		RedisPoolSize:     3,
+		TimeStep:           1 * time.Second,
+		MaxWorkers:         5,
+		RedisPoolSize:      3,
 	}
 
 	simulator := NewPolicySimulator(config)

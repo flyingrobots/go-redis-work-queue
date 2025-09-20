@@ -490,7 +490,7 @@ func (e *ClickHouseExporter) Close() error {
 
 // GetTableInfo returns information about the ClickHouse table
 func (e *ClickHouseExporter) GetTableInfo(ctx context.Context) (map[string]interface{}, error) {
-	infoSQL := fmt.Sprintf(`
+	infoSQL := `
 		SELECT
 			table,
 			engine,
@@ -499,7 +499,7 @@ func (e *ClickHouseExporter) GetTableInfo(ctx context.Context) (map[string]inter
 			formatReadableSize(total_bytes) as total_size
 		FROM system.tables
 		WHERE database = ? AND name = ?
-	`, e.config.Database, e.config.Table)
+	`
 
 	row := e.db.QueryRowContext(ctx, infoSQL, e.config.Database, e.config.Table)
 
