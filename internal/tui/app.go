@@ -242,28 +242,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		if !m.confirmOpen {
-			// Tab bar click handling (first row)
-			if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && msg.Y == 0 {
-				_, zones := m.buildTabBar()
-				for _, z := range zones {
-					if msg.X >= z.start && msg.X < z.end {
-						m.activeTab = z.id
-						return m, nil
-					}
+			if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress {
+				if tab, ok := m.tabAtMouse(msg); ok {
+					m.activeTab = tab
+					return m, nil
 				}
 			}
 
 			// Charts expand-on-click with spring animation: right half expands, left half returns to balanced
 			if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && m.activeTab == tabJobs {
+				if idx, ok := m.rowIndexAtMouse(msg); ok {
+					if idx >= 0 && idx < len(m.peekTargets) {
+						m.tbl.SetCursor(idx)
+						m.focus = focusQueues
+						m.loading = true
+						m.errText = ""
+						cmds = append(cmds, m.doPeekCmd(m.peekTargets[idx], 10), spinner.Tick)
+					}
+					return m, tea.Batch(cmds...)
+				}
 				if msg.X > m.width/2 {
 					m.expTarget = 1.0
 					m.expActive = true
 					return m, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} })
-				} else {
-					m.expTarget = 0.0
-					m.expActive = true
-					return m, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} })
 				}
+				m.expTarget = 0.0
+				m.expActive = true
+				return m, tea.Tick(16*time.Millisecond, func(time.Time) tea.Msg { return animTick{} })
 			}
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
@@ -415,4 +420,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m model) tabAtMouse(msg tea.MouseMsg) (tabID, bool) {
+	if m.zones == nil {
+		return 0, false
+	}
+	order := []tabID{tabJobs, tabWorkers, tabDLQ, tabTimeTravel, tabEventHooks, tabSettings}
+	for _, id := range order {
+		if z := m.zones.Get(m.tabZoneID(id)); z != nil && z.InBounds(msg) {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
+func (m model) rowIndexAtMouse(msg tea.MouseMsg) (int, bool) {
+	if m.zones == nil {
+		return 0, false
+	}
+	start, end := m.visibleRowRange()
+	for idx := start; idx < end; idx++ {
+		if z := m.zones.Get(m.tableRowZoneID(idx)); z != nil && z.InBounds(msg) {
+			return idx, true
+		}
+	}
+	return 0, false
 }
