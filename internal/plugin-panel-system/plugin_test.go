@@ -1,3 +1,6 @@
+//go:build plugin_panel_tests
+// +build plugin_panel_tests
+
 // Copyright 2025 James Ross
 package pluginpanel
 

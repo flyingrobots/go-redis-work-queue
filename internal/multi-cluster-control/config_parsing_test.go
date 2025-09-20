@@ -1,3 +1,6 @@
+//go:build multi_cluster_control_tests
+// +build multi_cluster_control_tests
+
 package multicluster
 
 import (

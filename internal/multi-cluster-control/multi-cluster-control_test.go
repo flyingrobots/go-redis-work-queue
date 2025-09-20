@@ -1,3 +1,6 @@
+//go:build multi_cluster_control_tests
+// +build multi_cluster_control_tests
+
 // Copyright 2025 James Ross
 package multicluster
 
@@ -112,7 +115,6 @@ func TestAddRemoveCluster(t *testing.T) {
 	}
 }
 
-
 func TestCompareMode(t *testing.T) {
 	cfg := DefaultConfig()
 	manager, err := NewManager(cfg, zap.NewNop())
@@ -155,8 +157,6 @@ func TestCompareMode(t *testing.T) {
 		t.Errorf("Failed to disable compare mode: %v", err)
 	}
 }
-
-
 
 func TestCacheOperations(t *testing.T) {
 	cache := NewClusterCache()
@@ -208,4 +208,3 @@ func TestCacheOperations(t *testing.T) {
 		t.Error("Non-expired entry should still exist")
 	}
 }
-

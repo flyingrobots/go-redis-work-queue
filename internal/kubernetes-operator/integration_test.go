@@ -1,6 +1,5 @@
-//go:build k8s_operator_tests
-//go:build integration
-// +build k8s_operator_tests
+//go:build k8s_operator_tests && integration
+// +build k8s_operator_tests,integration
 
 package main
 
