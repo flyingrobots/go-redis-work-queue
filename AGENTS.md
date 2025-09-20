@@ -543,7 +543,7 @@ Notes
 > - Recorded per-module build status READMEs so breakages and fixes stay visible.
 >
 > Follow-ups
-> - JSON payload studio, job budgeting, kubernetes operator, long-term archives, and collaborative session now build; next target is `internal/worker-fleet-controls`.
+> - JSON payload studio, job budgeting, kubernetes operator, long-term archives, collaborative session, and worker fleet controls now build; next target is `internal/calendar-view`.
 > - Keep updating the dependency map as we clean additional modules.
 >
 

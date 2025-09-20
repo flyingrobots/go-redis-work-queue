@@ -2,7 +2,6 @@ package workerfleetcontrols
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -47,8 +46,6 @@ func (h *APIHandlers) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *APIHandlers) ListWorkers(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	request, err := h.parseWorkerListRequest(r)
 	if err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid request parameters", err)
@@ -216,8 +213,8 @@ func (h *APIHandlers) DrainWorkers(w http.ResponseWriter, r *http.Request) {
 			prompt := h.manager.SafetyChecker().GenerateConfirmationPrompt(WorkerActionDrain, request.WorkerIDs)
 			h.writeJSON(w, http.StatusPreconditionRequired, map[string]interface{}{
 				"confirmation_required": true,
-				"prompt":               prompt,
-				"error":                err.Error(),
+				"prompt":                prompt,
+				"error":                 err.Error(),
 			})
 			return
 		}
@@ -261,8 +258,8 @@ func (h *APIHandlers) StopWorkers(w http.ResponseWriter, r *http.Request) {
 			prompt := h.manager.SafetyChecker().GenerateConfirmationPrompt(WorkerActionStop, request.WorkerIDs)
 			h.writeJSON(w, http.StatusPreconditionRequired, map[string]interface{}{
 				"confirmation_required": true,
-				"prompt":               prompt,
-				"error":                err.Error(),
+				"prompt":                prompt,
+				"error":                 err.Error(),
 			})
 			return
 		}
@@ -300,8 +297,8 @@ func (h *APIHandlers) RestartWorkers(w http.ResponseWriter, r *http.Request) {
 			prompt := h.manager.SafetyChecker().GenerateConfirmationPrompt(WorkerActionRestart, request.WorkerIDs)
 			h.writeJSON(w, http.StatusPreconditionRequired, map[string]interface{}{
 				"confirmation_required": true,
-				"prompt":               prompt,
-				"error":                err.Error(),
+				"prompt":                prompt,
+				"error":                 err.Error(),
 			})
 			return
 		}

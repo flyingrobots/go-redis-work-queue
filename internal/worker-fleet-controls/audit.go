@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"time"
-
 	"github.com/redis/go-redis/v9"
+	"log/slog"
 )
 
 type RedisAuditLogger struct {

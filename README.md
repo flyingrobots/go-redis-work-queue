@@ -250,6 +250,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/storage-backends](internal/storage-backends/README.md) | BUILDS | Compiles; remaining test harness needs go-redis v9 cleanup. |
 | [internal/tui](internal/tui/README.md) | BUILDS | Legacy view builds cleanly; enhanced view remains behind `tui_experimental`. |
 | [internal/trace-drilldown-log-tail](internal/trace-drilldown-log-tail/README.md) | BUILDS | Compiles; log streaming endpoints still placeholders. |
+| [internal/worker-fleet-controls](internal/worker-fleet-controls/README.md) | BUILDS | Compiles; action execution remains scaffolded for now. |
 | [internal/worker](internal/worker/README.md) | BUILDS | Runtime compiles; lacks dedicated unit tests. |
 
 ----
