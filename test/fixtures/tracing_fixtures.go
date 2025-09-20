@@ -2,7 +2,6 @@
 package fixtures
 
 import (
-	"context"
 	"time"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -19,10 +18,10 @@ type TracingTestConfig struct {
 }
 
 type ExpectedResults struct {
-	SpanCount          int
-	TraceIDsGenerated  int
-	AttributesPerSpan  int
-	SamplingRate       float64
+	SpanCount         int
+	TraceIDsGenerated int
+	AttributesPerSpan int
+	SamplingRate      float64
 }
 
 // GetTracingTestConfigs returns a set of test configurations for different scenarios
@@ -295,11 +294,11 @@ type TestScenario struct {
 }
 
 type ScenarioExpected struct {
-	TotalSpans       int
-	UniqueTraces     int
-	LinkedSpans      int // Spans that should be linked by trace ID
-	ErrorSpans       int
-	SuccessfulSpans  int
+	TotalSpans      int
+	UniqueTraces    int
+	LinkedSpans     int // Spans that should be linked by trace ID
+	ErrorSpans      int
+	SuccessfulSpans int
 }
 
 // GetTestScenarios returns comprehensive test scenarios
@@ -432,32 +431,32 @@ func GetMockOTLPConfigs() []MockOTLPServer {
 
 // PerformanceTestData provides data for performance testing
 type PerformanceTestData struct {
-	JobCount         int
+	JobCount          int
 	ConcurrentWorkers int
-	SpanCount        int
-	ExpectedLatency  time.Duration
+	SpanCount         int
+	ExpectedLatency   time.Duration
 }
 
 // GetPerformanceTestData returns performance test scenarios
 func GetPerformanceTestData() []PerformanceTestData {
 	return []PerformanceTestData{
 		{
-			JobCount:         100,
+			JobCount:          100,
 			ConcurrentWorkers: 1,
-			SpanCount:        300, // enqueue + dequeue + process per job
-			ExpectedLatency:  100 * time.Millisecond,
+			SpanCount:         300, // enqueue + dequeue + process per job
+			ExpectedLatency:   100 * time.Millisecond,
 		},
 		{
-			JobCount:         1000,
+			JobCount:          1000,
 			ConcurrentWorkers: 5,
-			SpanCount:        3000,
-			ExpectedLatency:  500 * time.Millisecond,
+			SpanCount:         3000,
+			ExpectedLatency:   500 * time.Millisecond,
 		},
 		{
-			JobCount:         10000,
+			JobCount:          10000,
 			ConcurrentWorkers: 10,
-			SpanCount:        30000,
-			ExpectedLatency:  2 * time.Second,
+			SpanCount:         30000,
+			ExpectedLatency:   2 * time.Second,
 		},
 	}
 }

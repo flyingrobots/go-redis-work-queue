@@ -167,7 +167,7 @@ func (tv *TraceValidator) ValidateSpans(spans []map[string]interface{}) {
 	tv.t.Logf("Collected %d total spans", totalSpanCount)
 
 	// Validate against expectations
-	for expectedName, expectedData := range tv.expectedSpans {
+	for expectedName := range tv.expectedSpans {
 		count := spansByName[expectedName]
 		if count == 0 {
 			tv.t.Errorf("Expected span '%s' not found", expectedName)
@@ -257,22 +257,29 @@ func (rh *RedisTestHelper) Close() {
 // GetTestConfig returns a Redis work queue config for testing
 func (rh *RedisTestHelper) GetTestConfig() *config.Config {
 	return &config.Config{
-		Producer: config.ProducerConfig{
-			QueueKey: rh.Prefix + "queue",
+		Redis: config.Redis{
+			Addr: "localhost:6379",
+			DB:   0,
 		},
-		Worker: config.WorkerConfig{
+		Producer: config.Producer{
+			RateLimitKey: rh.Prefix + "rate-limit",
+		},
+		Worker: config.Worker{
 			Queues: map[string]string{
-				"test": rh.Prefix + "queue",
+				"high": rh.Prefix + "queue",
+				"low":  rh.Prefix + "queue",
 			},
-			CompletedList:     rh.Prefix + "completed",
-			DeadLetterList:    rh.Prefix + "dlq",
-			ProcessingList:    rh.Prefix + "processing",
-			HeartbeatKey:      rh.Prefix + "heartbeat",
-			HeartbeatInterval: time.Second,
-			HeartbeatTTL:      5 * time.Second,
-			JobTimeout:        10 * time.Second,
-			MaxRetries:        2,
-			PollInterval:      50 * time.Millisecond,
+			CompletedList:         rh.Prefix + "completed",
+			DeadLetterList:        rh.Prefix + "dlq",
+			ProcessingListPattern: rh.Prefix + "worker:%s:processing",
+			HeartbeatKeyPattern:   rh.Prefix + "heartbeat:%s",
+			HeartbeatTTL:          5 * time.Second,
+			BRPopLPushTimeout:     time.Second,
+			MaxRetries:            2,
+			Backoff: config.Backoff{
+				Base: 50 * time.Millisecond,
+				Max:  2 * time.Second,
+			},
 		},
 	}
 }
