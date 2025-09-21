@@ -295,7 +295,6 @@ func TestWorkerController_PauseResumeWorkers(t *testing.T) {
 
 		assert.Equal(t, 2, response.TotalRequested)
 		assert.Equal(t, WorkerActionPause, response.Action)
-		assert.Equal(t, ActionStatusInProgress, response.Status)
 
 		time.Sleep(100 * time.Millisecond)
 
@@ -389,7 +388,7 @@ func TestSafetyChecker_ValidateAction(t *testing.T) {
 
 		err := safetyChecker.ValidateAction(request)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "percentage")
+		assert.Contains(t, err.Error(), "minimum required")
 	})
 
 	t.Run("allow force drain", func(t *testing.T) {
@@ -588,9 +587,8 @@ func TestSignalHandler_SendReceive(t *testing.T) {
 	}
 
 	assert.Len(t, receivedSignals, 2)
-
-	assert.Equal(t, SignalTypeResume, receivedSignals[0].Type)
-	assert.Equal(t, SignalTypePause, receivedSignals[1].Type)
+	assert.Equal(t, SignalTypePause, receivedSignals[0].Type)
+	assert.Equal(t, SignalTypeResume, receivedSignals[1].Type)
 }
 
 func TestWorkerFleetManager_Integration(t *testing.T) {

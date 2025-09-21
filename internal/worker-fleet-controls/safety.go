@@ -55,13 +55,13 @@ func (s *SafetyCheckerImpl) validateDrainStopAction(request WorkerActionRequest,
 	affectedWorkers := len(request.WorkerIDs)
 	remainingHealthy := healthyWorkers - affectedWorkers
 
-	if remainingHealthy < s.config.MinHealthyWorkers {
+	if remainingHealthy < s.config.MinHealthyWorkers && !request.Force {
 		return fmt.Errorf("action would leave only %d healthy workers, minimum required: %d",
 			remainingHealthy, s.config.MinHealthyWorkers)
 	}
 
 	drainPercentage := float64(affectedWorkers) / float64(summary.TotalWorkers) * 100
-	if drainPercentage > s.config.MaxDrainPercentage {
+	if drainPercentage > s.config.MaxDrainPercentage && !request.Force {
 		return fmt.Errorf("action would affect %.1f%% of workers, maximum allowed: %.1f%%",
 			drainPercentage, s.config.MaxDrainPercentage)
 	}
