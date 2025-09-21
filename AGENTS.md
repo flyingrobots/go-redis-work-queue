@@ -89,8 +89,8 @@ Feature status is tracked in `docs/features-ledger.md`.
 
 ### Notes
 
-- HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
-- HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
+- Phase II: Green the Tests. Build is stable; prioritize getting every suite passing.
+- Continue documenting fixes and triage outcomes as we burn down failing tests.
 
 Near-term TODOs I’m targeting:
 
@@ -100,8 +100,8 @@ Near-term TODOs I’m targeting:
 
 ## Working Tasklist
 
-> [!WARNING]
-> HALT ALL TESTING UNTIL BUILD IS GREEN. Top priority: module-by-module build stabilization.
+> [!NOTE]
+> Phase II — Green the Tests. Run suites first, capture failures, and feed fixes back into the backlog.
 
 
 (maintain and use this from now on)
@@ -601,6 +601,17 @@ Notes
 >
 > Follow-ups
 > - Parameterize the acceptance shell scripts (they still assume `/Users/james/...`).
+
+> [!NOTE]
+> ### 2025-09-20 – Phase II Kickoff (Green the Tests)
+> Lifted the testing freeze now that builds are stable.
+>
+> Changes
+> - Updated project notes to emphasize Phase II goal (test pass) instead of the previous build-only stance.
+> - Ran `make test` (race-enabled `go test ./...`) to get a fresh failure inventory.
+>
+> Follow-ups
+> - `internal/worker-fleet-controls` suite currently fails: data race in `WorkerController_PauseResumeWorkers`, safety checker assertions expecting different error text, signal ordering assumptions, and noisy Redis signal handler teardown. Need to triage and add to backlog.
 
 > [!NOTE]
 > ### 2025-09-18 – GREEN MACHINE progress
