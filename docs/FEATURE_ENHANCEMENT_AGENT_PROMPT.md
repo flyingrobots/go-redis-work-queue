@@ -13,14 +13,13 @@ Enhance feature idea documents by adding Claude's strategic analysis, scoring, a
    - `AGENTS.md` - Understanding of agent system and capabilities
    - `README.md` - Project overview and architecture
    - `docs/TUI/README.md` - TUI design patterns and layout system
-   - `docs/ideas/README.md` - Overview of all feature ideas and strategic direction
-   - `docs/feature-score.md` - Scoring methodology (OFS and X-Factor formulas)
-   - `docs/ideas/json-payload-studio.md` - Example of a fully enhanced document
+   - The `docs/design/` directory (especially the `f***-design.md` files) — current feature design canon
+   - `docs/design/f035-design.md` - Example of a fully enhanced document (JSON Payload Studio)
 
 ## Task Workflow
 
 ### Phase 1: Discovery
-1. Scan `/docs/ideas/` directory for all `.md` files
+1. Scan `/docs/design/` directory for all `f*-design.md` files
 2. Identify documents missing "CLAUDE'S THOUGHTS" sections
 3. Create a todo list tracking all files needing enhancement
 
@@ -36,7 +35,7 @@ Add after the Executive Summary using this format:
 
 #### B. Claude's Verdict Section
 
-Read `/docs/feature-score.md` to learn how these scores should be calculated.
+Use the scoring formulas below (OFS and X-Factor) when preparing recommendations.
 
 Add at the end of the document before any detailed design:
 
@@ -246,7 +245,7 @@ X_FACTOR = ((holy_shit ** 1.5) * (meme_potential * 0.8) *
 
 ## Example Enhancements to Study
 
-Review `docs/ideas/json-payload-studio.md` as the gold standard for:
+Review `docs/design/f035-design.md` as the gold standard for:
 - Comprehensive Claude's Thoughts
 - Detailed scoring with rationales
 - Multiple SVG views with different layouts

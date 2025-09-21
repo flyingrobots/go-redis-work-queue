@@ -1,5 +1,8 @@
 # Terminal Voice Commands API Reference
 
+> [!WARNING]
+> **Archived Feature** — The `internal/terminal-voice-commands` package was removed from the repository on 2025-09-20 during repository cleanup. This document is retained for historical reference only.
+
 ## Overview
 
 The Terminal Voice Commands feature provides hands-free queue management through natural language voice commands. This API documentation covers the Go package interfaces, configuration options, and integration patterns for implementing voice control in the terminal user interface.

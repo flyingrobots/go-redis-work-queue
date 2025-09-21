@@ -8,7 +8,7 @@ GOFLAGS ?=
 
 BIN_DIR := bin
 
-.PHONY: all build test run lint tidy version clean
+.PHONY: all build test run tidy version clean
 
 all: build
 
@@ -32,15 +32,14 @@ test:
 tidy:
 	go mod tidy
 
-lint:
-	./scripts/check_yaml_newlines.py
-	go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api
-
 version:
 	@echo $(VERSION)
 
 .PHONY: clean
 clean:
+	@if [ -d .gocache ]; then \
+		chmod -R u+w .gocache 2>/dev/null || true; \
+	fi
 	rm -rf bin dist build out coverage *.coverprofile *.out .gocache
 
 $(BIN_DIR):

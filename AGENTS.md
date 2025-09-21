@@ -161,7 +161,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Real green: kubernetes operator suite
 - [ ] Real green: time travel debugger suite
 
-- [ ] TUI: Table polish — colorized counts by thresholds (green/yellow/red), selection glyph, alternating row striping
+- [x] TUI: Table polish — colorized counts by thresholds (green/yellow/red), selection glyph, alternating row striping
 - [ ] TUI: Enqueue actions — `e` enqueue 1 to selected; `E` prompt for count (inline in Info panel)
 - [ ] TUI: Right-click on Queues — peek selected (later: context menu with actions)
 - [x] TUI: Keyboard shortcuts for tabs (`1`..`4` to switch)
@@ -214,10 +214,10 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
   - Implemented playground + types; integrated with theme system
   - Extended docs and examples
 
-- [x] Terminal Voice Commands MVP **2025-09-14–15**
-  - Implemented recognizer/processor/config with full test suite
-  - Added API docs (`docs/api/terminal-voice-commands.md`)
-  - Prepared for TUI integration (feedback loop and config)
+- [x] Terminal Voice Commands MVP **2025-09-14–15** *(archived 2025-09-20)*
+  - Implemented recognizer/processor/config with full test suite (module removed during cleanup)
+  - Added API docs (`docs/api/terminal-voice-commands.md`) — retained for archival reference
+  - Prepared for TUI integration (feedback loop and config) before feature pause
 
 - [x] Admin API v1 (HTTP) **2025-09-15**
   - Endpoints: Stats, StatsKeys, Peek, PurgeDLQ, PurgeAll, Bench
@@ -561,6 +561,48 @@ Notes
 ---
 ## Daily Activity Logs
 > [!NOTE]
+> ### 2025-09-20 – `make clean` Fix
+> Resolved permission denials when cleaning the repo.
+>
+> Changes
+> - Added a pre-removal `chmod` step in `Makefile` so `.gocache` modules become writable before deletion.
+>
+> Follow-ups
+> - None — `make clean` now succeeds even with read-only module cache entries.
+
+> [!NOTE]
+> ### 2025-09-20 – Request ID Linter Docs
+> Added documentation so teammates can discover and run the internal analyzer.
+>
+> Changes
+> - Wrote `tools/requestidlint/README.md` covering purpose, invocation, and tests.
+>
+> Follow-ups
+> - Consider wiring the analyzer back into a `make lint` target or CI job.
+
+> [!NOTE]
+> ### 2025-09-20 – `test/` Map-of-Contents
+> Documented every test and script under `test/` so the directory is navigable.
+>
+> Changes
+> - Replaced `test/README.md` with a MoC summarizing purpose, execution notes, quality, and dependencies for each file.
+>
+> Follow-ups
+> - Clean up unused fixtures and consider parameterizing shell scripts that hard-code absolute paths.
+
+> [!NOTE]
+> ### 2025-09-20 – `test/` Cleanup
+> Removed dead scaffolding so only real integration/E2E suites remain.
+>
+> Changes
+> - Deleted unused synthetic tests, fixtures, and stray macOS metadata from `test/`.
+> - Moved the package-specific integration suites next to their source (`internal/exactly_once`, `internal/multi-cluster-control`, `internal/storage-backends`, `internal/obs`).
+> - Relocated the Event Hooks test plan to `docs/testing/event-hooks-test-plan.md` and refreshed `test/README.md` to match the slimmer directory.
+>
+> Follow-ups
+> - Parameterize the acceptance shell scripts (they still assume `/Users/james/...`).
+
+> [!NOTE]
 > ### 2025-09-18 – GREEN MACHINE progress
 > Focused on making the build green module-by-module.
 >
@@ -847,7 +889,7 @@ Please keep this document up-to-date with records of what you've worked on as yo
 - smart-retry-strategies → (none)
 - storage-backends → (none)
 - tenant → (none)
-- terminal-voice-commands → (none)
+- terminal-voice-commands → (archived 2025-09-20)
 - theme-playground → (none)
 - time-travel-debugger → (none)
 - trace-drilldown-log-tail → admin, config, distributed-tracing-integration
@@ -857,5 +899,4 @@ Please keep this document up-to-date with records of what you've worked on as yo
 - worker-fleet-controls → (none)
 
 ### Suggested Stabilization Order
-advanced-rate-limiting → anomaly-radar-slo-budget → automatic-capacity-planning → breaker → calendar-view → canary-deployments → chaos-harness → collaborative-session → config → dlq-remediation-pipeline → event-hooks → exactly-once-patterns → exactly_once → forecasting → job-budgeting → job-genealogy-navigator → json-payload-studio → kubernetes-operator → long-term-archives → multi-tenant-isolation → patterned-load-generator → plugin-panel-system → policy-simulator → producer-backpressure → queue → queue-snapshot-testing → rbac-and-tokens → right-click-context-menus → smart-payload-deduplication → smart-retry-strategies → storage-backends → tenant → terminal-voice-commands → theme-playground → time-travel-debugger → visual-dag-builder → worker-fleet-controls → distributed-tracing-integration → redisclient → obs → admin → producer → reaper → worker → admin-api → multi-cluster-control → trace-drilldown-log-tail → tui
-
+advanced-rate-limiting → anomaly-radar-slo-budget → automatic-capacity-planning → breaker → calendar-view → canary-deployments → chaos-harness → collaborative-session → config → dlq-remediation-pipeline → event-hooks → exactly-once-patterns → exactly_once → forecasting → job-budgeting → job-genealogy-navigator → json-payload-studio → kubernetes-operator → long-term-archives → multi-tenant-isolation → patterned-load-generator → plugin-panel-system → policy-simulator → producer-backpressure → queue → queue-snapshot-testing → rbac-and-tokens → right-click-context-menus → smart-payload-deduplication → smart-retry-strategies → storage-backends → tenant → theme-playground → time-travel-debugger → visual-dag-builder → worker-fleet-controls → distributed-tracing-integration → redisclient → obs → admin → producer → reaper → worker → admin-api → multi-cluster-control → trace-drilldown-log-tail → tui

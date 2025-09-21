@@ -1,6 +1,6 @@
 # Design–Implementation Drift Report
 
-This report compares each feature spec in `docs/ideas/` against the current implementation under `internal/` and related code. It highlights alignment, gaps, and concrete next steps.
+This report compares each feature spec in `docs/design/` against the current implementation under `internal/` and related code. It highlights alignment, gaps, and concrete next steps.
 
 ## Executive Summary
 
@@ -9,7 +9,7 @@ This report compares each feature spec in `docs/ideas/` against the current impl
 - Scope: 37 feature specs reviewed; corresponding `internal/<feature>` modules scanned (handlers, logic, tests, and TODOs), plus TUI and Admin API integration points where relevant.
 
 Key observations
-- Foundation is strong: Admin API, tracing, exactly-once, storage backends, theme playground, terminal voice, and time-travel debugger are comparatively well aligned (low drift ≤25%).
+- Foundation is strong: Admin API, tracing, exactly-once, storage backends, theme playground, and time-travel debugger are comparatively well aligned (low drift ≤25%).
 - Productization gaps recur: runtime configuration endpoints, RBAC tie‑in, pagination at scale, and TUI wiring are the most common sources of drift.
 - Several modules are substantial but not yet integrated into TUI flows or Admin API surfaces (e.g., rate limiting, DLQ UI depth, right‑click menus, patterned load).
 
@@ -33,7 +33,7 @@ Heuristic inputs used for this pass: presence of `internal/<feature>` module, nu
 
 ## Detailed Findings by Category
 
-- Low Drift (≤25%): admin-api, distributed-tracing-integration, storage-backends, time-travel-debugger, rbac-and-tokens, smart-retry-strategies, terminal-voice-commands, theme-playground
+- Low Drift (≤25%): admin-api, distributed-tracing-integration, storage-backends, time-travel-debugger, rbac-and-tokens, smart-retry-strategies, theme-playground
 - Medium Drift (30–45%): exactly-once-patterns, multi-cluster-control, visual-dag-builder, automatic-capacity-planning, kubernetes-operator, producer-backpressure, event-hooks, job-genealogy-navigator, calendar-view, anomaly-radar-slo-budget, canary-deployments, chaos-harness, forecasting, json-payload-studio, job-budgeting, dlq-remediation-pipeline, dlq-remediation-ui, trace-drilldown-log-tail, worker-fleet-controls, right-click-context-menus, smart-payload-deduplication
 - High–Critical (≥55%): multi-tenant-isolation, queue-snapshot-testing, advanced-rate-limiting, patterned-load-generator, collaborative-session
 
@@ -82,7 +82,7 @@ Heuristic inputs used for this pass: presence of `internal/<feature>` module, nu
 | smart-payload-deduplication | internal/smart-payload-deduplication | No | 50 | Compression/dedup logic present with TODOs (dict build); limited integration. | Add dict training pipeline; expose dedup stats; integrate in enqueue path. |
 | smart-retry-strategies | internal/smart-retry-strategies | Yes | 25 | Strategies and handlers implemented; metrics endpoint TODO; decent tests. | Implement Prometheus metrics; surface strategy selection in TUI; add docs. |
 | storage-backends | internal/storage-backends | Yes | 20 | Multiple backends scaffolding present with tests; OpenAPI docs exist. | Complete adapter matrix; add conformance tests; document migration paths. |
-| terminal-voice-commands | internal/terminal-voice-commands | Yes | 25 | Command mapping, handlers, and tests present; privacy/telemetry not addressed. | Add opt‑in, PII handling, and offline mode; short TUI tutorial. |
+| terminal-voice-commands | — (archived) | Archived | — | Feature removed from repository during 2025-09-20 cleanup; historical docs retained only. | Revisit requirements if feature returns; otherwise no action. |
 | theme-playground | internal/theme-playground | Yes | 25 | Theme system prototypes and tests; TUI integration partial. | Centralize styles; add theme toggle in Settings tab; docs for accessible palettes. |
 | time-travel-debugger | internal/time-travel-debugger | Yes | 20 | Capture/replay and simple TUI implemented with tests. | Add selective replay controls; export/import; document guardrails. |
 | trace-drilldown-log-tail | internal/trace-drilldown-log-tail | No | 45 | Trace ID plumbing present; log tail integration limited; tests partial. | Add tailing with filters; link TUI job to trace URL; privacy filtering. |
@@ -93,11 +93,10 @@ Heuristic inputs used for this pass: presence of `internal/<feature>` module, nu
 
 ## Methodology Notes
 
-- Inputs: `docs/ideas/*.md` specs; `internal/<feature>` modules; grep for endpoints/routes, middleware, and TODOs; presence of tests and non‑Go assets; TUI and Admin API usage.
+- Inputs: `docs/design/*.md` specs; `internal/<feature>` modules; grep for endpoints/routes, middleware, and TODOs; presence of tests and non‑Go assets; TUI and Admin API usage.
 - Limitations: This pass uses heuristic signals and spot‑reads; it does not execute binaries or hit live services. High‑drift items should get a focused deep‑dive before scheduling.
 
 ## Next Steps
 
 - Confirm priorities in AGENTS.md backlog; create tickets per “Recommendation” above.
 - If desired, I can: (1) wire TUI to Admin API Stats, (2) add Admin API endpoints for rate‑limits, and (3) implement DLQ pagination + filters with tests.
-

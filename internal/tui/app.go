@@ -7,7 +7,6 @@ import (
 
 	bubprog "github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
@@ -313,8 +312,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addSample("low", m.cfg.Worker.Queues["low"], msg.s)
 			m.addSample("completed", m.cfg.Worker.CompletedList, msg.s)
 			m.addSample("dead_letter", m.cfg.Worker.DeadLetterList, msg.s)
-			rows := []table.Row{}
-			m.peekTargets = m.peekTargets[:0]
+			rowData := make([]queueRowData, 0, len(m.cfg.Worker.Queues)+2)
+			targets := make([]string, 0, len(m.cfg.Worker.Queues)+2)
 			ordered := make([]string, 0, len(m.cfg.Worker.Queues)+2)
 			for _, p := range m.cfg.Worker.Priorities {
 				key := m.cfg.Worker.Queues[p]
@@ -325,19 +324,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ordered = append(ordered, fmt.Sprintf("dead_letter (%s)", m.cfg.Worker.DeadLetterList))
 			for _, display := range ordered {
 				cnt := msg.s.Queues[display]
-				rows = append(rows, table.Row{display, fmt.Sprintf("%d", cnt)})
+				rowData = append(rowData, queueRowData{label: display, count: int(cnt)})
 				if idx := strings.LastIndex(display, "("); idx != -1 && strings.HasSuffix(display, ")") {
-					m.peekTargets = append(m.peekTargets, display[idx+1:len(display)-1])
+					targets = append(targets, display[idx+1:len(display)-1])
 				} else {
-					m.peekTargets = append(m.peekTargets, display)
+					targets = append(targets, display)
 				}
 			}
-			m.allRows = rows
-			m.allTargets = append([]string(nil), m.peekTargets...)
+			m.allRowData = rowData
+			m.allTargets = append([]string(nil), targets...)
 			m.applyFilterAndSetRows()
-			if m.tbl.Cursor() >= len(rows) && len(rows) > 0 {
-				m.tbl.SetCursor(len(rows) - 1)
-			}
 		}
 		m.loading = false
 	case keysMsg:
@@ -409,9 +405,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, c)
 	}
 	{
+		prevCursor := m.tbl.Cursor()
 		var c tea.Cmd
 		m.tbl, c = m.tbl.Update(msg)
 		cmds = append(cmds, c)
+		if len(m.filteredRowData) > 0 && m.tbl.Cursor() != clamp(prevCursor, 0, len(m.filteredRowData)-1) {
+			m.refreshDecoratedRows()
+		}
 	}
 
 	return m, tea.Batch(cmds...)
