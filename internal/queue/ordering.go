@@ -152,18 +152,33 @@ end
 return 1
 `)
 
-const listSnapshotLua = `
-local function list_snapshot(key)
-  local entries = redis.call('LRANGE', key, 0, -1)
-  local parts = {tostring(#entries), ':'}
-  for _, entry in ipairs(entries) do
-    parts[#parts + 1] = redis.sha1hex(tostring(string.len(entry)) .. ':' .. entry)
+const listVersionLua = `
+local function generation_value(key)
+  local generation = redis.call('GET', key)
+  if not generation then return '0' end
+  if not string.match(generation, '^%d+$') then return nil end
+  if string.len(generation) > 1 and string.sub(generation, 1, 1) == '0' then return nil end
+  if string.len(generation) > 19 or
+      (string.len(generation) == 19 and generation > '9223372036854775807') then
+    return nil
   end
-  return redis.sha1hex(table.concat(parts))
+  return generation
+end
+
+local function generation_has_room(generation)
+  if string.len(generation) < 19 then return true end
+  if string.len(generation) > 19 then return false end
+  return generation < '9223372036854775807'
+end
+
+local function list_version(list_key, generation_key)
+  local generation = generation_value(generation_key)
+  if not generation then return nil end
+  return generation .. ':' .. tostring(redis.call('LLEN', list_key))
 end
 `
 
-var requeueEncodedAtScript = redis.NewScript(listSnapshotLua + `
+var requeueEncodedAtScript = redis.NewScript(listVersionLua + `
 local function require_type(key, expected)
   local type_reply = redis.call('TYPE', key)
   local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
@@ -182,21 +197,36 @@ if ARGV[3] == 'ordered' then
   problem = require_type(KEYS[4], 'set')
   if problem then return redis.error_reply(problem) end
 end
+for i = 1, 4 do
+  if KEYS[5] == KEYS[i] then
+    return redis.error_reply('dead-letter generation key must differ from queue state keys')
+  end
+end
+problem = require_type(KEYS[5], 'string')
+if problem then return redis.error_reply(problem) end
 
 local index = tonumber(ARGV[4])
 if not index or index < 0 then
   return redis.error_reply('selection index must be non-negative')
 end
-local current_snapshot = list_snapshot(KEYS[1])
-if current_snapshot ~= ARGV[6] then
-  return {'0', current_snapshot}
+local current_version = list_version(KEYS[1], KEYS[5])
+if not current_version then
+  return redis.error_reply('invalid dead-letter generation')
+end
+if current_version ~= ARGV[6] then
+  return {'0', current_version}
 end
 if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
-  return {'0', current_snapshot}
+  return {'0', current_version}
 end
 if ARGV[5] == ARGV[1] then
   return redis.error_reply('selection marker must differ from the envelope')
 end
+local generation = generation_value(KEYS[5])
+if not generation_has_room(generation) then
+  return redis.error_reply('dead-letter generation exhausted')
+end
+redis.call('INCR', KEYS[5])
 
 redis.call('LSET', KEYS[1], index, ARGV[5])
 if redis.call('LREM', KEYS[1], 1, ARGV[5]) ~= 1 then
@@ -206,7 +236,33 @@ redis.call('LPUSH', KEYS[2], ARGV[1])
 if ARGV[3] == 'ordered' and redis.call('SADD', KEYS[4], ARGV[2]) == 1 then
   redis.call('LPUSH', KEYS[3], ARGV[2])
 end
-return {'1', list_snapshot(KEYS[1])}
+return {'1', list_version(KEYS[1], KEYS[5])}
+`)
+
+var appendDeadLetterScript = redis.NewScript(listVersionLua + `
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('dead-letter list and generation key must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'string')
+if problem then return redis.error_reply(problem) end
+local generation = generation_value(KEYS[2])
+if not generation then return redis.error_reply('invalid dead-letter generation') end
+if not generation_has_room(generation) then
+  return redis.error_reply('dead-letter generation exhausted')
+end
+redis.call('INCR', KEYS[2])
+redis.call('LPUSH', KEYS[1], ARGV[1])
+return 1
 `)
 
 var claimOrderedScript = redis.NewScript(`
@@ -273,7 +329,7 @@ end
 return 0
 `)
 
-var transitionOrderedScript = redis.NewScript(`
+var transitionOrderedScript = redis.NewScript(listVersionLua + `
 local function require_type(key, expected)
   local type_reply = redis.call('TYPE', key)
   local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
@@ -301,6 +357,20 @@ if transition == 'complete' or transition == 'dead_letter' then
   problem = require_type(KEYS[7], 'list')
   if problem then return redis.error_reply(problem) end
 end
+if transition == 'dead_letter' then
+  for i = 1, 7 do
+    if KEYS[8] == KEYS[i] then
+      return redis.error_reply('dead-letter generation key must differ from queue state keys')
+    end
+  end
+  problem = require_type(KEYS[8], 'string')
+  if problem then return redis.error_reply(problem) end
+  local generation = generation_value(KEYS[8])
+  if not generation then return redis.error_reply('invalid dead-letter generation') end
+  if not generation_has_room(generation) then
+    return redis.error_reply('dead-letter generation exhausted')
+  end
+end
 
 if redis.call('GET', KEYS[3]) ~= ARGV[1] then
   return 0
@@ -311,7 +381,10 @@ end
 
 if transition == 'retry' then
   redis.call('RPUSH', KEYS[4], ARGV[3])
-elseif transition == 'complete' or transition == 'dead_letter' then
+elseif transition == 'dead_letter' then
+  redis.call('INCR', KEYS[8])
+  redis.call('LPUSH', KEYS[7], ARGV[3])
+elseif transition == 'complete' then
   redis.call('LPUSH', KEYS[7], ARGV[3])
 end
 
@@ -392,6 +465,23 @@ func AppendEncoded(ctx context.Context, rdb redis.Cmdable, queueName string, job
 	return nil
 }
 
+// AppendDeadLetter atomically appends an envelope and advances the bounded
+// mutation generation used by administrative selection handles.
+func AppendDeadLetter(ctx context.Context, rdb redis.Cmdable, deadLetterList, encoded string) error {
+	if deadLetterList == "" {
+		return errors.New("dead-letter list must be non-empty")
+	}
+	if err := appendDeadLetterScript.Eval(
+		ctx,
+		rdb,
+		[]string{deadLetterList, queuekeys.DLQGenerationKey(deadLetterList)},
+		encoded,
+	).Err(); err != nil {
+		return fmt.Errorf("append dead-letter job: %w", err)
+	}
+	return nil
+}
+
 // RequeueEncoded atomically removes one exact envelope from a source list and
 // returns it to ordinary or ordered intake according to its ordering key.
 func RequeueEncoded(ctx context.Context, rdb redis.Cmdable, source, destination string, job Job, encoded string, layout OrderingLayout) (bool, error) {
@@ -445,7 +535,7 @@ func RequeueEncodedAt(ctx context.Context, rdb redis.Cmdable, source, destinatio
 			return false, "", errors.New("requeue destination must be non-empty")
 		}
 		result, err := requeueEncodedAtScript.Eval(ctx, rdb,
-			[]string{source, destination, destination, destination}, encoded, "", "ordinary", index, marker, expectedSnapshot).Result()
+			[]string{source, destination, destination, destination, queuekeys.DLQGenerationKey(source)}, encoded, "", "ordinary", index, marker, expectedSnapshot).Result()
 		if err != nil {
 			return false, "", fmt.Errorf("requeue selected job: %w", err)
 		}
@@ -458,7 +548,7 @@ func RequeueEncodedAt(ctx context.Context, rdb redis.Cmdable, source, destinatio
 		return false, "", err
 	}
 	result, err := requeueEncodedAtScript.Eval(ctx, rdb,
-		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered", index, marker, expectedSnapshot).Result()
+		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet, queuekeys.DLQGenerationKey(source)}, encoded, digest, "ordered", index, marker, expectedSnapshot).Result()
 	if err != nil {
 		return false, "", fmt.Errorf("requeue selected ordered job: %w", err)
 	}
@@ -548,6 +638,10 @@ func TransitionOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLa
 		// key, so a stable existing control key is a safe placeholder.
 		destination = layout.ActiveSet
 	}
+	generationKey := destination
+	if transition == OrderedDeadLetter {
+		generationKey = queuekeys.DLQGenerationKey(destination)
+	}
 	result, err := transitionOrderedScript.Eval(ctx, rdb, []string{
 		processingList,
 		heartbeatKey,
@@ -556,6 +650,7 @@ func TransitionOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLa
 		layout.ReadyList,
 		layout.ActiveSet,
 		destination,
+		generationKey,
 	}, owner, delivery.Payload, retryPayload, delivery.Digest, string(transition)).Int64()
 	if err != nil {
 		return false, fmt.Errorf("transition ordered job: %w", err)

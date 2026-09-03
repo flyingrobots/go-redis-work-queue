@@ -195,6 +195,22 @@ func TestNormalizeConfigRejectsAliasedStaticQueueKeys(t *testing.T) {
 	}
 }
 
+func TestNormalizeConfigRejectsKeyAliasedToDLQGeneration(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.Queues["high"] = queuekeys.DLQGenerationKey(cfg.DeadLetterList)
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to DLQ generation metadata to fail")
+	}
+}
+
+func TestNormalizeConfigRejectsDLQGenerationMatchedByHeartbeatPattern(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.HeartbeatKeyPattern = cfg.DeadLetterList + ":%s"
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected DLQ generation metadata matched by heartbeat pattern to fail")
+	}
+}
+
 func TestNormalizeConfigRejectsStaticKeysThatResolveToOrderedKeys(t *testing.T) {
 	type keyRole struct {
 		name string

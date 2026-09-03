@@ -51,8 +51,12 @@ func TestAdminUsesConfiguredWorkerKeyPatterns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if deleted != 3 || len(mr.Keys()) != 0 {
+	generationKey := queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+	if deleted != 3 || len(mr.Keys()) != 1 || !mr.Exists(generationKey) {
 		t.Fatalf("purge deleted %d keys; remaining=%v", deleted, mr.Keys())
+	}
+	if generation, err := mr.Get(generationKey); err != nil || generation != "1" {
+		t.Fatalf("DLQ generation after purge = %q (err=%v), want 1", generation, err)
 	}
 }
 
@@ -78,8 +82,12 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if deleted != 4 || len(mr.Keys()) != 0 {
+	generationKey := queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+	if deleted != 4 || len(mr.Keys()) != 1 || !mr.Exists(generationKey) {
 		t.Fatalf("purge deleted %d ordered keys; remaining=%v", deleted, mr.Keys())
+	}
+	if generation, err := mr.Get(generationKey); err != nil || generation != "1" {
+		t.Fatalf("DLQ generation after purge = %q (err=%v), want 1", generation, err)
 	}
 }
 
@@ -110,6 +118,50 @@ func TestPurgeAllPreservesNonDigestKeysMatchedByOrderedPatterns(t *testing.T) {
 	}
 	if mr.Exists(queueKey) || mr.Exists(leaseKey) {
 		t.Fatalf("generated ordered state remains: %v", mr.Keys())
+	}
+}
+
+func TestPurgeAllWithoutConfiguredDLQDoesNotCreateMetadata(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := &config.Config{
+		Worker: config.Worker{
+			Queues:                map[string]string{"low": "custom:low"},
+			ProcessingListPattern: "custom:worker:%s",
+			HeartbeatKeyPattern:   "custom:heartbeat:%s",
+		},
+	}
+	mr.Lpush("custom:low", `{"id":"queued"}`)
+
+	deleted, err := PurgeAll(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 1 || len(mr.Keys()) != 0 {
+		t.Fatalf("purge deleted %d keys; remaining=%v, want no metadata side effect", deleted, mr.Keys())
+	}
+}
+
+func TestPurgeAllInvalidDLQGenerationPreservesOtherQueues(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	ctx := context.Background()
+	queueKey := cfg.Worker.Queues["high"]
+	if err := rdb.LPush(ctx, queueKey, `{"id":"queued"}`).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.HSet(ctx, queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList), "invalid", "type").Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := PurgeAll(ctx, cfg, rdb); err == nil {
+		t.Fatal("expected invalid DLQ generation metadata to reject PurgeAll")
+	}
+	if got := rdb.LLen(ctx, queueKey).Val(); got != 1 {
+		t.Fatalf("queue length after rejected purge = %d, want 1", got)
 	}
 }
 

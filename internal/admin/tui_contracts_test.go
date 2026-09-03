@@ -3,7 +3,9 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -12,6 +14,186 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 )
+
+var errUnboundedDLQSnapshot = errors.New("DLQ operation attempted an unbounded whole-list snapshot")
+
+type rejectUnboundedDLQSnapshotHook struct{}
+
+func (*rejectUnboundedDLQSnapshotHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (*rejectUnboundedDLQSnapshotHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		for _, arg := range cmd.Args() {
+			script, ok := arg.(string)
+			if ok && strings.Contains(script, "redis.call('LRANGE', key, 0, -1)") {
+				return errUnboundedDLQSnapshot
+			}
+		}
+		return next(ctx, cmd)
+	}
+}
+
+func (*rejectUnboundedDLQSnapshotHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+
+func TestDLQOperationsUseBoundedSnapshotScripts(t *testing.T) {
+	for _, action := range []string{"list", "purge", "requeue"} {
+		t.Run(action, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			cfg := config.Default()
+			job := queue.NewJob("bounded-dlq", "", 0, "low", "", "")
+			raw, err := job.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := rdb.RPush(context.Background(), cfg.Worker.DeadLetterList, raw).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			var handles []string
+			if action != "list" {
+				items, _, err := DLQList(context.Background(), cfg, rdb, "", "", 1)
+				if err != nil {
+					t.Fatal(err)
+				}
+				handles = []string{items[0].Handle}
+			}
+			rdb.AddHook(&rejectUnboundedDLQSnapshotHook{})
+
+			switch action {
+			case "list":
+				_, _, err = DLQList(context.Background(), cfg, rdb, "", "", 1)
+			case "purge":
+				_, err = DLQPurge(context.Background(), cfg, rdb, "", handles)
+			case "requeue":
+				_, err = DLQRequeue(context.Background(), cfg, rdb, "", handles, "bounded:retry")
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if action != "list" {
+				generation, err := rdb.Get(context.Background(), queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)).Result()
+				if err != nil || generation != "1" {
+					t.Fatalf("%s generation = %q (err=%v), want 1", action, generation, err)
+				}
+			}
+		})
+	}
+}
+
+func TestDLQGenerationInvalidatesSameLengthIdenticalReplacement(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	ctx := context.Background()
+	job := queue.NewJob("identical-aba", "", 0, "low", "", "")
+	raw, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, raw, raw).Err(); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if purged, err := DLQPurge(ctx, cfg, rdb, "", []string{items[1].Handle}); err != nil || purged != 1 {
+		t.Fatalf("first purge = %d (err=%v), want 1", purged, err)
+	}
+	if err := queue.AppendDeadLetter(ctx, rdb, cfg.Worker.DeadLetterList, raw); err != nil {
+		t.Fatal(err)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.DeadLetterList, 0, -1).Val(); !slices.Equal(got, []string{raw, raw}) {
+		t.Fatalf("reconstructed DLQ = %#v, want byte-identical two-entry state", got)
+	}
+
+	if purged, err := DLQPurge(ctx, cfg, rdb, "", []string{items[0].Handle}); err != nil || purged != 0 {
+		t.Fatalf("stale pre-replacement purge = %d (err=%v), want 0", purged, err)
+	}
+	if generation := rdb.Get(ctx, queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)).Val(); generation != "2" {
+		t.Fatalf("DLQ generation = %q, want 2", generation)
+	}
+}
+
+func TestDLQListRejectsInvalidGeneration(t *testing.T) {
+	for _, generation := range []string{"01", "not-a-number", "9223372036854775808"} {
+		t.Run(generation, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			cfg := config.Default()
+			ctx := context.Background()
+			if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, `{"id":"preserved"}`).Err(); err != nil {
+				t.Fatal(err)
+			}
+			if err := rdb.Set(ctx, queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList), generation, 0).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, _, err := DLQList(ctx, cfg, rdb, "", "", 10); err == nil {
+				t.Fatalf("DLQList accepted invalid generation %q", generation)
+			}
+			if got := rdb.LRange(ctx, cfg.Worker.DeadLetterList, 0, -1).Val(); !slices.Equal(got, []string{`{"id":"preserved"}`}) {
+				t.Fatalf("dead-letter queue after rejected generation = %#v", got)
+			}
+		})
+	}
+}
+
+func TestDLQMutationsFailClosedAtExhaustedGeneration(t *testing.T) {
+	const exhausted = "9223372036854775807"
+	for _, action := range []string{"selected purge", "selected requeue", "append", "full purge"} {
+		t.Run(action, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			cfg := config.Default()
+			ctx := context.Background()
+			raw := `{"id":"preserved"}`
+			if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, raw).Err(); err != nil {
+				t.Fatal(err)
+			}
+			generationKey := queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+			if err := rdb.Set(ctx, generationKey, exhausted, 0).Err(); err != nil {
+				t.Fatal(err)
+			}
+			items, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			switch action {
+			case "selected purge":
+				_, err = DLQPurge(ctx, cfg, rdb, "", []string{items[0].Handle})
+			case "selected requeue":
+				_, err = DLQRequeue(ctx, cfg, rdb, "", []string{items[0].Handle}, "retry:queue")
+			case "append":
+				err = queue.AppendDeadLetter(ctx, rdb, cfg.Worker.DeadLetterList, `{"id":"new"}`)
+			case "full purge":
+				err = PurgeDLQ(ctx, cfg, rdb)
+			}
+			if err == nil || !strings.Contains(err.Error(), "generation exhausted") {
+				t.Fatalf("%s error = %v, want generation exhausted", action, err)
+			}
+			if got := rdb.LRange(ctx, cfg.Worker.DeadLetterList, 0, -1).Val(); !slices.Equal(got, []string{raw}) {
+				t.Fatalf("dead-letter queue after %s = %#v, want preserved entry", action, got)
+			}
+			if got := rdb.Get(ctx, generationKey).Val(); got != exhausted {
+				t.Fatalf("generation after %s = %q, want %s", action, got, exhausted)
+			}
+			if got := rdb.LLen(ctx, "retry:queue").Val(); got != 0 {
+				t.Fatalf("retry queue after %s has %d entries, want 0", action, got)
+			}
+		})
+	}
+}
 
 func TestDLQRequeuePreservesOrderedIntake(t *testing.T) {
 	mr := miniredis.RunT(t)

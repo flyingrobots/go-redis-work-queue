@@ -571,8 +571,8 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 			return false
 		}
 	} else {
-		if err := w.rdb.LPush(ctx, w.cfg.Worker.DeadLetterList, payload).Err(); err != nil {
-			w.log.Error("LPUSH DLQ failed", obs.Err(err))
+		if err := queue.AppendDeadLetter(ctx, w.rdb, w.cfg.Worker.DeadLetterList, payload); err != nil {
+			w.log.Error("append DLQ failed", obs.Err(err))
 			obs.RecordError(ctx, err)
 		}
 		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {

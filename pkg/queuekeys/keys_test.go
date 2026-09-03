@@ -53,6 +53,12 @@ func TestOrderingDigestIsStableAndRedisSafe(t *testing.T) {
 	}
 }
 
+func TestDLQGenerationKeyFollowsConfiguredList(t *testing.T) {
+	if got, want := DLQGenerationKey("tenant:{jobs}:dead"), "tenant:{jobs}:dead:generation"; got != want {
+		t.Fatalf("DLQ generation key = %q, want %q", got, want)
+	}
+}
+
 func TestMatchesOrderingDigestRequiresCanonicalGeneratedKey(t *testing.T) {
 	pattern := "custom:ordered:%s:jobs"
 	digest := OrderingDigest("account:42")

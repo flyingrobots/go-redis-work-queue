@@ -214,6 +214,22 @@ func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsKeyAliasedToDLQGeneration(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.Queues["high"] = queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to DLQ generation metadata to fail")
+	}
+}
+
+func TestValidateRejectsDLQGenerationMatchedByHeartbeatPattern(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = cfg.Worker.DeadLetterList + ":%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected DLQ generation metadata matched by heartbeat pattern to fail")
+	}
+}
+
 func TestValidateRejectsStaticKeysThatResolveToOrderedKeys(t *testing.T) {
 	type keyRole struct {
 		name string

@@ -332,13 +332,14 @@ func validateStaticQueueKeys(cfg *Config) error {
 	}
 	sort.Strings(aliases)
 
-	roles := make([]keyRole, 0, len(aliases)+5)
+	roles := make([]keyRole, 0, len(aliases)+6)
 	for _, alias := range aliases {
 		roles = append(roles, keyRole{name: fmt.Sprintf("worker queue %q", alias), key: cfg.Worker.Queues[alias]})
 	}
 	roles = append(roles,
 		keyRole{name: "worker completed list", key: cfg.Worker.CompletedList},
 		keyRole{name: "worker dead-letter list", key: cfg.Worker.DeadLetterList},
+		keyRole{name: "worker dead-letter generation", key: queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)},
 		keyRole{name: "ordered ready list", key: cfg.Queue.OrderedReadyList},
 		keyRole{name: "ordered active set", key: cfg.Queue.OrderedActiveSet},
 		keyRole{name: "producer rate limiter", key: cfg.Producer.RateLimitKey},
@@ -348,6 +349,9 @@ func validateStaticQueueKeys(cfg *Config) error {
 	for _, role := range roles {
 		if workerID, ok := queuekeys.Extract(cfg.Worker.ProcessingListPattern, role.key); ok && workerID != "" {
 			return fmt.Errorf("%s Redis key %q matches the worker processing list pattern", role.name, role.key)
+		}
+		if workerID, ok := queuekeys.Extract(cfg.Worker.HeartbeatKeyPattern, role.key); ok && workerID != "" {
+			return fmt.Errorf("%s Redis key %q matches the worker heartbeat key pattern", role.name, role.key)
 		}
 		if previous, ok := seen[role.key]; ok {
 			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)

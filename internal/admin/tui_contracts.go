@@ -2,7 +2,6 @@ package admin
 
 import (
     "context"
-    "crypto/sha1"
     "crypto/sha256"
     "encoding/json"
     "errors"
@@ -42,57 +41,100 @@ type DLQService interface {
 }
 
 const (
-    dlqSelectionHandlePrefix = "dlq:v2:"
-    dlqSnapshotLua = `
-local function dlq_snapshot(key)
-  local entries = redis.call('LRANGE', key, 0, -1)
-  local parts = {tostring(#entries), ':'}
-  for _, entry in ipairs(entries) do
-    parts[#parts + 1] = redis.sha1hex(tostring(string.len(entry)) .. ':' .. entry)
+    dlqSelectionHandlePrefix = "dlq:v3:"
+    dlqVersionLua = `
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
   end
-  return redis.sha1hex(table.concat(parts))
+end
+
+local function require_dlq_keys(list_key, generation_key)
+  if list_key == generation_key then
+    return 'dead-letter list and generation key must differ'
+  end
+  local problem = require_type(list_key, 'list')
+  if problem then return problem end
+  return require_type(generation_key, 'string')
+end
+
+local function generation_value(key)
+  local generation = redis.call('GET', key)
+  if not generation then return '0' end
+  if not string.match(generation, '^%d+$') then return nil end
+  if string.len(generation) > 1 and string.sub(generation, 1, 1) == '0' then return nil end
+  if string.len(generation) > 19 or
+      (string.len(generation) == 19 and generation > '9223372036854775807') then
+    return nil
+  end
+  return generation
+end
+
+local function generation_has_room(generation)
+  if string.len(generation) < 19 then return true end
+  if string.len(generation) > 19 then return false end
+  return generation < '9223372036854775807'
+end
+
+local function dlq_version(list_key, generation_key)
+  local generation = generation_value(generation_key)
+  if not generation then return nil end
+  return generation .. ':' .. tostring(redis.call('LLEN', list_key))
 end
 `
 )
 
-var dlqSnapshotScript = redis.NewScript(dlqSnapshotLua + `
-return dlq_snapshot(KEYS[1])
+var dlqVersionScript = redis.NewScript(dlqVersionLua + `
+local problem = require_dlq_keys(KEYS[1], KEYS[2])
+if problem then return redis.error_reply(problem) end
+local version = dlq_version(KEYS[1], KEYS[2])
+if not version then return redis.error_reply('invalid dead-letter generation') end
+return version
 `)
 
-var dlqListPageScript = redis.NewScript(dlqSnapshotLua + `
+var dlqListPageScript = redis.NewScript(dlqVersionLua + `
+local problem = require_dlq_keys(KEYS[1], KEYS[2])
+if problem then return redis.error_reply(problem) end
+local version = dlq_version(KEYS[1], KEYS[2])
+if not version then return redis.error_reply('invalid dead-letter generation') end
 local page = redis.call('LRANGE', KEYS[1], ARGV[1], ARGV[2])
-local result = {dlq_snapshot(KEYS[1])}
+local result = {version}
 for _, entry in ipairs(page) do
   result[#result + 1] = entry
 end
 return result
 `)
 
-var removeDLQEntryAtScript = redis.NewScript(dlqSnapshotLua + `
-local type_reply = redis.call('TYPE', KEYS[1])
-local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
-if actual ~= 'none' and actual ~= 'list' then
-  return redis.error_reply('WRONGTYPE key ' .. KEYS[1] .. ' has type ' .. actual .. ', expected list')
-end
+var removeDLQEntryAtScript = redis.NewScript(dlqVersionLua + `
+local problem = require_dlq_keys(KEYS[1], KEYS[2])
+if problem then return redis.error_reply(problem) end
 local index = tonumber(ARGV[2])
 if not index or index < 0 then
   return redis.error_reply('selection index must be non-negative')
 end
-local current_snapshot = dlq_snapshot(KEYS[1])
-if current_snapshot ~= ARGV[4] then
-  return {'0', current_snapshot}
+local current_version = dlq_version(KEYS[1], KEYS[2])
+if not current_version then return redis.error_reply('invalid dead-letter generation') end
+if current_version ~= ARGV[4] then
+  return {'0', current_version}
 end
 if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
-  return {'0', current_snapshot}
+  return {'0', current_version}
 end
 if ARGV[3] == ARGV[1] then
   return redis.error_reply('selection marker must differ from the envelope')
 end
+local generation = generation_value(KEYS[2])
+if not generation_has_room(generation) then
+  return redis.error_reply('dead-letter generation exhausted')
+end
+redis.call('INCR', KEYS[2])
 redis.call('LSET', KEYS[1], index, ARGV[3])
 if redis.call('LREM', KEYS[1], 1, ARGV[3]) ~= 1 then
   return redis.error_reply('selected envelope could not be removed')
 end
-return {'1', dlq_snapshot(KEYS[1])}
+return {'1', dlq_version(KEYS[1], KEYS[2])}
 `)
 
 type dlqSelection struct {
@@ -111,8 +153,12 @@ func parseDLQSelectionHandle(handle string) (string, int64, bool) {
     if !ok {
         return "", 0, false
     }
-    snapshot, encoded, ok := strings.Cut(encoded, ":")
-    if !ok || len(snapshot) != sha1.Size*2 {
+    generation, encoded, ok := strings.Cut(encoded, ":")
+    if !ok {
+        return "", 0, false
+    }
+    length, encoded, ok := strings.Cut(encoded, ":")
+    if !ok {
         return "", 0, false
     }
     indexText, digest, ok := strings.Cut(encoded, ":")
@@ -123,16 +169,37 @@ func parseDLQSelectionHandle(handle string) (string, int64, bool) {
     if err != nil || index < 0 {
         return "", 0, false
     }
+    snapshot := generation + ":" + length
+    if !validDLQVersion(snapshot) {
+        return "", 0, false
+    }
     return snapshot, index, true
 }
 
+func validDLQVersion(version string) bool {
+    generationText, lengthText, ok := strings.Cut(version, ":")
+    if !ok {
+        return false
+    }
+    generation, err := strconv.ParseInt(generationText, 10, 64)
+    if err != nil || generation < 0 || strconv.FormatInt(generation, 10) != generationText {
+        return false
+    }
+    length, err := strconv.ParseInt(lengthText, 10, 64)
+    return err == nil && length >= 0 && strconv.FormatInt(length, 10) == lengthText
+}
+
 func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, handles []string) ([]dlqSelection, string, error) {
-    snapshotResult, err := dlqSnapshotScript.Run(ctx, rdb, []string{list}).Result()
+    snapshotResult, err := dlqVersionScript.Run(
+        ctx,
+        rdb,
+        []string{list, queuekeys.DLQGenerationKey(list)},
+    ).Result()
     if err != nil {
         return nil, "", err
     }
     snapshot, ok := snapshotResult.(string)
-    if !ok || snapshot == "" {
+    if !ok || !validDLQVersion(snapshot) {
         return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", snapshotResult)
     }
     selections := make([]dlqSelection, 0, len(handles))
@@ -178,7 +245,7 @@ func parseDLQMutationResult(result interface{}) (bool, string, error) {
         return false, "", fmt.Errorf("unexpected DLQ mutation status %v", values[0])
     }
     snapshot, ok := values[1].(string)
-    if !ok || snapshot == "" {
+    if !ok || !validDLQVersion(snapshot) {
         return false, "", fmt.Errorf("unexpected DLQ mutation snapshot %T", values[1])
     }
     return changed == "1", snapshot, nil
@@ -208,7 +275,10 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
     pageResult, err := dlqListPageScript.Run(
         ctx,
         rdb,
-        []string{cfg.Worker.DeadLetterList},
+        []string{
+            cfg.Worker.DeadLetterList,
+            queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList),
+        },
         start,
         stop,
     ).Result()
@@ -220,7 +290,7 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         return nil, "", fmt.Errorf("unexpected DLQ page response %T", pageResult)
     }
     snapshot, ok := pageValues[0].(string)
-    if !ok || snapshot == "" {
+    if !ok || !validDLQVersion(snapshot) {
         return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", pageValues[0])
     }
     items := make([]string, 0, len(pageValues)-1)
@@ -331,7 +401,10 @@ func DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namesp
         result, err := removeDLQEntryAtScript.Eval(
             ctx,
             rdb,
-            []string{cfg.Worker.DeadLetterList},
+            []string{
+                cfg.Worker.DeadLetterList,
+                queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList),
+            },
             selection.raw,
             selection.index,
             dlqSelectionMarker(selection.handle),

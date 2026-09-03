@@ -386,6 +386,9 @@ func TestHandlerErrorRetriesThenDeadLetters(t *testing.T) {
 	if dead.ID != job.ID || dead.Retries != maxRetries {
 		t.Fatalf("unexpected dead-letter job: %#v", dead)
 	}
+	if generation := rdb.Get(context.Background(), queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)).Val(); generation != "1" {
+		t.Fatalf("dead-letter generation = %q, want 1", generation)
+	}
 }
 
 func TestOrderedHandlerRetryRunsBeforeLaterSameKeyJob(t *testing.T) {
@@ -463,6 +466,9 @@ func TestOrderedDeadLetterReleasesLaterSameKeyJob(t *testing.T) {
 	want := []string{"ordered-dead", "ordered-after-dead"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("ordered dead-letter calls = %v, want %v", got, want)
+	}
+	if generation := rdb.Get(context.Background(), queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)).Val(); generation != "1" {
+		t.Fatalf("ordered dead-letter generation = %q, want 1", generation)
 	}
 }
 

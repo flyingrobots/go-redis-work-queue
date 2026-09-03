@@ -447,13 +447,14 @@ func validateStaticQueueKeys(cfg Config) error {
 		name string
 		key  string
 	}
-	roles := make([]keyRole, 0, len(cfg.Queues)+4)
+	roles := make([]keyRole, 0, len(cfg.Queues)+5)
 	for _, name := range sortedKeys(cfg.Queues) {
 		roles = append(roles, keyRole{name: fmt.Sprintf("priority queue %q", name), key: cfg.Queues[name]})
 	}
 	roles = append(roles,
 		keyRole{name: "completed list", key: cfg.CompletedList},
 		keyRole{name: "dead-letter list", key: cfg.DeadLetterList},
+		keyRole{name: "dead-letter generation", key: queuekeys.DLQGenerationKey(cfg.DeadLetterList)},
 		keyRole{name: "ordered ready list", key: cfg.OrderedReadyList},
 		keyRole{name: "ordered active set", key: cfg.OrderedActiveSet},
 	)
@@ -462,6 +463,9 @@ func validateStaticQueueKeys(cfg Config) error {
 	for _, role := range roles {
 		if workerID, ok := queuekeys.Extract(cfg.ProcessingListPattern, role.key); ok && workerID != "" {
 			return fmt.Errorf("%s Redis key %q matches the processing list pattern", role.name, role.key)
+		}
+		if workerID, ok := queuekeys.Extract(cfg.HeartbeatKeyPattern, role.key); ok && workerID != "" {
+			return fmt.Errorf("%s Redis key %q matches the heartbeat key pattern", role.name, role.key)
 		}
 		if previous, ok := seen[role.key]; ok {
 			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)

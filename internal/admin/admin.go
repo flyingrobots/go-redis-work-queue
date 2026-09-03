@@ -25,6 +25,38 @@ type StatsResult struct {
 	Heartbeats      int64            `json:"heartbeats"`
 }
 
+var purgeDLQScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('dead-letter list and generation key must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'string')
+if problem then return redis.error_reply(problem) end
+local generation = redis.call('GET', KEYS[2])
+if not generation then generation = '0' end
+if not string.match(generation, '^%d+$') then
+  return redis.error_reply('invalid dead-letter generation')
+end
+if string.len(generation) > 1 and string.sub(generation, 1, 1) == '0' then
+  return redis.error_reply('invalid dead-letter generation')
+end
+if string.len(generation) > 19 or
+    (string.len(generation) == 19 and generation >= '9223372036854775807') then
+  return redis.error_reply('dead-letter generation exhausted')
+end
+redis.call('INCR', KEYS[2])
+return redis.call('DEL', KEYS[1])
+`)
+
 func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsResult, error) {
 	res := StatsResult{Queues: map[string]int64{}, ProcessingLists: map[string]int64{}}
 	// Count standard queues
@@ -105,7 +137,20 @@ func PurgeDLQ(ctx context.Context, cfg *config.Config, rdb *redis.Client) error 
 	if cfg.Worker.DeadLetterList == "" {
 		return errors.New("dead letter list not configured")
 	}
-	return rdb.Del(ctx, cfg.Worker.DeadLetterList).Err()
+	_, err := purgeDLQ(ctx, rdb, cfg.Worker.DeadLetterList)
+	return err
+}
+
+func purgeDLQ(ctx context.Context, rdb *redis.Client, deadLetterList string) (int64, error) {
+	deleted, err := purgeDLQScript.Run(
+		ctx,
+		rdb,
+		[]string{deadLetterList, queuekeys.DLQGenerationKey(deadLetterList)},
+	).Int64()
+	if err != nil {
+		return 0, fmt.Errorf("purge dead-letter list: %w", err)
+	}
+	return deleted, nil
 }
 
 func resolveQueue(cfg *config.Config, alias string) (string, error) {
@@ -299,12 +344,21 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 // deleted.
 func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
 	var deleted int64
+	dlqGenerationKey := ""
+	if cfg.Worker.DeadLetterList != "" {
+		dlqGenerationKey = queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+		dlqDeleted, err := purgeDLQ(ctx, rdb, cfg.Worker.DeadLetterList)
+		if err != nil {
+			return deleted, err
+		}
+		deleted += dlqDeleted
+	}
 	// Explicit keys
 	keys := make([]string, 0, len(cfg.Worker.Queues)+5)
 	for _, key := range cfg.Worker.Queues {
 		keys = append(keys, key)
 	}
-	keys = append(keys, cfg.Worker.CompletedList, cfg.Worker.DeadLetterList)
+	keys = append(keys, cfg.Worker.CompletedList)
 	keys = append(keys, cfg.Queue.OrderedReadyList, cfg.Queue.OrderedActiveSet)
 	if cfg.Producer.RateLimitKey != "" {
 		keys = append(keys, cfg.Producer.RateLimitKey)
@@ -313,7 +367,7 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 	uniq := map[string]struct{}{}
 	ek := make([]string, 0, len(keys))
 	for _, k := range keys {
-		if k == "" {
+		if k == "" || k == dlqGenerationKey {
 			continue
 		}
 		if _, ok := uniq[k]; ok {
@@ -358,15 +412,17 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 				return deleted, err
 			}
 			cursor = cur
-			if pattern.generatedPattern != "" {
-				matched := keys[:0]
-				for _, key := range keys {
-					if queuekeys.MatchesOrderingDigest(pattern.generatedPattern, key) {
-						matched = append(matched, key)
-					}
+			matched := keys[:0]
+			for _, key := range keys {
+				if key == dlqGenerationKey {
+					continue
 				}
-				keys = matched
+				if pattern.generatedPattern != "" && !queuekeys.MatchesOrderingDigest(pattern.generatedPattern, key) {
+					continue
+				}
+				matched = append(matched, key)
 			}
+			keys = matched
 			if len(keys) > 0 {
 				n, err := rdb.Del(ctx, keys...).Result()
 				if err != nil {

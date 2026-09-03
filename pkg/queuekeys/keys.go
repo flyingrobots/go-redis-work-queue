@@ -26,6 +26,8 @@ const (
 	DefaultOrderedLeasePattern   = Namespace + "ordered:lease:%s"
 )
 
+const dlqGenerationSuffix = ":generation"
+
 // IsReservedQueueAlias reports names owned by terminal queue views rather
 // than configurable priority queues.
 func IsReservedQueueAlias(alias string) bool {
@@ -93,6 +95,13 @@ func MatchesOrderingDigest(pattern, key string) bool {
 		}
 	}
 	return true
+}
+
+// DLQGenerationKey returns the metadata key that advances on every supported
+// mutation of a dead-letter list. The list length is also included in selection
+// versions so unsupported size-changing writes invalidate existing handles.
+func DLQGenerationKey(deadLetterList string) string {
+	return deadLetterList + dlqGenerationSuffix
 }
 
 // OrderingDigest maps exact ordering-key bytes to a bounded Redis-safe token.
