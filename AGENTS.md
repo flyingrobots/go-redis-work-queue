@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Five exact-head
-  review passes produced 34 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Six exact-head
+  review passes produced 36 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -34,7 +34,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   at-least-once reaping.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
-  Redis key layout. Duplicate IDs remain separate deliveries.
+  Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
+  `queue:write`. Duplicate IDs remain separate deliveries.
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel. Renewal uncertainty
@@ -42,15 +43,17 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
-  heartbeat patterns must differ; per-digest roles cannot alias; scan patterns
+  heartbeat patterns must differ; static roles cannot resolve to generated
+  per-digest queue or lease keys; per-digest roles cannot alias; scan patterns
   escape fixed glob text; trimmed priority aliases cannot collide; and public
   enqueue resets worker-owned retry counters.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
-  Extractor regressions cover pagination, comment types, prompts, and bare
-  output paths. The Event Hooks test plan now distinguishes its seven live
-  tests and 11.6% observed coverage from removed future suites.
+  Extractor and worksheet regressions cover paginated comments; extractor
+  coverage also spans comment types, prompts, and bare output paths. The Event
+  Hooks test plan now distinguishes its seven live tests and 11.6% observed
+  coverage from removed future suites.
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
@@ -194,6 +197,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 third review: close seven mutation-safety, consistency, and tooling findings
 - [x] Queue core PR #6 fourth review: cancel lease-lost handlers and reject per-job key aliases
 - [x] Queue core PR #6 fifth review: close seven configuration, statistics, and stale-artifact findings
+- [x] Queue core PR #6 sixth review: enforce enqueue RBAC and reject derived-key aliases
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -260,6 +264,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
 - [x] Tooling: Restore the documented PR-comment extractor with pagination tests
+- [x] Tooling: Make the review-worksheet generator pagination-safe
 - [ ] Tooling: Clear the legacy ShellCheck baseline in release, deployment, and test scripts
 - [ ] CI: Update checkout/setup-go actions for Node 24 runner compatibility
 - [x] Tooling: Clear the repository-wide `go vet ./...` baseline
@@ -702,6 +707,37 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Sixth Review Remediated
+>
+> Closed both exact-head findings as isolated RED/GREEN/VERIFY commits and
+> repaired a pagination defect found while auditing the restored tooling.
+>
+> Changes
+>
+> - Enforced the existing RBAC endpoint catalog in the real Admin API startup
+>   chain, so viewer credentials cannot invoke enqueue without `queue:write`.
+> - Rejected static queue keys that resolve to generated per-digest ordered
+>   queue or lease keys at both public and runtime config boundaries.
+> - Made the review-worksheet generator flatten every GitHub REST page and use
+>   a timezone-aware UTC date.
+>
+> Validation
+>
+> - Authorization RED returned 204 and reached enqueue with a valid viewer
+>   token; GREEN returns typed 403 while an operator token reaches the handler.
+> - Derived-key RED failed all 26 static-role/pattern combinations; the four
+>   affected packages pass five race-enabled repetitions and focused vet.
+> - A two-page fake GitHub response reproduced `JSONDecodeError: Extra data`;
+>   all three extractor/worksheet tests, compilation, and a live PR #6 worksheet
+>   generation now pass.
+> - All 36 review threads have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
