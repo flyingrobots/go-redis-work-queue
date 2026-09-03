@@ -14,6 +14,10 @@ Six work items that turn this repo from a queue **benchmark** into a queue **pro
 
 ## Item 0 — Fix the idempotency config lie
 
+**Status:** Complete on 2026-09-02. The runtime now rejects unsupported config
+keys, and the example plus feature ledger no longer advertise exactly-once
+wiring that does not exist.
+
 > **PROMPT**
 >
 > You are working in `go-redis-work-queue`. The example config advertises a feature that is not wired up, which will mislead any user who reads it.

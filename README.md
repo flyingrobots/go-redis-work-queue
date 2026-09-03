@@ -12,6 +12,9 @@ Provides producer, worker, and all-in-one modes with robust resilience, observab
 See the [Feature Matrix](docs/features-ledger.md) for the latest capability status (stable, experimental, deprecated).
 
 See `docs/` to learn more. A sample configuration is provided in `config/config.example.yaml`.
+Configuration loading rejects unknown YAML keys so unsupported settings cannot
+silently appear enabled. The two exactly-once packages are prototypes and are
+not wired into runtime configuration or job intake.
 
 Developer tools and automation: see `docs/tools/README.md` for:
 - Progress automation for the Features Ledger and README
@@ -26,7 +29,7 @@ For full details, see the Features Ledger at [docs/features-ledger.md](docs/feat
 
 <!-- progress:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 55%
+█████████████████████▓░░░░░░░░░░░░░░░░░░ 54%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -241,7 +244,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BUILDS | Compiles; tests still expect legacy OpenTelemetry helpers. |
 | [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BUILDS | Compiles; remediation actions still need implementation. |
 | [internal/event-hooks](internal/event-hooks/README.md) | BUILDS | Compiles; handlers remain TODO for replay/test flows. |
-| [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
+| [internal/exactly_once](internal/exactly_once/README.md) | UNWIRED | Prototype code exists in two internal packages; neither is connected to worker intake or configuration. |
 | [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
 | [internal/job-budgeting](internal/job-budgeting/README.md) | BUILDS | Compiles; budgeting enforcement still TODO. |
 | [internal/json-payload-studio](internal/json-payload-studio/README.md) | BUILDS | Compiles; handlers still rely on in-memory stubs. |

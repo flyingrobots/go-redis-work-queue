@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-	// exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 )
 
 type Redis struct {
@@ -62,19 +61,19 @@ type CircuitBreaker struct {
 }
 
 type TracingConfig struct {
-	Enabled             bool              `mapstructure:"enabled"`
-	Endpoint            string            `mapstructure:"endpoint"`
-	Environment         string            `mapstructure:"environment"`
-	SamplingStrategy    string            `mapstructure:"sampling_strategy"`
-	SamplingRate        float64           `mapstructure:"sampling_rate"`
-	BatchTimeout        time.Duration     `mapstructure:"batch_timeout"`
-	MaxExportBatchSize  int               `mapstructure:"max_export_batch_size"`
-	Headers             map[string]string `mapstructure:"headers"`
-	Insecure            bool              `mapstructure:"insecure"`
-	PropagationFormat   string            `mapstructure:"propagation_format"`
-	AttributeAllowlist  []string          `mapstructure:"attribute_allowlist"`
-	RedactSensitive     bool              `mapstructure:"redact_sensitive"`
-	EnableMetricExemplars bool            `mapstructure:"enable_metric_exemplars"`
+	Enabled               bool              `mapstructure:"enabled"`
+	Endpoint              string            `mapstructure:"endpoint"`
+	Environment           string            `mapstructure:"environment"`
+	SamplingStrategy      string            `mapstructure:"sampling_strategy"`
+	SamplingRate          float64           `mapstructure:"sampling_rate"`
+	BatchTimeout          time.Duration     `mapstructure:"batch_timeout"`
+	MaxExportBatchSize    int               `mapstructure:"max_export_batch_size"`
+	Headers               map[string]string `mapstructure:"headers"`
+	Insecure              bool              `mapstructure:"insecure"`
+	PropagationFormat     string            `mapstructure:"propagation_format"`
+	AttributeAllowlist    []string          `mapstructure:"attribute_allowlist"`
+	RedactSensitive       bool              `mapstructure:"redact_sensitive"`
+	EnableMetricExemplars bool              `mapstructure:"enable_metric_exemplars"`
 }
 
 // Tracing is a backwards-compatible alias
@@ -91,12 +90,11 @@ type ObservabilityConfig struct {
 type Observability = ObservabilityConfig
 
 type Config struct {
-	Redis          Redis               `mapstructure:"redis"`
-	Worker         Worker              `mapstructure:"worker"`
-	Producer       Producer            `mapstructure:"producer"`
-	CircuitBreaker CircuitBreaker      `mapstructure:"circuit_breaker"`
-	Observability  Observability       `mapstructure:"observability"`
-	// ExactlyOnce    exactlyonce.Config  `mapstructure:"exactly_once"`
+	Redis          Redis          `mapstructure:"redis"`
+	Worker         Worker         `mapstructure:"worker"`
+	Producer       Producer       `mapstructure:"producer"`
+	CircuitBreaker CircuitBreaker `mapstructure:"circuit_breaker"`
+	Observability  Observability  `mapstructure:"observability"`
 }
 
 func defaultConfig() *Config {
@@ -145,7 +143,6 @@ func defaultConfig() *Config {
 			Tracing:             Tracing{Enabled: false},
 			QueueSampleInterval: 2 * time.Second,
 		},
-		// ExactlyOnce: *exactlyonce.DefaultConfig(),
 	}
 }
 
@@ -200,15 +197,6 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("observability.tracing.endpoint", def.Observability.Tracing.Endpoint)
 	v.SetDefault("observability.queue_sample_interval", def.Observability.QueueSampleInterval)
 
-	// Exactly-once patterns defaults (temporarily disabled)
-	// v.SetDefault("exactly_once.idempotency.enabled", def.ExactlyOnce.Idempotency.Enabled)
-	// v.SetDefault("exactly_once.idempotency.default_ttl", def.ExactlyOnce.Idempotency.DefaultTTL)
-	// v.SetDefault("exactly_once.idempotency.key_prefix", def.ExactlyOnce.Idempotency.KeyPrefix)
-	// v.SetDefault("exactly_once.idempotency.storage.type", def.ExactlyOnce.Idempotency.Storage.Type)
-	// v.SetDefault("exactly_once.outbox.enabled", def.ExactlyOnce.Outbox.Enabled)
-	// v.SetDefault("exactly_once.metrics.enabled", def.ExactlyOnce.Metrics.Enabled)
-
-
 	// Optional file read
 	if _, err := os.Stat(path); err == nil {
 		if err := v.ReadInConfig(); err != nil {
@@ -217,7 +205,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 	if err := Validate(&cfg); err != nil {

@@ -9,7 +9,7 @@ This is the canonical, grouped snapshot of features — shipped, in‑progress, 
 
 <!-- progress:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 55%
+█████████████████████▓░░░░░░░░░░░░░░░░░░ 54%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -46,16 +46,16 @@ Update via script
 ### Core & Platform
 <!-- group-progress:core-platform:begin -->
 ```text
-█████████████████████████████████▓░░░░░░ 84%
+████████████████████████████████▓░░░░░░░ 81%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.58 features=9 kloc=17.4
+weight=8.59 features=9 kloc=17.4
 ```
 <!-- group-progress:core-platform:end -->
 
 | Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
 | ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
-|🅰️ | [Core Job Queue](../README.md) | Core/Runtime | — | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | Alpha | 80% (conf: high) | `████████░░` | Stable enqueue/consume; retries + metrics present. Conf high from breadth and usage. | Retry/backoff polish; graceful shutdown semantics; perf passes. | Unit + some integration; good. | Foundation is solid. |
+|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | MVP | 55% (conf: high) | `██████░░░░` | Crash-safe benchmark flow has priority queues, retries, reaping, and metrics; jobs remain filepath metadata and workers simulate work. | Add payload/size guard, handler, public enqueue surfaces, per-key FIFO, and truthful default test coverage. | Some unit/integration coverage; core suites remain gated. | Reliable foundation, not yet a general-purpose queue product. |
 |🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.4 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | Storage Backends | Core/Storage | — | [internal/storage-backends](../internal/storage-backends) | 5.9 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | RBAC & Tokens | Security | — | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |
@@ -65,7 +65,7 @@ weight=8.58 features=9 kloc=17.4
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |🅰️ | Breaker | Core/Runtime | — | [internal/breaker](../internal/breaker) | 0.2 | Alpha | 75% (conf: med) | ███████░░░ | Circuit breaker in place with unit tests. | Integrate metrics; document use; tune defaults. | Unit good. | Keep simple + safe. |
-|🅱️ | Config | Core/Runtime | — | [internal/config](../internal/config) | 0.3 | Beta | 85% (conf: high) | █████████░ | Config loader stable. | Extend validation; env overrides docs; backwards compat policy. | Unit present. | Foundation module. |
+|🅱️ | Config | Core/Runtime | — | [internal/config](../internal/config) | 0.3 | Beta | 90% (conf: high) | █████████░ | Strict YAML loading, validated defaults, and unsupported-key rejection. | Expand field validation; document env overrides and compatibility policy. | Defaults, validation, example, and dead-key regression tests. | Unsupported features cannot appear silently enabled. |
 |🅱️ | Redis Client | Core/Runtime | — | [internal/redisclient](../internal/redisclient) | 0.0 | Beta | 90% (conf: high) | █████████░ | Thin wrapper around go-redis v9. | Connection tests; pool tuning; resilience docs. | None | Unified to v9. |
 
 ### TUI & UX
@@ -97,7 +97,7 @@ weight=14.46 features=13 kloc=39.3
 ### Reliability & Ops
 <!-- group-progress:reliability-ops:begin -->
 ```text
-████████████████████▓░░░░░░░░░░░░░░░░░░░ 51%
+███████████████████▓░░░░░░░░░░░░░░░░░░░░ 49%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 weight=16.83 features=14 kloc=60.2
@@ -107,7 +107,7 @@ weight=16.83 features=14 kloc=60.2
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |⏳ | DLQ Remediation Pipeline | Reliability | — | [internal/dlq-remediation-pipeline](../internal/dlq-remediation-pipeline) | 4.7 | In Progress | 45% (conf: med) | ████░░░░░░ | Pipeline scaffolding; classifiers/rules TBD. | Rules engine; rate‑limited requeue; safety bounds. | Light unit; needs scenario tests. | Integrate with DLQ UI. |
-|🚼 | Exactly‑once Patterns | Reliability | — | [internal/exactly_once](../internal/exactly_once), [internal/exactly-once-patterns](../internal/exactly-once-patterns) | 7.9 | MVP | 70% (conf: high) | ███████░░░ | Idempotency/outbox ready; some TODOs. | Finalize metrics; publisher adapters; docs. | Unit + integration; good. | Strong differentiator. |
+|⏳ | Exactly‑once Patterns | Reliability | — | [internal/exactly_once](../internal/exactly_once), [internal/exactly-once-patterns](../internal/exactly-once-patterns) | 7.9 | In Progress | 35% (conf: high) | ███░░░░░░░ | Two internal prototypes exist; neither is wired into config, worker intake, or producer enqueue. | Choose one implementation, wire the runtime path and admin stats, then prove end-to-end deduplication. | Internal/opt-in tests only; no runtime integration proof. | Not advertised in the example config until it is wired. |
 |⏳ | Advanced Rate Limiting | Throughput | — | [internal/advanced-rate-limiting](../internal/advanced-rate-limiting) | 1.6 | In Progress | 55% (conf: high) | █████░░░░░ | Lua token bucket + fairness done. | Admin API runtime updates; TUI widget; producer/worker hooks. | Unit + integration; good. | High leverage; wire into SDKs. |
 |⏳ | Producer Backpressure | SDKs | — | [internal/producer-backpressure](../internal/producer-backpressure) | 3.3 | In Progress | 40% (conf: med) | ████░░░░░░ | Signals present; not linked to RL. | Integrate with rate limiter; client SDK examples. | Unit present. | Needs producer docs. |
 |⏳ | Policy Simulator | Ops/Safety | — | [internal/policy-simulator](../internal/policy-simulator) | 4.7 | In Progress | 45% (conf: med) | ████░░░░░░ | Core present; retrieval/rollback TODO. | Preview/apply/rollback endpoints; persist scenarios. | Unit present. | Pair with Admin API. |

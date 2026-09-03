@@ -132,6 +132,12 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 
 ### Prioritized Backlog
 
+- [x] Queue core ROADMAP Item 0: remove the unwired idempotency config
+- [ ] Queue core ROADMAP Item 5: make the tests tell the truth
+- [ ] Queue core ROADMAP Item 1: give `Job` a payload
+- [ ] Queue core ROADMAP Item 2: add a real worker handler
+- [ ] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
+- [ ] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] Real green: capacity planning/forecasting/policy simulator suite
@@ -560,6 +566,26 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 0: Honest Idempotency Config
+> Removed the example configuration for an exactly-once subsystem that is not
+> connected to the queue runtime.
+>
+> Changes
+> - Captured a failing regression proving unsupported `exactly_once` config was silently accepted.
+> - Switched config decoding to reject unknown keys and removed commented-out exactly-once loader code.
+> - Removed the dead example block and aligned the README and Features Ledger with the unwired state.
+> - Audited live GitHub issues: zero open issues; the repository's three open issue-count entries are PRs #1, #2, and #5.
+>
+> Validation
+> - `go test ./internal/config -count=1`
+> - `go test ./... -count=1` reached the known Item 5 RED:
+>   `internal/theme-playground` expects mode `0644` but the host umask produces `0640`;
+>   all other default packages passed.
+>
+> Follow-ups
+> - Execute ROADMAP Item 5 next.
+
 > [!NOTE]
 > ### 2025-09-20 – `make clean` Fix
 > Resolved permission denials when cleaning the repo.

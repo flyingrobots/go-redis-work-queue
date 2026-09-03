@@ -3,6 +3,8 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -17,6 +19,29 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Redis.Addr == "" {
 		t.Fatalf("expected default redis addr")
+	}
+}
+
+func TestLoadRejectsUnsupportedExactlyOnceConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	contents := []byte("exactly_once:\n  idempotency:\n    enabled: false\n")
+	if err := os.WriteFile(path, contents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected unsupported exactly_once config to be rejected")
+	}
+	if !strings.Contains(err.Error(), "exactly_once") {
+		t.Fatalf("expected error to identify exactly_once, got %q", err)
+	}
+}
+
+func TestExampleConfigContainsOnlySupportedKeys(t *testing.T) {
+	path := filepath.Join("..", "..", "config", "config.example.yaml")
+	if _, err := Load(path); err != nil {
+		t.Fatalf("example config contains an unsupported key: %v", err)
 	}
 }
 
