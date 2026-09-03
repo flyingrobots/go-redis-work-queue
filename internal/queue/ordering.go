@@ -74,6 +74,36 @@ end
 return 1
 `)
 
+var requeueEncodedScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+if ARGV[3] == 'ordered' then
+  problem = require_type(KEYS[3], 'list')
+  if problem then return redis.error_reply(problem) end
+  problem = require_type(KEYS[4], 'set')
+  if problem then return redis.error_reply(problem) end
+end
+
+if redis.call('LREM', KEYS[1], 1, ARGV[1]) ~= 1 then
+  return 0
+end
+redis.call('LPUSH', KEYS[2], ARGV[1])
+if ARGV[3] == 'ordered' and redis.call('SADD', KEYS[4], ARGV[2]) == 1 then
+  redis.call('LPUSH', KEYS[3], ARGV[2])
+end
+return 1
+`)
+
 var claimOrderedScript = redis.NewScript(`
 local digest = redis.call('RPOP', KEYS[1])
 if not digest then
@@ -171,6 +201,37 @@ func AppendEncoded(ctx context.Context, rdb redis.Cmdable, queueName string, job
 		return fmt.Errorf("enqueue ordered job: %w", err)
 	}
 	return nil
+}
+
+// RequeueEncoded atomically removes one exact envelope from a source list and
+// returns it to ordinary or ordered intake according to its ordering key.
+func RequeueEncoded(ctx context.Context, rdb redis.Cmdable, source, destination string, job Job, encoded string, layout OrderingLayout) (bool, error) {
+	if source == "" {
+		return false, errors.New("requeue source must be non-empty")
+	}
+	if job.OrderingKey == "" {
+		if destination == "" {
+			return false, errors.New("requeue destination must be non-empty")
+		}
+		result, err := requeueEncodedScript.Eval(ctx, rdb,
+			[]string{source, destination, destination, destination}, encoded, "", "ordinary").Int64()
+		if err != nil {
+			return false, fmt.Errorf("requeue job: %w", err)
+		}
+		return result == 1, nil
+	}
+
+	if err := layout.Validate(); err != nil {
+		return false, err
+	}
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey := queuekeys.Format(layout.QueuePattern, digest)
+	result, err := requeueEncodedScript.Eval(ctx, rdb,
+		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered").Int64()
+	if err != nil {
+		return false, fmt.Errorf("requeue ordered job: %w", err)
+	}
+	return result == 1, nil
 }
 
 // ClaimOrdered atomically leases the oldest ready key and moves its oldest job

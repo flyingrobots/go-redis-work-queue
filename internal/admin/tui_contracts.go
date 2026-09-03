@@ -9,6 +9,7 @@ import (
     "time"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
+    "github.com/flyingrobots/go-redis-work-queue/internal/queue"
     "github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
     "github.com/redis/go-redis/v9"
 )
@@ -128,21 +129,20 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
             break
         }
         for _, raw := range batch {
-            var meta struct{ ID string `json:"id"` }
-            if err := json.Unmarshal([]byte(raw), &meta); err != nil {
+            job, err := queue.UnmarshalJob(raw)
+            if err != nil {
                 continue
             }
-            if _, ok := idset[meta.ID]; !ok {
+            if _, ok := idset[job.ID]; !ok {
                 continue
             }
-            // Remove one matching occurrence and push to destination
-            if _, err := rdb.LRem(ctx, cfg.Worker.DeadLetterList, 1, raw).Result(); err != nil {
+            moved, err := queue.RequeueEncoded(ctx, rdb, cfg.Worker.DeadLetterList, destQueue, job, raw, cfg.OrderingLayout())
+            if err != nil {
                 return requeued, err
             }
-            if err := rdb.LPush(ctx, destQueue, raw).Err(); err != nil {
-                return requeued, err
+            if moved {
+                requeued++
             }
-            requeued++
         }
         if len(batch) < chunk {
             break
