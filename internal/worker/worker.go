@@ -372,7 +372,7 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 	if next.ordered != nil {
 		leaseKey = next.ordered.LeaseKey
 	}
-	handlerCtx, stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, payload, leaseKey, workerID)
+	handlerCtx, stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, leaseKey, workerID)
 	defer stopHeartbeat()
 	if handlerCtx.Err() != nil {
 		w.log.Info("job interrupted before handler; leaving in processing for reaper",

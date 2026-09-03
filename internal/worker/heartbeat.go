@@ -15,7 +15,7 @@ import (
 // handler context is canceled as soon as lease renewal fails or proves that
 // ownership was lost. The stop function waits for the renewal goroutine,
 // preventing a late SET from racing with cleanup.
-func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, owner string) (context.Context, func()) {
+func (w *Worker) maintainHeartbeat(ctx context.Context, key, leaseKey, owner string) (context.Context, func()) {
 	ttl := w.cfg.Worker.HeartbeatTTL
 	if ttl <= 0 {
 		ttl = time.Second
@@ -32,7 +32,7 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, 
 		stopRenewal()
 	}
 	set := func() bool {
-		if err := w.rdb.Set(heartbeatCtx, key, payload, ttl).Err(); err != nil && heartbeatCtx.Err() == nil {
+		if err := w.rdb.Set(heartbeatCtx, key, owner, ttl).Err(); err != nil && heartbeatCtx.Err() == nil {
 			w.log.Warn("heartbeat refresh failed", obs.String("key", key), obs.Err(err))
 		}
 		if leaseKey != "" {
