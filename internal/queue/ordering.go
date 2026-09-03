@@ -138,6 +138,34 @@ return 0
 `)
 
 var transitionOrderedScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local transition = ARGV[5]
+if transition ~= 'retry' and transition ~= 'complete' and transition ~= 'dead_letter' and transition ~= 'discard' then
+  return redis.error_reply('unknown ordered transition')
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[3], 'string')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[4], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[5], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[6], 'set')
+if problem then return redis.error_reply(problem) end
+if transition == 'complete' or transition == 'dead_letter' then
+  problem = require_type(KEYS[7], 'list')
+  if problem then return redis.error_reply(problem) end
+end
+
 if redis.call('GET', KEYS[3]) ~= ARGV[1] then
   return 0
 end
@@ -145,12 +173,10 @@ if redis.call('LREM', KEYS[1], 1, ARGV[2]) ~= 1 then
   return 0
 end
 
-if ARGV[5] == 'retry' then
+if transition == 'retry' then
   redis.call('RPUSH', KEYS[4], ARGV[3])
-elseif ARGV[5] == 'complete' or ARGV[5] == 'dead_letter' then
+elseif transition == 'complete' or transition == 'dead_letter' then
   redis.call('LPUSH', KEYS[7], ARGV[3])
-elseif ARGV[5] ~= 'discard' then
-  return redis.error_reply('unknown ordered transition')
 end
 
 redis.call('DEL', KEYS[2])

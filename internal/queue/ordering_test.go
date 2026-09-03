@@ -103,6 +103,38 @@ func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
 	}
 }
 
+func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+
+	job := NewJob("wrong-type-terminal", "", 0, "low", "", "")
+	job.OrderingKey = "account:terminal"
+	if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+		t.Fatal(err)
+	}
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-1", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("claim = (%#v, %v, %v)", delivery, ok, err)
+	}
+	if err := rdb.Set(ctx, "test:completed", "not-a-list", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	transitioned, err := TransitionOrdered(ctx, rdb, layout, delivery, "test:processing", "test:heartbeat", "worker-1", "test:completed", delivery.Payload, OrderedComplete)
+	if err == nil || transitioned {
+		t.Fatalf("complete = (%v, %v), want wrong-type error", transitioned, err)
+	}
+	if got := rdb.LRange(ctx, "test:processing", 0, -1).Val(); len(got) != 1 || got[0] != delivery.Payload {
+		t.Fatalf("processing delivery after failed transition = %#v", got)
+	}
+	if owner := rdb.Get(ctx, delivery.LeaseKey).Val(); owner != "worker-1" {
+		t.Fatalf("lease owner after failed transition = %q", owner)
+	}
+}
+
 func TestOrderedRetryAndRecoveryStayAheadOfLaterJobs(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
