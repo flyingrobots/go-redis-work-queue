@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Three exact-head
-  review passes produced 25 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Four exact-head
+  review passes produced 27 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -37,11 +37,12 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   Redis key layout. Duplicate IDs remain separate deliveries.
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
-  priority within a key; different keys remain parallel.
+  priority within a key; different keys remain parallel. Renewal uncertainty
+  or proven lease loss cancels the handler-scoped context before redelivery.
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Custom layouts reject
-  queue/lease and ready/active collisions, scan patterns escape fixed glob
-  text, terminal aliases cannot become priorities, and public enqueue resets
+  static and per-digest role collisions, scan patterns escape fixed glob text,
+  terminal aliases cannot become priorities, and public enqueue resets
   worker-owned retry counters.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages. The release
   changelog and documented PR-comment extractor are tracked again; extractor
@@ -187,6 +188,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 review: close eight findings and add atomic-batch CI coverage
 - [x] Queue core PR #6 re-review: close ten additional correctness and documentation findings
 - [x] Queue core PR #6 third review: close seven mutation-safety, consistency, and tooling findings
+- [x] Queue core PR #6 fourth review: cancel lease-lost handlers and reject per-job key aliases
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -695,6 +697,35 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Fourth Review Remediated
+>
+> Closed two exact-head ordering findings as separate RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Bound ordered handlers to a child context that is canceled on renewal
+>   errors or lease-owner mismatch; interrupted deliveries remain for reaping.
+> - Rejected collisions among ready, active, formatted queue, and formatted
+>   lease roles before single, batch, or requeue intake can touch Redis.
+>
+> Validation
+>
+> - The lease-loss RED kept a handler alive after owner replacement; the fixed
+>   worker package passes five race repetitions and focused vet.
+> - The alias RED exposed nine failures, including a partial single-enqueue
+>   write; all ten single/batch cases now pass five queue/client race runs.
+> - Go 1.25.14 full race, byte-stable tidy, vet, build, request-ID lint,
+>   28-package minimum, external-client race, workflow, and extractor gates pass.
+> - Five real-Redis worker runs and all eight FIFO cases pass; the 10,000-key
+>   claim measured 197.75 microseconds. `govulncheck` finds no vulnerability.
+> - All 27 review threads have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
