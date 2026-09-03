@@ -269,7 +269,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.Action == tea.MouseActionPress {
 					switch m.focus {
 					case focusQueues:
+						previous := m.tbl.Cursor()
 						m.tbl.MoveUp(1)
+						if m.tbl.Cursor() != previous {
+							m.refreshDecoratedRows()
+						}
 					case focusCharts:
 						m.vpCharts.LineUp(1)
 					case focusInfo:
@@ -280,7 +284,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.Action == tea.MouseActionPress {
 					switch m.focus {
 					case focusQueues:
+						previous := m.tbl.Cursor()
 						m.tbl.MoveDown(1)
+						if m.tbl.Cursor() != previous {
+							m.refreshDecoratedRows()
+						}
 					case focusCharts:
 						m.vpCharts.LineDown(1)
 					case focusInfo:
