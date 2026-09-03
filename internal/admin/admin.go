@@ -329,25 +329,44 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 		}
 		deleted += n
 	}
-	// Patterns: processing lists and heartbeats
-	patterns := []string{
-		processingScanPattern(cfg),
-		heartbeatScanPattern(cfg),
+	// Patterns: processing lists, heartbeats, and digest-shaped ordered state.
+	type purgePattern struct {
+		scan             string
+		generatedPattern string
+	}
+	patterns := []purgePattern{
+		{scan: processingScanPattern(cfg)},
+		{scan: heartbeatScanPattern(cfg)},
 	}
 	if cfg.Queue.OrderedQueuePattern != "" {
-		patterns = append(patterns, queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern))
+		patterns = append(patterns, purgePattern{
+			scan:             queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern),
+			generatedPattern: cfg.Queue.OrderedQueuePattern,
+		})
 	}
 	if cfg.Queue.OrderedLeasePattern != "" {
-		patterns = append(patterns, queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern))
+		patterns = append(patterns, purgePattern{
+			scan:             queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern),
+			generatedPattern: cfg.Queue.OrderedLeasePattern,
+		})
 	}
-	for _, pat := range patterns {
+	for _, pattern := range patterns {
 		var cursor uint64
 		for {
-			keys, cur, err := rdb.Scan(ctx, cursor, pat, 500).Result()
+			keys, cur, err := rdb.Scan(ctx, cursor, pattern.scan, 500).Result()
 			if err != nil {
 				return deleted, err
 			}
 			cursor = cur
+			if pattern.generatedPattern != "" {
+				matched := keys[:0]
+				for _, key := range keys {
+					if queuekeys.MatchesOrderingDigest(pattern.generatedPattern, key) {
+						matched = append(matched, key)
+					}
+				}
+				keys = matched
+			}
 			if len(keys) > 0 {
 				n, err := rdb.Del(ctx, keys...).Result()
 				if err != nil {

@@ -65,11 +65,12 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	digest := queuekeys.OrderingDigest("account:42")
 	for _, key := range []string{
 		cfg.Queue.OrderedReadyList,
 		cfg.Queue.OrderedActiveSet,
-		"jobqueue:ordered:queue:digest-a",
-		"jobqueue:ordered:lease:digest-a",
+		queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest),
+		queuekeys.Format(cfg.Queue.OrderedLeasePattern, digest),
 	} {
 		mr.Set(key, "value")
 	}
@@ -79,6 +80,36 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 	}
 	if deleted != 4 || len(mr.Keys()) != 0 {
 		t.Fatalf("purge deleted %d ordered keys; remaining=%v", deleted, mr.Keys())
+	}
+}
+
+func TestPurgeAllPreservesNonDigestKeysMatchedByOrderedPatterns(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Queue.OrderedQueuePattern = "tenant:%s"
+	cfg.Queue.OrderedLeasePattern = "tenant:lease:%s"
+	digest := queuekeys.OrderingDigest("account:42")
+	queueKey := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest)
+	leaseKey := queuekeys.Format(cfg.Queue.OrderedLeasePattern, digest)
+	const unrelated = "tenant:settings"
+
+	for _, key := range []string{queueKey, leaseKey, unrelated} {
+		mr.Set(key, "value")
+	}
+	deleted, err := PurgeAll(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 2 {
+		t.Fatalf("purge deleted %d keys, want only the generated queue and lease", deleted)
+	}
+	if !mr.Exists(unrelated) {
+		t.Fatal("purge deleted an unrelated key matched by the broad ordered pattern")
+	}
+	if mr.Exists(queueKey) || mr.Exists(leaseKey) {
+		t.Fatalf("generated ordered state remains: %v", mr.Keys())
 	}
 }
 
