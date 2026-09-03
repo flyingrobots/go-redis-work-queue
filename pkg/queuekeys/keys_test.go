@@ -92,3 +92,11 @@ func TestFormatTreatsOtherPercentSequencesLiterally(t *testing.T) {
 		t.Fatalf("extracted (%q, %v), want (%q, true)", identifier, ok, "worker-1")
 	}
 }
+
+func TestScanPatternEscapesLiteralRedisGlobCharacters(t *testing.T) {
+	pattern := `tenant[1]*?:ordered:\%s:suffix[?]`
+	want := `tenant\[1\]\*\?:ordered:\\*:suffix\[\?\]`
+	if got := ScanPattern(pattern); got != want {
+		t.Fatalf("scan pattern = %q, want %q", got, want)
+	}
+}

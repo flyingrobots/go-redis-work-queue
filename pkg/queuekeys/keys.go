@@ -32,9 +32,24 @@ func Format(pattern, identifier string) string {
 	return strings.Replace(pattern, "%s", identifier, 1)
 }
 
-// ScanPattern converts configured %s key patterns into Redis glob patterns.
+// ScanPattern converts a configured %s key pattern into a Redis glob pattern
+// while preserving all glob metacharacters in its fixed prefix and suffix.
 func ScanPattern(pattern string) string {
-	return strings.ReplaceAll(pattern, "%s", "*")
+	prefix, suffix, ok := SplitPattern(pattern)
+	if !ok {
+		return escapeRedisGlob(pattern)
+	}
+	return escapeRedisGlob(prefix) + "*" + escapeRedisGlob(suffix)
+}
+
+func escapeRedisGlob(value string) string {
+	return strings.NewReplacer(
+		`\`, `\\`,
+		`*`, `\*`,
+		`?`, `\?`,
+		`[`, `\[`,
+		`]`, `\]`,
+	).Replace(value)
 }
 
 // Extract returns the identifier embedded in a key generated from pattern.
