@@ -99,6 +99,7 @@ type PurgeResponse struct {
 
 // DLQ types
 type DLQItem struct {
+	Handle    string    `json:"handle"`
 	ID        string    `json:"id"`
 	Queue     string    `json:"queue,omitempty"`
 	Payload   string    `json:"payload"`
@@ -117,7 +118,7 @@ type DLQListResponse struct {
 
 type DLQRequeueRequest struct {
 	Namespace string   `json:"ns"`
-	IDs       []string `json:"ids"`
+	Handles   []string `json:"handles"`
 	DestQueue string   `json:"dest_queue,omitempty"`
 }
 
@@ -128,7 +129,7 @@ type DLQRequeueResponse struct {
 
 type DLQPurgeSelectionRequest struct {
 	Namespace string   `json:"ns"`
-	IDs       []string `json:"ids"`
+	Handles   []string `json:"handles"`
 }
 
 type DLQPurgeSelectionResponse struct {

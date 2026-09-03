@@ -152,6 +152,48 @@ end
 return 1
 `)
 
+var requeueEncodedAtScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+if ARGV[3] == 'ordered' then
+  problem = require_type(KEYS[3], 'list')
+  if problem then return redis.error_reply(problem) end
+  problem = require_type(KEYS[4], 'set')
+  if problem then return redis.error_reply(problem) end
+end
+
+local index = tonumber(ARGV[4])
+if not index or index < 0 then
+  return redis.error_reply('selection index must be non-negative')
+end
+if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
+  return 0
+end
+if ARGV[5] == ARGV[1] then
+  return redis.error_reply('selection marker must differ from the envelope')
+end
+
+redis.call('LSET', KEYS[1], index, ARGV[5])
+if redis.call('LREM', KEYS[1], 1, ARGV[5]) ~= 1 then
+  return redis.error_reply('selected envelope could not be removed')
+end
+redis.call('LPUSH', KEYS[2], ARGV[1])
+if ARGV[3] == 'ordered' and redis.call('SADD', KEYS[4], ARGV[2]) == 1 then
+  redis.call('LPUSH', KEYS[3], ARGV[2])
+end
+return 1
+`)
+
 var claimOrderedScript = redis.NewScript(`
 local function require_type(key, expected)
   local type_reply = redis.call('TYPE', key)
@@ -362,6 +404,44 @@ func RequeueEncoded(ctx context.Context, rdb redis.Cmdable, source, destination 
 		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered").Int64()
 	if err != nil {
 		return false, fmt.Errorf("requeue ordered job: %w", err)
+	}
+	return result == 1, nil
+}
+
+// RequeueEncodedAt atomically removes the exact envelope at a non-negative
+// source-list index and returns it to ordinary or ordered intake. A changed
+// index or envelope is treated as a stale selection and returns moved=false.
+func RequeueEncodedAt(ctx context.Context, rdb redis.Cmdable, source, destination string, index int64, job Job, encoded, marker string, layout OrderingLayout) (bool, error) {
+	if source == "" {
+		return false, errors.New("requeue source must be non-empty")
+	}
+	if index < 0 {
+		return false, errors.New("requeue source index must be non-negative")
+	}
+	if marker == "" || marker == encoded {
+		return false, errors.New("requeue selection marker must be non-empty and differ from the envelope")
+	}
+	if job.OrderingKey == "" {
+		if destination == "" {
+			return false, errors.New("requeue destination must be non-empty")
+		}
+		result, err := requeueEncodedAtScript.Eval(ctx, rdb,
+			[]string{source, destination, destination, destination}, encoded, "", "ordinary", index, marker).Int64()
+		if err != nil {
+			return false, fmt.Errorf("requeue selected job: %w", err)
+		}
+		return result == 1, nil
+	}
+
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey, _, err := layout.keysForDigest(digest)
+	if err != nil {
+		return false, err
+	}
+	result, err := requeueEncodedAtScript.Eval(ctx, rdb,
+		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered", index, marker).Int64()
+	if err != nil {
+		return false, fmt.Errorf("requeue selected ordered job: %w", err)
 	}
 	return result == 1, nil
 }

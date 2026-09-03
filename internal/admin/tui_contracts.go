@@ -2,10 +2,13 @@ package admin
 
 import (
     "context"
+    "crypto/sha256"
     "encoding/json"
     "errors"
     "fmt"
     "sort"
+    "strconv"
+    "strings"
     "time"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -20,6 +23,7 @@ var ErrNotImplemented = errors.New("not implemented")
 // DLQItem represents a dead‑letter entry suitable for TUI listing and actions.
 // Implementations should populate ID and Queue from payload/metadata when possible.
 type DLQItem struct {
+    Handle    string    `json:"handle"`
     ID        string    `json:"id"`
     Queue     string    `json:"queue"`
     Payload   []byte    `json:"payload"`
@@ -32,8 +36,94 @@ type DLQItem struct {
 // DLQService defines the contract for listing and acting on DLQ items.
 type DLQService interface {
     DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, cursor string, limit int) ([]DLQItem, string, error)
-    DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, ids []string, destQueue string) (int, error)
-    DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, ids []string) (int, error)
+    DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, handles []string, destQueue string) (int, error)
+    DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, handles []string) (int, error)
+}
+
+const dlqSelectionHandlePrefix = "dlq:v1:"
+
+var removeDLQEntryAtScript = redis.NewScript(`
+local type_reply = redis.call('TYPE', KEYS[1])
+local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+if actual ~= 'none' and actual ~= 'list' then
+  return redis.error_reply('WRONGTYPE key ' .. KEYS[1] .. ' has type ' .. actual .. ', expected list')
+end
+local index = tonumber(ARGV[2])
+if not index or index < 0 then
+  return redis.error_reply('selection index must be non-negative')
+end
+if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
+  return 0
+end
+if ARGV[3] == ARGV[1] then
+  return redis.error_reply('selection marker must differ from the envelope')
+end
+redis.call('LSET', KEYS[1], index, ARGV[3])
+if redis.call('LREM', KEYS[1], 1, ARGV[3]) ~= 1 then
+  return redis.error_reply('selected envelope could not be removed')
+end
+return 1
+`)
+
+type dlqSelection struct {
+    handle string
+    index  int64
+    raw    string
+}
+
+func makeDLQSelectionHandle(index int64, raw string) string {
+    digest := sha256.Sum256([]byte(raw))
+    return fmt.Sprintf("%s%d:%x", dlqSelectionHandlePrefix, index, digest)
+}
+
+func parseDLQSelectionIndex(handle string) (int64, bool) {
+    encoded, ok := strings.CutPrefix(handle, dlqSelectionHandlePrefix)
+    if !ok {
+        return 0, false
+    }
+    indexText, digest, ok := strings.Cut(encoded, ":")
+    if !ok || len(digest) != sha256.Size*2 {
+        return 0, false
+    }
+    index, err := strconv.ParseInt(indexText, 10, 64)
+    if err != nil || index < 0 {
+        return 0, false
+    }
+    return index, true
+}
+
+func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, handles []string) ([]dlqSelection, error) {
+    selections := make([]dlqSelection, 0, len(handles))
+    seen := make(map[string]struct{}, len(handles))
+    for _, handle := range handles {
+        if _, duplicate := seen[handle]; duplicate {
+            continue
+        }
+        seen[handle] = struct{}{}
+        index, ok := parseDLQSelectionIndex(handle)
+        if !ok {
+            continue
+        }
+        raw, err := rdb.LIndex(ctx, list, index).Result()
+        if errors.Is(err, redis.Nil) {
+            continue
+        }
+        if err != nil {
+            return nil, err
+        }
+        if makeDLQSelectionHandle(index, raw) != handle {
+            continue
+        }
+        selections = append(selections, dlqSelection{handle: handle, index: index, raw: raw})
+    }
+    sort.Slice(selections, func(i, j int) bool {
+        return selections[i].index > selections[j].index
+    })
+    return selections, nil
+}
+
+func dlqSelectionMarker(handle string) string {
+    return "\x00grq-dlq-selection:" + handle
 }
 
 // DLQList returns a page of DLQ items along with an opaque cursor for the next page.
@@ -62,7 +152,7 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         return nil, "", err
     }
     out := make([]DLQItem, 0, len(items))
-    for _, raw := range items {
+    for itemIndex, raw := range items {
         var meta struct {
             ID           string `json:"id"`
             Reason       string `json:"error"`
@@ -71,6 +161,7 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         }
         _ = json.Unmarshal([]byte(raw), &meta)
         it := DLQItem{
+            Handle:   makeDLQSelectionHandle(offset+int64(itemIndex), raw),
             ID:       meta.ID,
             Queue:    "", // unknown from payload; left blank
             Payload:  []byte(raw),
@@ -91,13 +182,13 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
     return out, next, nil
 }
 
-// DLQRequeue moves the specified DLQ item IDs back to a destination queue.
+// DLQRequeue moves the specified DLQ selection handles to a destination queue.
 // If destQueue is empty, the original queue (if available) should be used.
-func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, ids []string, destQueue string) (int, error) {
+func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, handles []string, destQueue string) (int, error) {
     if cfg.Worker.DeadLetterList == "" {
         return 0, errors.New("dead letter list not configured")
     }
-    if len(ids) == 0 {
+    if len(handles) == 0 {
         return 0, nil
     }
     // Resolve destination queue; default to high priority
@@ -109,91 +200,65 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
             destQueue = cfg.Worker.Queues["low"]
         }
     }
-    // Build a set for quick lookup
-    idset := map[string]struct{}{}
-    for _, id := range ids {
-        if id != "" {
-            idset[id] = struct{}{}
-        }
+    selections, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
+    if err != nil {
+        return 0, err
     }
-    // Iterate DLQ in chunks to find matching items
-    const chunk = 500
     requeued := 0
-    var start int64
-    for {
-        batch, err := rdb.LRange(ctx, cfg.Worker.DeadLetterList, start, start+chunk-1).Result()
+    for _, selection := range selections {
+        job, err := queue.UnmarshalJob(selection.raw)
+        if err != nil {
+            continue
+        }
+        moved, err := queue.RequeueEncodedAt(
+            ctx,
+            rdb,
+            cfg.Worker.DeadLetterList,
+            destQueue,
+            selection.index,
+            job,
+            selection.raw,
+            dlqSelectionMarker(selection.handle),
+            cfg.OrderingLayout(),
+        )
         if err != nil {
             return requeued, err
         }
-        if len(batch) == 0 {
-            break
+        if moved {
+            requeued++
         }
-        for _, raw := range batch {
-            job, err := queue.UnmarshalJob(raw)
-            if err != nil {
-                continue
-            }
-            if _, ok := idset[job.ID]; !ok {
-                continue
-            }
-            moved, err := queue.RequeueEncoded(ctx, rdb, cfg.Worker.DeadLetterList, destQueue, job, raw, cfg.OrderingLayout())
-            if err != nil {
-                return requeued, err
-            }
-            if moved {
-                requeued++
-            }
-        }
-        if len(batch) < chunk {
-            break
-        }
-        start += chunk
     }
     return requeued, nil
 }
 
-// DLQPurge deletes the specified DLQ item IDs.
-func DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, ids []string) (int, error) {
+// DLQPurge deletes the specified DLQ selection handles.
+func DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, handles []string) (int, error) {
     if cfg.Worker.DeadLetterList == "" {
         return 0, errors.New("dead letter list not configured")
     }
-    if len(ids) == 0 {
+    if len(handles) == 0 {
         return 0, nil
     }
-    idset := map[string]struct{}{}
-    for _, id := range ids {
-        if id != "" {
-            idset[id] = struct{}{}
-        }
+    selections, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
+    if err != nil {
+        return 0, err
     }
     purged := 0
-    const chunk = 500
-    var start int64
-    for {
-        batch, err := rdb.LRange(ctx, cfg.Worker.DeadLetterList, start, start+chunk-1).Result()
+    for _, selection := range selections {
+        removed, err := removeDLQEntryAtScript.Eval(
+            ctx,
+            rdb,
+            []string{cfg.Worker.DeadLetterList},
+            selection.raw,
+            selection.index,
+            dlqSelectionMarker(selection.handle),
+        ).Int64()
         if err != nil {
             return purged, err
         }
-        if len(batch) == 0 {
-            break
-        }
-        for _, raw := range batch {
-            var meta struct{ ID string `json:"id"` }
-            if err := json.Unmarshal([]byte(raw), &meta); err != nil {
-                continue
-            }
-            if _, ok := idset[meta.ID]; !ok {
-                continue
-            }
-            if _, err := rdb.LRem(ctx, cfg.Worker.DeadLetterList, 1, raw).Result(); err != nil {
-                return purged, err
-            }
+        if removed == 1 {
             purged++
         }
-        if len(batch) < chunk {
-            break
-        }
-        start += chunk
     }
     return purged, nil
 }

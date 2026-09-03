@@ -661,8 +661,11 @@ components:
 
     DLQItem:
       type: object
-      required: [id, payload]
+      required: [handle, id, payload]
       properties:
+        handle:
+          type: string
+          description: Opaque per-entry selection handle; use promptly because list mutations make positional handles stale
         id:
           type: string
         queue:
@@ -699,12 +702,13 @@ components:
 
     DLQRequeueRequest:
       type: object
-      required: [ids]
+      required: [handles]
       properties:
         ns:
           type: string
-        ids:
+        handles:
           type: array
+          description: Opaque handles returned by GET /dlq; missing or stale handles are idempotent no-ops
           items:
             type: string
         dest_queue:
@@ -722,12 +726,13 @@ components:
 
     DLQPurgeSelectionRequest:
       type: object
-      required: [ids]
+      required: [handles]
       properties:
         ns:
           type: string
-        ids:
+        handles:
           type: array
+          description: Opaque handles returned by GET /dlq; missing or stale handles are idempotent no-ops
           items:
             type: string
 

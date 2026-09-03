@@ -250,6 +250,49 @@ func TestSetupRoutesExposesEnqueueEndpoint(t *testing.T) {
 	}
 }
 
+func TestDLQHandlersRoundTripSelectionHandles(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	first := `{"id":"shared-id","payload":"Zmlyc3Q="}`
+	second := `{"id":"shared-id","payload":"c2Vjb25k"}`
+	mr.RPush(handler.cfg.Worker.DeadLetterList, first, second)
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq", nil)
+	listResponse := httptest.NewRecorder()
+	handler.ListDLQ(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want 200: %s", listResponse.Code, listResponse.Body.String())
+	}
+	var listed DLQListResponse
+	if err := json.NewDecoder(listResponse.Body).Decode(&listed); err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Items) != 2 || listed.Items[0].Handle == "" || listed.Items[0].Handle == listed.Items[1].Handle {
+		t.Fatalf("listed items = %#v, want two distinct selection handles", listed.Items)
+	}
+
+	body, err := json.Marshal(DLQPurgeSelectionRequest{Handles: []string{listed.Items[1].Handle}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	purgeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/dlq/purge", bytes.NewReader(body))
+	purgeResponse := httptest.NewRecorder()
+	handler.PurgeDLQItems(purgeResponse, purgeRequest)
+	if purgeResponse.Code != http.StatusOK {
+		t.Fatalf("purge status = %d, want 200: %s", purgeResponse.Code, purgeResponse.Body.String())
+	}
+	var purged DLQPurgeSelectionResponse
+	if err := json.NewDecoder(purgeResponse.Body).Decode(&purged); err != nil {
+		t.Fatal(err)
+	}
+	if purged.Purged != 1 {
+		t.Fatalf("purged = %d, want 1", purged.Purged)
+	}
+	if got, err := mr.List(handler.cfg.Worker.DeadLetterList); err != nil || len(got) != 1 || got[0] != first {
+		t.Fatalf("dead-letter queue = %#v (err=%v), want only first delivery", got, err)
+	}
+}
+
 func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
 	var document struct {
 		Paths      map[string]map[string]any `yaml:"paths"`
@@ -276,6 +319,22 @@ func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
 	}
 	if _, ok := document.Components.Schemas["EnqueueResponse"]; !ok {
 		t.Fatal("OpenAPI components does not contain EnqueueResponse")
+	}
+	for _, schemaName := range []string{"DLQRequeueRequest", "DLQPurgeSelectionRequest"} {
+		schema, ok := document.Components.Schemas[schemaName].(map[string]any)
+		if !ok {
+			t.Fatalf("OpenAPI schema %s is not an object", schemaName)
+		}
+		properties, ok := schema["properties"].(map[string]any)
+		if !ok {
+			t.Fatalf("OpenAPI schema %s properties are not an object", schemaName)
+		}
+		if _, ok := properties["handles"]; !ok {
+			t.Errorf("OpenAPI schema %s does not expose selection handles", schemaName)
+		}
+		if _, ok := properties["ids"]; ok {
+			t.Errorf("OpenAPI schema %s still exposes ambiguous job IDs", schemaName)
+		}
 	}
 	enqueueOperation, ok := document.Paths["/enqueue"]["post"].(map[string]any)
 	if !ok {

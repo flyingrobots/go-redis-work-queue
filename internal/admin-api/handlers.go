@@ -451,6 +451,7 @@ func (h *Handler) ListDLQ(w http.ResponseWriter, r *http.Request) {
 	out := DLQListResponse{Items: make([]DLQItem, 0, len(items)), NextCursor: next, Count: len(items), Timestamp: time.Now()}
 	for _, it := range items {
 		out.Items = append(out.Items, DLQItem{
+			Handle:    it.Handle,
 			ID:        it.ID,
 			Queue:     it.Queue,
 			Payload:   string(it.Payload),
@@ -470,13 +471,13 @@ func (h *Handler) RequeueDLQ(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	if len(req.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+	if len(req.Handles) == 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "handles required")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	n, err := admin.DLQRequeue(ctx, h.cfg, h.rdb, req.Namespace, req.IDs, req.DestQueue)
+	n, err := admin.DLQRequeue(ctx, h.cfg, h.rdb, req.Namespace, req.Handles, req.DestQueue)
 	if err != nil {
 		h.logger.Error("Failed to requeue DLQ", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_REQUEUE_ERROR", "Failed to requeue DLQ items")
@@ -511,13 +512,13 @@ func (h *Handler) PurgeDLQItems(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	if len(req.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+	if len(req.Handles) == 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "handles required")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	n, err := admin.DLQPurge(ctx, h.cfg, h.rdb, req.Namespace, req.IDs)
+	n, err := admin.DLQPurge(ctx, h.cfg, h.rdb, req.Namespace, req.Handles)
 	if err != nil {
 		h.logger.Error("Failed to purge DLQ items", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_PURGE_ERROR", "Failed to purge DLQ items")
