@@ -282,6 +282,9 @@ func Validate(cfg *Config) error {
 	if strings.Count(cfg.Worker.HeartbeatKeyPattern, "%s") != 1 {
 		return fmt.Errorf("worker.heartbeat_key_pattern must contain exactly one %%s placeholder")
 	}
+	if cfg.Worker.ProcessingListPattern == cfg.Worker.HeartbeatKeyPattern {
+		return fmt.Errorf("worker.processing_list_pattern and worker.heartbeat_key_pattern must differ")
+	}
 	if cfg.Worker.HeartbeatTTL < 5*time.Second {
 		return fmt.Errorf("worker.heartbeat_ttl must be >= 5s")
 	}

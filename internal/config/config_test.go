@@ -119,6 +119,14 @@ func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsIdenticalProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = cfg.Worker.ProcessingListPattern
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical processing and heartbeat patterns to fail")
+	}
+}
+
 func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string

@@ -106,6 +106,14 @@ func TestNormalizeConfigRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) 
 	}
 }
 
+func TestNormalizeConfigRejectsIdenticalProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.HeartbeatKeyPattern = cfg.ProcessingListPattern
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected identical processing and heartbeat patterns to fail")
+	}
+}
+
 func TestNormalizeConfigRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string
