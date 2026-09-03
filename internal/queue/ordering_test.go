@@ -21,6 +21,14 @@ func testOrderingLayout() OrderingLayout {
 	}
 }
 
+func TestOrderingLayoutRejectsIdenticalQueueAndLeasePatterns(t *testing.T) {
+	layout := testOrderingLayout()
+	layout.LeasePattern = layout.QueuePattern
+	if err := layout.Validate(); err == nil {
+		t.Fatal("expected identical ordered queue and lease patterns to fail validation")
+	}
+}
+
 func TestUnorderedEnqueueRetainsLegacyKeyLayout(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

@@ -92,4 +92,9 @@ func TestValidateFails(t *testing.T) {
 	if err := Validate(cfg); err == nil {
 		t.Fatal("expected ordered lease pattern with two placeholders to fail")
 	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedLeasePattern = cfg.Queue.OrderedQueuePattern
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical ordered queue and lease patterns to fail")
+	}
 }

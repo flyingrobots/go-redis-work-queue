@@ -415,6 +415,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if strings.Count(cfg.OrderedLeasePattern, "%s") != 1 {
 		return Config{}, errors.New("ordered lease pattern must contain exactly one %s placeholder")
 	}
+	if cfg.OrderedQueuePattern == cfg.OrderedLeasePattern {
+		return Config{}, errors.New("ordered queue and lease patterns must differ")
+	}
 	return cfg, nil
 }
 

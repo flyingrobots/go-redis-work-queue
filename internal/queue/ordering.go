@@ -45,6 +45,9 @@ func (l OrderingLayout) Validate() error {
 	if _, _, ok := queuekeys.SplitPattern(l.LeasePattern); !ok {
 		return errors.New("ordered lease pattern must contain exactly one %s placeholder")
 	}
+	if l.QueuePattern == l.LeasePattern {
+		return errors.New("ordered queue and lease patterns must differ")
+	}
 	return nil
 }
 

@@ -49,6 +49,15 @@ func newTestClient(t *testing.T, mr *miniredis.Miniredis, cfg queueclient.Config
 	return client
 }
 
+func TestNormalizeConfigRejectsIdenticalOrderedQueueAndLeasePatterns(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.OrderedQueuePattern = "custom:ordered:%s"
+	cfg.OrderedLeasePattern = cfg.OrderedQueuePattern
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected identical ordered queue and lease patterns to fail")
+	}
+}
+
 func TestClientEnqueueFeedsWorkerHandler(t *testing.T) {
 	mr := miniredis.RunT(t)
 	clientCfg := testClientConfig()

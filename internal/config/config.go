@@ -300,6 +300,9 @@ func Validate(cfg *Config) error {
 	if strings.Count(cfg.Queue.OrderedLeasePattern, "%s") != 1 {
 		return fmt.Errorf("queue.ordered_lease_pattern must contain exactly one %%s placeholder")
 	}
+	if cfg.Queue.OrderedQueuePattern == cfg.Queue.OrderedLeasePattern {
+		return fmt.Errorf("queue.ordered_queue_pattern and queue.ordered_lease_pattern must differ")
+	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")
 	}
