@@ -132,12 +132,13 @@ entry in `Config.Queues`. `Stats` and `Peek` expose the corresponding read-only
 admin views. Redis command failures use `*queueclient.ConnectionError` and can
 also be matched with `errors.Is(err, queueclient.ErrConnection)`.
 
-`EnqueueBatch` validates and encodes the entire slice before opening a Redis
-transaction. A bad priority or oversized payload rejects the whole batch with
-no writes. An accepted batch is applied atomically by Redis, and generated IDs
-and timestamps are copied into the supplied slice. Caller-supplied duplicate
-IDs are intentionally not deduplicated: each entry is a separate at-least-once
-delivery, so handlers should remain idempotent. Within one non-empty ordering
+`EnqueueBatch` validates and encodes the entire slice before issuing one Redis
+script. A bad priority, oversized payload, or wrong-type destination rejects the
+whole batch with no writes. An accepted batch is applied atomically, and
+generated IDs and timestamps are copied into the supplied slice.
+Caller-supplied duplicate IDs are intentionally not deduplicated: each entry
+remains a separate at-least-once delivery, so handlers should remain
+idempotent. Within one non-empty ordering
 key, FIFO wins over priority: a later high-priority job cannot pass an earlier
 low-priority job with the same key. Different keys remain parallel.
 

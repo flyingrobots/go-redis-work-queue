@@ -172,40 +172,29 @@ func (c *Client) Enqueue(ctx context.Context, job Job) (string, error) {
 	return prepared.ID, nil
 }
 
-// EnqueueBatch validates and encodes every job before opening a Redis
-// transaction. If any job is locally invalid, none are written. Redis executes
-// the accepted batch atomically. On success, generated IDs/timestamps are
-// copied back into the caller-provided slice. Explicit duplicate IDs remain
-// separate deliveries.
+// EnqueueBatch validates and encodes every job before running one Redis
+// script. If any job is locally invalid or any destination has the wrong Redis
+// type, none are written. Redis executes the accepted batch atomically. On
+// success, generated IDs/timestamps are copied back into the caller-provided
+// slice. Explicit duplicate IDs remain separate deliveries.
 func (c *Client) EnqueueBatch(ctx context.Context, jobs []Job) error {
 	if len(jobs) == 0 {
 		return nil
 	}
-	type entry struct {
-		job       Job
-		queueName string
-		encoded   string
-	}
-	entries := make([]entry, len(jobs))
+	entries := make([]internalqueue.PreparedEnqueue, len(jobs))
 	for i, job := range jobs {
 		prepared, queueName, encoded, err := c.prepare(job)
 		if err != nil {
 			return fmt.Errorf("job %d: %w", i, err)
 		}
-		entries[i] = entry{job: prepared, queueName: queueName, encoded: encoded}
+		entries[i] = internalqueue.PreparedEnqueue{Job: prepared, QueueName: queueName, Encoded: encoded}
 	}
 
-	pipe := c.rdb.TxPipeline()
-	for _, item := range entries {
-		if err := internalqueue.AppendEncoded(ctx, pipe, item.queueName, item.job, item.encoded, c.orderingLayout()); err != nil {
-			return connectionError("enqueue batch", err)
-		}
-	}
-	if _, err := pipe.Exec(ctx); err != nil {
+	if err := internalqueue.AppendEncodedBatch(ctx, c.rdb, entries, c.orderingLayout()); err != nil {
 		return connectionError("enqueue batch", err)
 	}
 	for i := range entries {
-		jobs[i] = entries[i].job
+		jobs[i] = entries[i].Job
 	}
 	return nil
 }

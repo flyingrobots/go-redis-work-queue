@@ -135,6 +135,32 @@ func TestE2E_PerKeyFIFOOneKey(t *testing.T) {
 	}
 }
 
+func TestE2E_PerKeyBatchWrongTypeIsAllOrNothing(t *testing.T) {
+	rdb, addr := newPerKeyRedis(t)
+	cfg := newPerKeyConfig(t, addr, 1)
+	client := newPerKeyClient(t, rdb, cfg)
+	ctx := context.Background()
+
+	if err := rdb.Set(ctx, cfg.Worker.Queues["high"], "not-a-list", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	jobs := []queueclient.Job{
+		{Priority: "low", Payload: []byte("would-be-written-first")},
+		{Priority: "high", Payload: []byte("wrong-type")},
+	}
+	if err := client.EnqueueBatch(ctx, jobs); err == nil {
+		t.Fatal("expected wrong-type batch error")
+	}
+
+	length, err := rdb.LLen(ctx, cfg.Worker.Queues["low"]).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if length != 0 {
+		t.Fatalf("failed batch left %d earlier jobs enqueued", length)
+	}
+}
+
 func TestE2E_PerKeyFIFOMultipleKeysRunConcurrently(t *testing.T) {
 	rdb, addr := newPerKeyRedis(t)
 	cfg := newPerKeyConfig(t, addr, 8)

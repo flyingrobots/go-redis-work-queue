@@ -154,6 +154,74 @@ func TestEnqueueBatchRejectsAllBeforeRedisWhenOnePayloadIsOversized(t *testing.T
 	}
 }
 
+func TestEnqueueBatchDoesNotPartiallyWriteOnRedisTypeError(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	client := newTestClient(t, mr, cfg)
+	mr.Set(cfg.Queues["high"], "not-a-list")
+
+	jobs := []queueclient.Job{
+		{Priority: "low", Payload: []byte("would-be-written-first")},
+		{Priority: "high", Payload: []byte("wrong-type")},
+	}
+	err := client.EnqueueBatch(context.Background(), jobs)
+	var connectionErr *queueclient.ConnectionError
+	if !errors.As(err, &connectionErr) {
+		t.Fatalf("expected ConnectionError, got %T: %v", err, err)
+	}
+	if mr.Exists(cfg.Queues["low"]) {
+		items, listErr := mr.List(cfg.Queues["low"])
+		t.Fatalf("failed batch partially changed Redis: %v (err=%v)", items, listErr)
+	}
+	for i, job := range jobs {
+		if job.ID != "" || job.CreationTime != "" {
+			t.Errorf("failed batch mutated job %d: %#v", i, job)
+		}
+	}
+}
+
+func TestEnqueueBatchPrevalidatesOrderedControlTypes(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	cfg.OrderedReadyList = "custom:ordered:ready"
+	cfg.OrderedActiveSet = "custom:ordered:active"
+	cfg.OrderedQueuePattern = "custom:ordered:queue:%s"
+	cfg.OrderedLeasePattern = "custom:ordered:lease:%s"
+	client := newTestClient(t, mr, cfg)
+	mr.Set(cfg.OrderedActiveSet, "not-a-set")
+
+	jobs := []queueclient.Job{
+		{Priority: "low", Payload: []byte("ordinary-first")},
+		{Priority: "high", OrderingKey: "account:42", Payload: []byte("ordered-second")},
+	}
+	if err := client.EnqueueBatch(context.Background(), jobs); err == nil {
+		t.Fatal("expected wrong-type batch error")
+	}
+	if mr.Exists(cfg.Queues["low"]) {
+		items, listErr := mr.List(cfg.Queues["low"])
+		t.Fatalf("ordered control error partially changed Redis: %v (err=%v)", items, listErr)
+	}
+}
+
+func TestEnqueueBatchCopiesGeneratedMetadataAfterSuccess(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	client := newTestClient(t, mr, cfg)
+	jobs := []queueclient.Job{
+		{Priority: "low", Payload: []byte("ordinary")},
+		{Priority: "high", OrderingKey: "account:42", Payload: []byte("ordered")},
+	}
+
+	if err := client.EnqueueBatch(context.Background(), jobs); err != nil {
+		t.Fatal(err)
+	}
+	for i, job := range jobs {
+		if job.ID == "" || job.CreationTime == "" {
+			t.Errorf("successful batch did not populate job %d: %#v", i, job)
+		}
+	}
+}
+
 func TestEnqueueBatchUsesConfiguredOrderedFIFO(t *testing.T) {
 	mr := miniredis.RunT(t)
 	cfg := testClientConfig()
