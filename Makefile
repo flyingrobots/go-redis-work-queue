@@ -5,6 +5,7 @@ PKG := github.com/flyingrobots/go-redis-work-queue
 VERSION ?= dev
 LDFLAGS := -X main.version=$(VERSION)
 GOFLAGS ?=
+MARKDOWNLINT_CLI2_VERSION ?= 0.14.0
 
 BIN_DIR := bin
 
@@ -57,7 +58,7 @@ mdlint:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "**/*.md" "!**/node_modules/**"
 
 .PHONY: mdlint-docs
 mdlint-docs:
@@ -65,7 +66,7 @@ mdlint-docs:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 "docs/**/*.md"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "docs/**/*.md"
 
 .PHONY: mdlint-fix
 mdlint-fix:
@@ -73,9 +74,9 @@ mdlint-fix:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 --fix "docs/**/*.md"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) --fix "docs/**/*.md"
 
 .PHONY: mdlint-docker
 mdlint-docker:
 	@docker run --rm -v "$(PWD)":/work -w /work node:20 \
-	  npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+	  npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "**/*.md" "!**/node_modules/**"
