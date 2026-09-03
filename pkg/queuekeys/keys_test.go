@@ -59,6 +59,31 @@ func TestDLQGenerationKeyFollowsConfiguredList(t *testing.T) {
 	}
 }
 
+func TestPatternsOverlap(t *testing.T) {
+	tests := []struct {
+		name   string
+		first  string
+		second string
+		want   bool
+	}{
+		{name: "identical", first: "tenant:%s", second: "tenant:%s", want: true},
+		{name: "nested prefix", first: "tenant:%s", second: "tenant:heartbeat:%s", want: true},
+		{name: "nested suffix", first: "%s:state", second: "%s:heartbeat:state", want: true},
+		{name: "nested prefix and suffix", first: "tenant:%s:state", second: "tenant:worker:%s:heartbeat:state", want: true},
+		{name: "disjoint prefix", first: "processing:%s", second: "heartbeat:%s", want: false},
+		{name: "disjoint suffix", first: "%s:processing", second: "%s:heartbeat", want: false},
+		{name: "disjoint prefix and suffix", first: "a:%s:x", second: "b:%s:y", want: false},
+		{name: "invalid pattern", first: "tenant", second: "tenant:%s", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := PatternsOverlap(tt.first, tt.second); got != tt.want {
+				t.Fatalf("PatternsOverlap(%q, %q) = %v, want %v", tt.first, tt.second, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMatchesOrderingDigestRequiresCanonicalGeneratedKey(t *testing.T) {
 	pattern := "custom:ordered:%s:jobs"
 	digest := OrderingDigest("account:42")

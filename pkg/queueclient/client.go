@@ -403,8 +403,8 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if strings.Count(cfg.HeartbeatKeyPattern, "%s") != 1 {
 		return Config{}, errors.New("heartbeat key pattern must contain exactly one %s placeholder")
 	}
-	if cfg.ProcessingListPattern == cfg.HeartbeatKeyPattern {
-		return Config{}, errors.New("processing list and heartbeat key patterns must differ")
+	if queuekeys.PatternsOverlap(cfg.ProcessingListPattern, cfg.HeartbeatKeyPattern) {
+		return Config{}, errors.New("processing list and heartbeat key pattern keyspaces must not overlap")
 	}
 	if cfg.CompletedList == "" {
 		cfg.CompletedList = defaults.CompletedList

@@ -129,6 +129,15 @@ func TestValidateRejectsIdenticalProcessingAndHeartbeatPatterns(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsOverlappingProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "tenant:heartbeat:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected overlapping processing and heartbeat keyspaces to fail")
+	}
+}
+
 func TestValidateRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
 	tests := []struct {
 		name string

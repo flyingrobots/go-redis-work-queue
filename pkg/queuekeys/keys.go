@@ -82,6 +82,23 @@ func Extract(pattern, key string) (string, bool) {
 	return key[len(prefix):end], true
 }
 
+// PatternsOverlap reports whether two valid single-placeholder patterns can
+// generate the same key for some non-empty identifiers. Because identifiers
+// are unbounded, compatible fixed prefixes and compatible fixed suffixes are
+// both necessary and sufficient for the generated keyspaces to intersect.
+func PatternsOverlap(first, second string) bool {
+	firstPrefix, firstSuffix, firstOK := SplitPattern(first)
+	secondPrefix, secondSuffix, secondOK := SplitPattern(second)
+	if !firstOK || !secondOK {
+		return false
+	}
+	prefixesCompatible := strings.HasPrefix(firstPrefix, secondPrefix) ||
+		strings.HasPrefix(secondPrefix, firstPrefix)
+	suffixesCompatible := strings.HasSuffix(firstSuffix, secondSuffix) ||
+		strings.HasSuffix(secondSuffix, firstSuffix)
+	return prefixesCompatible && suffixesCompatible
+}
+
 // MatchesOrderingDigest reports whether key is produced by pattern with the
 // canonical lowercase SHA-256 token used for an ordering key.
 func MatchesOrderingDigest(pattern, key string) bool {

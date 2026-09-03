@@ -114,6 +114,15 @@ func TestNormalizeConfigRejectsIdenticalProcessingAndHeartbeatPatterns(t *testin
 	}
 }
 
+func TestNormalizeConfigRejectsOverlappingProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.ProcessingListPattern = "tenant:%s"
+	cfg.HeartbeatKeyPattern = "tenant:heartbeat:%s"
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected overlapping processing and heartbeat keyspaces to fail")
+	}
+}
+
 func TestNormalizeConfigRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
 	tests := []struct {
 		name string
