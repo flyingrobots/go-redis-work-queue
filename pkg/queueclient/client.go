@@ -372,6 +372,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 			if queuekeys.IsReservedQueueAlias(name) {
 				return Config{}, fmt.Errorf("queue priority %q is reserved", name)
 			}
+			if _, duplicate := queues[name]; duplicate {
+				return Config{}, fmt.Errorf("queue priority %q is ambiguous after trimming", name)
+			}
 			queues[name] = key
 		}
 		cfg.Queues = queues

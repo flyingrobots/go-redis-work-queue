@@ -182,6 +182,14 @@ func TestNormalizeConfigRejectsReservedPriorityAliases(t *testing.T) {
 	}
 }
 
+func TestNormalizeConfigRejectsPriorityAliasesThatCollideAfterTrimming(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.Queues[" low "] = "jobqueue:test:other-low"
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected priority aliases that collide after trimming to fail")
+	}
+}
+
 func TestClientEnqueueFeedsWorkerHandler(t *testing.T) {
 	mr := miniredis.RunT(t)
 	clientCfg := testClientConfig()
