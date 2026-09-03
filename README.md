@@ -397,7 +397,7 @@ go test ./... -race -count=1
 ./scripts/check_test_package_count.sh
 ```
 
-The package-count check enforces a minimum of 21 default test-bearing packages
+The package-count check enforces a minimum of 25 default test-bearing packages
 so a build tag cannot silently remove core coverage. CI also runs the
 Redis-backed worker smoke test with `-tags e2e_tests` and verifies its verbose
 `--- PASS` record.
