@@ -39,6 +39,9 @@ func (l OrderingLayout) Validate() error {
 	if l.ActiveSet == "" {
 		return errors.New("ordered active set must be non-empty")
 	}
+	if l.ReadyList == l.ActiveSet {
+		return errors.New("ordered ready list and active set must differ")
+	}
 	if _, _, ok := queuekeys.SplitPattern(l.QueuePattern); !ok {
 		return errors.New("ordered queue pattern must contain exactly one %s placeholder")
 	}

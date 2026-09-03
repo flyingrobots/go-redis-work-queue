@@ -409,6 +409,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.OrderedActiveSet == "" {
 		cfg.OrderedActiveSet = defaults.OrderedActiveSet
 	}
+	if cfg.OrderedReadyList == cfg.OrderedActiveSet {
+		return Config{}, errors.New("ordered ready list and active set must differ")
+	}
 	if cfg.OrderedQueuePattern == "" {
 		cfg.OrderedQueuePattern = defaults.OrderedQueuePattern
 	}

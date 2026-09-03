@@ -299,6 +299,9 @@ func Validate(cfg *Config) error {
 	if cfg.Queue.OrderedActiveSet == "" {
 		return fmt.Errorf("queue.ordered_active_set must be non-empty")
 	}
+	if cfg.Queue.OrderedReadyList == cfg.Queue.OrderedActiveSet {
+		return fmt.Errorf("queue.ordered_ready_list and queue.ordered_active_set must differ")
+	}
 	if strings.Count(cfg.Queue.OrderedQueuePattern, "%s") != 1 {
 		return fmt.Errorf("queue.ordered_queue_pattern must contain exactly one %%s placeholder")
 	}

@@ -110,3 +110,11 @@ func TestValidateRejectsReservedWorkerQueueAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Queue.OrderedActiveSet = cfg.Queue.OrderedReadyList
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical ordered ready and active keys to fail")
+	}
+}

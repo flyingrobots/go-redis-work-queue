@@ -59,6 +59,15 @@ func TestNormalizeConfigRejectsIdenticalOrderedQueueAndLeasePatterns(t *testing.
 	}
 }
 
+func TestNormalizeConfigRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.OrderedReadyList = "custom:ordered:control"
+	cfg.OrderedActiveSet = cfg.OrderedReadyList
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected identical ordered ready and active keys to fail")
+	}
+}
+
 func TestNormalizeConfigRejectsReservedPriorityAliases(t *testing.T) {
 	for _, alias := range []string{"completed", "Completed", "dead_letter", "DEAD_LETTER", "dlq", "DLQ"} {
 		t.Run(alias, func(t *testing.T) {
