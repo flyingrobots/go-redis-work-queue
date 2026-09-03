@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Nine exact-head
-  review passes produced 45 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Ten exact-head
+  review passes produced 46 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -30,8 +30,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Workers require a non-nil application handler through `pkg/queueworker`.
   Worker-bearing repository-binary roles fail before Redis consumption unless
   the legacy benchmark handler is explicitly enabled with `--bench-worker`.
-  Long calls renew heartbeats, while shutdown leaves work in processing for
-  at-least-once reaping.
+  Clearing a live handler pauses new consumption until a replacement is
+  installed. Long calls renew heartbeats, while shutdown leaves work in
+  processing for at-least-once reaping.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -213,6 +214,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 seventh review: harden ordering input, CLI reads, DLQ handles, and purge routes
 - [x] Queue core PR #6 eighth review: make reaper cleanup race-safe and isolate processing scans
 - [x] Queue core PR #6 ninth review: bind DLQ snapshots, reject trailing JSON, and filter ordered purge
+- [x] Queue core PR #6 tenth review: pause workers when handlers are cleared
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -723,6 +725,32 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Tenth Review Remediated
+>
+> Closed the live handler-removal finding as one isolated RED/GREEN/VERIFY
+> commit.
+>
+> Changes
+>
+> - Added a handler-change signal that pauses worker loops before their next
+>   dequeue whenever the application handler is cleared.
+> - Made the narrow clear-after-dequeue race wait for a replacement handler
+>   instead of treating the delivery as an application failure.
+>
+> Validation
+>
+> - RED drained the held job from its source queue after `Handle(nil)` while an
+>   earlier handler was active.
+> - GREEN leaves that job queued with an empty DLQ, then resumes it through the
+>   replacement handler. Internal and public worker packages pass five
+>   race-enabled repetitions and focused vet.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
