@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Six exact-head
-  review passes produced 36 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Seven exact-head
+  review passes produced 40 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -35,11 +35,17 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
-  `queue:write`. Duplicate IDs remain separate deliveries.
+  `queue:write`. CLI file and stdin reads stop at the configured limit plus one
+  byte. Duplicate IDs remain separate deliveries.
+- DLQ listings expose an opaque handle for each list entry, including
+  duplicate-ID and byte-identical envelopes. Requeue and purge verify the exact
+  position and envelope atomically; stale handles are safe no-ops. Destructive
+  HTTP queue handlers dispatch only on their exact registered paths.
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
-  priority within a key; different keys remain parallel. Renewal uncertainty
-  or proven lease loss cancels the handler-scoped context before redelivery.
+  priority within a key; different keys remain parallel. Invalid UTF-8 keys are
+  rejected before encoding or hashing. Renewal uncertainty or proven lease
+  loss cancels the handler-scoped context before redelivery.
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
@@ -198,6 +204,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 fourth review: cancel lease-lost handlers and reject per-job key aliases
 - [x] Queue core PR #6 fifth review: close seven configuration, statistics, and stale-artifact findings
 - [x] Queue core PR #6 sixth review: enforce enqueue RBAC and reject derived-key aliases
+- [x] Queue core PR #6 seventh review: harden ordering input, CLI reads, DLQ handles, and purge routes
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -442,15 +449,16 @@ Step-by-step task list to build the TUI up to design spec.
 > Unblockers (Backend API Contract)
 >
 > - Admin function: `admin.DLQList(ctx, ns string, cursor string, limit int) (items []DLQItem, next string, err error)`
->   - DLQItem: `{ID string, Queue string, Payload []byte, Reason string, Attempts int, FirstSeen time.Time, LastSeen time.Time}`
+>   - DLQItem: `{Handle string, ID string, Queue string, Payload []byte, Reason string, Attempts int, FirstSeen time.Time, LastSeen time.Time}`
 >   - Backed by Redis list/stream; stable cursor (opaque string) with upper bound on `limit` (e.g., 200)
-> - Admin function: `admin.DLQRequeue(ctx, ns string, ids []string, destQueue string) (requeued int, err error)`
->   - If `destQueue==""`, requeue to original queue; idempotent on missing IDs
-> - Admin function: `admin.DLQPurge(ctx, ns string, ids []string) (purged int, err error)`
+>   - Handles identify one list entry in the returned snapshot; refresh after a list mutation makes a handle stale
+> - Admin function: `admin.DLQRequeue(ctx, ns string, handles []string, destQueue string) (requeued int, err error)`
+>   - If `destQueue==""`, requeue to original queue; idempotent on missing or stale handles
+> - Admin function: `admin.DLQPurge(ctx, ns string, handles []string) (purged int, err error)`
 > - HTTP mapping (Admin API v1):
 >   - `GET /api/v1/dlq?ns=NS&cursor=C&limit=N`
->   - `POST /api/v1/dlq/requeue` `{ns, ids, destQueue}` → `{requeued}`
->   - `POST /api/v1/dlq/purge` `{ns, ids}` → `{purged}`
+>   - `POST /api/v1/dlq/requeue` `{ns, handles, dest_queue}` → `{requeued}`
+>   - `POST /api/v1/dlq/purge` `{ns, handles}` → `{purged}`
 > - ACL: ensure endpoints honor read-only mode (reject with 403)
 > - Code stubs: see `internal/admin/tui_contracts.go` (DLQList, DLQRequeue, DLQPurge)
 
@@ -707,6 +715,41 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Seventh Review Remediated
+>
+> Closed four exact-head correctness and security findings as isolated
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Rejected invalid UTF-8 ordering keys before JSON encoding or hashing, so
+>   enqueue and crash recovery cannot derive different ordering digests.
+> - Bounded CLI stdin and payload-file reads to the configured payload limit
+>   plus one byte before returning the typed oversized-payload error.
+> - Replaced caller-owned job IDs in DLQ selection with distinct opaque entry
+>   handles and exact-position, exact-envelope atomic requeue/purge mutations.
+> - Replaced substring-based queue dispatch with exact destructive paths and an
+>   exact single-segment shape for peek routes.
+>
+> Validation
+>
+> - RED accepted an invalid `0xff` ordering key and created Redis state; GREEN
+>   rejects it before mutation in both internal and public enqueue paths.
+> - RED consumed all 1,024 input bytes behind a four-byte limit; GREEN observes
+>   only the fifth byte for both stdin and files before rejecting the payload.
+> - Duplicate-ID and byte-identical DLQ entries receive distinct handles; bulk,
+>   stale-handle, wrong-type, HTTP/OpenAPI, and live-Redis checks pass.
+> - Viewer-token REDs purged Redis through `/queues/x/dlq` and `/queues/x/all`;
+>   GREEN returns 404 and preserves every seeded key.
+> - Affected packages pass five race-enabled repetitions and focused vet. All
+>   40 review threads have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
