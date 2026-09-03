@@ -4,6 +4,7 @@ package adminapi
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,17 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
+
+type countingReader struct {
+	reader io.Reader
+	read   int64
+}
+
+func (r *countingReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.read += int64(n)
+	return n, err
+}
 
 func setupHandlerTest(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
 	// Create mini redis
@@ -178,6 +190,33 @@ func TestEnqueueJobOversizedPayloadReturnsTypedMessageWithoutQueueChange(t *test
 	if mr.Exists("jobqueue:low") {
 		items, listErr := mr.List("jobqueue:low")
 		t.Fatalf("rejected enqueue changed queue: %v (err=%v)", items, listErr)
+	}
+}
+
+func TestEnqueueJobBoundsEncodedBodyBeforeDecoding(t *testing.T) {
+	handler, _, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 4
+
+	body := `{"payload":"` + strings.Repeat("A", 2<<20) + `"}`
+	reader := &countingReader{reader: strings.NewReader(body)}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", reader)
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "PAYLOAD_TOO_LARGE" {
+		t.Fatalf("error code = %q, want PAYLOAD_TOO_LARGE", response.Code)
+	}
+	if reader.read > 70<<10 {
+		t.Fatalf("handler read %d bytes before rejecting an oversized encoded body", reader.read)
 	}
 }
 

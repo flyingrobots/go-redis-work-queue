@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+const enqueueRequestMetadataAllowance int64 = 64 << 10
 
 // Handler holds the API handler dependencies
 type Handler struct {
@@ -87,10 +90,19 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 
 // EnqueueJob handles POST /api/v1/enqueue.
 func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
+	bodyLimit := enqueueRequestBodyLimit(h.cfg.Queue.MaxPayloadSize)
+	r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)
+
 	var req EnqueueRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
 		return
 	}
@@ -141,6 +153,21 @@ func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, EnqueueResponse{ID: id, Timestamp: time.Now().UTC()})
+}
+
+func enqueueRequestBodyLimit(maxPayloadSize int) int64 {
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = queueclient.DefaultMaxPayloadSize
+	}
+
+	payloadSize := int64(maxPayloadSize)
+	maxPayloadWithoutOverflow := ((math.MaxInt64 - enqueueRequestMetadataAllowance) / 4) * 3
+	if payloadSize > maxPayloadWithoutOverflow {
+		return math.MaxInt64
+	}
+
+	encodedPayloadSize := ((payloadSize + 2) / 3) * 4
+	return encodedPayloadSize + enqueueRequestMetadataAllowance
 }
 
 // PeekQueue handles GET /api/v1/queues/{queue}/peek
