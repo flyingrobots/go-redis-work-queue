@@ -20,9 +20,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Its eight
-  review findings have published, individually committed fixes and resolved
-  threads.
+- All six queue core ROADMAP items are complete on ready PR #6. Two exact-head
+  review passes produced 18 findings; every finding has a published,
+  individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
 - All core enqueue writers use the shared pre-write size guard; larger data
@@ -38,6 +38,10 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel.
+- Ordered enqueue, transition, and DLQ-requeue scripts validate fallible Redis
+  types before mutation. Custom layouts reject queue/lease collisions, scan
+  patterns escape fixed glob text, terminal aliases cannot become priorities,
+  and public enqueue resets worker-owned retry counters.
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
@@ -45,6 +49,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   local and Docker Make targets use that same version. Hard line width,
   adjacent GitHub-admonition blockquotes, and intentional bold lead-ins are the
   only disabled default style rules.
+- `make lint` runs request-ID enforcement, and the default Go suite verifies
+  that every `docs/...` reference in the README names a tracked path.
 - `govulncheck` reports zero reachable vulnerabilities under the CI Go 1.25.14
   toolchain after coordinated gRPC, OpenTelemetry, and `golang.org/x` upgrades.
 
@@ -175,7 +181,10 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
 - [x] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] Queue core PR #6 review: close eight findings and add atomic-batch CI coverage
+- [x] Queue core PR #6 re-review: close ten additional correctness and documentation findings
+- [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
+- [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] Real green: capacity planning/forecasting/policy simulator suite
 - [ ] Real green: distributed tracing integration suite
@@ -238,6 +247,8 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] DevOps: Add policy-as-code checks for security contexts and secret mounts
 - [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
+- [ ] Tooling: Clear the legacy ShellCheck baseline in release, deployment, and test scripts
+- [ ] CI: Update checkout/setup-go actions for Node 24 runner compatibility
 - [x] Tooling: Clear the repository-wide `go vet ./...` baseline
 - [x] Docs: Clear the repository-wide Markdownlint baseline
 - [x] Security: Clear all reachable `govulncheck` findings
@@ -679,6 +690,39 @@ Notes
 
 ## Daily Activity Logs
 >
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Second Review Remediated
+>
+> Closed ten additional exact-head findings as ten RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Preserved per-key ordering during DLQ requeue and prevalidated ordered
+>   enqueue/transition Redis types before their first mutation.
+> - Rejected queue/lease key collisions and terminal priority aliases, escaped
+>   literal Redis glob text, and reset public caller retry counters.
+> - Synchronized TUI selection decoration on both mouse-wheel directions.
+> - Restored `make lint`, replaced deleted evidence/image references with
+>   tracked documents, and added a default-suite README reference check.
+>
+> Validation
+>
+> - All 18 review threads have commit-specific replies and are resolved; the
+>   live GitHub issue audit found zero open issues.
+> - Go 1.25.14 full race, vet, build, 28-package canary, request-ID lint, and
+>   standalone external-client gates pass.
+> - Five real-Redis worker runs and all eight per-key FIFO cases pass; the
+>   10,000-key oldest claim measured 258.875 microseconds.
+> - Pinned Markdownlint passes all 136 tracked Markdown files, workflow syntax
+>   is valid, and `govulncheck` reports zero reachable vulnerabilities.
+>
+> Guardrails
+>
+> - Legacy ShellCheck findings and GitHub Actions' Node 24 migration warning
+>   remain separate maintenance slices; do not fold them into queue-core fixes.
+> - Do not merge PR #6 without explicit authorization.
+
 > [!NOTE]
 >
 > ### 2026-09-03 – Queue Core Review Findings Remediated
