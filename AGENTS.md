@@ -20,13 +20,18 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on Draft PR #6.
+- All six queue core ROADMAP items are complete on ready PR #6. Its eight
+  review findings have published, individually committed fixes and resolved
+  threads.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
 - All core enqueue writers use the shared pre-write size guard; larger data
   belongs in object storage with only a reference in the job.
-- Workers accept concurrent application handlers; long calls renew heartbeats,
-  while shutdown leaves work in processing for at-least-once reaping.
+- Workers require a non-nil application handler through `pkg/queueworker`.
+  Worker-bearing repository-binary roles fail before Redis consumption unless
+  the legacy benchmark handler is explicitly enabled with `--bench-worker`.
+  Long calls renew heartbeats, while shutdown leaves work in processing for
+  at-least-once reaping.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. Duplicate IDs remain separate deliveries.
@@ -36,7 +41,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
-- Markdownlint scans all tracked Markdown with zero findings. Hard line width,
+- CI-pinned Markdownlint 0.14.0 scans all tracked Markdown with zero findings;
+  local and Docker Make targets use that same version. Hard line width,
   adjacent GitHub-admonition blockquotes, and intentional bold lead-ins are the
   only disabled default style rules.
 - `govulncheck` reports zero reachable vulnerabilities under the CI Go 1.25.14
@@ -168,6 +174,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 2: add a real worker handler
 - [x] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
 - [x] Queue core ROADMAP Item 4: guarantee per-key FIFO
+- [x] Queue core PR #6 review: close eight findings and add atomic-batch CI coverage
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] Real green: capacity planning/forecasting/policy simulator suite
@@ -672,6 +679,38 @@ Notes
 
 ## Daily Activity Logs
 >
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Review Findings Remediated
+>
+> Closed all eight exact-head review findings without combining issue slices.
+>
+> Changes
+>
+> - Required `queue:write` for HTTP enqueue, bounded request bodies before
+>   decode, and corrected the ordered-enqueue OpenAPI contract.
+> - Preserved exact aliases in Peek, counted ordered backlog in Stats, and made
+>   percent-bearing Redis key patterns literal.
+> - Replaced partial batch pipelines with prevalidation plus one atomic Lua
+>   write, then added the wrong-type regression to the real-Redis CI selector.
+> - Added public `pkg/queueworker`, rejected missing application handlers before
+>   consumption, and made the legacy benchmark handler an explicit CLI opt-in.
+> - Pinned local Markdownlint targets to the same 0.14.0 release as hosted CI.
+>
+> Validation
+>
+> - The full race suite, repository-wide vet, external-consumer race test, and
+>   changed-document Markdownlint gate pass under Go 1.25.13.
+> - `govulncheck` reports zero reachable vulnerabilities under that patched Go
+>   toolchain; the atomic-batch regression passes against disposable real Redis.
+> - All ten commits are published through `4d7b67c9`; each review thread has a
+>   commit-specific reply and is resolved.
+>
+> Follow-ups
+>
+> - Wait for exact-head hosted CI and perform a final paginated review audit.
+> - Do not merge PR #6 without explicit authorization.
+
 > [!NOTE]
 >
 > ### 2026-09-03 – Reachable Go Vulnerabilities Cleared
