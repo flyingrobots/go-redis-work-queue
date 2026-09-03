@@ -103,6 +103,44 @@ func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
 	}
 }
 
+func TestOrderedEnqueueWrongTypeControlKeyIsAtomic(t *testing.T) {
+	for _, control := range []string{"ready", "active"} {
+		t.Run(control, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			ctx := context.Background()
+			layout := testOrderingLayout()
+
+			corruptKey := layout.ReadyList
+			otherKey := layout.ActiveSet
+			if control == "active" {
+				corruptKey, otherKey = layout.ActiveSet, layout.ReadyList
+			}
+			if err := rdb.Set(ctx, corruptKey, "not-a-control-structure", 0).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			job := NewJob("wrong-type-"+control, "", 0, "low", "", "")
+			job.OrderingKey = "account:" + control
+			if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err == nil {
+				t.Fatal("ordered enqueue succeeded with wrong-type control key")
+			}
+
+			queueKey := queuekeys.Format(layout.QueuePattern, queuekeys.OrderingDigest(job.OrderingKey))
+			if exists := rdb.Exists(ctx, queueKey).Val(); exists != 0 {
+				t.Fatalf("failed enqueue left ordered queue %q", queueKey)
+			}
+			if exists := rdb.Exists(ctx, otherKey).Val(); exists != 0 {
+				t.Fatalf("failed enqueue mutated other control key %q", otherKey)
+			}
+			if got := rdb.Get(ctx, corruptKey).Val(); got != "not-a-control-structure" {
+				t.Fatalf("corrupt control value = %q", got)
+			}
+		})
+	}
+}
+
 func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

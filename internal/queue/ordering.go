@@ -67,6 +67,21 @@ const (
 )
 
 var enqueueOrderedScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[3], 'set')
+if problem then return redis.error_reply(problem) end
+
 redis.call('LPUSH', KEYS[1], ARGV[1])
 if redis.call('SADD', KEYS[3], ARGV[2]) == 1 then
   redis.call('LPUSH', KEYS[2], ARGV[2])
