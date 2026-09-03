@@ -32,6 +32,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel.
+- Repository-wide `go vet ./...` is green. Collaborative-session colors use
+  independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
+  not copy mutex-bearing injectors.
 
 ### Job Queue
 
@@ -218,6 +221,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] DevOps: Add policy-as-code checks for security contexts and secret mounts
 - [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
+- [x] Tooling: Clear the repository-wide `go vet ./...` baseline
 
 ### Finished Log
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)
@@ -583,6 +587,29 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-03 – Repository-wide Go Vet Baseline Cleared
+> Removed all five findings that prevented the CI job from reaching build and
+> test execution.
+>
+> Changes
+> - Split collaborative-session terminal colors into independent `r`, `g`, and
+>   `b` JSON fields; the previous shared tag caused every channel to disappear
+>   during marshaling.
+> - Encoded newly created chaos injectors by pointer and traversed scenario
+>   injectors by address, avoiding copies of structs containing an `RWMutex`.
+> - Added a byte-exact color JSON round-trip regression.
+>
+> Validation
+> - RED: `go vet ./...` reported two duplicate-tag findings and three mutex-copy
+>   findings; the color regression observed only `is_default` in the payload.
+> - GREEN: `go vet ./...`, `go build ./...`, and the collaborative-session race
+>   test pass.
+>
+> Follow-ups
+> - The opt-in chaos-harness suite still has its separately tracked Real Green
+>   failures; this task changed no suite gates or runtime-integration claims.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 4: Per-key FIFO
 > Completed the queue-core roadmap with crash-safe, fair ordering for jobs that

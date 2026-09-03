@@ -92,7 +92,7 @@ weight=14.46 features=13 kloc=39.4
 |📋 | Terminal Voice Commands | UX/CLI | — | — | 0.0 | Planned | 0% (conf: low) | ░░░░░░░░░░ | Archived 2025-09-20; terminal voice module removed from repo. | Re-evaluate approach if feature resurfaces. | — | Optional, flashy. |
 |⏳ | Plugin Panel System | Extensibility | — | [internal/plugin-panel-system](../internal/plugin-panel-system) | 3.7 | In Progress | 50% (conf: med) | █████░░░░░ | Lifecycle + permissions. | Sandbox; TUI registry; SDK docs. | Unit present. | Watch plugin trust. |
 |⏳ | Visual DAG Builder | UX/Flow | — | [internal/visual-dag-builder](../internal/visual-dag-builder) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Orchestrator/types; not wired. | Backend validation; DAG execution; TUI builder. | Unit partial. | Longer‑term. |
-|⏳ | Collaborative Session | UX/TUI | — | [internal/collaborative-session](../internal/collaborative-session) | 1.4 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding only. | Define protocol/permissions; host/guest; TUI controls. | None | Nice-to-have. |
+|⏳ | Collaborative Session | UX/TUI | — | [internal/collaborative-session](../internal/collaborative-session) | 1.4 | In Progress | 25% (conf: low) | ██░░░░░░░░ | Early scaffolding with byte-exact terminal-color JSON fields. | Define protocol/permissions; host/guest; TUI controls. | Color serialization regression; broader runtime tests absent. | Nice-to-have. |
 
 ### Reliability & Ops
 <!-- group-progress:reliability-ops:begin -->
@@ -121,7 +121,7 @@ weight=16.83 features=14 kloc=60.3
 |⏳ | Smart Payload Dedup | Reliability | — | [internal/smart-payload-deduplication](../internal/smart-payload-deduplication) | 4.3 | In Progress | 50% (conf: med) | █████░░░░░ | Compression/dedup logic; TODOs on dict build. | Dict training; stats; enqueue integration. | Unit present. | Useful cost saver. |
 |🅰️ | Smart Retry Strategies | Reliability | — | [internal/smart-retry-strategies](../internal/smart-retry-strategies) | 5.0 | Alpha | 75% (conf: high) | ███████░░░ | Strategies + tests; metrics TODO. | Prometheus metrics; TUI selector. | Unit/integration good. | Solid baseline. |
 |⏳ | Automatic Capacity Planning | Planning | — | [internal/automatic-capacity-planning](../internal/automatic-capacity-planning) | 5.1 | In Progress | 55% (conf: med) | █████░░░░░ | Planner + simulator; needs hooks. | Expose Admin API; scheduling; tests. | Unit/integration fair. | Pair with forecasting. |
-|⏳ | Chaos Harness | Ops/Safety | — | [internal/chaos-harness](../internal/chaos-harness) | 2.4 | In Progress | 45% (conf: med) | ████░░░░░░ | Fault injection scaffolding. | Profiles; RBAC; kill switch; dashboards. | Light unit. | Guardrails required. |
+|⏳ | Chaos Harness | Ops/Safety | — | [internal/chaos-harness](../internal/chaos-harness) | 2.4 | In Progress | 45% (conf: med) | ████░░░░░░ | Fault injection scaffolding with lock-safe injector traversal. | Profiles; RBAC; kill switch; dashboards. | Gated suite has known failures; repository vet is clean. | Guardrails required. |
 |⏳ | Canary Deployments | Ops | — | [internal/canary-deployments](../internal/canary-deployments) | 5.9 | In Progress | 50% (conf: med) | █████░░░░░ | Canary logic present; guardrails TBD. | Rollback/abort endpoints; audit logging. | Minimal tests. | Add e2e. |
 
 ### Scale & Multi‑Cluster
