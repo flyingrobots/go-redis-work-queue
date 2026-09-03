@@ -439,7 +439,7 @@ components:
           description: Configured priority name; omitted uses the producer default
         ordering_key:
           type: string
-          description: Per-key FIFO identity; stored now and enforced when ordered delivery is enabled
+          description: Optional FIFO identity; non-empty values serialize same-key handlers and ordering wins over priority
 
     EnqueueResponse:
       type: object

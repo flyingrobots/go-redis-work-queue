@@ -37,6 +37,11 @@ producer:
 queue:
   # Decoded application payload bytes; keep large objects outside Redis.
   max_payload_size: 1048576
+  # Non-empty ordering keys use a hashed per-key FIFO plus an expiring lease.
+  ordered_ready_list: "jobqueue:ordered:ready"
+  ordered_active_set: "jobqueue:ordered:active"
+  ordered_queue_pattern: "jobqueue:ordered:queue:%s"
+  ordered_lease_pattern: "jobqueue:ordered:lease:%s"
 
 circuit_breaker:
   failure_threshold: 0.5

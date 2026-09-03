@@ -13,6 +13,10 @@ func TestDefaultCoreKeysMatchExistingRedisLayout(t *testing.T) {
 		"completed":        DefaultCompletedList,
 		"dead letter":      DefaultDeadLetterList,
 		"producer limiter": DefaultProducerRateLimitKey,
+		"ordered ready":    DefaultOrderedReadyList,
+		"ordered active":   DefaultOrderedActiveSet,
+		"ordered queue":    DefaultOrderedQueuePattern,
+		"ordered lease":    DefaultOrderedLeasePattern,
 	}
 	want := map[string]string{
 		"namespace":        "jobqueue:",
@@ -23,11 +27,39 @@ func TestDefaultCoreKeysMatchExistingRedisLayout(t *testing.T) {
 		"completed":        "jobqueue:completed",
 		"dead letter":      "jobqueue:dead_letter",
 		"producer limiter": "jobqueue:rate_limit:producer",
+		"ordered ready":    "jobqueue:ordered:ready",
+		"ordered active":   "jobqueue:ordered:active",
+		"ordered queue":    "jobqueue:ordered:queue:%s",
+		"ordered lease":    "jobqueue:ordered:lease:%s",
 	}
 	for name, got := range tests {
 		if got != want[name] {
 			t.Errorf("%s key = %q, want %q", name, got, want[name])
 		}
+	}
+}
+
+func TestOrderingDigestIsStableAndRedisSafe(t *testing.T) {
+	key := "repo:{main}:目录/hello.go"
+	const want = "043a1248cb072ea65d9eff97c65664eb2709d0345e9a77a6b42b5a39b707b297"
+	if got := OrderingDigest(key); got != want {
+		t.Fatalf("digest = %q, want %q", got, want)
+	}
+	if got := len(OrderingDigest(key)); got != 64 {
+		t.Fatalf("digest length = %d, want 64", got)
+	}
+}
+
+func TestSplitPattern(t *testing.T) {
+	prefix, suffix, ok := SplitPattern("custom:{ordered}:%s:jobs")
+	if !ok || prefix != "custom:{ordered}:" || suffix != ":jobs" {
+		t.Fatalf("split = (%q, %q, %v)", prefix, suffix, ok)
+	}
+	if _, _, ok := SplitPattern("missing-placeholder"); ok {
+		t.Fatal("pattern without placeholder unexpectedly accepted")
+	}
+	if _, _, ok := SplitPattern("%s:twice:%s"); ok {
+		t.Fatal("pattern with two placeholders unexpectedly accepted")
 	}
 }
 

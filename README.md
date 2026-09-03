@@ -99,8 +99,9 @@ the worker can resolve. Oversized jobs are rejected before Redis is modified.
 
 `FilePath` and `FileSize` remain in the envelope for compatibility with the
 legacy producer and benchmark flow; they are metadata, not the application
-payload. `OrderingKey` is also stored in the envelope for forward
-compatibility, but per-key FIFO is not enforced until ROADMAP Item 4 lands.
+payload. A non-empty `OrderingKey` gives jobs sharing that exact key FIFO
+handler execution with at most one in flight across all workers. An empty key
+retains the ordinary priority-list behavior.
 
 ### Enqueue jobs
 
@@ -120,6 +121,7 @@ id, err := client.Enqueue(ctx, queueclient.Job{
     Payload:       []byte(`{"x":1}`),
     PayloadSchema: "demo.v1",
     Priority:      "high",
+    OrderingKey:   "repo/path/to/shared-file.go",
 })
 ```
 
@@ -134,7 +136,9 @@ transaction. A bad priority or oversized payload rejects the whole batch with
 no writes. An accepted batch is applied atomically by Redis, and generated IDs
 and timestamps are copied into the supplied slice. Caller-supplied duplicate
 IDs are intentionally not deduplicated: each entry is a separate at-least-once
-delivery, so handlers should remain idempotent.
+delivery, so handlers should remain idempotent. Within one non-empty ordering
+key, FIFO wins over priority: a later high-priority job cannot pass an earlier
+low-priority job with the same key. Different keys remain parallel.
 
 The binary has a matching `enqueue` subcommand. It reads stdin by default and
 prints only the accepted job ID to stdout:
@@ -147,8 +151,8 @@ echo '{"x":1}' | ./bin/job-queue-system enqueue \
 ```
 
 Use `--payload-file path/to/payload.bin` for a file, or
-`--payload-file -` for stdin. `--ordering-key` stores the future FIFO key, and
-`--id` supplies a caller-owned ID. Empty stdin is a valid zero-byte payload.
+`--payload-file -` for stdin. `--ordering-key` enables per-key FIFO, and `--id`
+supplies a caller-owned ID. Empty stdin is a valid zero-byte payload.
 
 The Admin API exposes the same guard at `POST /api/v1/enqueue`. Because job
 payloads are opaque bytes, JSON represents `payload` as base64 (`format: byte`):
@@ -187,10 +191,14 @@ Handler outcomes drive the durable queue protocol:
   expires naturally so the reaper can redeliver it.
 
 The runtime renews the worker heartbeat throughout long handler calls and retry
-backoff. Delivery remains at least once: a worker can finish after losing its
-heartbeat or Redis connection while the reaper redelivers the same job. Make
-handlers idempotent by job ID; completed-list entries count executions, not
-globally deduplicated IDs.
+backoff. Ordered jobs renew a compare-owned lease for the same interval. If an
+ordered worker dies, the reaper restores the interrupted envelope ahead of
+later same-key work after the heartbeat and lease expire. Delivery remains at
+least once: a process can apply an external side effect and die before its
+Redis completion transition. Make handlers idempotent by job ID;
+completed-list entries count executions, not globally deduplicated IDs. The
+full protocol and crash/fairness argument are in
+[`design/per-key-fifo.md`](design/per-key-fifo.md).
 
 ### TUI (Bubble Tea)
 

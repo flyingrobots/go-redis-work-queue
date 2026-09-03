@@ -23,6 +23,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Queue.MaxPayloadSize != 1<<20 {
 		t.Fatalf("expected default max payload size 1 MiB, got %d", cfg.Queue.MaxPayloadSize)
 	}
+	if err := cfg.OrderingLayout().Validate(); err != nil {
+		t.Fatalf("default ordering layout is invalid: %v", err)
+	}
 }
 
 func TestLoadRejectsUnsupportedExactlyOnceConfig(t *testing.T) {
@@ -78,5 +81,15 @@ func TestValidateFails(t *testing.T) {
 	cfg.Worker.HeartbeatKeyPattern = "jobqueue:%s:heartbeat:%s"
 	if err := Validate(cfg); err == nil {
 		t.Fatal("expected heartbeat pattern with two placeholders to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedQueuePattern = "jobqueue:ordered:without-placeholder"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered queue pattern without a placeholder to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedLeasePattern = "jobqueue:%s:ordered:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered lease pattern with two placeholders to fail")
 	}
 }

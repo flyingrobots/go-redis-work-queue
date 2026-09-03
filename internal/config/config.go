@@ -56,7 +56,11 @@ type Producer struct {
 }
 
 type QueueConfig struct {
-	MaxPayloadSize int `mapstructure:"max_payload_size"`
+	MaxPayloadSize      int    `mapstructure:"max_payload_size"`
+	OrderedReadyList    string `mapstructure:"ordered_ready_list"`
+	OrderedActiveSet    string `mapstructure:"ordered_active_set"`
+	OrderedQueuePattern string `mapstructure:"ordered_queue_pattern"`
+	OrderedLeasePattern string `mapstructure:"ordered_lease_pattern"`
 }
 
 type CircuitBreaker struct {
@@ -104,6 +108,17 @@ type Config struct {
 	Observability  Observability  `mapstructure:"observability"`
 }
 
+// OrderingLayout returns the Redis key layout shared by ordered producers,
+// workers, and the reaper.
+func (cfg *Config) OrderingLayout() queue.OrderingLayout {
+	return queue.OrderingLayout{
+		ReadyList:    cfg.Queue.OrderedReadyList,
+		ActiveSet:    cfg.Queue.OrderedActiveSet,
+		QueuePattern: cfg.Queue.OrderedQueuePattern,
+		LeasePattern: cfg.Queue.OrderedLeasePattern,
+	}
+}
+
 func defaultConfig() *Config {
 	return &Config{
 		Redis: Redis{
@@ -142,7 +157,11 @@ func defaultConfig() *Config {
 			RateLimitKey:     queuekeys.DefaultProducerRateLimitKey,
 		},
 		Queue: QueueConfig{
-			MaxPayloadSize: queue.DefaultMaxPayloadSize,
+			MaxPayloadSize:      queue.DefaultMaxPayloadSize,
+			OrderedReadyList:    queuekeys.DefaultOrderedReadyList,
+			OrderedActiveSet:    queuekeys.DefaultOrderedActiveSet,
+			OrderedQueuePattern: queuekeys.DefaultOrderedQueuePattern,
+			OrderedLeasePattern: queuekeys.DefaultOrderedLeasePattern,
 		},
 		CircuitBreaker: CircuitBreaker{
 			FailureThreshold: 0.5,
@@ -199,6 +218,10 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("producer.rate_limit_per_sec", def.Producer.RateLimitPerSec)
 	v.SetDefault("producer.rate_limit_key", def.Producer.RateLimitKey)
 	v.SetDefault("queue.max_payload_size", def.Queue.MaxPayloadSize)
+	v.SetDefault("queue.ordered_ready_list", def.Queue.OrderedReadyList)
+	v.SetDefault("queue.ordered_active_set", def.Queue.OrderedActiveSet)
+	v.SetDefault("queue.ordered_queue_pattern", def.Queue.OrderedQueuePattern)
+	v.SetDefault("queue.ordered_lease_pattern", def.Queue.OrderedLeasePattern)
 
 	v.SetDefault("circuit_breaker.failure_threshold", def.CircuitBreaker.FailureThreshold)
 	v.SetDefault("circuit_breaker.window", def.CircuitBreaker.Window)
@@ -258,6 +281,18 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Queue.MaxPayloadSize <= 0 {
 		return fmt.Errorf("queue.max_payload_size must be > 0")
+	}
+	if cfg.Queue.OrderedReadyList == "" {
+		return fmt.Errorf("queue.ordered_ready_list must be non-empty")
+	}
+	if cfg.Queue.OrderedActiveSet == "" {
+		return fmt.Errorf("queue.ordered_active_set must be non-empty")
+	}
+	if strings.Count(cfg.Queue.OrderedQueuePattern, "%s") != 1 {
+		return fmt.Errorf("queue.ordered_queue_pattern must contain exactly one %%s placeholder")
+	}
+	if strings.Count(cfg.Queue.OrderedLeasePattern, "%s") != 1 {
+		return fmt.Errorf("queue.ordered_lease_pattern must contain exactly one %%s placeholder")
 	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")

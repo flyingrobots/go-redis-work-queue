@@ -2,7 +2,7 @@
 
 Six work items that turn this repo from a queue **benchmark** into a queue **product**: a general-purpose, importable, Redis-backed work queue with real payloads, pluggable workers, and per-key ordering. Written 2026-09-02 from a source-level audit; every claim below was verified against the code at commit `442a3b11`, with file:line citations so you don't have to re-derive the findings.
 
-**Why these six.** The crash-safety core is already built and correct — reliable-queue pattern (`BRPOPLPUSH` to a per-worker processing list, heartbeat keys, reaper requeue: `internal/worker/worker.go:88-118`, `internal/reaper/reaper.go:40`), retries/backoff/DLQ (`internal/worker/worker.go:243-290`), circuit breaker, priorities, admin API (`internal/admin-api/server.go:97-122`), TUI, and Prometheus metrics. What's missing is the connective tissue that lets anyone *use* it: a payload, a handler, an enqueue surface, per-key ordering, and tests that actually run. Items are ordered by dependency; 0 and 5 can run any time.
+**Why these six.** The crash-safety core was already built — reliable-queue pattern (`BRPOPLPUSH` to a per-worker processing list, heartbeat keys, reaper requeue: `internal/worker/worker.go:88-118`, `internal/reaper/reaper.go:40`), retries/backoff/DLQ (`internal/worker/worker.go:243-290`), circuit breaker, priorities, admin API (`internal/admin-api/server.go:97-122`), TUI, and Prometheus metrics. These six now-complete items supplied the connective tissue that lets applications use it: a payload, a handler, enqueue surfaces, per-key ordering, and tests that run honestly.
 
 **Ground rules for every item** (this is a flyingrobots repo):
 - Failing test first. Never weaken a test to pass it.
@@ -109,8 +109,7 @@ aliases the durable core job type, validates single and transactional batch
 enqueue operations, reports typed priority/payload/connection errors, and
 mirrors Stats/Peek. The binary and Admin API use the same guard and shared key
 layout. Duplicate explicit IDs remain separate at-least-once deliveries; empty
-stdin is a valid payload. `OrderingKey` is persisted now but is intentionally
-not enforced until Item 4.
+stdin is a valid payload. Item 4 now enforces every non-empty `OrderingKey`.
 
 > **PROMPT**
 >
@@ -137,6 +136,13 @@ not enforced until Item 4.
 ---
 
 ## Item 4 — Per-key FIFO (the new primitive)
+
+**Status:** Complete on 2026-09-02. Non-empty ordering keys use hashed
+per-key lists, an O(1) round-robin ready ring, compare-owned expiring leases,
+heartbeat renewal, and atomic completion/retry/reaper transitions. Same-key
+jobs are serial across all workers; different keys remain parallel. The
+mechanism, crash boundary, fairness bound, and measurements are recorded in
+`design/per-key-fifo.md`.
 
 > **PROMPT**
 >

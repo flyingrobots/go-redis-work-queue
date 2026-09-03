@@ -167,7 +167,7 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 		case <-ticker.C:
 		}
 		job := queue.NewJob(fmt.Sprintf("bench-%d", i), fmt.Sprintf("/bench/%d", i), int64(payloadSize), priority, "", "")
-		if err := queue.Enqueue(ctx, rdb, qkey, job, cfg.Queue.MaxPayloadSize); err != nil {
+		if err := queue.EnqueueWithOrdering(ctx, rdb, qkey, job, cfg.Queue.MaxPayloadSize, cfg.OrderingLayout()); err != nil {
 			return res, err
 		}
 	}
@@ -279,16 +279,18 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 }
 
 // PurgeAll deletes common test keys used by this system, including
-// priority queues, completed/dead_letter, rate limiter key, and
-// per-worker processing lists and heartbeats. Returns number of keys deleted.
+// priority queues, ordered queues/leases, completed/dead_letter, rate limiter
+// key, and per-worker processing lists and heartbeats. Returns number of keys
+// deleted.
 func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
 	var deleted int64
 	// Explicit keys
-	keys := make([]string, 0, len(cfg.Worker.Queues)+3)
+	keys := make([]string, 0, len(cfg.Worker.Queues)+5)
 	for _, key := range cfg.Worker.Queues {
 		keys = append(keys, key)
 	}
 	keys = append(keys, cfg.Worker.CompletedList, cfg.Worker.DeadLetterList)
+	keys = append(keys, cfg.Queue.OrderedReadyList, cfg.Queue.OrderedActiveSet)
 	if cfg.Producer.RateLimitKey != "" {
 		keys = append(keys, cfg.Producer.RateLimitKey)
 	}
@@ -316,6 +318,12 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 	patterns := []string{
 		processingScanPattern(cfg),
 		heartbeatScanPattern(cfg),
+	}
+	if cfg.Queue.OrderedQueuePattern != "" {
+		patterns = append(patterns, queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern))
+	}
+	if cfg.Queue.OrderedLeasePattern != "" {
+		patterns = append(patterns, queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern))
 	}
 	for _, pat := range patterns {
 		var cursor uint64

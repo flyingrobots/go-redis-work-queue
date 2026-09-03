@@ -4,6 +4,8 @@
 package queuekeys
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -19,6 +21,10 @@ const (
 	DefaultCompletedList         = Namespace + "completed"
 	DefaultDeadLetterList        = Namespace + "dead_letter"
 	DefaultProducerRateLimitKey  = Namespace + "rate_limit:producer"
+	DefaultOrderedReadyList      = Namespace + "ordered:ready"
+	DefaultOrderedActiveSet      = Namespace + "ordered:active"
+	DefaultOrderedQueuePattern   = Namespace + "ordered:queue:%s"
+	DefaultOrderedLeasePattern   = Namespace + "ordered:lease:%s"
 )
 
 // Format substitutes an identifier into a configured key pattern.
@@ -46,4 +52,22 @@ func Extract(pattern, key string) (string, bool) {
 		return "", false
 	}
 	return key[len(prefix):end], true
+}
+
+// OrderingDigest maps exact ordering-key bytes to a bounded Redis-safe token.
+// The original ordering key remains in the durable job envelope.
+func OrderingDigest(orderingKey string) string {
+	sum := sha256.Sum256([]byte(orderingKey))
+	return hex.EncodeToString(sum[:])
+}
+
+// SplitPattern returns the fixed prefix and suffix around a pattern's sole %s
+// placeholder. It is useful for Lua scripts that format a key after claiming
+// an identifier inside Redis.
+func SplitPattern(pattern string) (prefix, suffix string, ok bool) {
+	if strings.Count(pattern, "%s") != 1 {
+		return "", "", false
+	}
+	prefix, suffix, _ = strings.Cut(pattern, "%s")
+	return prefix, suffix, true
 }

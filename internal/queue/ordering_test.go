@@ -1,0 +1,161 @@
+// Copyright 2026 James Ross
+package queue
+
+import (
+	"context"
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
+	"github.com/redis/go-redis/v9"
+)
+
+func testOrderingLayout() OrderingLayout {
+	return OrderingLayout{
+		ReadyList:    "test:ordered:ready",
+		ActiveSet:    "test:ordered:active",
+		QueuePattern: "test:ordered:queue:%s",
+		LeasePattern: "test:ordered:lease:%s",
+	}
+}
+
+func TestUnorderedEnqueueRetainsLegacyKeyLayout(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	job := NewJob("plain", "", 0, "low", "", "")
+	if err := EnqueueWithOrdering(context.Background(), rdb, "test:low", job, DefaultMaxPayloadSize, testOrderingLayout()); err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err := rdb.Keys(context.Background(), "*").Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(keys, []string{"test:low"}) {
+		t.Fatalf("unordered enqueue keys = %v, want only legacy queue", keys)
+	}
+	got, err := rdb.RPop(context.Background(), "test:low").Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := job.Marshal()
+	if got != want {
+		t.Fatalf("unordered envelope changed: got %q, want %q", got, want)
+	}
+}
+
+func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+
+	job := NewJob("ordered", "", 0, "high", "", "")
+	job.OrderingKey = "repo:{main}:目录/file.go"
+	if err := EnqueueWithOrdering(ctx, rdb, "test:high", job, DefaultMaxPayloadSize, layout); err != nil {
+		t.Fatal(err)
+	}
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey := queuekeys.Format(layout.QueuePattern, digest)
+	leaseKey := queuekeys.Format(layout.LeasePattern, digest)
+	gotList, err := mr.List(queueKey)
+	if err != nil || len(gotList) != 1 {
+		t.Fatalf("ordered queue length = %d, want 1 (err=%v)", len(gotList), err)
+	}
+	if mr.Exists("test:high") {
+		t.Fatal("ordered enqueue touched the ordinary priority list")
+	}
+
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-1", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("claim = (%#v, %v, %v)", delivery, ok, err)
+	}
+	if delivery.Digest != digest || delivery.QueueKey != queueKey || delivery.LeaseKey != leaseKey {
+		t.Fatalf("unexpected delivery metadata: %#v", delivery)
+	}
+	if got, err := rdb.Get(ctx, leaseKey).Result(); err != nil || got != "worker-1" {
+		t.Fatalf("lease owner = %q (err=%v)", got, err)
+	}
+	if got, err := rdb.LLen(ctx, "test:processing").Result(); err != nil || got != 1 {
+		t.Fatalf("processing length = %d (err=%v)", got, err)
+	}
+
+	owned, err := RenewOrderedLease(ctx, rdb, leaseKey, "worker-1", 2*time.Second)
+	if err != nil || !owned {
+		t.Fatalf("renew = (%v, %v)", owned, err)
+	}
+	transitioned, err := TransitionOrdered(ctx, rdb, layout, delivery, "test:processing", "test:heartbeat", "worker-1", "test:completed", delivery.Payload, OrderedComplete)
+	if err != nil || !transitioned {
+		t.Fatalf("complete = (%v, %v)", transitioned, err)
+	}
+	if got, err := rdb.LLen(ctx, "test:completed").Result(); err != nil || got != 1 {
+		t.Fatalf("completed length = %d (err=%v)", got, err)
+	}
+	for _, key := range []string{queueKey, leaseKey, layout.ReadyList, layout.ActiveSet, "test:processing", "test:heartbeat"} {
+		if mr.Exists(key) {
+			t.Errorf("completed transition left key %q", key)
+		}
+	}
+}
+
+func TestOrderedRetryAndRecoveryStayAheadOfLaterJobs(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+
+	jobs := []Job{
+		{ID: "first", OrderingKey: "same", Priority: "low", CreationTime: time.Now().UTC().Format(time.RFC3339Nano)},
+		{ID: "later", OrderingKey: "same", Priority: "high", CreationTime: time.Now().UTC().Format(time.RFC3339Nano)},
+	}
+	for _, job := range jobs {
+		if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-1", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("first claim = (%v, %v)", ok, err)
+	}
+	firstJob, _ := UnmarshalJob(first.Payload)
+	firstJob.Retries++
+	retryPayload, _ := firstJob.Marshal()
+	transitioned, err := TransitionOrdered(ctx, rdb, layout, first, "test:processing", "test:heartbeat", "worker-1", "", retryPayload, OrderedRetry)
+	if err != nil || !transitioned {
+		t.Fatalf("retry = (%v, %v)", transitioned, err)
+	}
+
+	retry, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-2", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("retry claim = (%v, %v)", ok, err)
+	}
+	retriedJob, _ := UnmarshalJob(retry.Payload)
+	if retriedJob.ID != "first" || retriedJob.Retries != 1 {
+		t.Fatalf("retry did not stay first: %#v", retriedJob)
+	}
+
+	// Simulate a crash: ownership expires, then the reaper must put this same
+	// envelope ahead of the still-pending later job.
+	if err := rdb.Del(ctx, "test:heartbeat", retry.LeaseKey).Err(); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := RecoverOrdered(ctx, rdb, layout, retry, "test:processing", "test:heartbeat")
+	if err != nil || !recovered {
+		t.Fatalf("recover = (%v, %v)", recovered, err)
+	}
+	redelivered, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-3", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("redelivery claim = (%v, %v)", ok, err)
+	}
+	redeliveredJob, _ := UnmarshalJob(redelivered.Payload)
+	if redeliveredJob.ID != "first" {
+		t.Fatalf("recovered job = %q, want first", redeliveredJob.ID)
+	}
+}

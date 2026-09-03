@@ -26,7 +26,7 @@ func runEnqueue(args []string, stdin io.Reader, stdout, stderr io.Writer) error 
 	fs.StringVar(&payloadFile, "payload-file", "-", "payload file, or - for stdin")
 	fs.StringVar(&schema, "schema", "", "caller-owned payload schema or version")
 	fs.StringVar(&priority, "priority", "", "configured queue priority (defaults from config)")
-	fs.StringVar(&orderingKey, "ordering-key", "", "per-key FIFO identity (stored now; enforced by ROADMAP Item 4)")
+	fs.StringVar(&orderingKey, "ordering-key", "", "per-key FIFO identity (empty keeps ordinary priority behavior)")
 	fs.StringVar(&id, "id", "", "caller-owned job ID (duplicates are separate deliveries)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -90,5 +90,9 @@ func publicClientConfig(cfg *config.Config) queueclient.Config {
 		CompletedList:         cfg.Worker.CompletedList,
 		DeadLetterList:        cfg.Worker.DeadLetterList,
 		MaxPayloadSize:        cfg.Queue.MaxPayloadSize,
+		OrderedReadyList:      cfg.Queue.OrderedReadyList,
+		OrderedActiveSet:      cfg.Queue.OrderedActiveSet,
+		OrderedQueuePattern:   cfg.Queue.OrderedQueuePattern,
+		OrderedLeasePattern:   cfg.Queue.OrderedLeasePattern,
 	}
 }

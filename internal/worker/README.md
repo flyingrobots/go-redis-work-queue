@@ -3,7 +3,9 @@
 The worker combines Redis reliable-list intake with an application handler. It
 atomically moves a job from a configured priority queue to a per-worker
 processing list, maintains a heartbeat while that job is active, and then
-completes, retries, or dead-letters it based on the handler result.
+completes, retries, or dead-letters it based on the handler result. Jobs with a
+non-empty `OrderingKey` use a hashed per-key FIFO and compare-owned lease, so
+only one handler for that key runs at a time across all workers.
 
 ## Registering a handler
 
@@ -16,9 +18,11 @@ wrk.Handle(func(ctx context.Context, job queue.Job) error {
 })
 ```
 
-The same handler may be called concurrently by `worker.count` goroutines. It
-must synchronize shared state and return when `ctx` is canceled. Calling
-`Handle(nil)` restores `BenchHandler`.
+The same handler may be called concurrently by `worker.count` goroutines for
+unordered jobs or different ordering keys. Calls sharing one non-empty key are
+serialized in Redis acceptance order, even when their priorities differ. The
+handler must synchronize any other shared state and return when `ctx` is
+canceled. Calling `Handle(nil)` restores `BenchHandler`.
 
 ## Result semantics
 
@@ -42,9 +46,11 @@ bytes.
 ## Heartbeats and delivery guarantee
 
 The worker sets a heartbeat before invoking the handler and refreshes it every
-third of `worker.heartbeat_ttl`, including during retry backoff. Normal
-completion/retry cleanup first stops the refresher, then removes the heartbeat,
-so a late refresh cannot race with cleanup.
+third of `worker.heartbeat_ttl`, including during retry backoff. Ordered jobs
+also extend a lease only when its value still matches the worker ID. Normal
+completion/retry cleanup first stops the refresher, then uses a Lua transition
+that verifies lease ownership, so a late worker cannot acknowledge a job that
+the reaper recovered.
 
 Delivery is at least once, not exactly once. If Redis cannot observe a renewal,
 the reaper may redeliver a job while the original handler is still finishing.
@@ -58,10 +64,13 @@ contain more than one entry for a job ID after redelivery.
 go test ./internal/worker ./internal/reaper -race -count=5
 E2E_REDIS_ADDR=127.0.0.1:6379 \
   go test -tags e2e_tests ./test/e2e \
-  -run '^TestE2E_WorkerCompletesJobWithRealRedis$' -race -count=5 -v
+  -run '^(TestE2E_WorkerCompletesJobWithRealRedis|TestE2E_PerKeyFIFO)' \
+  -race -count=1 -v
 ```
 
 The focused suites cover exact job delivery across two workers, retry/backoff
 and DLQ counts, panic recovery with stack logging, shutdown retention, default
 benchmark behavior, and protection from reaper theft during a long handler.
-The tagged smoke proves payload delivery and heartbeat renewal against Redis.
+The tagged suite proves payload delivery, heartbeat renewal, strict same-key
+order, cross-key concurrency, fair scheduling, hashed key safety, and ordered
+crash recovery against Redis. See `design/per-key-fifo.md` for the protocol.

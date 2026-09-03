@@ -54,3 +54,29 @@ func TestAdminUsesConfiguredWorkerKeyPatterns(t *testing.T) {
 		t.Fatalf("purge deleted %d keys; remaining=%v", deleted, mr.Keys())
 	}
 }
+
+func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg, err := config.Load("nonexistent.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, key := range []string{
+		cfg.Queue.OrderedReadyList,
+		cfg.Queue.OrderedActiveSet,
+		"jobqueue:ordered:queue:digest-a",
+		"jobqueue:ordered:lease:digest-a",
+	} {
+		mr.Set(key, "value")
+	}
+	deleted, err := PurgeAll(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 4 || len(mr.Keys()) != 0 {
+		t.Fatalf("purge deleted %d ordered keys; remaining=%v", deleted, mr.Keys())
+	}
+}

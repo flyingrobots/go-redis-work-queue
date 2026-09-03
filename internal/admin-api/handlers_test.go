@@ -13,6 +13,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -129,12 +130,17 @@ func TestEnqueueJobReturnsCreatedIDAndPreservesEnvelope(t *testing.T) {
 	if response.ID != "http-job" {
 		t.Fatalf("response ID = %q", response.ID)
 	}
-	items, err := mr.List("jobqueue:high")
+	orderedQueue := queuekeys.Format(queuekeys.DefaultOrderedQueuePattern, queuekeys.OrderingDigest(reqBody.OrderingKey))
+	items, err := mr.List(orderedQueue)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(items) != 1 {
-		t.Fatalf("high queue length = %d, want 1", len(items))
+		t.Fatalf("ordered queue length = %d, want 1", len(items))
+	}
+	ready, err := mr.List(queuekeys.DefaultOrderedReadyList)
+	if err != nil || len(ready) != 1 {
+		t.Fatalf("ready tokens = %v (err=%v), want one", ready, err)
 	}
 	job, err := queue.UnmarshalJob(items[0])
 	if err != nil {

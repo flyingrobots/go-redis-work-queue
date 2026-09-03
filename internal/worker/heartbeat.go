@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 )
 
 // maintainHeartbeat writes the initial ownership marker and renews it while a
 // handler or its retry backoff is running. The returned stop function waits for
 // the renewal goroutine, preventing a late SET from racing with cleanup.
-func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload string) func() {
+func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, owner string) func() {
 	ttl := w.cfg.Worker.HeartbeatTTL
 	if ttl <= 0 {
 		ttl = time.Second
@@ -26,6 +27,14 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload string) fun
 	set := func() {
 		if err := w.rdb.Set(heartbeatCtx, key, payload, ttl).Err(); err != nil && heartbeatCtx.Err() == nil {
 			w.log.Warn("heartbeat refresh failed", obs.String("key", key), obs.Err(err))
+		}
+		if leaseKey != "" {
+			owned, err := queue.RenewOrderedLease(heartbeatCtx, w.rdb, leaseKey, owner, ttl)
+			if err != nil && heartbeatCtx.Err() == nil {
+				w.log.Warn("ordered lease refresh failed", obs.String("key", leaseKey), obs.Err(err))
+			} else if !owned && heartbeatCtx.Err() == nil {
+				w.log.Warn("ordered lease ownership lost", obs.String("key", leaseKey))
+			}
 		}
 	}
 	set()

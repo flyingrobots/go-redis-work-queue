@@ -60,12 +60,15 @@ func EncodeForEnqueue(job Job, maxPayloadSize int) (string, error) {
 // by workers. A non-positive limit uses DefaultMaxPayloadSize so callers that
 // construct Config values directly retain the safe default.
 func Enqueue(ctx context.Context, rdb redis.Cmdable, queueName string, job Job, maxPayloadSize int) error {
+	return EnqueueWithOrdering(ctx, rdb, queueName, job, maxPayloadSize, DefaultOrderingLayout())
+}
+
+// EnqueueWithOrdering validates and appends one job using the supplied ordered
+// key layout. Empty ordering keys retain the original single-LPUSH path.
+func EnqueueWithOrdering(ctx context.Context, rdb redis.Cmdable, queueName string, job Job, maxPayloadSize int, layout OrderingLayout) error {
 	encoded, err := EncodeForEnqueue(job, maxPayloadSize)
 	if err != nil {
 		return err
 	}
-	if err := rdb.LPush(ctx, queueName, encoded).Err(); err != nil {
-		return fmt.Errorf("enqueue job: %w", err)
-	}
-	return nil
+	return AppendEncoded(ctx, rdb, queueName, job, encoded, layout)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/flyingrobots/go-redis-work-queue/pkg/queueclient"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -35,6 +36,10 @@ producer:
   default_priority: "low"
 queue:
   max_payload_size: %d
+  ordered_ready_list: "jobqueue:cli:ordered:ready"
+  ordered_active_set: "jobqueue:cli:ordered:active"
+  ordered_queue_pattern: "jobqueue:cli:ordered:queue:%%s"
+  ordered_lease_pattern: "jobqueue:cli:ordered:lease:%%s"
 `, redisAddr, maxPayload)
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		t.Fatal(err)
@@ -65,7 +70,8 @@ func TestRunEnqueueReadsStdinAndPrintsJobID(t *testing.T) {
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
-	raw, err := rdb.RPop(context.Background(), "jobqueue:cli:high").Result()
+	orderedQueue := fmt.Sprintf("jobqueue:cli:ordered:queue:%s", queuekeys.OrderingDigest("account:42"))
+	raw, err := rdb.RPop(context.Background(), orderedQueue).Result()
 	if err != nil {
 		t.Fatal(err)
 	}

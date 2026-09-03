@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -195,6 +196,84 @@ func TestHandlerErrorRetriesThenDeadLetters(t *testing.T) {
 	}
 	if dead.ID != job.ID || dead.Retries != maxRetries {
 		t.Fatalf("unexpected dead-letter job: %#v", dead)
+	}
+}
+
+func TestOrderedHandlerRetryRunsBeforeLaterSameKeyJob(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 2, 1, nil)
+	var mu sync.Mutex
+	calls := make([]string, 0, 3)
+	firstAttempts := 0
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		mu.Lock()
+		calls = append(calls, job.ID)
+		if job.ID == "ordered-first" {
+			firstAttempts++
+			if firstAttempts == 1 {
+				mu.Unlock()
+				return errors.New("retry first")
+			}
+		}
+		mu.Unlock()
+		return nil
+	}))
+
+	for _, id := range []string{"ordered-first", "ordered-later"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		job.OrderingKey = "same-key"
+		if err := queue.EnqueueWithOrdering(context.Background(), rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize, cfg.OrderingLayout()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 2)
+	waitForNoProcessingJobs(t, rdb)
+	stopHandlerTestWorker(t, cancel, done)
+
+	mu.Lock()
+	got := append([]string(nil), calls...)
+	mu.Unlock()
+	want := []string{"ordered-first", "ordered-first", "ordered-later"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("ordered retry calls = %v, want %v", got, want)
+	}
+}
+
+func TestOrderedDeadLetterReleasesLaterSameKeyJob(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 2, 0, nil)
+	var mu sync.Mutex
+	calls := make([]string, 0, 2)
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		mu.Lock()
+		calls = append(calls, job.ID)
+		mu.Unlock()
+		if job.ID == "ordered-dead" {
+			return errors.New("dead letter this job")
+		}
+		return nil
+	}))
+
+	for _, id := range []string{"ordered-dead", "ordered-after-dead"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		job.OrderingKey = "same-dead-letter-key"
+		if err := queue.EnqueueWithOrdering(context.Background(), rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize, cfg.OrderingLayout()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	waitForListLength(t, rdb, cfg.Worker.DeadLetterList, 1)
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 1)
+	waitForNoProcessingJobs(t, rdb)
+	stopHandlerTestWorker(t, cancel, done)
+
+	mu.Lock()
+	got := append([]string(nil), calls...)
+	mu.Unlock()
+	want := []string{"ordered-dead", "ordered-after-dead"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("ordered dead-letter calls = %v, want %v", got, want)
 	}
 }
 

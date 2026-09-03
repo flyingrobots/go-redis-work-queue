@@ -117,7 +117,7 @@ func (p *Producer) Run(ctx context.Context) error {
 			obs.KeyValue("job_id", j.ID),
 		)
 
-		if err := queue.Enqueue(enqCtx, p.rdb, key, j, p.cfg.Queue.MaxPayloadSize); err != nil {
+		if err := queue.EnqueueWithOrdering(enqCtx, p.rdb, key, j, p.cfg.Queue.MaxPayloadSize, p.cfg.OrderingLayout()); err != nil {
 			obs.RecordError(enqCtx, err)
 			enqSpan.End()
 			return err

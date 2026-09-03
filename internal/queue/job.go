@@ -13,9 +13,8 @@ import (
 // bytes exactly. PayloadSchema is an optional, caller-owned type or version
 // discriminator; an empty schema is valid.
 //
-// OrderingKey is stored for forward compatibility with ordered delivery. Until
-// per-key FIFO is enabled, it is metadata only and does not serialize handler
-// execution.
+// A non-empty OrderingKey enables crash-safe FIFO execution for jobs sharing
+// the exact same key. Empty ordering keys retain the ordinary priority queues.
 //
 // FilePath and FileSize are legacy benchmark fields. They remain for backward
 // compatibility and for the built-in benchmark handler, but they are metadata,

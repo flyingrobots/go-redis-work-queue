@@ -72,6 +72,28 @@ jobs:
               exit 1
             fi
           done
+      - name: Per-key FIFO E2E
+        env:
+          E2E_REDIS_ADDR: localhost:6379
+        run: |
+          set -euo pipefail
+          output="$(go test -tags e2e_tests -v ./test/e2e \
+            -run '^TestE2E_PerKeyFIFO' -race -count=1)"
+          printf '%s\n' "$output"
+          for test_name in \
+            TestE2E_PerKeyFIFOOneKey \
+            TestE2E_PerKeyFIFOMultipleKeysRunConcurrently \
+            TestE2E_PerKeyFIFORecoveryRedeliversInterruptedJobFirst \
+            TestE2E_PerKeyFIFOLeaseHeartbeatOutlivesTTL \
+            TestE2E_PerKeyFIFOKeySafetyPriorityAndFairness \
+            TestE2E_PerKeyFIFOCompletionRecoveryRaceHasOneWinner \
+            TestE2E_PerKeyFIFOTenThousandReadyKeysIsConstantTime; do
+            if ! printf '%s\n' "$output" |
+              grep -Fq -- "--- PASS: $test_name"; then
+              echo "Tagged E2E command did not execute $test_name" >&2
+              exit 1
+            fi
+          done
       - name: Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest

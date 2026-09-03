@@ -103,6 +103,10 @@ func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
 		CompletedList:         h.cfg.Worker.CompletedList,
 		DeadLetterList:        h.cfg.Worker.DeadLetterList,
 		MaxPayloadSize:        h.cfg.Queue.MaxPayloadSize,
+		OrderedReadyList:      h.cfg.Queue.OrderedReadyList,
+		OrderedActiveSet:      h.cfg.Queue.OrderedActiveSet,
+		OrderedQueuePattern:   h.cfg.Queue.OrderedQueuePattern,
+		OrderedLeasePattern:   h.cfg.Queue.OrderedLeasePattern,
 	})
 	if err != nil {
 		h.logger.Error("Invalid queue client configuration", zap.Error(err))

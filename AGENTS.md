@@ -19,8 +19,7 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- Queue core ROADMAP Items 0, 5, 1, 2, and 3 are complete on Draft PR #6;
-  Item 4 is next.
+- All six queue core ROADMAP items are complete on Draft PR #6.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
 - All core enqueue writers use the shared pre-write size guard; larger data
@@ -30,7 +29,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. Duplicate IDs remain separate deliveries.
-- `OrderingKey` is durable metadata only until ROADMAP Item 4 implements FIFO.
+- Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
+  ring, compare-owned lease, and existing reaper path. Ordering wins over
+  priority within a key; different keys remain parallel.
 
 ### Job Queue
 
@@ -153,7 +154,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 1: give `Job` a payload
 - [x] Queue core ROADMAP Item 2: add a real worker handler
 - [x] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
-- [ ] Queue core ROADMAP Item 4: guarantee per-key FIFO
+- [x] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
 - [ ] Real green: capacity planning/forecasting/policy simulator suite
@@ -582,6 +583,41 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 4: Per-key FIFO
+> Completed the queue-core roadmap with crash-safe, fair ordering for jobs that
+> share a non-empty key while retaining the ordinary empty-key path.
+>
+> Changes
+> - Wrote `design/per-key-fifo.md` before implementation, choosing hashed
+>   key-sharded lists, a round-robin ready ring, an active-set deduplicator,
+>   and compare-owned TTL leases.
+> - Added Lua-atomic enqueue, claim, completion, retry, dead-letter, discard,
+>   and reaper recovery transitions.
+> - Extended handler heartbeats to renew ordered leases and made late workers
+>   unable to acknowledge work after ownership loss.
+> - Preserved retry and crash order by returning the interrupted envelope to
+>   the next-consumed end of its per-key queue.
+> - Added configurable shared ordered keys, Admin purge coverage, docs, and a
+>   Redis 7 CI gate for the complete ordered suite.
+>
+> Validation
+> - RED on the pre-implementation head observed eight same-key handlers in
+>   flight and out-of-order completion `[1 2 3 4 5 7 6 8 ...]`.
+> - Real Redis passed 100 jobs on one key and 100 across ten keys with eight
+>   workers, proving strict per-key order and cross-key concurrency.
+> - Crash recovery redelivered the interrupted job first; a long handler held
+>   its lease; mixed priorities, Unicode/braces, hot-key fairness, and 100
+>   completion/reaper races passed under `-race`.
+> - Ten thousand distinct keys enqueued in 813.045 ms; oldest-key claim took
+>   203.917 us with no `SCAN`.
+> - The empty-key bench median moved from 951.01 to 950.99 jobs/s (-0.002%),
+>   below the 3% no-regression threshold.
+>
+> Follow-ups
+> - Keep Draft PR #6 open until repository-wide baseline lint/vet failures are
+>   resolved or explicitly separated from this queue-core campaign.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 3: Public Enqueue Surfaces
 > Made the queue usable from other Go modules, scripts, and HTTP clients while

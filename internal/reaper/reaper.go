@@ -24,7 +24,7 @@ func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Reaper {
 }
 
 func (r *Reaper) Run(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(scanInterval(r.cfg.Worker.HeartbeatTTL))
 	defer ticker.Stop()
 	for {
 		select {
@@ -65,9 +65,10 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 				continue
 			} // worker healthy
 
-			// Requeue all jobs from processing list
+			// Requeue all jobs from processing list. Ordered jobs remain in
+			// place until the compare-owned lease recovery script wins.
 			for {
-				payload, err := r.rdb.RPop(ctx, plist).Result()
+				payload, err := r.rdb.LIndex(ctx, plist, -1).Result()
 				if err == redis.Nil {
 					break
 				}
@@ -76,6 +77,46 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 					break
 				}
 				job, err := queue.UnmarshalJob(payload)
+				if err != nil {
+					_ = r.rdb.RPop(ctx, plist).Err()
+					continue
+				}
+				if job.OrderingKey != "" {
+					delivery := queue.OrderedDeliveryFor(r.cfg.OrderingLayout(), job, payload)
+					recovered, recoverErr := queue.RecoverOrdered(
+						ctx,
+						r.rdb,
+						r.cfg.OrderingLayout(),
+						delivery,
+						plist,
+						hbKey,
+					)
+					if recoverErr != nil {
+						r.log.Error("ordered recovery failed", obs.Err(recoverErr))
+						break
+					}
+					if !recovered {
+						break
+					}
+					obs.ReaperRecovered.Inc()
+					r.log.Warn("requeued abandoned ordered job",
+						obs.String("id", job.ID),
+						obs.String("to", delivery.QueueKey),
+						obs.String("trace_id", job.TraceID),
+						obs.String("span_id", job.SpanID),
+					)
+					continue
+				}
+				popped, err := r.rdb.RPop(ctx, plist).Result()
+				if err == redis.Nil {
+					break
+				}
+				if err != nil {
+					r.log.Warn("reaper rpop error", obs.Err(err))
+					break
+				}
+				payload = popped
+				job, err = queue.UnmarshalJob(payload)
 				if err != nil {
 					continue
 				}
@@ -96,4 +137,15 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 			break
 		}
 	}
+}
+
+func scanInterval(heartbeatTTL time.Duration) time.Duration {
+	interval := heartbeatTTL / 4
+	if interval <= 0 {
+		interval = 10 * time.Millisecond
+	}
+	if interval > 5*time.Second {
+		return 5 * time.Second
+	}
+	return interval
 }

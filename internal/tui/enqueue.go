@@ -17,7 +17,7 @@ func (m model) doEnqueueCmd(queueKey string, count int) tea.Cmd {
 		n := 0
 		for i := 0; i < count; i++ {
 			job := queue.NewJob(fmt.Sprintf("tui-%d", time.Now().UnixNano()), fmt.Sprintf("/tui/%d", i), 1, "manual", "", "")
-			if err := queue.Enqueue(m.ctx, m.rdb, queueKey, job, m.cfg.Queue.MaxPayloadSize); err != nil {
+			if err := queue.EnqueueWithOrdering(m.ctx, m.rdb, queueKey, job, m.cfg.Queue.MaxPayloadSize, m.cfg.OrderingLayout()); err != nil {
 				return enqueueMsg{n: n, key: queueKey, err: err}
 			}
 			n++

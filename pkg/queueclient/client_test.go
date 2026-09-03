@@ -4,8 +4,10 @@ package queueclient_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/worker"
 	"github.com/flyingrobots/go-redis-work-queue/pkg/queueclient"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -148,6 +151,53 @@ func TestEnqueueBatchRejectsAllBeforeRedisWhenOnePayloadIsOversized(t *testing.T
 	if mr.Exists(cfg.Queues["low"]) {
 		got, listErr := mr.List(cfg.Queues["low"])
 		t.Fatalf("batch rejection changed Redis: %v (err=%v)", got, listErr)
+	}
+}
+
+func TestEnqueueBatchUsesConfiguredOrderedFIFO(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	cfg.OrderedReadyList = "custom:ready"
+	cfg.OrderedActiveSet = "custom:active"
+	cfg.OrderedQueuePattern = "custom:queue:%s"
+	cfg.OrderedLeasePattern = "custom:lease:%s"
+	client := newTestClient(t, mr, cfg)
+
+	jobs := []queueclient.Job{
+		{ID: "first", Priority: "low", OrderingKey: "same"},
+		{ID: "second", Priority: "high", OrderingKey: "same"},
+		{ID: "third", Priority: "low", OrderingKey: "same"},
+	}
+	if err := client.EnqueueBatch(context.Background(), jobs); err != nil {
+		t.Fatal(err)
+	}
+	queueKey := fmt.Sprintf(cfg.OrderedQueuePattern, queuekeys.OrderingDigest("same"))
+	items, err := mr.List(queueKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("ordered batch length = %d, want 3", len(items))
+	}
+	claimIndex := 0
+	for _, encoded := range slices.Backward(items) {
+		var job queueclient.Job
+		if err := json.Unmarshal([]byte(encoded), &job); err != nil {
+			t.Fatal(err)
+		}
+		if want := jobs[claimIndex].ID; job.ID != want {
+			t.Fatalf("claim order index %d = %q, want %q", claimIndex, job.ID, want)
+		}
+		claimIndex++
+	}
+	if got, err := mr.List(cfg.OrderedReadyList); err != nil || len(got) != 1 {
+		t.Fatalf("ready tokens = %v (err=%v), want one", got, err)
+	}
+	if got, err := mr.SMembers(cfg.OrderedActiveSet); err != nil || len(got) != 1 {
+		t.Fatalf("active members = %v (err=%v), want one", got, err)
+	}
+	if mr.Exists(cfg.Queues["high"]) || mr.Exists(cfg.Queues["low"]) {
+		t.Fatal("ordered batch touched ordinary priority lists")
 	}
 }
 

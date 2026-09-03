@@ -87,6 +87,10 @@ type Config struct {
 	CompletedList         string
 	DeadLetterList        string
 	MaxPayloadSize        int
+	OrderedReadyList      string
+	OrderedActiveSet      string
+	OrderedQueuePattern   string
+	OrderedLeasePattern   string
 }
 
 // DefaultConfig returns an independent copy of the standard queue layout.
@@ -102,6 +106,10 @@ func DefaultConfig() Config {
 		CompletedList:         queuekeys.DefaultCompletedList,
 		DeadLetterList:        queuekeys.DefaultDeadLetterList,
 		MaxPayloadSize:        DefaultMaxPayloadSize,
+		OrderedReadyList:      queuekeys.DefaultOrderedReadyList,
+		OrderedActiveSet:      queuekeys.DefaultOrderedActiveSet,
+		OrderedQueuePattern:   queuekeys.DefaultOrderedQueuePattern,
+		OrderedLeasePattern:   queuekeys.DefaultOrderedLeasePattern,
 	}
 }
 
@@ -158,7 +166,7 @@ func (c *Client) Enqueue(ctx context.Context, job Job) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := c.rdb.LPush(ctx, queueName, encoded).Err(); err != nil {
+	if err := internalqueue.AppendEncoded(ctx, c.rdb, queueName, prepared, encoded, c.orderingLayout()); err != nil {
 		return "", connectionError("enqueue", err)
 	}
 	return prepared.ID, nil
@@ -189,7 +197,9 @@ func (c *Client) EnqueueBatch(ctx context.Context, jobs []Job) error {
 
 	pipe := c.rdb.TxPipeline()
 	for _, item := range entries {
-		pipe.LPush(ctx, item.queueName, item.encoded)
+		if err := internalqueue.AppendEncoded(ctx, pipe, item.queueName, item.job, item.encoded, c.orderingLayout()); err != nil {
+			return connectionError("enqueue batch", err)
+		}
 	}
 	if _, err := pipe.Exec(ctx); err != nil {
 		return connectionError("enqueue batch", err)
@@ -306,6 +316,15 @@ func (c *Client) prepare(job Job) (Job, string, string, error) {
 	return job, queueName, encoded, nil
 }
 
+func (c *Client) orderingLayout() internalqueue.OrderingLayout {
+	return internalqueue.OrderingLayout{
+		ReadyList:    c.cfg.OrderedReadyList,
+		ActiveSet:    c.cfg.OrderedActiveSet,
+		QueuePattern: c.cfg.OrderedQueuePattern,
+		LeasePattern: c.cfg.OrderedLeasePattern,
+	}
+}
+
 func (c *Client) resolveQueue(alias string) (string, error) {
 	normalized := strings.ToLower(alias)
 	if normalized == "completed" {
@@ -376,6 +395,24 @@ func normalizeConfig(cfg Config) (Config, error) {
 	}
 	if cfg.MaxPayloadSize <= 0 {
 		cfg.MaxPayloadSize = defaults.MaxPayloadSize
+	}
+	if cfg.OrderedReadyList == "" {
+		cfg.OrderedReadyList = defaults.OrderedReadyList
+	}
+	if cfg.OrderedActiveSet == "" {
+		cfg.OrderedActiveSet = defaults.OrderedActiveSet
+	}
+	if cfg.OrderedQueuePattern == "" {
+		cfg.OrderedQueuePattern = defaults.OrderedQueuePattern
+	}
+	if cfg.OrderedLeasePattern == "" {
+		cfg.OrderedLeasePattern = defaults.OrderedLeasePattern
+	}
+	if strings.Count(cfg.OrderedQueuePattern, "%s") != 1 {
+		return Config{}, errors.New("ordered queue pattern must contain exactly one %s placeholder")
+	}
+	if strings.Count(cfg.OrderedLeasePattern, "%s") != 1 {
+		return Config{}, errors.New("ordered lease pattern must contain exactly one %s placeholder")
 	}
 	return cfg, nil
 }
