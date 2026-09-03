@@ -247,6 +247,33 @@ end
 if redis.call('EXISTS', KEYS[3]) == 1 then
   return 0
 end
+
+local recovery_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6]}
+for i = 1, #recovery_keys do
+  for j = i + 1, #recovery_keys do
+    if recovery_keys[i] == recovery_keys[j] then
+      return redis.error_reply('ordered recovery keys must differ')
+    end
+  end
+end
+
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[4], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[5], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[6], 'set')
+if problem then return redis.error_reply(problem) end
+
 if redis.call('LREM', KEYS[1], 1, ARGV[1]) ~= 1 then
   return 0
 end

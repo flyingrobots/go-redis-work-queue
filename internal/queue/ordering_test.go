@@ -236,6 +236,60 @@ func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *tes
 	}
 }
 
+func TestRecoverOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
+	for _, target := range []string{"queue", "ready", "active"} {
+		t.Run(target, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			ctx := context.Background()
+			layout := testOrderingLayout()
+			processingKey := "test:processing"
+			heartbeatKey := "test:heartbeat"
+
+			job := NewJob("wrong-type-recover-"+target, "", 0, "low", "", "")
+			job.OrderingKey = "account:recover:" + target
+			if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+				t.Fatal(err)
+			}
+			delivery, ok, err := ClaimOrdered(ctx, rdb, layout, processingKey, heartbeatKey, "worker-1", time.Second)
+			if err != nil || !ok {
+				t.Fatalf("claim = (%#v, %v, %v)", delivery, ok, err)
+			}
+			if err := rdb.Del(ctx, heartbeatKey, delivery.LeaseKey).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			corruptKey := delivery.QueueKey
+			switch target {
+			case "ready":
+				corruptKey = layout.ReadyList
+			case "active":
+				corruptKey = layout.ActiveSet
+				if err := rdb.Del(ctx, corruptKey).Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := rdb.Set(ctx, corruptKey, "not-a-destination", 0).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			if recovered, err := RecoverOrdered(ctx, rdb, layout, delivery, processingKey, heartbeatKey); err == nil || recovered {
+				t.Fatalf("recover = (%v, %v), want wrong-type error", recovered, err)
+			}
+			if processing := rdb.LRange(ctx, processingKey, 0, -1).Val(); !slices.Equal(processing, []string{delivery.Payload}) {
+				t.Fatalf("processing delivery after failed recovery = %#v", processing)
+			}
+			if target != "queue" && rdb.Exists(ctx, delivery.QueueKey).Val() != 0 {
+				t.Fatalf("failed recovery wrote ordered queue %q", delivery.QueueKey)
+			}
+			if got := rdb.Get(ctx, corruptKey).Val(); got != "not-a-destination" {
+				t.Fatalf("corrupt destination value = %q", got)
+			}
+		})
+	}
+}
+
 func TestOrderedRetryAndRecoveryStayAheadOfLaterJobs(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
