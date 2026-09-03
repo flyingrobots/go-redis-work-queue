@@ -341,15 +341,6 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
     if len(handles) == 0 {
         return 0, nil
     }
-    // Resolve destination queue; default to high priority
-    if destQueue == "" {
-        if q, ok := cfg.Worker.Queues["high"]; ok && q != "" {
-            destQueue = q
-        } else {
-            // fallback to low or DLQ (no-op)
-            destQueue = cfg.Worker.Queues["low"]
-        }
-    }
     selections, snapshot, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
     if err != nil {
         return 0, err
@@ -360,11 +351,15 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
         if err != nil {
             continue
         }
+        destination := destQueue
+        if job.OrderingKey == "" && destination == "" {
+            destination = cfg.Worker.Queues[job.Priority]
+        }
         moved, nextSnapshot, err := queue.RequeueEncodedAt(
             ctx,
             rdb,
             cfg.Worker.DeadLetterList,
-            destQueue,
+            destination,
             selection.index,
             job,
             selection.raw,

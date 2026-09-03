@@ -248,6 +248,80 @@ func TestDLQRequeuePreservesOrderedIntake(t *testing.T) {
 	}
 }
 
+func TestDLQRequeueUsesEachRecordedPriorityWhenDestinationIsOmitted(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.Queues["urgent"] = "custom:urgent"
+	ctx := context.Background()
+
+	low := queue.NewJob("restore-low", "", 0, "low", "", "")
+	lowRaw, err := low.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	urgent := queue.NewJob("restore-urgent", "", 0, "urgent", "", "")
+	urgentRaw, err := urgent.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, lowRaw, urgentRaw).Err(); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handles := []string{items[0].Handle, items[1].Handle}
+
+	requeued, err := DLQRequeue(ctx, cfg, rdb, "", handles, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requeued != 2 {
+		t.Fatalf("requeued = %d, want 2", requeued)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.Queues["low"], 0, -1).Val(); !slices.Equal(got, []string{lowRaw}) {
+		t.Fatalf("low queue = %#v, want recorded low-priority job", got)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.Queues["urgent"], 0, -1).Val(); !slices.Equal(got, []string{urgentRaw}) {
+		t.Fatalf("urgent queue = %#v, want recorded urgent-priority job", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.Queues["high"]).Val(); got != 0 {
+		t.Fatalf("high queue length = %d, want no silent promotion", got)
+	}
+}
+
+func TestDLQRequeueSupportsCustomOnlyPriorityConfiguration(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.Queues = map[string]string{"urgent": "custom:urgent"}
+	cfg.Producer.DefaultPriority = "urgent"
+	ctx := context.Background()
+	job := queue.NewJob("custom-only", "", 0, "urgent", "", "")
+	raw, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, raw).Err(); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if requeued, err := DLQRequeue(ctx, cfg, rdb, "", []string{items[0].Handle}, ""); err != nil || requeued != 1 {
+		t.Fatalf("custom-only requeue = %d (err=%v), want 1", requeued, err)
+	}
+	if got := rdb.LRange(ctx, "custom:urgent", 0, -1).Val(); !slices.Equal(got, []string{raw}) {
+		t.Fatalf("custom queue = %#v, want recorded job", got)
+	}
+}
+
 func TestDLQSelectionHandlesDistinguishDuplicateJobIDs(t *testing.T) {
 	for _, action := range []string{"requeue", "purge"} {
 		t.Run(action, func(t *testing.T) {
