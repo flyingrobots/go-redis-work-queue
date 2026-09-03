@@ -81,6 +81,47 @@ func TestReaperUsesConfiguredProcessingPattern(t *testing.T) {
 	}
 }
 
+func TestRemoveMalformedTailDoesNotPopReplacement(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	processing := "jobqueue:test:processing"
+
+	job := queue.NewJob("valid-job", "", 0, "low", "", "")
+	validPayload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalidPayload := []byte("not-a-job-envelope")
+	if err := rdb.RPush(ctx, processing, validPayload, invalidPayload).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	inspected, err := rdb.LIndex(ctx, processing, -1).Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rdb.RPop(ctx, processing).Result(); err != nil {
+		t.Fatalf("competing reaper did not remove malformed tail: %v", err)
+	}
+
+	removed, err := removeTailIfEqual(ctx, rdb, processing, inspected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed {
+		t.Fatal("removed replacement job after inspected malformed tail changed")
+	}
+	remaining, err := rdb.RPop(ctx, processing).Bytes()
+	if err != nil {
+		t.Fatalf("replacement job was lost: %v", err)
+	}
+	if string(remaining) != string(validPayload) {
+		t.Fatalf("remaining payload = %q, want %q", remaining, validPayload)
+	}
+}
+
 func TestReaperDoesNotStealJobFromLiveHandler(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

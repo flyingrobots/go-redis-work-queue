@@ -19,6 +19,15 @@ type Reaper struct {
 	log *zap.Logger
 }
 
+var removeTailIfEqualScript = redis.NewScript(`
+local current = redis.call("LINDEX", KEYS[1], -1)
+if current == false or current ~= ARGV[1] then
+  return 0
+end
+redis.call("RPOP", KEYS[1])
+return 1
+`)
+
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Reaper {
 	return &Reaper{cfg: cfg, rdb: rdb, log: log}
 }
@@ -78,7 +87,10 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 				}
 				job, err := queue.UnmarshalJob(payload)
 				if err != nil {
-					_ = r.rdb.RPop(ctx, plist).Err()
+					if _, removeErr := removeTailIfEqual(ctx, r.rdb, plist, []byte(payload)); removeErr != nil {
+						r.log.Warn("reaper malformed tail removal error", obs.Err(removeErr))
+						break
+					}
 					continue
 				}
 				if job.OrderingKey != "" {
@@ -137,6 +149,14 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 			break
 		}
 	}
+}
+
+func removeTailIfEqual(ctx context.Context, rdb *redis.Client, list string, expected []byte) (bool, error) {
+	removed, err := removeTailIfEqualScript.Run(ctx, rdb, []string{list}, expected).Int()
+	if err != nil {
+		return false, err
+	}
+	return removed == 1, nil
 }
 
 func scanInterval(heartbeatTTL time.Duration) time.Duration {
