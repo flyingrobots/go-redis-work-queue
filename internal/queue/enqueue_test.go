@@ -91,6 +91,23 @@ func TestEnqueuePayloadSizeBoundary(t *testing.T) {
 	}
 }
 
+func TestEnqueueRejectsInvalidUTF8OrderingKeyBeforeRedisMutation(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	job := NewJob("invalid-ordering-key", "", 0, "low", "", "")
+	job.OrderingKey = string([]byte{'a', 0xff, 'b'})
+	err := Enqueue(context.Background(), rdb, "jobs", job, DefaultMaxPayloadSize)
+
+	if !errors.Is(err, ErrInvalidOrderingKey) {
+		t.Fatalf("expected ErrInvalidOrderingKey, got %v", err)
+	}
+	if keys := mr.Keys(); len(keys) != 0 {
+		t.Fatalf("invalid ordering key mutated Redis keys: %v", keys)
+	}
+}
+
 func TestEnqueueAllowsEmptyPayloadSchema(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

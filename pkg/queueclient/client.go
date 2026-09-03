@@ -29,6 +29,8 @@ const DefaultMaxPayloadSize = internalqueue.DefaultMaxPayloadSize
 var (
 	// ErrPayloadTooLarge identifies payload size guard failures.
 	ErrPayloadTooLarge = internalqueue.ErrPayloadTooLarge
+	// ErrInvalidOrderingKey identifies ordering keys that cannot round-trip through JSON.
+	ErrInvalidOrderingKey = internalqueue.ErrInvalidOrderingKey
 	// ErrConnection identifies Redis command failures.
 	ErrConnection = errors.New("queue Redis connection failed")
 	// ErrUnknownPriority identifies jobs whose priority is not configured.

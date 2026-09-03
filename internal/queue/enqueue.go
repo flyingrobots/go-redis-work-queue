@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -12,8 +13,12 @@ import (
 // DefaultMaxPayloadSize is the default decoded payload limit: one mebibyte.
 const DefaultMaxPayloadSize = 1 << 20
 
-// ErrPayloadTooLarge identifies enqueue attempts rejected by the payload guard.
-var ErrPayloadTooLarge = errors.New("payload exceeds maximum size")
+var (
+	// ErrPayloadTooLarge identifies enqueue attempts rejected by the payload guard.
+	ErrPayloadTooLarge = errors.New("payload exceeds maximum size")
+	// ErrInvalidOrderingKey identifies ordering keys that JSON cannot preserve byte-exactly.
+	ErrInvalidOrderingKey = errors.New("ordering key must be valid UTF-8")
+)
 
 // PayloadTooLargeError reports the observed and configured payload sizes.
 type PayloadTooLargeError struct {
@@ -45,6 +50,9 @@ func ValidatePayloadSize(payload []byte, maxPayloadSize int) error {
 // EncodeForEnqueue applies the payload guard and returns the durable job JSON
 // without modifying Redis.
 func EncodeForEnqueue(job Job, maxPayloadSize int) (string, error) {
+	if !utf8.ValidString(job.OrderingKey) {
+		return "", ErrInvalidOrderingKey
+	}
 	if err := ValidatePayloadSize(job.Payload, maxPayloadSize); err != nil {
 		return "", err
 	}
