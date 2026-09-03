@@ -34,6 +34,10 @@ producer:
   rate_limit_per_sec: 100
   rate_limit_key: "jobqueue:rate_limit:producer"
 
+queue:
+  # Decoded application payload bytes; keep large objects outside Redis.
+  max_payload_size: 1048576
+
 circuit_breaker:
   failure_threshold: 0.5
   window: 1m

@@ -77,6 +77,31 @@ Run worker only
 ./bin/job-queue-system --role=worker --config=config/config.yaml
 ```
 
+### Job payloads and size limits
+
+The core job envelope carries opaque application bytes in `Payload` and an
+optional caller-owned type or version discriminator in `PayloadSchema`. Job
+JSON encodes payload bytes as base64, so arbitrary input round-trips exactly;
+the configured size limit counts the original decoded bytes. An empty payload
+or schema is valid, and priority names are defined by configuration rather than
+limited to `high` and `low`.
+
+Payloads default to a 1 MiB maximum:
+
+```yaml
+queue:
+  max_payload_size: 1048576
+```
+
+Redis lists are not blob storage. For larger content, store the object in an
+appropriate blob or document store and enqueue a small identifier or URI that
+the worker can resolve. Oversized jobs are rejected before Redis is modified.
+
+`FilePath` and `FileSize` remain in the envelope for compatibility with the
+legacy producer and benchmark flow; they are metadata, not the application
+payload. The repository-external client, CLI, and HTTP enqueue surfaces are
+tracked as ROADMAP Item 3.
+
 ### TUI (Bubble Tea)
 
 An interactive TUI is available for observing and administering the job queue. It uses `Charmbracelet`’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.

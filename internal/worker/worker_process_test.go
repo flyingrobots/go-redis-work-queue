@@ -47,6 +47,28 @@ func TestProcessJobSuccess(t *testing.T) {
 	}
 }
 
+func TestProcessJobPayloadContainingFailStillSucceeds(t *testing.T) {
+	w, cfg, rdb, cleanup := setupWorkerTest(t)
+	defer cleanup()
+	workerID := "w1"
+	procList := fmt.Sprintf(cfg.Worker.ProcessingListPattern, workerID)
+	hbKey := fmt.Sprintf(cfg.Worker.HeartbeatKeyPattern, workerID)
+	job := queue.NewJob("payload-fail", "/tmp/ok.txt", 0, "low", "", "")
+	job.Payload = []byte(`{"instruction":"fail"}`)
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok := w.processJob(context.Background(), workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
+	if !ok {
+		t.Fatal("payload text must not trigger the legacy filepath failure oracle")
+	}
+	if n, _ := rdb.LLen(context.Background(), cfg.Worker.CompletedList).Result(); n != 1 {
+		t.Fatalf("expected completed 1, got %d", n)
+	}
+}
+
 func TestProcessJobRetryThenDLQ(t *testing.T) {
 	w, cfg, rdb, cleanup := setupWorkerTest(t)
 	defer cleanup()

@@ -42,6 +42,11 @@ wiring that does not exist.
 
 ## Item 1 — Give `Job` a payload
 
+**Status:** Complete on 2026-09-02. Jobs now carry byte-exact opaque payloads
+and optional caller-owned schemas; a typed, configurable 1 MiB guard rejects
+oversized payloads before Redis is modified, while legacy job JSON remains
+compatible.
+
 > **PROMPT**
 >
 > You are working in `go-redis-work-queue`. The `Job` type cannot carry work.

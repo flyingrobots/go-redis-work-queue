@@ -13,6 +13,7 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/distributed-tracing-integration"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -164,9 +165,8 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 			return res, ctx.Err()
 		case <-ticker.C:
 		}
-		payload := fmt.Sprintf(`{"id":"bench-%d","filepath":"/bench/%d","filesize":%d,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
-			i, i, payloadSize, priority, time.Now().UTC().Format(time.RFC3339Nano))
-		if err := rdb.LPush(ctx, qkey, payload).Err(); err != nil {
+		job := queue.NewJob(fmt.Sprintf("bench-%d", i), fmt.Sprintf("/bench/%d", i), int64(payloadSize), priority, "", "")
+		if err := queue.Enqueue(ctx, rdb, qkey, job, cfg.Queue.MaxPayloadSize); err != nil {
 			return res, err
 		}
 	}

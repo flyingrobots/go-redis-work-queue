@@ -5,9 +5,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 )
 
-// doEnqueueCmd pushes count dummy payloads to the given queue key.
+// doEnqueueCmd pushes count dummy benchmark jobs to the given queue key.
 func (m model) doEnqueueCmd(queueKey string, count int) tea.Cmd {
 	return func() tea.Msg {
 		if queueKey == "" || queueKey == m.cfg.Worker.CompletedList || queueKey == m.cfg.Worker.DeadLetterList {
@@ -15,9 +16,8 @@ func (m model) doEnqueueCmd(queueKey string, count int) tea.Cmd {
 		}
 		n := 0
 		for i := 0; i < count; i++ {
-			payload := fmt.Sprintf(`{"id":"tui-%d","filepath":"/tui/%d","filesize":1,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
-				time.Now().UnixNano(), i, "manual", time.Now().UTC().Format(time.RFC3339Nano))
-			if err := m.rdb.LPush(m.ctx, queueKey, payload).Err(); err != nil {
+			job := queue.NewJob(fmt.Sprintf("tui-%d", time.Now().UnixNano()), fmt.Sprintf("/tui/%d", i), 1, "manual", "", "")
+			if err := queue.Enqueue(m.ctx, m.rdb, queueKey, job, m.cfg.Queue.MaxPayloadSize); err != nil {
 				return enqueueMsg{n: n, key: queueKey, err: err}
 			}
 			n++

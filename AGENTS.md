@@ -16,6 +16,15 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - What You Should Know
 - Working Tasklist
 - Daily Activity Logs
+
+### What You Should Know
+
+- Queue core ROADMAP Items 0, 5, and 1 are complete on Draft PR #6; Item 2 is next.
+- Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
+  bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
+- All core enqueue writers use the shared pre-write size guard; larger data
+  belongs in object storage with only a reference in the job.
+
 ### Job Queue
 
 This project is a legit job queue backed by Redis, implemented in Go. The aim is to build a robust, horizontally scalable job system, balancing powerful features against real-world pragmatism, and keep things easy to use and understand. 
@@ -134,7 +143,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 
 - [x] Queue core ROADMAP Item 0: remove the unwired idempotency config
 - [x] Queue core ROADMAP Item 5: make the tests tell the truth
-- [ ] Queue core ROADMAP Item 1: give `Job` a payload
+- [x] Queue core ROADMAP Item 1: give `Job` a payload
 - [ ] Queue core ROADMAP Item 2: add a real worker handler
 - [ ] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
 - [ ] Queue core ROADMAP Item 4: guarantee per-key FIFO
@@ -566,6 +575,27 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 1: Byte-exact Job Payloads
+> Added real application data to the durable core job envelope without breaking
+> legacy benchmark jobs.
+>
+> Changes
+> - Captured a compile-time RED proving `Job` had no payload or enqueue guard.
+> - Added opaque payload bytes, an optional caller-owned schema, and base64 JSON encoding.
+> - Added a typed 1 MiB-by-default guard that rejects before modifying Redis.
+> - Routed producer, admin bench, and TUI enqueue writes through the shared guard.
+> - Preserved legacy JSON fields and documented `FilePath`/`FileSize` as bench metadata.
+>
+> Validation
+> - Payload/schema Redis round-trip remained byte-exact for UTF-8, embedded JSON, and arbitrary bytes.
+> - Legacy fixtures, empty/exact/over-limit payloads, empty schemas, and custom priorities passed.
+> - A payload containing `"fail"` completed because only the legacy filepath oracle inspects that word.
+> - `go test ./... -race -count=1`, focused vet, build, and diff checks passed.
+>
+> Follow-ups
+> - Execute ROADMAP Item 2 next.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 5: Truthful Default Tests
 > Restored core worker coverage to the default suite and made the Redis e2e CI

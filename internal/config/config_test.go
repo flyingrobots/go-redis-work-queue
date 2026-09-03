@@ -20,6 +20,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Redis.Addr == "" {
 		t.Fatalf("expected default redis addr")
 	}
+	if cfg.Queue.MaxPayloadSize != 1<<20 {
+		t.Fatalf("expected default max payload size 1 MiB, got %d", cfg.Queue.MaxPayloadSize)
+	}
 }
 
 func TestLoadRejectsUnsupportedExactlyOnceConfig(t *testing.T) {
@@ -60,5 +63,10 @@ func TestValidateFails(t *testing.T) {
 	cfg.Worker.BRPopLPushTimeout = cfg.Worker.HeartbeatTTL
 	if err := Validate(cfg); err == nil {
 		t.Fatalf("expected error for brpoplpush_timeout > heartbeat_ttl/2")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.MaxPayloadSize = 0
+	if err := Validate(cfg); err == nil {
+		t.Fatalf("expected error for queue.max_payload_size <= 0")
 	}
 }

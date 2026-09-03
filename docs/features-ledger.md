@@ -46,16 +46,16 @@ Update via script
 ### Core & Platform
 <!-- group-progress:core-platform:begin -->
 ```text
-████████████████████████████████▓░░░░░░░ 82%
+█████████████████████████████████▓░░░░░░ 83%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.59 features=9 kloc=17.4
+weight=8.63 features=9 kloc=17.6
 ```
 <!-- group-progress:core-platform:end -->
 
 | Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
 | ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
-|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | MVP | 60% (conf: high) | `██████░░░░` | Crash-safe benchmark flow has priority queues, retries, reaping, metrics, and default worker coverage; jobs remain filepath metadata and workers simulate work. | Add payload/size guard, handler, public enqueue surfaces, and per-key FIFO. | Worker, queue, producer, reaper, and breaker run by default and pass under the race detector. | Reliable foundation, not yet a general-purpose queue product. |
+|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 1.0 | MVP | 70% (conf: high) | `███████░░░` | Crash-safe flow now carries byte-exact payloads and optional schemas behind a typed, configurable pre-enqueue size guard; workers still simulate work. | Add a real handler, public enqueue surfaces, and per-key FIFO. | Default/race core coverage plus payload round-trip, legacy fixture, size-boundary, schema, custom-priority, and failure-oracle tests. | Payload bytes use base64 in the durable JSON envelope; 1 MiB default. |
 |🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.4 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | Storage Backends | Core/Storage | — | [internal/storage-backends](../internal/storage-backends) | 5.9 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | RBAC & Tokens | Security | — | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |

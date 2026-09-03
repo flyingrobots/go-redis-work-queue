@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/spf13/viper"
 )
 
@@ -53,6 +54,10 @@ type Producer struct {
 	RateLimitKey     string   `mapstructure:"rate_limit_key"`
 }
 
+type QueueConfig struct {
+	MaxPayloadSize int `mapstructure:"max_payload_size"`
+}
+
 type CircuitBreaker struct {
 	FailureThreshold float64       `mapstructure:"failure_threshold"`
 	Window           time.Duration `mapstructure:"window"`
@@ -93,6 +98,7 @@ type Config struct {
 	Redis          Redis          `mapstructure:"redis"`
 	Worker         Worker         `mapstructure:"worker"`
 	Producer       Producer       `mapstructure:"producer"`
+	Queue          QueueConfig    `mapstructure:"queue"`
 	CircuitBreaker CircuitBreaker `mapstructure:"circuit_breaker"`
 	Observability  Observability  `mapstructure:"observability"`
 }
@@ -130,6 +136,9 @@ func defaultConfig() *Config {
 			HighPriorityExts: []string{".pdf", ".docx", ".xlsx", ".zip"},
 			RateLimitPerSec:  100,
 			RateLimitKey:     "jobqueue:rate_limit:producer",
+		},
+		Queue: QueueConfig{
+			MaxPayloadSize: queue.DefaultMaxPayloadSize,
 		},
 		CircuitBreaker: CircuitBreaker{
 			FailureThreshold: 0.5,
@@ -185,6 +194,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("producer.high_priority_exts", def.Producer.HighPriorityExts)
 	v.SetDefault("producer.rate_limit_per_sec", def.Producer.RateLimitPerSec)
 	v.SetDefault("producer.rate_limit_key", def.Producer.RateLimitKey)
+	v.SetDefault("queue.max_payload_size", def.Queue.MaxPayloadSize)
 
 	v.SetDefault("circuit_breaker.failure_threshold", def.CircuitBreaker.FailureThreshold)
 	v.SetDefault("circuit_breaker.window", def.CircuitBreaker.Window)
@@ -235,6 +245,9 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Producer.RateLimitPerSec < 0 {
 		return fmt.Errorf("producer.rate_limit_per_sec must be >= 0")
+	}
+	if cfg.Queue.MaxPayloadSize <= 0 {
+		return fmt.Errorf("queue.max_payload_size must be > 0")
 	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")
