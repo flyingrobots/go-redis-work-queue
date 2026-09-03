@@ -30,6 +30,10 @@ run:
 test:
 	go test ./... -race -count=1
 
+.PHONY: lint
+lint:
+	go run $(GOFLAGS) ./tools/requestidlint/cmd/requestidlint ./internal/admin-api
+
 tidy:
 	go mod tidy
 
