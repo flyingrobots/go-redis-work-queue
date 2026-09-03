@@ -53,7 +53,6 @@ _All E2E suites require the `e2e_tests` build tag; some also need environment va
 
 _These are human-facing acceptance checklists. None were executed._
 
-- `test_p1.t022.sh`: Exactly-once patterns deployment checklist (`redis-cli`, app binary/`go run`, `curl`).
 - `test_p2.t051.sh`: Multi-tenant isolation acceptance script (runs package unit tests; should be gated while testing is frozen).
 - `test_p3.t035.sh`: Canary deployments design checklist (`grep`, `wc`).
 - `test_p3.t046.sh`: Long-term archives design checklist.
