@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -329,6 +330,60 @@ func TestInvalidPriorityDoesNotModifyRedis(t *testing.T) {
 	}
 	if got := len(mr.Keys()); got != 0 {
 		t.Fatalf("invalid priority created %d Redis keys", got)
+	}
+}
+
+func TestEnqueueResetsCallerControlledRetries(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	client := newTestClient(t, mr, cfg)
+
+	if _, err := client.Enqueue(context.Background(), queueclient.Job{
+		ID:       "retry-single",
+		Priority: "low",
+		Retries:  math.MaxInt,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := mr.List(cfg.Queues["low"])
+	if err != nil || len(items) != 1 {
+		t.Fatalf("stored jobs = %#v (err=%v)", items, err)
+	}
+	var stored queueclient.Job
+	if err := json.Unmarshal([]byte(items[0]), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Retries != 0 {
+		t.Fatalf("stored retries = %d, want 0", stored.Retries)
+	}
+}
+
+func TestEnqueueBatchResetsCallerControlledRetries(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	client := newTestClient(t, mr, cfg)
+	jobs := []queueclient.Job{{
+		ID:       "retry-batch",
+		Priority: "high",
+		Retries:  math.MaxInt,
+	}}
+
+	if err := client.EnqueueBatch(context.Background(), jobs); err != nil {
+		t.Fatal(err)
+	}
+	if jobs[0].Retries != 0 {
+		t.Fatalf("returned retries = %d, want 0", jobs[0].Retries)
+	}
+	items, err := mr.List(cfg.Queues["high"])
+	if err != nil || len(items) != 1 {
+		t.Fatalf("stored jobs = %#v (err=%v)", items, err)
+	}
+	var stored queueclient.Job
+	if err := json.Unmarshal([]byte(items[0]), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Retries != 0 {
+		t.Fatalf("stored retries = %d, want 0", stored.Retries)
 	}
 }
 

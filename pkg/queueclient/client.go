@@ -159,6 +159,7 @@ func (c *Client) Close() error {
 
 // Enqueue validates and appends one job, returning its durable ID. Empty IDs
 // and creation times are generated. Empty priorities select DefaultPriority.
+// Retries is worker-owned bookkeeping and is reset to zero for a new delivery.
 // Explicit duplicate IDs are accepted as separate at-least-once deliveries;
 // callers that need deduplication must enforce it at the handler boundary.
 func (c *Client) Enqueue(ctx context.Context, job Job) (string, error) {
@@ -176,7 +177,8 @@ func (c *Client) Enqueue(ctx context.Context, job Job) (string, error) {
 // script. If any job is locally invalid or any destination has the wrong Redis
 // type, none are written. Redis executes the accepted batch atomically. On
 // success, generated IDs/timestamps are copied back into the caller-provided
-// slice. Explicit duplicate IDs remain separate deliveries.
+// slice and worker-owned retry counters are reset. Explicit duplicate IDs
+// remain separate deliveries.
 func (c *Client) EnqueueBatch(ctx context.Context, jobs []Job) error {
 	if len(jobs) == 0 {
 		return nil
@@ -291,6 +293,7 @@ func (c *Client) Peek(ctx context.Context, queueAlias string, n int64) (PeekResu
 }
 
 func (c *Client) prepare(job Job) (Job, string, string, error) {
+	job.Retries = 0
 	if job.ID == "" {
 		job.ID = uuid.NewString()
 	}
