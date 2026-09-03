@@ -104,14 +104,13 @@ func (s *Server) SetupRoutes() http.Handler {
 	// Workers
 	mux.HandleFunc("/api/v1/workers", methodHandler("GET", h.GetWorkers))
 	mux.HandleFunc("/api/v1/queues/", func(w http.ResponseWriter, r *http.Request) {
-		// Route based on path suffix
 		path := r.URL.Path
 		switch {
-		case r.Method == "GET" && contains(path, "/peek"):
+		case r.Method == "GET" && isQueuePeekPath(path):
 			h.PeekQueue(w, r)
-		case r.Method == "DELETE" && contains(path, "/dlq"):
+		case r.Method == "DELETE" && path == "/api/v1/queues/dlq":
 			h.PurgeDLQ(w, r)
-		case r.Method == "DELETE" && contains(path, "/all"):
+		case r.Method == "DELETE" && path == "/api/v1/queues/all":
 			h.PurgeAll(w, r)
 		default:
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Endpoint not found")
@@ -175,6 +174,13 @@ func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
+func isQueuePeekPath(requestPath string) bool {
+	parts := strings.Split(requestPath, "/")
+	return len(parts) == 6 &&
+		parts[0] == "" &&
+		parts[1] == "api" &&
+		parts[2] == "v1" &&
+		parts[3] == "queues" &&
+		parts[4] != "" &&
+		parts[5] == "peek"
 }
