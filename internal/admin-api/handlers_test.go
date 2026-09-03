@@ -270,6 +270,22 @@ func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
 	if _, ok := document.Components.Schemas["EnqueueResponse"]; !ok {
 		t.Fatal("OpenAPI components does not contain EnqueueResponse")
 	}
+	enqueueOperation, ok := document.Paths["/enqueue"]["post"].(map[string]any)
+	if !ok {
+		t.Fatal("OpenAPI enqueue operation is not an object")
+	}
+	enqueueDescription, ok := enqueueOperation["description"].(string)
+	if !ok {
+		t.Fatal("OpenAPI enqueue operation does not contain a string description")
+	}
+	for _, claim := range []string{"strict FIFO", "ordering wins over priority"} {
+		if !strings.Contains(enqueueDescription, claim) {
+			t.Errorf("OpenAPI enqueue description does not document %q: %q", claim, enqueueDescription)
+		}
+	}
+	if strings.Contains(enqueueDescription, "not enforced") {
+		t.Errorf("OpenAPI enqueue description still claims ordering is not enforced: %q", enqueueDescription)
+	}
 	for name := range document.Components.Schemas {
 		if strings.HasPrefix(name, "/") {
 			t.Errorf("OpenAPI path %q is incorrectly nested under component schemas", name)

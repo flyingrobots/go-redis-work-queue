@@ -41,11 +41,13 @@ paths:
         - enqueue
       summary: Enqueue one job
       description: >-
-        Appends one job to its configured priority queue. Payload is base64 so
-        arbitrary bytes round-trip exactly; the decoded payload size is checked
+        Appends one job. Jobs without an ordering key use the configured
+        priority queue. A non-empty ordering key routes the job through strict
+        FIFO for that exact key, with at most one same-key job in flight;
+        ordering wins over priority within the key. Payload is base64 so
+        arbitrary bytes round-trip exactly, and its decoded size is checked
         before Redis is modified. Duplicate caller-supplied IDs are accepted as
-        separate at-least-once deliveries. Ordering keys are stored but are not
-        enforced until per-key FIFO is enabled.
+        separate at-least-once deliveries.
       operationId: enqueueJob
       requestBody:
         required: true
