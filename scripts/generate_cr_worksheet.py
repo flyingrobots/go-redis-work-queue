@@ -26,7 +26,6 @@ Notes:
 import argparse
 import datetime as dt
 import json
-import os
 import re
 import subprocess
 from pathlib import Path
@@ -49,10 +48,27 @@ def fetch_pr(repo: str, pr: int) -> dict:
     return sh_json(["gh", "api", f"repos/{repo}/pulls/{pr}"])
 
 
+def gh_paginated_list(endpoint: str) -> list[dict]:
+    """Fetch and flatten every list page returned by a GitHub REST endpoint."""
+    pages = sh_json(["gh", "api", endpoint, "--paginate", "--slurp"])
+    if not isinstance(pages, list):
+        raise SystemExit(f"Expected paginated JSON list from {endpoint}")
+
+    items: list[dict] = []
+    for page in pages:
+        if not isinstance(page, list):
+            raise SystemExit(f"Expected each page from {endpoint} to be a list")
+        for item in page:
+            if not isinstance(item, dict):
+                raise SystemExit(f"Expected comment objects from {endpoint}")
+            items.append(item)
+    return items
+
+
 def fetch_comments(repo: str, pr: int) -> tuple[list[dict], list[dict], list[dict]]:
-    issue_comments = sh_json(["gh", "api", f"repos/{repo}/issues/{pr}/comments", "--paginate"])  # convo
-    review_comments = sh_json(["gh", "api", f"repos/{repo}/pulls/{pr}/comments", "--paginate"])  # inline
-    reviews = sh_json(["gh", "api", f"repos/{repo}/pulls/{pr}/reviews", "--paginate"])  # bodies
+    issue_comments = gh_paginated_list(f"repos/{repo}/issues/{pr}/comments")
+    review_comments = gh_paginated_list(f"repos/{repo}/pulls/{pr}/comments")
+    reviews = gh_paginated_list(f"repos/{repo}/pulls/{pr}/reviews")
     return issue_comments, review_comments, reviews
 
 
@@ -262,7 +278,7 @@ def main():
     out_path = out_dir / f"{head_sha}.md"
 
     # Render header
-    date_str = dt.datetime.utcnow().strftime("%Y-%m-%d")
+    date_str = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     header = render_header(date_str, args.agent, head_sha, branch, branch_url, args.pr, pr_url, f"{head_sha}.md", repo_full)
 
     # Render items
