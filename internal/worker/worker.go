@@ -48,6 +48,10 @@ func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
 }
 
 func (w *Worker) Run(ctx context.Context) error {
+	if w.selectedHandler() == nil {
+		return ErrHandlerRequired
+	}
+
 	var wg sync.WaitGroup
 	for i := 0; i < w.cfg.Worker.Count; i++ {
 		wg.Add(1)

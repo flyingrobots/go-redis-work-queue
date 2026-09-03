@@ -14,11 +14,11 @@ default suite.
 
 ## External Client Contract (`test/external-queueclient/`)
 
-This nested Go module imports `pkg/queueclient` through the public module path,
-then enqueues and peeks a job against `miniredis`. The separate `go.mod` is the
-compile-time proof that the supported API does not leak Go `internal/`
-boundaries. CI runs it independently because `go test ./...` does not recurse
-into nested modules.
+This nested Go module imports `pkg/queueclient` and `pkg/queueworker` through
+the public module path, then enqueues, peeks, and handles a job against
+`miniredis`. The separate `go.mod` proves that neither supported API leaks Go
+`internal/` boundaries. CI runs it independently because `go test ./...` does
+not recurse into nested modules.
 
 Run it with:
 

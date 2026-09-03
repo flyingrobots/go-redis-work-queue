@@ -53,7 +53,7 @@ func TestWorkerBreakerTripsAndPausesConsumption(t *testing.T) {
 	}
 
 	log, _ := zap.NewDevelopment()
-	w := New(cfg, rdb, log)
+	w := New(cfg, rdb, log).Handle(BenchHandler)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { defer close(done); _ = w.Run(ctx) }()

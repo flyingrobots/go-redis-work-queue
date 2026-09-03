@@ -101,6 +101,23 @@ func waitForNoProcessingJobs(t *testing.T, rdb *redis.Client) {
 	t.Fatal("processing lists did not drain")
 }
 
+func TestRunRequiresHandlerBeforeStarting(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	job := queue.NewJob("must-not-ack", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := w.Run(ctx); !errors.Is(err, ErrHandlerRequired) {
+		t.Fatalf("worker without an application handler returned %v, want ErrHandlerRequired", err)
+	}
+	if queued, err := rdb.LLen(context.Background(), cfg.Worker.Queues["low"]).Result(); err != nil || queued != 1 {
+		t.Fatalf("handler-less worker changed source queue: length=%d err=%v", queued, err)
+	}
+}
+
 func TestRegisteredHandlerProcessesEachJobOnce(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 2, 1, nil)
 	received := make(chan queue.Job, 5)

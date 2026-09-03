@@ -178,6 +178,12 @@ func defaultConfig() *Config {
 	}
 }
 
+// Default returns an independent configuration populated with runtime-safe
+// defaults. It does not read files or environment variables.
+func Default() *Config {
+	return defaultConfig()
+}
+
 // Load reads configuration from YAML file and env overrides.
 func Load(path string) (*Config, error) {
 	v := viper.New()

@@ -49,7 +49,7 @@ docker stop jobq-redis
 3) In one shell, run the worker
 
 ```bash
-./bin/job-queue-system --role=worker --config=config/config.yaml
+./bin/job-queue-system --role=worker --bench-worker --config=config/config.yaml
 ```
 
 4) In another shell, run the bench (enqueue and wait for completion)

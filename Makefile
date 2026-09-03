@@ -24,7 +24,7 @@ run-tui tui: build-tui
 	./bin/tui --config=config/config.yaml
 
 run:
-	./bin/$(APP) --role=all --config=config/config.yaml
+	./bin/$(APP) --role=all --bench-worker --config=config/config.yaml
 
 test:
 	go test ./... -race -count=1

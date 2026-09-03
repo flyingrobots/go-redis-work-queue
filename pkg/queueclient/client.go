@@ -129,7 +129,7 @@ func New(redisOpts *redis.Options, cfg Config) (*Client, error) {
 	if redisOpts == nil {
 		return nil, errors.New("redis options must not be nil")
 	}
-	normalized, err := normalizeConfig(cfg)
+	normalized, err := NormalizeConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func NewWithClient(rdb *redis.Client, cfg Config) (*Client, error) {
 	if rdb == nil {
 		return nil, errors.New("redis client must not be nil")
 	}
-	normalized, err := normalizeConfig(cfg)
+	normalized, err := NormalizeConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +348,9 @@ func (c *Client) resolveQueue(alias string) (string, error) {
 	return "", &UnknownQueueError{Queue: alias, Known: known}
 }
 
-func normalizeConfig(cfg Config) (Config, error) {
+// NormalizeConfig applies safe defaults, copies caller-owned queue maps, and
+// validates the Redis key layout without contacting Redis.
+func NormalizeConfig(cfg Config) (Config, error) {
 	defaults := DefaultConfig()
 	if len(cfg.Queues) == 0 {
 		cfg.Queues = defaults.Queues

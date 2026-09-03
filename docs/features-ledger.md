@@ -52,14 +52,14 @@ Update via script
 ██████████████████████████████████▓░░░░░ 87%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=9.45 features=10 kloc=20.3
+weight=9.48 features=10 kloc=21.0
 ```
 <!-- group-progress:core-platform:end -->
 
 | Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
 | ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
-|🅱️ | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md), [FIFO design](../design/per-key-fifo.md) | [queueclient](../pkg/queueclient), [queuekeys](../pkg/queuekeys), [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 3.1 | Beta | 100% (conf: high) | `██████████` | External Go clients, CLI, and HTTP enqueue byte-exact jobs; handlers execute through crash-safe at-least-once queues, with strict FIFO and one in flight per non-empty ordering key. | Production soak, operational dashboards, and consumer adoption. | Default/race core coverage; external import; public surfaces; retry/DLQ; crash recovery; real-Redis strict-order, cross-key concurrency, fairness, lease, race, and 10k-key tests. | Duplicate IDs are separate deliveries; handlers remain idempotent. Ordering wins over priority within a key. |
-|🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.7 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
+|🅱️ | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md), [FIFO design](../design/per-key-fifo.md) | [queueclient](../pkg/queueclient), [queueworker](../pkg/queueworker), [queuekeys](../pkg/queuekeys), [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 3.7 | Beta | 100% (conf: high) | `██████████` | External Go clients enqueue byte-exact jobs and register required handlers through a public worker API; crash-safe delivery provides strict FIFO and one in flight per non-empty ordering key. | Production soak, operational dashboards, and consumer adoption. | Default/race core coverage; external enqueue and worker imports; retry/DLQ; crash recovery; real-Redis strict-order, cross-key concurrency, fairness, lease, race, and 10k-key tests. | Missing handlers fail before consumption; benchmark handling is explicit. Duplicate IDs remain separate deliveries. |
+|🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.8 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | Storage Backends | Core/Storage | — | [internal/storage-backends](../internal/storage-backends) | 5.9 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | RBAC & Tokens | Security | — | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |
 |🅱️ | Observability Core | Observability | — | [internal/obs](../internal/obs) | 1.4 | Beta | 85% (conf: high) | █████████░ | Logger/metrics/tracing wiring. | Dashboards; error budgets; SLO dashboards; alert tuning. | Unit present. | Solid base. |
@@ -151,7 +151,7 @@ weight=4.52 features=4 kloc=11.6
 ██████████████████████▓░░░░░░░░░░░░░░░░░ 57%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=10.49 features=9 kloc=28.8
+weight=10.49 features=9 kloc=28.9
 ```
 <!-- group-progress:observability-analytics:end -->
 

@@ -17,6 +17,10 @@ import (
 // handlers must protect mutable state and honor context cancellation.
 type Handler func(ctx context.Context, job queue.Job) error
 
+// ErrHandlerRequired prevents a production worker from acknowledging jobs
+// without application logic. BenchHandler must be selected explicitly.
+var ErrHandlerRequired = errors.New("worker handler is required; select BenchHandler explicitly for benchmark workloads")
+
 // ErrBenchJobFailed is returned by BenchHandler when the legacy filepath
 // failure marker is present.
 var ErrBenchJobFailed = errors.New("bench job filepath contains failure marker")
@@ -56,7 +60,8 @@ func BenchHandler(ctx context.Context, job queue.Job) error {
 }
 
 // Handle installs the application handler used for future jobs. Passing nil
-// restores BenchHandler. Handle is safe to call while the Worker is running.
+// clears the handler; it never enables BenchHandler implicitly. Handle is safe
+// to call while the Worker is running.
 func (w *Worker) Handle(handler Handler) *Worker {
 	w.handlerMu.Lock()
 	w.handler = handler
@@ -68,14 +73,14 @@ func (w *Worker) selectedHandler() Handler {
 	w.handlerMu.RLock()
 	handler := w.handler
 	w.handlerMu.RUnlock()
-	if handler == nil {
-		return BenchHandler
-	}
 	return handler
 }
 
 func (w *Worker) invokeHandler(ctx context.Context, job queue.Job) (err error) {
 	handler := w.selectedHandler()
+	if handler == nil {
+		return ErrHandlerRequired
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			stack := debug.Stack()

@@ -80,10 +80,11 @@ compatible.
 
 ## Item 2 — Real worker: a handler interface
 
-**Status:** Complete on 2026-09-02. Workers now invoke a concurrent-safe
-application handler, preserve the explicit benchmark handler as the default,
-recover panics with stacks, leave canceled work for the reaper, and renew
-heartbeats throughout long calls and retry backoff.
+**Status:** Complete on 2026-09-03. Workers now require a concurrent-safe
+application handler through the public `pkg/queueworker` package, reject a
+missing handler before consuming, keep benchmark behavior behind explicit
+opt-in, recover panics with stacks, leave canceled work for the reaper, and
+renew heartbeats throughout long calls and retry backoff.
 
 > **PROMPT**
 >
@@ -95,13 +96,13 @@ heartbeats throughout long calls and retry backoff.
 >
 > 1. Define `type Handler func(ctx context.Context, job queue.Job) error` and give the worker a way to receive one (constructor arg or `Worker.Handle(h)`); optionally dispatch by `PayloadSchema` (`Worker.HandleSchema(schema string, h Handler)`) with a default handler fallback.
 > 2. Handler result semantics, exactly: `nil` → success path (existing completion flow); `error` → existing retry/backoff flow, DLQ after `MaxRetries`; handler panic → recovered, treated as error, stack logged; ctx canceled (shutdown) → job returns to its processing list for the reaper, not DLQ.
-> 3. The sleep-simulator becomes the explicit default/bench handler (preserving current bench behavior when no handler is registered), and the `"fail"`-substring oracle lives ONLY inside that bench handler.
+> 3. The sleep-simulator becomes an explicit bench handler selected only by the `--bench-worker` CLI opt-in (a missing application handler must fail before consumption), and the `"fail"`-substring oracle lives ONLY inside that bench handler.
 > 4. Handler execution must respect the existing heartbeat: long handlers keep the heartbeat alive (extend it on a ticker) so the reaper doesn't steal in-flight jobs.
 >
 > **Acceptance criteria:**
 >
 > - A registered handler receives the exact enqueued job (ID and payload) and its return value drives completion/retry/DLQ exactly as specified above.
-> - Bench mode (`--role=all` demo flow) behaves identically to current main when no handler is registered.
+> - Explicit bench mode (`--role=all --bench-worker`) preserves the legacy demo behavior.
 > - A job whose handler runs longer than the heartbeat TTL is NOT requeued by the reaper while the handler is alive.
 >
 > **Test plan (miniredis for unit, real Redis for the e2e tag):**

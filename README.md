@@ -60,10 +60,10 @@ make build
 
 3. Run in one of the following modes:
 
-Run all-in-one
+Run the legacy all-in-one benchmark/demo
 
 ```bash
-./bin/job-queue-system --role=all --config=config/config.yaml
+./bin/job-queue-system --role=all --bench-worker --config=config/config.yaml
 ```
 
 Run producer only
@@ -72,11 +72,15 @@ Run producer only
 ./bin/job-queue-system --role=producer --config=config/config.yaml
 ```
 
-Run worker only
+Run the legacy benchmark worker only
 
 ```bash
-./bin/job-queue-system --role=worker --config=config/config.yaml
+./bin/job-queue-system --role=worker --bench-worker --config=config/config.yaml
 ```
+
+The shipped binary has no application plugin loader, so worker-bearing roles
+refuse to start without the explicit `--bench-worker` opt-in. Production
+applications register their handler through `pkg/queueworker`, shown below.
 
 ### Job payloads and size limits
 
@@ -177,11 +181,32 @@ OpenAPI document is served at `/api/v1/openapi.yaml`.
 
 ### Worker handlers
 
-The worker runtime accepts an application callback with
-`Worker.Handle(func(context.Context, queue.Job) error)`. Handlers may run
-concurrently when `worker.count` is greater than one, so application state must
-be synchronized. A nil handler selects the explicit built-in `BenchHandler`,
-which preserves the legacy `FileSize` delay and `"fail"`-in-filepath demo rule.
+Applications import `pkg/queueworker` and pass a non-nil callback at
+construction. The public config embeds the same `queueclient.Config` key layout
+used by enqueue clients:
+
+```go
+workerCfg := queueworker.DefaultConfig()
+wrk, err := queueworker.New(
+    &redis.Options{Addr: "localhost:6379"},
+    workerCfg,
+    func(ctx context.Context, job queueclient.Job) error {
+        return process(ctx, job.ID, job.Payload, job.PayloadSchema)
+    },
+    logger,
+)
+if err != nil {
+    return err
+}
+defer wrk.Close()
+
+return wrk.Run(ctx)
+```
+
+Handlers may run concurrently when `Count` is greater than one, so application
+state must be synchronized. A nil handler is rejected before Redis consumption
+starts. `queueworker.BenchHandler` preserves the legacy `FileSize` delay and
+`"fail"`-in-filepath demo rule, but it must always be selected explicitly.
 
 Handler outcomes drive the durable queue protocol:
 
@@ -319,7 +344,7 @@ docker run --rm \
   -p 9091:9091 \
   -v $(pwd)/config/config.yaml:/app/config/config.yaml:ro \
   --env-file env.list \
-  job-queue-system:latest --role=all --config=/app/config/config.yaml
+  job-queue-system:latest --role=all --bench-worker --config=/app/config/config.yaml
 ```
 
 Ensure `config/config.yaml` exists locally and `env.list` provides credentials (see `config/config.example.yaml` for keys).

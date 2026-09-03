@@ -44,6 +44,7 @@ func main() {
 	var benchPriority string
 	var benchTimeout time.Duration
 	var benchPayloadSize int
+	var benchWorker bool
 	var showVersion bool
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fs.StringVar(&role, "role", "all", "Role to run: producer|worker|all|admin")
@@ -58,11 +59,17 @@ func main() {
 	fs.StringVar(&benchPriority, "bench-priority", "low", "Admin bench: priority/queue alias")
 	fs.DurationVar(&benchTimeout, "bench-timeout", 60*time.Second, "Admin bench: timeout to wait for completion")
 	fs.IntVar(&benchPayloadSize, "bench-payload-size", 1024, "Admin bench: payload size in bytes")
+	fs.BoolVar(&benchWorker, "bench-worker", false, "Explicitly use the legacy benchmark handler for worker/all roles")
 	_ = fs.Parse(os.Args[1:])
 
 	if showVersion {
 		fmt.Println(version)
 		return
+	}
+	workerHandler, err := cliWorkerHandler(role, benchWorker)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(2)
 	}
 
 	// Load configuration
@@ -133,7 +140,7 @@ func main() {
 			logger.Fatal("producer error", obs.Err(err))
 		}
 	case "worker":
-		wrk := worker.New(cfg, rdb, logger)
+		wrk := worker.New(cfg, rdb, logger).Handle(workerHandler)
 		rep := reaper.New(cfg, rdb, logger)
 		go rep.Run(ctx)
 		if err := wrk.Run(ctx); err != nil {
@@ -141,7 +148,7 @@ func main() {
 		}
 	case "all":
 		prod := producer.New(cfg, rdb, logger)
-		wrk := worker.New(cfg, rdb, logger)
+		wrk := worker.New(cfg, rdb, logger).Handle(workerHandler)
 		rep := reaper.New(cfg, rdb, logger)
 		go rep.Run(ctx)
 		go func() {
@@ -159,6 +166,16 @@ func main() {
 	default:
 		logger.Fatal("unknown role", obs.String("role", role))
 	}
+}
+
+func cliWorkerHandler(role string, benchWorker bool) (worker.Handler, error) {
+	if role != "worker" && role != "all" {
+		return nil, nil
+	}
+	if !benchWorker {
+		return nil, fmt.Errorf("--role=%s requires an application handler through pkg/queueworker; pass --bench-worker only for benchmark workloads", role)
+	}
+	return worker.BenchHandler, nil
 }
 
 func runAdmin(ctx context.Context, cfg *config.Config, rdb *redis.Client, logger *zap.Logger, cmd, queue string, n int, yes bool, benchCount, benchRate int, benchPriority string, benchPayloadSize int, benchTimeout time.Duration) {

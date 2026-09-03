@@ -9,7 +9,19 @@ only one handler for that key runs at a time across all workers.
 
 ## Registering a handler
 
-Code inside this module can install a handler before or during `Run`:
+Applications outside this module use the supported `pkg/queueworker` package:
+
+```go
+cfg := queueworker.DefaultConfig()
+wrk, err := queueworker.New(redisOptions, cfg, handler, logger)
+if err != nil {
+    return err
+}
+defer wrk.Close()
+return wrk.Run(ctx)
+```
+
+Internal runtime code can install a handler before or during `Run`:
 
 ```go
 wrk := worker.New(cfg, redisClient, logger)
@@ -22,7 +34,8 @@ The same handler may be called concurrently by `worker.count` goroutines for
 unordered jobs or different ordering keys. Calls sharing one non-empty key are
 serialized in Redis acceptance order, even when their priorities differ. The
 handler must synchronize any other shared state and return when `ctx` is
-canceled. Calling `Handle(nil)` restores `BenchHandler`.
+canceled. Calling `Handle(nil)` clears the handler; it never selects benchmark
+behavior implicitly.
 
 ## Result semantics
 
@@ -38,10 +51,10 @@ canceled. Calling `Handle(nil)` restores `BenchHandler`.
   original job in the processing list. The reaper owns redelivery after the
   final heartbeat expires; cancellation does not consume a retry.
 
-`BenchHandler` is the default when no application handler is registered. It is
-the only code that interprets the legacy `FileSize` delay and the
-`"fail"`-in-`FilePath` demo convention. It never inspects application payload
-bytes.
+A worker without a handler returns `ErrHandlerRequired` before consuming Redis
+jobs. `BenchHandler` is the only code that interprets the legacy `FileSize`
+delay and the `"fail"`-in-`FilePath` demo convention. It never inspects
+application payload bytes and must be selected explicitly.
 
 ## Heartbeats and delivery guarantee
 

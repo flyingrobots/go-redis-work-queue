@@ -33,8 +33,12 @@ Stages (GitHub Actions):
 Config overrides via env vars. Example:
 
 ```bash
-WORKER_COUNT=32 REDIS_ADDR=redis:6379 ./job-queue-system --role=worker --config=config.yaml
+./your-application-worker --config=config.yaml
 ```
+
+Application workers embed `pkg/queueworker` and register a non-nil handler.
+The repository binary's `--role=worker --bench-worker` mode is only the legacy
+benchmark simulator and must not be used to process application payloads.
 
 ## Rollback Procedures
 

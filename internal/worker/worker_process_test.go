@@ -24,7 +24,7 @@ func setupWorkerTest(t *testing.T) (*Worker, *config.Config, *redis.Client, func
 	cfg.Worker.Backoff.Max = 2 * time.Millisecond
 	cfg.Worker.MaxRetries = 1
 	log, _ := zap.NewDevelopment()
-	w := New(cfg, rdb, log)
+	w := New(cfg, rdb, log).Handle(BenchHandler)
 	cleanup := func() { mr.Close() }
 	return w, cfg, rdb, cleanup
 }
