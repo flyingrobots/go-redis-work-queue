@@ -77,3 +77,18 @@ func TestFormatPatternHelpersSupportCustomLayouts(t *testing.T) {
 		t.Fatalf("extracted (%q, %v), want (%q, true)", id, ok, "alpha:β")
 	}
 }
+
+func TestFormatTreatsOtherPercentSequencesLiterally(t *testing.T) {
+	pattern := "custom:100%:%s:%q"
+	key := Format(pattern, "worker-1")
+	if key != "custom:100%:worker-1:%q" {
+		t.Fatalf("formatted key = %q", key)
+	}
+	if got := ScanPattern(pattern); got != "custom:100%:*:%q" {
+		t.Fatalf("scan pattern = %q", got)
+	}
+	identifier, ok := Extract(pattern, key)
+	if !ok || identifier != "worker-1" {
+		t.Fatalf("extracted (%q, %v), want (%q, true)", identifier, ok, "worker-1")
+	}
+}

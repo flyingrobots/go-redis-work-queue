@@ -6,7 +6,6 @@ package queuekeys
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"strings"
 )
 
@@ -27,9 +26,10 @@ const (
 	DefaultOrderedLeasePattern   = Namespace + "ordered:lease:%s"
 )
 
-// Format substitutes an identifier into a configured key pattern.
+// Format substitutes an identifier into a configured key pattern. Percent
+// sequences other than the single %s placeholder remain literal key bytes.
 func Format(pattern, identifier string) string {
-	return fmt.Sprintf(pattern, identifier)
+	return strings.Replace(pattern, "%s", identifier, 1)
 }
 
 // ScanPattern converts configured %s key patterns into Redis glob patterns.
