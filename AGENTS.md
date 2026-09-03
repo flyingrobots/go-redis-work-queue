@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Eleven exact-head
-  review passes produced 48 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Twelve exact-head
+  review passes produced 50 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -33,7 +33,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   Clearing a live handler pauses new consumption until a replacement is
   installed. Claims that complete after handler removal are restored to their
   ordinary source or ordered per-key FIFO. Long calls renew heartbeats, while
-  shutdown leaves work in processing for at-least-once reaping.
+  heartbeat values contain only the compact worker ownership marker. Shutdown
+  leaves work in processing for at-least-once reaping.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -55,7 +56,7 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
-  heartbeat patterns must differ; managed static keys cannot match the
+  heartbeat keyspaces must be disjoint; managed static keys cannot match the
   processing-list or heartbeat pattern or resolve to generated per-digest
   queue or lease keys; per-digest roles cannot alias; scan patterns escape
   fixed glob text; trimmed priority aliases cannot collide; and public enqueue
@@ -219,6 +220,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 ninth review: bind DLQ snapshots, reject trailing JSON, and filter ordered purge
 - [x] Queue core PR #6 tenth review: pause workers when handlers are cleared
 - [x] Queue core PR #6 eleventh review: restore cleared-handler claims and bound DLQ versions
+- [x] Queue core PR #6 twelfth review: separate worker keyspaces and compact heartbeat values
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -729,6 +731,34 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Twelfth Review Remediated
+>
+> Closed both exact-head worker-keyspace and heartbeat-cost findings as
+> isolated RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Replaced processing/heartbeat pattern equality with exact generated-language
+>   intersection checks at both runtime and public configuration boundaries.
+> - Replaced full-envelope heartbeat values with compact worker ownership
+>   markers; processing lists remain the source for active job details.
+>
+> Validation
+>
+> - Overlap REDs admitted `tenant:%s` and `tenant:heartbeat:%s`; GREEN rejects
+>   prefix- and suffix-nested keyspaces while accepting disjoint templates.
+> - Heartbeat RED stored a 1,048,576-byte envelope; GREEN stores only
+>   `worker-owner`. All affected packages pass five race-enabled repetitions
+>   and focused vet.
+> - Commits `7426a89a` and `69209ab6` are published, and all 50 review threads
+>   have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
