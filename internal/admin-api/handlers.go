@@ -460,6 +460,14 @@ func (h *Handler) ListDLQ(w http.ResponseWriter, r *http.Request) {
 
 	items, next, err := admin.DLQList(ctx, h.cfg, h.rdb, ns, cursor, limit)
 	if err != nil {
+		if errors.Is(err, admin.ErrInvalidDLQCursor) {
+			writeError(w, http.StatusBadRequest, "INVALID_CURSOR", "Invalid DLQ pagination cursor")
+			return
+		}
+		if errors.Is(err, admin.ErrStaleDLQCursor) {
+			writeError(w, http.StatusConflict, "STALE_CURSOR", "DLQ changed; restart pagination")
+			return
+		}
 		h.logger.Error("Failed to list DLQ", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_ERROR", "Failed to list DLQ")
 		return

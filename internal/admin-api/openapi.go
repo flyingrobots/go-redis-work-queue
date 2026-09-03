@@ -282,8 +282,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DLQListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -390,6 +394,13 @@ components:
 
     Unauthorized:
       description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict:
+      description: Request conflicts with current resource state
       content:
         application/json:
           schema:

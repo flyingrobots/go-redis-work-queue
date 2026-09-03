@@ -20,6 +20,12 @@ import (
 // ErrNotImplemented indicates a contract that has not yet been implemented.
 var ErrNotImplemented = errors.New("not implemented")
 
+// ErrInvalidDLQCursor indicates a malformed or out-of-range DLQ page cursor.
+var ErrInvalidDLQCursor = errors.New("invalid dead-letter cursor")
+
+// ErrStaleDLQCursor indicates that the DLQ changed after a page cursor was issued.
+var ErrStaleDLQCursor = errors.New("stale dead-letter cursor")
+
 // DLQItem represents a dead‑letter entry suitable for TUI listing and actions.
 // Implementations should populate ID and Queue from payload/metadata when possible.
 type DLQItem struct {
@@ -42,6 +48,7 @@ type DLQService interface {
 
 const (
     dlqSelectionHandlePrefix = "dlq:v3:"
+    dlqPageCursorPrefix = "dlq:cursor:v1:"
     dlqVersionLua = `
 local function require_type(key, expected)
   local type_reply = redis.call('TYPE', key)
@@ -99,8 +106,11 @@ local problem = require_dlq_keys(KEYS[1], KEYS[2])
 if problem then return redis.error_reply(problem) end
 local version = dlq_version(KEYS[1], KEYS[2])
 if not version then return redis.error_reply('invalid dead-letter generation') end
+if ARGV[3] ~= '' and ARGV[3] ~= version then
+  return {'0', version}
+end
 local page = redis.call('LRANGE', KEYS[1], ARGV[1], ARGV[2])
-local result = {version}
+local result = {'1', version}
 for _, entry in ipairs(page) do
   result[#result + 1] = entry
 end
@@ -189,6 +199,32 @@ func validDLQVersion(version string) bool {
     return err == nil && length >= 0 && strconv.FormatInt(length, 10) == lengthText
 }
 
+func makeDLQPageCursor(snapshot string, offset int64) string {
+    return fmt.Sprintf("%s%s:%d", dlqPageCursorPrefix, snapshot, offset)
+}
+
+func parseDLQPageCursor(cursor string) (string, int64, error) {
+    encoded, ok := strings.CutPrefix(cursor, dlqPageCursorPrefix)
+    if !ok {
+        return "", 0, fmt.Errorf("%w: %q", ErrInvalidDLQCursor, cursor)
+    }
+    generation, encoded, ok := strings.Cut(encoded, ":")
+    if !ok {
+        return "", 0, fmt.Errorf("%w: %q", ErrInvalidDLQCursor, cursor)
+    }
+    lengthText, offsetText, ok := strings.Cut(encoded, ":")
+    snapshot := generation + ":" + lengthText
+    if !ok || !validDLQVersion(snapshot) {
+        return "", 0, fmt.Errorf("%w: %q", ErrInvalidDLQCursor, cursor)
+    }
+    length, _ := strconv.ParseInt(lengthText, 10, 64)
+    offset, err := strconv.ParseInt(offsetText, 10, 64)
+    if err != nil || offset < 0 || offset > length || strconv.FormatInt(offset, 10) != offsetText {
+        return "", 0, fmt.Errorf("%w: %q", ErrInvalidDLQCursor, cursor)
+    }
+    return snapshot, offset, nil
+}
+
 func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, handles []string) ([]dlqSelection, string, error) {
     snapshotResult, err := dlqVersionScript.Run(
         ctx,
@@ -260,18 +296,20 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
     if limit <= 0 || limit > 500 {
         limit = 100
     }
-    // Cursor is a simple decimal offset into the list
+    var expectedSnapshot string
     var offset int64
     if cursor != "" {
-        var parsed int64
-        _, err := fmt.Sscan(cursor, &parsed)
-        if err == nil && parsed >= 0 {
-            offset = parsed
+        var err error
+        expectedSnapshot, offset, err = parseDLQPageCursor(cursor)
+        if err != nil {
+            return nil, "", err
         }
     }
-    // Compute stop index and fetch
     start := offset
     stop := offset + int64(limit) - 1
+    if stop < start {
+        return nil, "", fmt.Errorf("%w: offset overflow", ErrInvalidDLQCursor)
+    }
     pageResult, err := dlqListPageScript.Run(
         ctx,
         rdb,
@@ -281,20 +319,28 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         },
         start,
         stop,
+        expectedSnapshot,
     ).Result()
     if err != nil {
         return nil, "", err
     }
     pageValues, ok := pageResult.([]interface{})
-    if !ok || len(pageValues) == 0 {
+    if !ok || len(pageValues) < 2 {
         return nil, "", fmt.Errorf("unexpected DLQ page response %T", pageResult)
     }
-    snapshot, ok := pageValues[0].(string)
-    if !ok || !validDLQVersion(snapshot) {
-        return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", pageValues[0])
+    status, ok := pageValues[0].(string)
+    if !ok || (status != "0" && status != "1") {
+        return nil, "", fmt.Errorf("unexpected DLQ page status %v", pageValues[0])
     }
-    items := make([]string, 0, len(pageValues)-1)
-    for _, value := range pageValues[1:] {
+    snapshot, ok := pageValues[1].(string)
+    if !ok || !validDLQVersion(snapshot) {
+        return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", pageValues[1])
+    }
+    if status == "0" {
+        return nil, "", fmt.Errorf("%w: expected %s, current %s", ErrStaleDLQCursor, expectedSnapshot, snapshot)
+    }
+    items := make([]string, 0, len(pageValues)-2)
+    for _, value := range pageValues[2:] {
         raw, ok := value.(string)
         if !ok {
             return nil, "", fmt.Errorf("unexpected DLQ entry response %T", value)
@@ -324,12 +370,16 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         }
         out = append(out, it)
     }
-    // Determine next cursor
-    if len(items) < limit {
+    _, lengthText, _ := strings.Cut(snapshot, ":")
+    snapshotLength, _ := strconv.ParseInt(lengthText, 10, 64)
+    nextOffset := offset + int64(len(items))
+    if nextOffset < offset {
+        return nil, "", fmt.Errorf("unexpected DLQ page offset overflow")
+    }
+    if nextOffset >= snapshotLength {
         return out, "", nil
     }
-    next := fmt.Sprintf("%d", offset+int64(len(items)))
-    return out, next, nil
+    return out, makeDLQPageCursor(snapshot, nextOffset), nil
 }
 
 // DLQRequeue moves the specified DLQ selection handles to a destination queue.

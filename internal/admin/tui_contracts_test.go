@@ -86,6 +86,118 @@ func TestDLQOperationsUseBoundedSnapshotScripts(t *testing.T) {
 	}
 }
 
+func TestDLQListCursorTraversesUnchangedSnapshot(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	ctx := context.Background()
+	raw := make([]string, 0, 3)
+	for _, id := range []string{"first", "second", "third"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		encoded, err := job.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = append(raw, encoded)
+	}
+	if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, raw[0], raw[1], raw[2]).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	firstPage, cursor, err := DLQList(ctx, cfg, rdb, "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := []string{firstPage[0].ID, firstPage[1].ID}; !slices.Equal(got, []string{"first", "second"}) {
+		t.Fatalf("first page IDs = %#v", got)
+	}
+	if cursor == "" {
+		t.Fatal("first page omitted continuation cursor")
+	}
+
+	secondPage, next, err := DLQList(ctx, cfg, rdb, "", cursor, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondPage) != 1 || secondPage[0].ID != "third" {
+		t.Fatalf("second page = %#v, want third job", secondPage)
+	}
+	if next != "" {
+		t.Fatalf("final cursor = %q, want empty", next)
+	}
+}
+
+func TestDLQListCursorRejectsChangedSnapshot(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	ctx := context.Background()
+	for _, id := range []string{"first", "second", "third"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		encoded, err := job.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, encoded).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	firstPage, cursor, err := DLQList(ctx, cfg, rdb, "", "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(firstPage) != 1 || firstPage[0].ID != "first" || cursor == "" {
+		t.Fatalf("first page = %#v, cursor = %q", firstPage, cursor)
+	}
+	newJob := queue.NewJob("new-head", "", 0, "low", "", "")
+	newRaw, err := newJob.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.AppendDeadLetter(ctx, rdb, cfg.Worker.DeadLetterList, newRaw); err != nil {
+		t.Fatal(err)
+	}
+	currentItems, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if purged, err := DLQPurge(ctx, cfg, rdb, "", []string{currentItems[len(currentItems)-1].Handle}); err != nil || purged != 1 {
+		t.Fatalf("same-length mutation purge = %d (err=%v), want 1", purged, err)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.DeadLetterList).Val(); got != 3 {
+		t.Fatalf("mutated DLQ length = %d, want original length 3", got)
+	}
+
+	items, next, err := DLQList(ctx, cfg, rdb, "", cursor, 1)
+	if !errors.Is(err, ErrStaleDLQCursor) {
+		t.Fatalf("changed snapshot returned items %#v, cursor %q, error %v; want stale cursor", items, next, err)
+	}
+}
+
+func TestDLQListRejectsMalformedCursor(t *testing.T) {
+	for _, cursor := range []string{
+		"1",
+		"-1",
+		"not-a-cursor",
+		"dlq:cursor:v1:0:1",
+		"dlq:cursor:v1:01:1:0",
+		"dlq:cursor:v1:0:1:2",
+		"dlq:cursor:v1:0:1:01",
+	} {
+		t.Run(cursor, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			cfg := config.Default()
+			if _, _, err := DLQList(context.Background(), cfg, rdb, "", cursor, 1); !errors.Is(err, ErrInvalidDLQCursor) {
+				t.Fatalf("DLQList cursor %q error = %v, want invalid cursor", cursor, err)
+			}
+		})
+	}
+}
+
 func TestDLQGenerationInvalidatesSameLengthIdenticalReplacement(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

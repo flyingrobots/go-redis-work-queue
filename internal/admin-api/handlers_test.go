@@ -3,6 +3,7 @@ package adminapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -315,6 +316,74 @@ func TestDLQHandlersRoundTripSelectionHandles(t *testing.T) {
 	if got, err := mr.List(handler.cfg.Worker.DeadLetterList); err != nil || len(got) != 1 || got[0] != first {
 		t.Fatalf("dead-letter queue = %#v (err=%v), want only first delivery", got, err)
 	}
+}
+
+func TestListDLQClassifiesCursorErrors(t *testing.T) {
+	t.Run("malformed", func(t *testing.T) {
+		handler, _, cleanup := setupHandlerTest(t)
+		defer cleanup()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/dlq?cursor=1", nil)
+		response := httptest.NewRecorder()
+
+		handler.ListDLQ(response, req)
+
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, want 400: %s", response.Code, response.Body.String())
+		}
+		var apiError ErrorResponse
+		if err := json.NewDecoder(response.Body).Decode(&apiError); err != nil {
+			t.Fatal(err)
+		}
+		if apiError.Code != "INVALID_CURSOR" {
+			t.Fatalf("error code = %q, want INVALID_CURSOR", apiError.Code)
+		}
+	})
+
+	t.Run("stale", func(t *testing.T) {
+		handler, mr, cleanup := setupHandlerTest(t)
+		defer cleanup()
+		mr.RPush(handler.cfg.Worker.DeadLetterList, `{"id":"first"}`, `{"id":"second"}`)
+		firstRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq?limit=1", nil)
+		firstResponse := httptest.NewRecorder()
+		handler.ListDLQ(firstResponse, firstRequest)
+		if firstResponse.Code != http.StatusOK {
+			t.Fatalf("first page status = %d: %s", firstResponse.Code, firstResponse.Body.String())
+		}
+		var firstPage DLQListResponse
+		if err := json.NewDecoder(firstResponse.Body).Decode(&firstPage); err != nil {
+			t.Fatal(err)
+		}
+		if firstPage.NextCursor == "" {
+			t.Fatal("first page omitted continuation cursor")
+		}
+		if err := queue.AppendDeadLetter(
+			context.Background(),
+			handler.rdb,
+			handler.cfg.Worker.DeadLetterList,
+			`{"id":"new-head"}`,
+		); err != nil {
+			t.Fatal(err)
+		}
+		secondRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq", nil)
+		query := secondRequest.URL.Query()
+		query.Set("limit", "1")
+		query.Set("cursor", firstPage.NextCursor)
+		secondRequest.URL.RawQuery = query.Encode()
+		secondResponse := httptest.NewRecorder()
+
+		handler.ListDLQ(secondResponse, secondRequest)
+
+		if secondResponse.Code != http.StatusConflict {
+			t.Fatalf("status = %d, want 409: %s", secondResponse.Code, secondResponse.Body.String())
+		}
+		var apiError ErrorResponse
+		if err := json.NewDecoder(secondResponse.Body).Decode(&apiError); err != nil {
+			t.Fatal(err)
+		}
+		if apiError.Code != "STALE_CURSOR" {
+			t.Fatalf("error code = %q, want STALE_CURSOR", apiError.Code)
+		}
+	})
 }
 
 func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
