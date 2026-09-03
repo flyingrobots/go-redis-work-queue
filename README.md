@@ -1,6 +1,6 @@
 # Go Redis Work Queue
 
-> Redis job queue system in Go. 
+> Redis job queue system in Go.
 
 Provides producer, worker, and all-in-one modes with robust resilience, observability, and configurable behavior via YAML.
 
@@ -17,6 +17,7 @@ silently appear enabled. The two exactly-once packages are prototypes and are
 not wired into runtime configuration or job intake.
 
 Developer tools and automation: see `docs/tools/README.md` for:
+
 - Progress automation for the Features Ledger and README
 - Local pre-commit hook and CI auto-update
 - Script to extract CodeRabbit PR comments and “Prompt for AI Agents” sections
@@ -29,7 +30,7 @@ For full details, see the Features Ledger at [docs/features-ledger.md](docs/feat
 
 <!-- progress:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 55%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -212,13 +213,13 @@ go mod download
 
 Run it:
 
-```
+```text
 go run ./cmd/tui --config config/config.yaml
 ```
 
 Or build it:
 
-```
+```text
 go build -o bin/tui ./cmd/tui
 ./bin/tui --config config/config.yaml
 ```
@@ -342,11 +343,11 @@ Promotion gates and confidence summary (details in `docs/15_promotion_checklists
 - **Beta → RC**: overall confidence `~0.70` (needs controlled perf run, chaos tests, soak)
 - **RC → GA**: overall confidence `~0.70` (release flow ready; soak and rollback rehearsal pending)
 
-### Evidence artifacts (`docs/evidence/`):
+### Evidence artifacts (`docs/evidence/`)
 
-- `ci_run.json` (CI URL), 
-- `bench.json` (throughput/latency), 
-- `metrics_before.txt`/`metrics_after.txt`, 
+- `ci_run.json` (CI URL),
+- `bench.json` (throughput/latency),
+- `metrics_before.txt`/`metrics_after.txt`,
 - `config.alpha.yaml`
 
 To reproduce evidence locally, see `docs/evidence/README.md`.
@@ -399,8 +400,8 @@ Redis-backed worker smoke test with `-tags e2e_tests` and verifies its verbose
 
 Want to help? Here's how:
 
-1. Please report issues that you discover. 
-2. If you solve any problems, PRs are welcome. 
+1. Please report issues that you discover.
+2. If you solve any problems, PRs are welcome.
 
 ### DX Tools
 

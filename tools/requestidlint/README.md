@@ -13,7 +13,7 @@ request ID pipeline never regresses.
 
 ## Running the analyzer
 
-```
+```text
 go run ./tools/requestidlint/cmd/requestidlint ./...
 ```
 
@@ -25,7 +25,7 @@ diagnostics with file/line references and a non-zero exit code.
 
 Fixture-based tests live beside the analyzer. Run them with:
 
-```
+```text
 go test ./tools/requestidlint
 ```
 

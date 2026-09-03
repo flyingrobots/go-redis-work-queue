@@ -20,12 +20,14 @@ Before applying these examples, ensure you have:
 A simple queue and worker pool configuration suitable for development and testing environments.
 
 **Features**:
+
 - Basic queue with rate limiting and DLQ
 - Fixed replica count (2 workers)
 - Standard resource requirements
 - Basic security configuration
 
 **Usage**:
+
 ```bash
 kubectl apply -f basic-queue.yaml
 ```
@@ -37,6 +39,7 @@ kubectl apply -f basic-queue.yaml
 A production-ready configuration with intelligent autoscaling, comprehensive security, and high availability.
 
 **Features**:
+
 - High-volume queue with Redis cluster support
 - Intelligent autoscaling (2-50 replicas) based on:
   - Queue backlog per worker (target: 25 jobs/worker)
@@ -54,6 +57,7 @@ A production-ready configuration with intelligent autoscaling, comprehensive sec
 - Global policies for circuit breaking and retry behavior
 
 **Usage**:
+
 ```bash
 # Create namespace
 kubectl create namespace production
@@ -196,18 +200,21 @@ The autoscaling configuration uses the following logic:
 ### Common Issues
 
 1. **Workers not starting**:
+
    ```bash
    kubectl describe workerpool autoscaling-workers -n production
    kubectl logs -l app.kubernetes.io/instance=autoscaling-workers -n production
    ```
 
 2. **Autoscaling not working**:
+
    ```bash
    kubectl get workerpool autoscaling-workers -n production -o yaml
    # Check autoscaling status and conditions
    ```
 
 3. **Queue not processing jobs**:
+
    ```bash
    kubectl describe queue high-volume-queue -n production
    # Check queue status and metrics

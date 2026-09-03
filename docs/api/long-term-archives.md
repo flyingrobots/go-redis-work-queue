@@ -5,6 +5,7 @@ The Long-Term Archives module provides comprehensive job archiving capabilities 
 ## Overview
 
 The archiving system supports:
+
 - **Dual Storage**: ClickHouse for analytics and S3/Parquet for cost-effective long-term storage
 - **Schema Versioning**: Backward-compatible schema evolution with automatic migrations
 - **Retention Management**: Configurable retention policies with automated cleanup
@@ -38,6 +39,7 @@ type ArchiveConfig struct {
 ### Archive Operations
 
 #### Archive Job
+
 ```http
 POST /api/v1/archive/jobs
 Content-Type: application/json
@@ -55,11 +57,13 @@ Content-Type: application/json
 ```
 
 #### Get Archived Job
+
 ```http
 GET /api/v1/archive/jobs/{jobId}
 ```
 
 #### Search Jobs
+
 ```http
 POST /api/v1/archive/jobs/search
 Content-Type: application/json
@@ -78,6 +82,7 @@ Content-Type: application/json
 ### Export Operations
 
 #### Export Jobs
+
 ```http
 POST /api/v1/archive/export
 Content-Type: application/json
@@ -93,6 +98,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```json
 {
   "export_id": "exp_12345",
@@ -103,16 +109,19 @@ Response:
 ```
 
 #### Get Export Status
+
 ```http
 GET /api/v1/archive/export/{exportId}
 ```
 
 #### Cancel Export
+
 ```http
 POST /api/v1/archive/export/{exportId}/cancel
 ```
 
 #### List Exports
+
 ```http
 GET /api/v1/archive/exports?limit=50&offset=0
 ```
@@ -120,11 +129,13 @@ GET /api/v1/archive/exports?limit=50&offset=0
 ### Statistics
 
 #### Get Archive Statistics
+
 ```http
 GET /api/v1/archive/stats?window=24h
 ```
 
 Response:
+
 ```json
 {
   "total_archived": 15420,
@@ -148,11 +159,13 @@ Response:
 ### Schema Management
 
 #### Get Schema Version
+
 ```http
 GET /api/v1/archive/schema/version
 ```
 
 #### Upgrade Schema
+
 ```http
 POST /api/v1/archive/schema/upgrade
 Content-Type: application/json
@@ -163,6 +176,7 @@ Content-Type: application/json
 ```
 
 #### Get Schema Evolution
+
 ```http
 GET /api/v1/archive/schema/evolution
 ```
@@ -170,16 +184,19 @@ GET /api/v1/archive/schema/evolution
 ### Retention Management
 
 #### Cleanup Expired Records
+
 ```http
 POST /api/v1/archive/retention/cleanup
 ```
 
 #### Get Retention Policy
+
 ```http
 GET /api/v1/archive/retention/policy
 ```
 
 #### Update Retention Policy
+
 ```http
 PUT /api/v1/archive/retention/policy
 Content-Type: application/json
@@ -193,6 +210,7 @@ Content-Type: application/json
 ```
 
 #### Process GDPR Delete Request
+
 ```http
 POST /api/v1/archive/retention/gdpr
 Content-Type: application/json
@@ -210,11 +228,13 @@ Content-Type: application/json
 ### Query Templates
 
 #### Get Query Templates
+
 ```http
 GET /api/v1/archive/templates
 ```
 
 #### Add Query Template
+
 ```http
 POST /api/v1/archive/templates
 Content-Type: application/json
@@ -242,6 +262,7 @@ Content-Type: application/json
 ```
 
 #### Execute Query Template
+
 ```http
 POST /api/v1/archive/templates/{templateName}/execute
 Content-Type: application/json
@@ -257,11 +278,13 @@ Content-Type: application/json
 ### Health and Monitoring
 
 #### Health Check
+
 ```http
 GET /api/v1/archive/health
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -276,6 +299,7 @@ Response:
 ## Data Structures
 
 ### ArchiveJob
+
 ```go
 type ArchiveJob struct {
     JobID           string                 `json:"job_id"`
@@ -301,6 +325,7 @@ type ArchiveJob struct {
 ```
 
 ### SearchQuery
+
 ```go
 type SearchQuery struct {
     JobIDs      []string    `json:"job_ids,omitempty"`
@@ -318,6 +343,7 @@ type SearchQuery struct {
 ```
 
 ### ExportRequest
+
 ```go
 type ExportRequest struct {
     Query         SearchQuery `json:"query"`
@@ -330,6 +356,7 @@ type ExportRequest struct {
 ## Usage Examples
 
 ### Basic Archiving
+
 ```go
 manager, err := archives.NewManager(config, logger)
 if err != nil {
@@ -349,6 +376,7 @@ err = manager.ArchiveJob(ctx, job)
 ```
 
 ### Searching Archives
+
 ```go
 query := archives.SearchQuery{
     Queue:     "high-priority",
@@ -362,6 +390,7 @@ jobs, err := manager.SearchJobs(ctx, query)
 ```
 
 ### Schema Evolution
+
 ```go
 // Get current schema version
 version, err := manager.GetSchemaVersion(ctx)
@@ -374,6 +403,7 @@ evolution, err := manager.GetSchemaEvolution(ctx)
 ```
 
 ### GDPR Compliance
+
 ```go
 request := archives.GDPRDeleteRequest{
     UserID: "user-123",
@@ -390,12 +420,14 @@ err = manager.ProcessGDPRDelete(ctx, request)
 ## Error Handling
 
 The API returns standard HTTP status codes:
+
 - `200 OK` - Successful operation
 - `400 Bad Request` - Invalid request format or parameters
 - `404 Not Found` - Resource not found
 - `500 Internal Server Error` - Server error
 
 Error responses include detailed error information:
+
 ```json
 {
   "error": "Validation failed",

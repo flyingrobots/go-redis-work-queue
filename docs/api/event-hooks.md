@@ -5,6 +5,7 @@ Event Hooks provide real-time notifications for job lifecycle events through web
 ## Overview
 
 The Event Hooks system emits events for:
+
 - `job_enqueued` - Job added to queue
 - `job_started` - Worker begins processing
 - `job_succeeded` - Job completed successfully
@@ -193,6 +194,7 @@ GET /api/v1/event-hooks/health
 ```
 
 Response:
+
 ```json
 {
   "event_bus": {
@@ -219,6 +221,7 @@ GET /api/v1/event-hooks/metrics
 ```
 
 Response:
+
 ```json
 {
   "events_emitted": 15420,
@@ -288,12 +291,14 @@ Webhooks may be delivered more than once, especially when DLH replays are trigge
 Webhook delivery errors are categorized as:
 
 **Retryable (5xx, timeouts, network errors):**
+
 - 500-599 server errors
 - 408 request timeout
 - 429 too many requests
 - Network/DNS failures
 
 **Non-retryable (4xx client errors):**
+
 - 400-499 client errors (except 408, 429)
 - Invalid URL
 - Authentication failures
@@ -316,6 +321,7 @@ Access Event Hooks management through the TUI:
 4. Access management commands
 
 Keyboard shortcuts:
+
 - `h` - Event hooks help
 - `t` - Test webhook delivery
 - `r` - Replay failed deliveries

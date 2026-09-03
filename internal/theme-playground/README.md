@@ -203,7 +203,7 @@ Launches an interactive terminal UI for theme selection and preview.
 
 #### Keyboard Controls
 
-- `‘/“` or `k/j`: Navigate theme list
+- `ï¿½/ï¿½` or `k/j`: Navigate theme list
 - `Enter`: Apply selected theme
 - `p`: Preview theme (temporary)
 - `a`: Apply previewed theme (permanent)

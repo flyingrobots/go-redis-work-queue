@@ -101,12 +101,14 @@ graph TB
 The runtime engine provides secure execution environments for plugins using multiple runtime options to balance performance, security, and developer experience.
 
 **WASM Runtime (Primary)**
+
 - **Technology**: Wasmtime with WASI support
 - **Languages**: TinyGo, Rust, C/C++ compiled to WASM
 - **Advantages**: Near-native performance, strong sandboxing, wide language support
 - **Use Cases**: Performance-critical plugins, complex data processing
 
 **Starlark Runtime (Alternative)**
+
 - **Technology**: Go Starlark interpreter
 - **Language**: Python-like syntax with Go integration
 - **Advantages**: Simple deployment, no compilation step, excellent for scripts
@@ -134,6 +136,7 @@ type ResourceLimits struct {
 The event bus delivers real-time queue events to plugins through a typed subscription system that ensures plugins receive only relevant data.
 
 **Event Types**:
+
 - Queue statistics (depth, throughput, error rates)
 - Job lifecycle events (enqueued, started, completed, failed)
 - Worker status updates (active, idle, error states)
@@ -169,6 +172,7 @@ type Event struct {
 The admin API provides controlled access to queue operations through a fine-grained permission system that plugins must explicitly request and users must approve.
 
 **Permission Levels**:
+
 - **Read-Only**: Subscribe to events, query statistics, inspect job metadata
 - **Queue Operations**: Enqueue jobs, peek at job contents, query job status
 - **Administrative**: Requeue failed jobs, purge queues, modify worker settings
@@ -196,6 +200,7 @@ type PermScope struct {
 The lifecycle manager handles plugin discovery, loading, validation, and hot-reloading with zero downtime and automatic rollback on failures.
 
 **Discovery Process**:
+
 1. Scan `plugins/` directory for plugin bundles
 2. Validate plugin manifests and security requirements
 3. Check compatibility with host API version
@@ -282,7 +287,7 @@ dependencies:
 
 #### Plugin Bundle Structure
 
-```
+```text
 tenant-sla-monitor.zip
 ├── manifest.yaml           # Plugin metadata and requirements
 ├── main.wasm              # Compiled plugin binary (or main.star)
@@ -395,6 +400,7 @@ sequenceDiagram
 #### Sandboxing and Isolation
 
 **WASM Sandbox**:
+
 - Memory isolation with configurable limits
 - No direct system call access
 - Host function whitelist enforcement
@@ -402,6 +408,7 @@ sequenceDiagram
 - Deterministic execution for testing
 
 **Starlark Sandbox**:
+
 - No file system access
 - No network operations
 - No import of external modules
@@ -428,6 +435,7 @@ type SandboxManager struct {
 #### Permission System
 
 **Capability Model**:
+
 - Explicit permission requests in manifest
 - User approval required for sensitive operations
 - Granular scope controls (queues, operations, resources)
@@ -435,6 +443,7 @@ type SandboxManager struct {
 - Audit logging for all permission grants and usage
 
 **Permission Categories**:
+
 - **Observer**: Read-only access to events and statistics
 - **Operator**: Basic queue operations (enqueue, peek, requeue)
 - **Administrator**: Advanced operations (purge, configuration)
@@ -534,6 +543,7 @@ func (pm *PermissionManager) CheckPermission(
 ### Migration Strategy
 
 #### Phase 1: Core Infrastructure (Weeks 1-2)
+
 - Implement WASM runtime with basic sandboxing
 - Create plugin manifest parser and validator
 - Build permission system with audit logging
@@ -541,6 +551,7 @@ func (pm *PermissionManager) CheckPermission(
 - Set up monitoring and metrics collection
 
 #### Phase 2: API Development (Weeks 3-4)
+
 - Implement host API for event subscription
 - Create admin API with capability gating
 - Build plugin lifecycle management
@@ -548,6 +559,7 @@ func (pm *PermissionManager) CheckPermission(
 - Develop plugin storage and configuration system
 
 #### Phase 3: Integration (Weeks 5-6)
+
 - Integrate with existing TUI framework
 - Implement panel rendering system
 - Create event bus integration
@@ -555,6 +567,7 @@ func (pm *PermissionManager) CheckPermission(
 - Build administrative interface for plugin management
 
 #### Phase 4: Sample Plugins (Weeks 7-8)
+
 - Develop "Tenant SLA Monitor" sample plugin
 - Create "Bulk Operations" administrative plugin
 - Build plugin development toolkit and templates
@@ -564,18 +577,21 @@ func (pm *PermissionManager) CheckPermission(
 ### Rollout Plan
 
 **Alpha Release** (Internal Testing):
+
 - Basic plugin loading and execution
 - Simple event subscription
 - Read-only sample plugins
 - Internal dogfooding with platform team
 
 **Beta Release** (Limited External):
+
 - Full API surface with permission system
 - Administrative action capabilities
 - Hot-reload and plugin management
 - Selected enterprise customers
 
 **Production Release** (General Availability):
+
 - Complete feature set with security hardening
 - Plugin marketplace integration
 - Comprehensive documentation
@@ -604,12 +620,14 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 #### Internal Threats
 
 **Malicious Developer**
+
 - **Motivation**: Data exfiltration, system compromise, competitive intelligence
 - **Capabilities**: Code signing access, legitimate plugin development skills
 - **Attack Vectors**: Trojan functionality in legitimate plugins, backdoors
 - **Impact**: High - trusted position enables bypassing initial defenses
 
 **Compromised Developer Account**
+
 - **Motivation**: External attacker using legitimate credentials
 - **Capabilities**: Plugin publishing, code modification, access to signing keys
 - **Attack Vectors**: Supply chain poisoning, malicious updates to existing plugins
@@ -618,18 +636,21 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 #### External Threats
 
 **Sophisticated Attacker**
+
 - **Motivation**: System compromise, data breach, disruption
 - **Capabilities**: Advanced exploit development, social engineering
 - **Attack Vectors**: Zero-day exploits, sandbox escapes, permission escalation
 - **Impact**: Critical - potential for complete system compromise
 
 **Script Kiddie**
+
 - **Motivation**: Disruption, reputation
 - **Capabilities**: Basic exploit tools, denial of service attacks
 - **Attack Vectors**: Resource exhaustion, simple permission bypass attempts
 - **Impact**: Medium - primarily availability impacts
 
 **Nation-State Actor**
+
 - **Motivation**: Espionage, infrastructure disruption, long-term access
 - **Capabilities**: Advanced persistent threats, supply chain attacks
 - **Attack Vectors**: Sophisticated sandbox escapes, covert data channels
@@ -644,11 +665,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Spoofing, Tampering, Information Disclosure, Elevation of Privilege
 
 **Attack Scenarios**:
+
 - Plugin contains obfuscated malicious code that executes during legitimate operations
 - Plugin exploits runtime vulnerabilities to break sandbox isolation
 - Plugin uses legitimate API calls in unexpected combinations to achieve malicious goals
 
 **Mitigations**:
+
 - **Code Review**: Mandatory security review for all plugins before deployment
 - **Static Analysis**: Automated scanning for suspicious patterns and known vulnerabilities
 - **Runtime Monitoring**: Real-time detection of unusual plugin behavior patterns
@@ -666,11 +689,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Elevation of Privilege, Tampering
 
 **Attack Scenarios**:
+
 - Buffer overflow in WASM runtime leads to arbitrary code execution
 - Type confusion in Starlark interpreter enables memory corruption
 - Race condition in resource management allows temporary privilege escalation
 
 **Mitigations**:
+
 - **Runtime Hardening**: Use latest, security-patched versions of Wasmtime and Starlark
 - **Memory Protection**: Enable hardware-based memory protection features
 - **Execution Limits**: Strict CPU time and memory limits with preemptive termination
@@ -688,11 +713,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Elevation of Privilege, Information Disclosure
 
 **Attack Scenarios**:
+
 - Plugin exploits logic flaws in permission validation to gain unauthorized access
 - Time-of-check-time-of-use vulnerabilities in permission enforcement
 - Plugin collaborates with other plugins to aggregate permissions
 
 **Mitigations**:
+
 - **Formal Verification**: Mathematical proof of permission system correctness
 - **Audit Logging**: Comprehensive logging of all permission checks and usage
 - **Principle of Least Privilege**: Minimal default permissions with explicit grants
@@ -710,11 +737,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Denial of Service
 
 **Attack Scenarios**:
+
 - Plugin allocates maximum allowed memory in tight loop
 - Plugin spawns resource-intensive computations to consume CPU cycles
 - Plugin floods event bus with subscription requests or events
 
 **Mitigations**:
+
 - **Resource Quotas**: Strict limits on memory, CPU, and I/O operations
 - **Rate Limiting**: Throttling of API calls and event subscriptions per plugin
 - **Circuit Breakers**: Automatic plugin suspension when resource thresholds exceeded
@@ -732,11 +761,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Tampering, Information Disclosure
 
 **Attack Scenarios**:
+
 - Plugin sends crafted events to exploit vulnerabilities in other plugins
 - Plugin manipulates statistics or metrics to hide malicious activity
 - Plugin injects false alerts or notifications to trigger inappropriate responses
 
 **Mitigations**:
+
 - **Event Validation**: Schema validation and sanitization of all event data
 - **Source Attribution**: Cryptographic signing of events with plugin identity
 - **Event Isolation**: Prevent plugins from receiving events they shouldn't access
@@ -754,11 +785,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Spoofing, Tampering
 
 **Attack Scenarios**:
+
 - Attacker compromises plugin repository to serve malicious updates
 - Man-in-the-middle attack during plugin download
 - Compromise of plugin signing infrastructure
 
 **Mitigations**:
+
 - **Code Signing**: Mandatory cryptographic signatures for all plugins
 - **Certificate Pinning**: Pin trusted signing certificates to prevent substitution
 - **Reproducible Builds**: Verify plugins can be built from source with identical results
@@ -776,11 +809,13 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 **STRIDE Categories**: Elevation of Privilege, Spoofing
 
 **Attack Scenarios**:
+
 - Plugin requests broad permissions with misleading descriptions
 - Phishing campaigns trick users into installing malicious plugins
 - Legitimate-looking plugins request unnecessary sensitive permissions
 
 **Mitigations**:
+
 - **Permission UX**: Clear, understandable permission descriptions with risk levels
 - **Permission Grouping**: Bundle related permissions to reduce decision fatigue
 - **Default Deny**: All permissions disabled by default requiring explicit grants
@@ -796,18 +831,21 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 #### Preventive Controls
 
 **Authentication and Authorization**:
+
 - Multi-factor authentication for plugin developers
 - Role-based access control for plugin management
 - Cryptographic plugin signing and verification
 - Fine-grained capability-based permissions
 
 **Input Validation and Sanitization**:
+
 - Schema validation for all plugin manifests and data
 - Input sanitization for UI components and API calls
 - Type safety enforcement in runtime environments
 - Buffer overflow protection mechanisms
 
 **Secure Development Practices**:
+
 - Mandatory security code review for all plugins
 - Static analysis integration in CI/CD pipeline
 - Dependency vulnerability scanning
@@ -816,18 +854,21 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 #### Detective Controls
 
 **Security Monitoring**:
+
 - Real-time monitoring of plugin behavior and resource usage
 - Anomaly detection for unusual patterns or activities
 - Security event correlation and analysis
 - Performance monitoring with security implications
 
 **Audit and Logging**:
+
 - Comprehensive audit logs for all plugin activities
 - Immutable logging with cryptographic integrity protection
 - Centralized log aggregation and analysis
 - Compliance reporting and forensic capabilities
 
 **Vulnerability Management**:
+
 - Continuous security scanning of plugin runtime components
 - Automated vulnerability assessment of plugins
 - Security patch management for dependencies
@@ -836,12 +877,14 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 #### Responsive Controls
 
 **Incident Response**:
+
 - Automated plugin suspension for security violations
 - Rapid plugin revocation and rollback capabilities
 - Security incident escalation procedures
 - Forensic investigation tools and procedures
 
 **Recovery and Continuity**:
+
 - Backup and restore capabilities for plugin configurations
 - System rollback to known-good states
 - Alternative operation modes when plugins are disabled
@@ -862,18 +905,21 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 ### Security Implementation Roadmap
 
 #### Phase 1: Foundation Security (Weeks 1-2)
+
 - Implement basic sandbox isolation and resource limits
 - Deploy cryptographic plugin signing and verification
 - Create fundamental permission system with audit logging
 - Establish security monitoring infrastructure
 
 #### Phase 2: Advanced Protections (Weeks 3-4)
+
 - Add formal verification of permission system logic
 - Implement advanced anomaly detection and behavioral monitoring
 - Deploy comprehensive static analysis and vulnerability scanning
 - Create incident response procedures and automation
 
 #### Phase 3: Enterprise Hardening (Weeks 5-6)
+
 - Integrate with enterprise security infrastructure (SIEM, IAM)
 - Implement advanced threat detection and response capabilities
 - Add compliance reporting and forensic investigation tools
@@ -882,12 +928,14 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 ### Security Metrics and KPIs
 
 **Security Posture Metrics**:
+
 - Number of security vulnerabilities detected and remediated
 - Mean time to detection (MTTD) for security incidents
 - Mean time to response (MTTR) for security incidents
 - Plugin security compliance rate
 
 **Operational Security Metrics**:
+
 - Number of plugins quarantined for security violations
 - Percentage of plugins with up-to-date security reviews
 - Security training completion rate for plugin developers
@@ -896,18 +944,21 @@ The Plugin Panel System introduces a complex attack surface that requires compre
 ### Compliance and Regulatory Considerations
 
 **Data Protection**:
+
 - GDPR compliance for plugin data processing
 - Data residency requirements for cloud deployments
 - Encryption requirements for data in transit and at rest
 - Right to deletion implementation for plugin data
 
 **Industry Standards**:
+
 - NIST Cybersecurity Framework alignment
 - ISO 27001 security management system compliance
 - SOC 2 Type II audit readiness
 - Common Criteria evaluation for high-security environments
 
 **Regulatory Requirements**:
+
 - Financial services regulations (PCI DSS, SOX)
 - Healthcare compliance (HIPAA, HITECH)
 - Government security standards (FedRAMP, FISMA)

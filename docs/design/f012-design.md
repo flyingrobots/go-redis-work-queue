@@ -703,6 +703,7 @@ webhooks:
 ```
 
 **Validation Rules:**
+
 - Queue names must be unique within namespace
 - Rate limits cannot exceed cluster policies
 - Resource requests must be within namespace quotas
@@ -729,6 +730,7 @@ webhooks:
 ```
 
 **Default Mutations:**
+
 - Add required security context if missing
 - Set resource limits based on cluster policies
 - Inject monitoring sidecar if enabled
@@ -826,24 +828,28 @@ rules:
 ## Deployment Plan
 
 ### Phase 1: Core CRDs and Controllers (Weeks 1-2)
+
 - Implement Queue and WorkerPool CRDs with basic validation
 - Develop core reconciliation controllers for resource management
 - Create deployment manifests and RBAC configurations
 - Build basic validation webhooks for resource integrity
 
 ### Phase 2: Autoscaling and Metrics (Weeks 3-4)
+
 - Implement intelligent autoscaling engine with SLA-based scaling
 - Integrate with Prometheus for metrics collection and alerting
 - Add Policy CRD for global configuration management
 - Create comprehensive monitoring and observability features
 
 ### Phase 3: Production Hardening (Weeks 5-6)
+
 - Implement advanced validation webhooks with security policies
 - Add support for rolling updates with drain and readiness hooks
 - Create comprehensive RBAC configurations and security boundaries
 - Build disaster recovery and backup/restore capabilities
 
 ### Phase 4: Ecosystem Integration (Weeks 7-8)
+
 - Create Helm charts and Kustomize bases for easy deployment
 - Build ArgoCD/Flux integration examples and documentation
 - Implement advanced features like multi-cluster support

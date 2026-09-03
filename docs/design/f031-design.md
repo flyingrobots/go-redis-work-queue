@@ -125,6 +125,7 @@ type SimulationResult struct {
 Implementation of proven mathematical models for different system configurations.
 
 **M/M/1 Single Server Model**:
+
 ```go
 type MMOneModel struct {
     serviceRate float64
@@ -154,6 +155,7 @@ func (m *MMOneModel) calculateMetrics(arrivalRate, serviceRate float64) *QueueMe
 ```
 
 **M/M/c Multi-Server Model**:
+
 ```go
 type MMcModel struct {
     numServers  int
@@ -416,6 +418,7 @@ sequenceDiagram
 **Description**: Attackers use simulator to discover system vulnerabilities or performance limits.
 
 **Mitigations**:
+
 - Rate limiting on simulation requests
 - Input validation for all policy parameters
 - Restricted access to sensitive configuration details
@@ -426,6 +429,7 @@ sequenceDiagram
 **Description**: Unauthorized users apply harmful policy changes to production systems.
 
 **Mitigations**:
+
 - Multi-factor authentication for policy application
 - Role-based access control with approval workflows
 - Mandatory simulation validation before application
@@ -436,6 +440,7 @@ sequenceDiagram
 **Description**: Tampering with simulation results to justify harmful policy changes.
 
 **Mitigations**:
+
 - Cryptographic signatures on simulation results
 - Immutable audit trail with blockchain-style verification
 - Independent re-simulation before policy application
@@ -471,24 +476,28 @@ type ApprovalWorkflow struct {
 ## Deployment Plan
 
 ### Phase 1: Core Simulation Engine (Weeks 1-3)
+
 - Implement basic queueing models (M/M/1, M/M/c)
 - Build traffic pattern generators
 - Create simple CLI interface for validation
 - Extensive mathematical verification and testing
 
 ### Phase 2: Interactive UI (Weeks 4-6)
+
 - Web-based simulation interface
 - Real-time charting and visualization
 - Policy configuration controls
 - Results comparison and analysis tools
 
 ### Phase 3: Admin API Integration (Weeks 7-8)
+
 - Policy application endpoints
 - Rollback functionality
 - Audit trail implementation
 - Security and access control
 
 ### Phase 4: Advanced Features (Weeks 9-10)
+
 - Complex traffic patterns (seasonal, custom)
 - Advanced queueing models (priority queues, general service)
 - Performance optimization and caching

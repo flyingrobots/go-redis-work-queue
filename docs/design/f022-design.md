@@ -832,12 +832,14 @@ jobs:
 ### Phase 1: Core Engine (Weeks 1-2)
 
 **Deliverables:**
+
 - SnapshotEngine with atomic capture
 - Basic serialization and compression
 - File-based storage adapter
 - Core diff algorithms
 
 **Acceptance Criteria:**
+
 - Can capture snapshots of active queue system
 - Deterministic serialization passes roundtrip tests
 - Basic diff detects added/removed jobs
@@ -846,12 +848,14 @@ jobs:
 ### Phase 2: Smart Diffing (Weeks 3-4)
 
 **Deliverables:**
+
 - Advanced diff rules and tolerance handling
 - Semantic job movement detection
 - Configurable ignore patterns
 - Formatted diff reports
 
 **Acceptance Criteria:**
+
 - Smart diff ignores irrelevant timestamp changes
 - Correctly identifies job migrations between queues
 - Configurable tolerance rules work for numeric fields
@@ -860,12 +864,14 @@ jobs:
 ### Phase 3: Test Integration (Weeks 5-6)
 
 **Deliverables:**
+
 - Go test framework integration
 - Jest-style assertion helpers
 - Snapshot auto-update workflows
 - CLI tool for manual operations
 
 **Acceptance Criteria:**
+
 - Test helpers integrate with standard Go testing
 - Auto-update workflow handles snapshot changes safely
 - CLI tool supports all core operations
@@ -874,12 +880,14 @@ jobs:
 ### Phase 4: Git & CI/CD (Weeks 7-8)
 
 **Deliverables:**
+
 - Git repository integration
 - CI/CD pipeline integration
 - Large file handling (Git LFS)
 - Merge conflict resolution tools
 
 **Acceptance Criteria:**
+
 - Snapshots version control properly with Git
 - CI pipelines can run snapshot validations
 - Large snapshots handle efficiently with LFS
@@ -888,12 +896,14 @@ jobs:
 ### Phase 5: TUI Integration (Weeks 9-10)
 
 **Deliverables:**
+
 - Snapshot browser in TUI
 - Visual diff viewer
 - One-click capture/restore
 - Snapshot management interface
 
 **Acceptance Criteria:**
+
 - TUI shows snapshot library with metadata
 - Visual diff clearly highlights important changes
 - Users can capture/restore snapshots from TUI
@@ -984,6 +994,7 @@ Success metrics focus on adoption, quality improvements, and developer satisfact
 ---
 
 **Review Notes:**
+
 - Architecture designed for scalability and performance
 - Security model addresses common threats and compliance requirements
 - Integration strategy ensures smooth adoption across teams
@@ -991,6 +1002,7 @@ Success metrics focus on adoption, quality improvements, and developer satisfact
 - Performance targets are aggressive but achievable with proposed optimizations
 
 **Next Steps:**
+
 1. Architecture review and approval
 2. Detailed API specification refinement
 3. Proof-of-concept implementation for core engine

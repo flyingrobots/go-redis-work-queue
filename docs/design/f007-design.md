@@ -190,6 +190,7 @@ GET /api/v1/dedup/stats?queue={queue_name}
 ```
 
 Response:
+
 ```json
 {
   "queue_name": "default",
@@ -389,6 +390,7 @@ performance_slos:
 ### Unit Testing
 
 #### Idempotency Helper Tests
+
 ```go
 func TestIdempotencyHelper_CheckAndLock(t *testing.T) {
     tests := []struct {
@@ -408,6 +410,7 @@ func TestIdempotencyHelper_CheckAndLock(t *testing.T) {
 ```
 
 #### Outbox Helper Tests
+
 ```go
 func TestOutboxHelper_WithTransaction(t *testing.T) {
     // Test successful transaction commit
@@ -420,12 +423,14 @@ func TestOutboxHelper_WithTransaction(t *testing.T) {
 ### Integration Testing
 
 #### Redis Integration
+
 - Test connection failure scenarios
 - Test key expiration behavior
 - Test memory pressure handling
 - Test cluster failover scenarios
 
 #### Database Integration
+
 - Test transaction isolation levels
 - Test deadlock handling
 - Test connection pool exhaustion
@@ -434,6 +439,7 @@ func TestOutboxHelper_WithTransaction(t *testing.T) {
 ### Load Testing
 
 #### Performance Test Scenarios
+
 ```yaml
 load_tests:
   - name: "idempotency_baseline"
@@ -453,6 +459,7 @@ load_tests:
 ```
 
 #### Stress Test Scenarios
+
 - Redis memory exhaustion
 - Database connection saturation
 - High duplicate job rates (>50%)
@@ -461,6 +468,7 @@ load_tests:
 ### End-to-End Testing
 
 #### Scenario: Complete Job Lifecycle
+
 1. Producer submits job with idempotency key
 2. Worker processes job successfully
 3. Duplicate job submission is blocked
@@ -468,6 +476,7 @@ load_tests:
 5. Metrics are updated correctly
 
 #### Scenario: Failure Recovery
+
 1. Worker crashes during job processing
 2. Job is redelivered to another worker
 3. Idempotency check prevents duplicate processing
@@ -478,21 +487,25 @@ load_tests:
 ### Rollout Strategy
 
 #### Phase 1: Infrastructure Setup (Week 1)
+
 - Deploy Redis cluster for deduplication storage
 - Set up monitoring and alerting
 - Deploy admin API endpoints
 
 #### Phase 2: Core Library (Week 2-3)
+
 - Release idempotency helper library
 - Add basic deduplication support to workers
 - Enable metrics collection
 
 #### Phase 3: Outbox Pattern (Week 4-5)
+
 - Deploy outbox helper library
 - Set up outbox relay service
 - Migrate critical workflows to outbox pattern
 
 #### Phase 4: Full Rollout (Week 6)
+
 - Enable exactly-once patterns for all queues
 - Complete monitoring dashboard
 - Conduct performance optimization
@@ -529,12 +542,14 @@ exactly_once_config:
 ### Monitoring and Alerting
 
 #### Key Metrics to Monitor
+
 - Deduplication hit rates by queue
 - Storage utilization trends
 - Processing latency distributions
 - Error rates and failure modes
 
 #### Alert Conditions
+
 ```yaml
 alerts:
   - name: "high_duplicate_rate"
@@ -553,11 +568,13 @@ alerts:
 ### Migration Strategy
 
 #### Backward Compatibility
+
 - All APIs maintain backward compatibility during transition
 - Feature flags control exactly-once behavior per queue
 - Gradual migration path for existing jobs
 
 #### Zero-Downtime Migration
+
 1. Deploy infrastructure components
 2. Enable feature flags for new jobs only
 3. Migrate existing jobs during low-traffic periods

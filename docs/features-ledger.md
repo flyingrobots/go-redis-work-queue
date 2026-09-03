@@ -9,7 +9,7 @@ This is the canonical, grouped snapshot of features — shipped, in‑progress, 
 
 <!-- progress:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 55%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -23,6 +23,7 @@ Weighted by feature size. Updated by `python3 scripts/update_progress.py`.
 - We use stage names directly; “Shipped” is implied by MVP/Alpha/V1.
 
 Definitions
+
 - MVP: minimal viable; usable for demos/tests; rough edges allowed
 - Alpha: feature complete; internal‑ready; known limitations; needs hardening
 - Beta: feature complete; externally usable; not yet battle‑tested (needs soak/perf/chaos/coverage)
@@ -31,6 +32,7 @@ Definitions
 Weighting method: For feature‑specific modules, w = 1 + log10(Go LOC + 10) / 3; minimum w = 0.5 if no resolvable code path. Overall = Σ(p_i·w_i)/Σ(w_i).
 
 Emoji status mapping
+
 - 📋 Planned
 - ⏳ In Progress
 - 🚼 MVP
@@ -39,6 +41,7 @@ Emoji status mapping
 - ✅ V1 (Shipped)
 
 Update via script
+
 - Run `python3 scripts/update_progress.py` after editing table rows or Code links. The script updates the bars here and in README.md.
 
 ---
@@ -49,7 +52,7 @@ Update via script
 ██████████████████████████████████▓░░░░░ 87%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.95 features=9 kloc=20.3
+weight=9.45 features=10 kloc=20.3
 ```
 <!-- group-progress:core-platform:end -->
 
@@ -67,6 +70,7 @@ weight=8.95 features=9 kloc=20.3
 |🅰️ | Breaker | Core/Runtime | — | [internal/breaker](../internal/breaker) | 0.2 | Alpha | 75% (conf: med) | ███████░░░ | Circuit breaker in place with unit tests. | Integrate metrics; document use; tune defaults. | Unit good. | Keep simple + safe. |
 |🅱️ | Config | Core/Runtime | — | [internal/config](../internal/config) | 0.4 | Beta | 90% (conf: high) | █████████░ | Strict YAML loading, validated defaults, and unsupported-key rejection. | Expand field validation; document env overrides and compatibility policy. | Defaults, validation, example, and dead-key regression tests. | Unsupported features cannot appear silently enabled. |
 |🅱️ | Redis Client | Core/Runtime | — | [internal/redisclient](../internal/redisclient) | 0.0 | Beta | 90% (conf: high) | █████████░ | Thin wrapper around go-redis v9. | Connection tests; pool tuning; resilience docs. | None | Unified to v9. |
+|✅ | Repository Quality Gates | DevEx/CI | — | [CI workflows](../.github/workflows), [Markdownlint policy](../.markdownlint.yaml) | 0.0 | V1 | 100% (conf: high) | ██████████ | Repository-wide Go vet and all tracked Markdown pass. | Preserve the full-corpus gates and evaluate link checking separately. | `go vet ./...`; Markdownlint checks 136 tracked files with zero findings. | MD013, MD028, and MD036 are intentionally disabled for repository style. |
 
 ### TUI & UX
 <!-- group-progress:tui-ux:begin -->

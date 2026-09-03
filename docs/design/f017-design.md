@@ -5,6 +5,7 @@
 The Job Genealogy Navigator transforms abstract job relationships into intuitive visual family trees, revolutionizing how developers and SREs understand causality in distributed job processing systems. This feature bridges the gap between individual job monitoring and system-wide workflow understanding by providing interactive ASCII art visualizations of parent-child relationships, retry chains, spawned subjobs, and failure cascades.
 
 ### Key Benefits
+
 - **Root Cause Analysis**: Trace cascading failures to their origin through interactive genealogy trees
 - **Impact Assessment**: Visualize the complete blast radius of job failures across generations
 - **Pattern Recognition**: Identify recurring failure genealogies and workflow anomalies
@@ -12,7 +13,9 @@ The Job Genealogy Navigator transforms abstract job relationships into intuitive
 - **Operational Intelligence**: Understand system behavior through job relationship patterns
 
 ### Scope
+
 This design covers the complete job genealogy system including:
+
 - Graph-based relationship tracking with bidirectional indexes in Redis
 - Interactive ASCII art tree visualization with multiple layout algorithms
 - Navigation controls with expand/collapse, focus modes, and search capabilities
@@ -150,7 +153,7 @@ graph LR
 
 The desktop interface provides a comprehensive three-panel layout optimized for complex genealogy exploration:
 
-```
+```text
 ┌─ Job Genealogy Navigator ──────────────────────────────────────────────────────────────────────────────────┐
 │ [F1] Help [F2] Layout [F3] Focus [F4] Filter [F5] Search [F6] Export [F7] Animate [F8] Config [ESC] Exit   │
 ├─────────────────────────────────────────┬─────────────────────────────────────────┬─────────────────────────┤
@@ -191,7 +194,7 @@ The desktop interface provides a comprehensive three-panel layout optimized for 
 
 For narrow terminals (≤80 columns), the interface adapts to a tabbed layout:
 
-```
+```text
 ┌─ Job Genealogy Navigator ──────────────────────────────────────────────┐
 │ [ Tree ] [ Details ] [ Analysis ] [ Config ]          [?] Help [X] Exit │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -225,7 +228,7 @@ For narrow terminals (≤80 columns), the interface adapts to a tabbed layout:
 
 #### Expandable Node System
 
-```
+```text
 ┌─ Job-001: user_signup [SUCCESS] ✅
 ├─[+] Job-002: send_welcome [2 retries] ⚠️     ← Collapsed with summary
 ├─── Job-004: update_analytics [SUCCESS] ✅
@@ -247,7 +250,8 @@ After expanding Job-002:
 #### Focus Modes
 
 **Blame Mode** - Trace failure to root cause:
-```
+
+```text
 Blame Path for Job-007 alert_support:
 Job-001: user_signup [SUCCESS] ✅
 └─┬─ Job-005: provision_account [FAILED] ❌ ← Root Cause
@@ -260,7 +264,8 @@ Blame Analysis:
 ```
 
 **Impact Mode** - Show all affected descendants:
-```
+
+```text
 Impact Analysis for Job-005 provision_account [FAILED]:
 Directly Affected: 2 jobs
 Cascade Effects: 3 additional jobs
@@ -1184,6 +1189,7 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 ## Implementation Roadmap
 
 ### Phase 1: Core Infrastructure (Week 1-2)
+
 - [ ] Design and implement relationship tracking system
 - [ ] Create Redis storage schema for genealogy data
 - [ ] Build basic graph traversal algorithms
@@ -1191,6 +1197,7 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 - [ ] Add unit tests for graph operations
 
 ### Phase 2: Visualization Engine (Week 2-3)
+
 - [ ] Develop ASCII tree renderer with box-drawing characters
 - [ ] Implement multiple layout algorithms (top-down, timeline, radial)
 - [ ] Create expandable/collapsible node system
@@ -1198,6 +1205,7 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 - [ ] Implement virtual scrolling for large trees
 
 ### Phase 3: Interactive Navigation (Week 3-4)
+
 - [ ] Build keyboard navigation controls
 - [ ] Implement focus modes (blame, impact, ancestors, descendants)
 - [ ] Add search and filtering capabilities
@@ -1205,6 +1213,7 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 - [ ] Implement responsive layout for different terminal sizes
 
 ### Phase 4: Analysis Features (Week 4-5)
+
 - [ ] Develop blame analysis for root cause tracing
 - [ ] Implement impact analysis for cascade assessment
 - [ ] Create pattern detection algorithms
@@ -1212,6 +1221,7 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 - [ ] Build performance monitoring and optimization
 
 ### Phase 5: Advanced Features (Week 5-6)
+
 - [ ] Add time-lapse animation for tree growth
 - [ ] Implement advanced pattern recognition
 - [ ] Create genealogy comparison tools
@@ -1221,24 +1231,28 @@ func TestNavigationPatterns_UserWorkflows(t *testing.T) {
 ## Future Enhancements
 
 ### Advanced Visualization
+
 - **3D Tree Rendering**: WebGL-based 3D genealogy visualization for complex relationships
 - **Interactive Timeline**: Scrub through genealogy evolution over time
 - **Graph Overlay**: Multiple genealogies overlaid to show system-wide patterns
 - **AR/VR Integration**: Immersive genealogy exploration for complex debugging sessions
 
 ### Machine Learning Integration
+
 - **Predictive Spawning**: ML models to predict job spawn patterns and resource needs
 - **Anomaly Detection**: Automated detection of unusual genealogy structures
 - **Failure Prediction**: Early warning system for potential cascade failures
 - **Pattern Learning**: Self-improving pattern detection based on user feedback
 
 ### Cross-System Integration
+
 - **Multi-Queue Genealogies**: Track relationships across different queue systems
 - **Distributed Tracing**: Integration with OpenTelemetry for full request tracing
 - **CI/CD Integration**: Link deployments to genealogy pattern changes
 - **External Export**: GraphQL API for external tooling and dashboards
 
 ### Enterprise Features
+
 - **Genealogy Analytics**: Historical analysis and reporting on relationship patterns
 - **Team Collaboration**: Shared annotations and insights on genealogies
 - **Compliance Tracking**: Audit trails for genealogy access and modifications
@@ -1258,14 +1272,16 @@ dependencies:
     - distributed_tracing
     - monitoring_system
 enables:
-  - debugging_workflows
-  - impact_analysis
-  - root_cause_analysis
-  - pattern_detection
+
+- debugging_workflows
+- impact_analysis
+- root_cause_analysis
+- pattern_detection
 provides:
-  - tree_visualization
-  - relationship_graph
-  - blame_mode
-  - ancestry_tracking
-  - interactive_navigation
+- tree_visualization
+- relationship_graph
+- blame_mode
+- ancestry_tracking
+- interactive_navigation
+
 ---

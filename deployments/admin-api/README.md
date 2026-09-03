@@ -5,6 +5,7 @@ This directory contains deployment configurations and scripts for the Admin API 
 ## Overview
 
 The Admin API provides a secure HTTP interface for managing work queue operations including:
+
 - Queue statistics and monitoring
 - Job inspection and management
 - Dead letter queue operations
@@ -12,7 +13,7 @@ The Admin API provides a secure HTTP interface for managing work queue operation
 
 ## Structure
 
-```
+```text
 deployments/
 ├── docker/
 │   ├── Dockerfile.admin-api    # Production Docker image
@@ -29,12 +30,14 @@ deployments/
 ### Using Docker Compose
 
 1. Start the services:
+
    ```bash
    cd deployments/docker
    docker-compose up -d
    ```
 
 2. Test the API:
+
    ```bash
    # Liveness and readiness checks
    curl http://localhost:8080/healthz
@@ -45,8 +48,8 @@ deployments/
    ```
 
 3. Access monitoring:
-   - Prometheus: http://localhost:9090
-   - Grafana: http://localhost:3000 (admin/admin)
+   - Prometheus: <http://localhost:9090>
+   - Grafana: <http://localhost:3000> (admin/admin)
 
 ## Staging Deployment
 
@@ -142,6 +145,7 @@ The deployment includes comprehensive monitoring setup:
 ### Dashboards
 
 Grafana dashboards are automatically provisioned showing:
+
 - Request throughput and latency
 - Error rates by endpoint
 - Resource utilization
@@ -156,6 +160,7 @@ All API endpoints except `/healthz` and `/readyz` require authentication via `X-
 ### Authorization
 
 Two token types are supported:
+
 - Service tokens: Full read/write access
 - Readonly tokens: Read-only access
 
@@ -168,6 +173,7 @@ Two token types are supported:
 ### Audit Logging
 
 All destructive operations are logged to audit files including:
+
 - Timestamp and user identification
 - Action performed
 - Request parameters
@@ -193,6 +199,7 @@ The service provides multiple health check endpoints:
 ### Horizontal Pod Autoscaling
 
 The deployment includes HPA configuration:
+
 - Min replicas: 2
 - Max replicas: 10
 - CPU target: 70%
@@ -201,6 +208,7 @@ The deployment includes HPA configuration:
 ### Pod Disruption Budget
 
 PDB ensures at least 1 pod remains available during:
+
 - Rolling updates
 - Node maintenance
 - Voluntary disruptions

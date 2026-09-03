@@ -47,6 +47,7 @@ func NewRateLimiter(redis *redis.Client, logger *zap.Logger, config *Config) *Ra
 Creates a new rate limiter instance.
 
 **Parameters:**
+
 - `redis`: Redis client for storage
 - `logger`: Zap logger for debugging
 - `config`: Rate limiter configuration
@@ -62,16 +63,19 @@ func (rl *RateLimiter) Consume(ctx context.Context, scope string, tokens int64, 
 Attempts to consume tokens from the rate limiter.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `scope`: Tenant or scope identifier
 - `tokens`: Number of tokens to consume
 - `priority`: Priority level ("critical", "high", "normal", "low")
 
 **Returns:**
+
 - `ConsumeResult`: Contains allowed status, remaining tokens, and retry information
 - `error`: Any errors during consumption
 
 **Example:**
+
 ```go
 result, err := rl.Consume(ctx, "tenant-123", 10, "high")
 if err != nil {
@@ -92,11 +96,13 @@ func (rl *RateLimiter) Refill(ctx context.Context, scope string, tokens int64) (
 Manually adds tokens to a bucket.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `scope`: Tenant or scope identifier
 - `tokens`: Number of tokens to add
 
 **Returns:**
+
 - `int64`: New token count
 - `error`: Any errors during refill
 
@@ -109,10 +115,12 @@ func (rl *RateLimiter) GetStatus(ctx context.Context, scope string) (*Status, er
 Returns the current status of a rate limiter scope.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `scope`: Tenant or scope identifier
 
 **Returns:**
+
 - `Status`: Current bucket status including available tokens, capacity, and refill rate
 - `error`: Any errors retrieving status
 
@@ -125,6 +133,7 @@ func (rl *RateLimiter) Reset(ctx context.Context, scope string) error
 Clears the rate limit state for a scope.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `scope`: Tenant or scope identifier
 
@@ -175,15 +184,18 @@ func (pf *PriorityFairness) AllocateTokens(ctx context.Context, availableTokens 
 Distributes available tokens among priorities fairly.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `availableTokens`: Total tokens available for distribution
 - `demands`: Map of priority to requested tokens
 
 **Returns:**
+
 - `map[string]int64`: Allocated tokens per priority
 - `error`: Any errors during allocation
 
 **Algorithm:**
+
 1. Allocates minimum guaranteed share to all priorities
 2. Distributes remaining tokens by weighted fair share
 3. Applies starvation prevention for priorities waiting too long
@@ -197,11 +209,13 @@ func (pf *PriorityFairness) CheckFairness(ctx context.Context, priority string, 
 Evaluates if current consumption is fair.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation
 - `priority`: Priority level to check
 - `requestedTokens`: Number of tokens requested
 
 **Returns:**
+
 - `FairnessDecision`: Contains allowed status, fair share info, and suggested delay
 - `error`: Any errors during check
 

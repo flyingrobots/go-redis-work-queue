@@ -5,13 +5,16 @@
 Canary Deployments bring enterprise-grade deployment safety to job queue workers by intelligently routing a percentage of jobs to new worker versions while monitoring key metrics. This feature enables teams to validate changes in production with minimal risk through automated promotion rules and emergency rollback capabilities.
 
 ### Key Benefits
+
 - **Risk Reduction**: Validate changes in production with configurable traffic percentages
 - **Automated Decisions**: Data-driven promotion based on SLO metrics
 - **Fast Recovery**: Emergency rollback capabilities with job draining
 - **Operational Confidence**: Deployment anxiety transformed into data-driven confidence
 
 ### Scope
+
 This design covers the complete canary deployment system including:
+
 - Traffic splitting strategies (queue-based and stream-based)
 - Metrics collection and SLO monitoring
 - Automated promotion and rollback mechanisms
@@ -208,12 +211,14 @@ func (qs *QueueSplitStrategy) RouteJob(job *Job) string {
 ```
 
 **Advantages**:
+
 - Clean separation of workloads
 - Easy to implement with Redis Lists
 - Clear queue depth visibility
 - Simple worker configuration
 
 **Trade-offs**:
+
 - Requires queue duplication
 - Potential for uneven load distribution
 
@@ -239,12 +244,14 @@ func (sgs *StreamGroupStrategy) ConfigureGroups() error {
 ```
 
 **Advantages**:
+
 - Single message stream
 - Maintains message ordering
 - Dynamic weight adjustment
 - Built-in Redis Streams features
 
 **Trade-offs**:
+
 - More complex implementation
 - Requires Redis Streams support
 
@@ -486,6 +493,7 @@ const (
 **Impact**: Can manipulate traffic routing, cause service disruption
 
 **Mitigations**:
+
 - Role-based access control (RBAC) for deployment operations
 - Multi-factor authentication for critical actions
 - Audit logging of all deployment activities
@@ -498,6 +506,7 @@ const (
 **Impact**: Poor code gets promoted to production
 
 **Mitigations**:
+
 - Signed metrics from trusted worker sources
 - Metrics validation and anomaly detection
 - Multiple independent metric sources
@@ -510,6 +519,7 @@ const (
 **Impact**: Data exfiltration or processing manipulation
 
 **Mitigations**:
+
 - Cryptographic verification of routing rules
 - Network segmentation between stable and canary workers
 - Monitoring for unexpected traffic patterns
@@ -522,6 +532,7 @@ const (
 **Impact**: Skewed metrics, deployment decisions based on false data
 
 **Mitigations**:
+
 - Worker authentication and certificate validation
 - Heartbeat verification with challenge/response
 - Worker registration audit trails
@@ -624,6 +635,7 @@ graph TB
 **Coverage Target**: 90% code coverage
 
 **Test Categories**:
+
 1. **Routing Logic Tests**
    - Hash distribution verification
    - Percentage accuracy validation
@@ -653,6 +665,7 @@ graph TB
 **Test Scenarios**:
 
 1. **End-to-End Canary Flow**
+
    ```bash
    # Setup test environment
    docker-compose -f test/canary-test.yml up -d
@@ -736,12 +749,14 @@ stages:
 ### Test Data Management
 
 **Test Fixtures**:
+
 - Predefined deployment configurations
 - Sample metric datasets
 - Worker registration data
 - Rule configuration templates
 
 **Test Environment**:
+
 - Isolated Redis instances per test
 - Configurable worker simulators
 - Metric data generators
@@ -750,24 +765,28 @@ stages:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure (Weeks 1-2)
+
 - Basic canary deployment data models
 - Queue-based traffic splitting
 - Simple percentage-based routing
 - Basic metrics collection
 
 ### Phase 2: Control Plane (Weeks 3-4)
+
 - Admin API for deployment management
 - Rule engine for automated decisions
 - TUI integration for visualization
 - Audit logging and security
 
 ### Phase 3: Advanced Features (Weeks 5-6)
+
 - Stream groups strategy
 - Consistent hashing routing
 - Emergency rollback system
 - Performance optimization
 
 ### Phase 4: Production Readiness (Weeks 7-8)
+
 - Comprehensive testing
 - Documentation completion
 - Security hardening
@@ -796,18 +815,21 @@ stages:
 ## Success Metrics
 
 ### Technical Metrics
+
 - **Routing Accuracy**: >99.9% jobs routed correctly
 - **Latency Overhead**: <1ms additional latency per job
 - **System Availability**: >99.95% uptime for canary system
 - **Error Rate**: <0.1% failed routing decisions
 
 ### Business Metrics
+
 - **Deployment Confidence**: 95% of deployments use canary process
 - **Rollback Rate**: <5% of canary deployments require rollback
 - **Detection Speed**: Issues detected within 2 minutes
 - **Recovery Time**: Emergency rollbacks complete within 30 seconds
 
 ### User Experience Metrics
+
 - **API Response Time**: <100ms for 95% of control operations
 - **TUI Responsiveness**: <500ms for UI interactions
 - **Documentation Coverage**: 100% of features documented
@@ -820,6 +842,7 @@ This design provides a comprehensive foundation for implementing canary deployme
 The phased implementation approach allows for iterative development and validation, ensuring each component is thoroughly tested before moving to the next phase. The emphasis on security, performance, and operational excellence ensures the system will meet enterprise-grade requirements.
 
 Key design decisions prioritize:
+
 - **Safety First**: Multiple safety mechanisms and rollback capabilities
 - **Operational Excellence**: Comprehensive monitoring and alerting
 - **Developer Experience**: Intuitive APIs and TUI integration

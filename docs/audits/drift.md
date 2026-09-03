@@ -9,6 +9,7 @@ This report compares each feature spec in `docs/design/` against the current imp
 - Scope: 37 feature specs reviewed; corresponding `internal/<feature>` modules scanned (handlers, logic, tests, and TODOs), plus TUI and Admin API integration points where relevant.
 
 Key observations
+
 - Foundation is strong: Admin API, tracing, exactly-once, storage backends, theme playground, and time-travel debugger are comparatively well aligned (low drift ≤25%).
 - Productization gaps recur: runtime configuration endpoints, RBAC tie‑in, pagination at scale, and TUI wiring are the most common sources of drift.
 - Several modules are substantial but not yet integrated into TUI flows or Admin API surfaces (e.g., rate limiting, DLQ UI depth, right‑click menus, patterned load).

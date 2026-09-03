@@ -254,23 +254,27 @@ if err != nil {
 | `q` | Quit | Exit application |
 
 #### Overview Tab
+
 - Real-time budget utilization by queue
 - Current spending vs. budget amounts
 - Status indicators (OK, Warning, Throttle, Block)
 - Top cost drivers with job counts and averages
 
 #### Trends Tab
+
 - 30-day daily spending chart (text-based)
 - Cost breakdown by component (CPU, Memory, Payload, Redis, Network)
 - Trend analysis and seasonal patterns
 
 #### Controls Tab
+
 - Budget creation and editing forms
 - Threshold configuration (warning, throttle, block)
 - Enforcement policy settings
 - Notification channel management
 
 #### Alerts Tab
+
 - Active budget violations
 - Alert history and acknowledgment
 - Notification delivery status

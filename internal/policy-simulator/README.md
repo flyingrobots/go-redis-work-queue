@@ -55,9 +55,11 @@ type PolicyConfig struct {
 ### Simulations
 
 #### Create Simulation
+
 - **POST** `/api/policy-simulator/simulations`
 - **Description**: Runs a new simulation with specified policies and traffic patterns
 - **Request Body**:
+
 ```json
 {
     "name": "string",
@@ -67,9 +69,11 @@ type PolicyConfig struct {
     "config": SimulatorConfig (optional)
 }
 ```
+
 - **Response**: `SimulationResult` with status 201
 
 #### List Simulations
+
 - **GET** `/api/policy-simulator/simulations`
 - **Query Parameters**:
   - `limit`: Maximum number of results
@@ -77,10 +81,12 @@ type PolicyConfig struct {
 - **Response**: Array of `SimulationResult`
 
 #### Get Simulation
+
 - **GET** `/api/policy-simulator/simulations/{id}`
 - **Response**: `SimulationResult`
 
 #### Get Simulation Charts
+
 - **GET** `/api/policy-simulator/simulations/{id}/charts`
 - **Response**: Chart data for visualization
 - **Requirements**: Simulation must be completed
@@ -88,8 +94,10 @@ type PolicyConfig struct {
 ### Policy Changes
 
 #### Create Policy Change
+
 - **POST** `/api/policy-simulator/changes`
 - **Request Body**:
+
 ```json
 {
     "description": "string",
@@ -98,44 +106,54 @@ type PolicyConfig struct {
     }
 }
 ```
+
 - **Headers**: `X-User-ID` (optional, defaults to "anonymous")
 - **Response**: `PolicyChange`
 
 #### Apply Policy Change
+
 - **POST** `/api/policy-simulator/changes/{id}/apply`
 - **Request Body**:
+
 ```json
 {
     "reason": "string (optional)"
 }
 ```
+
 - **Headers**: `X-User-ID` required
 - **Response**: Success message with application details
 
 #### Rollback Policy Change
+
 - **POST** `/api/policy-simulator/changes/{id}/rollback`
 - **Request Body**:
+
 ```json
 {
     "reason": "string (optional)"
 }
 ```
+
 - **Headers**: `X-User-ID` required
 - **Response**: Success message with rollback details
 
 ### Presets
 
 #### Get Policy Presets
+
 - **GET** `/api/policy-simulator/presets/policies`
 - **Response**: Predefined policy configurations (conservative, aggressive, balanced)
 
 #### Get Traffic Presets
+
 - **GET** `/api/policy-simulator/presets/traffic`
 - **Response**: Predefined traffic patterns (steady, spike, seasonal, bursty)
 
 ## Traffic Patterns
 
 ### Types
+
 - **constant**: Steady state load
 - **linear**: Linear increase/decrease
 - **spike**: Sudden burst
@@ -144,6 +162,7 @@ type PolicyConfig struct {
 - **exponential**: Exponential growth/decay
 
 ### TrafficPattern Structure
+
 ```go
 type TrafficPattern struct {
     Name        string                `json:"name"`
@@ -158,6 +177,7 @@ type TrafficPattern struct {
 ## Simulation Results
 
 ### SimulationResult
+
 ```go
 type SimulationResult struct {
     ID          string              `json:"id"`
@@ -175,6 +195,7 @@ type SimulationResult struct {
 ```
 
 ### Key Metrics
+
 - **Queue Depth**: Average and maximum queue depth
 - **Wait Times**: Average, P95, and P99 wait times
 - **Throughput**: Messages per second processing rate
@@ -191,6 +212,7 @@ go run cmd/policy-simulator/main.go
 ```
 
 ### UI Features
+
 - **Policy Tab**: Configure retry policies, rate limits, concurrency
 - **Traffic Tab**: Define traffic patterns and variations
 - **Simulation Tab**: Run simulations and view progress
@@ -198,6 +220,7 @@ go run cmd/policy-simulator/main.go
 - **Charts Tab**: Visualize queue depth, processing rates, and resource usage
 
 ### UI Controls
+
 - `←→` or `tab`: Navigate between tabs
 - `↑↓`: Navigate between fields
 - `enter`: Confirm selections
@@ -210,16 +233,19 @@ go run cmd/policy-simulator/main.go
 The simulator supports multiple queueing theory models:
 
 ### M/M/1 Model
+
 - Markovian arrivals and service times
 - Single server
 - Suitable for simple scenarios
 
 ### M/M/c Model
+
 - Markovian arrivals and service times
 - Multiple servers (c workers)
 - Good for multi-worker scenarios
 
 ### Simplified Model
+
 - Based on Little's Law
 - Faster computation
 - Good for quick estimates
@@ -227,6 +253,7 @@ The simulator supports multiple queueing theory models:
 ## Error Handling
 
 ### Error Types
+
 - `INVALID_CONFIG`: Configuration validation errors
 - `INVALID_POLICY`: Policy configuration errors
 - `INVALID_TRAFFIC_PATTERN`: Traffic pattern errors
@@ -236,6 +263,7 @@ The simulator supports multiple queueing theory models:
 - `ROLLBACK_FAILED`: Failed to rollback policy change
 
 ### Response Format
+
 ```json
 {
     "error": "Error message",
@@ -248,6 +276,7 @@ The simulator supports multiple queueing theory models:
 ## Limitations and Assumptions
 
 ### Model Limitations
+
 - Does not account for cold starts or warmup time
 - Simplified failure model
 - No modeling of Redis network latency
@@ -255,17 +284,20 @@ The simulator supports multiple queueing theory models:
 - Memory and CPU estimates are approximations
 
 ### Accuracy
+
 - ±20% for steady-state metrics under normal conditions
 - Best for relative comparison of policies
 - Not recommended for precise absolute predictions
 
 ### Recommended Use Cases
+
 - Steady-state analysis
 - Relative comparison of policies
 - Capacity planning
 - Performance optimization
 
 ### Not Recommended For
+
 - Precise absolute predictions
 - Modeling of rare failure modes
 - Cold start performance analysis
@@ -288,6 +320,7 @@ The simulator supports multiple queueing theory models:
 ## Example Usage
 
 ### Basic Simulation
+
 ```bash
 curl -X POST http://localhost:8080/api/policy-simulator/simulations \
   -H "Content-Type: application/json" \
@@ -312,6 +345,7 @@ curl -X POST http://localhost:8080/api/policy-simulator/simulations \
 ```
 
 ### Policy Change Workflow
+
 ```bash
 # Create policy change
 curl -X POST http://localhost:8080/api/policy-simulator/changes \

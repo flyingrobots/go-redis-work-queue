@@ -16,16 +16,21 @@ Just like responsive web design, this TUI adapts to terminal size with defined b
 ## Design Philosophy
 
 ### 1. Information Density Gradients
+
 Information complexity scales with available space - more room means more detail, less room means focused essentials.
 
 ### 2. Progressive Enhancement
+
 Features are layered based on terminal capabilities and space:
+
 - Base: Core functionality works everywhere
 - Enhanced: Rich visuals for capable terminals
 - Premium: Advanced features for desktop-class terminals
 
 ### 3. Gesture-First Navigation
+
 Mouse, keyboard, and (future) voice commands all feel natural:
+
 - Click/tap for selection
 - Swipe gestures in mobile mode
 - Keyboard shortcuts scale with available space
@@ -34,6 +39,7 @@ Mouse, keyboard, and (future) voice commands all feel natural:
 ## Launch & First‑Run UX
 
 ### Goals
+
 - Zero‑friction start, safe by default, instant value within 10 seconds.
 - Predictable CLI surface with config discovery and a friendly first‑run wizard.
 - Clear failure states with actionable recovery paths (no dead ends).
@@ -43,6 +49,7 @@ Mouse, keyboard, and (future) voice commands all feel natural:
 Binary: `tui` (current) or alias `rq tui` later if unified CLI arrives.
 
 Flags (superset; all optional):
+
 - `--config PATH` override config file path (default discovery below)
 - `--redis-url REDIS_URL` quick connect (`redis://[:pass@]host:port/db`)
 - `--cluster NAME` named cluster from config
@@ -56,6 +63,7 @@ Flags (superset; all optional):
 - `--no-mouse` disable mouse handling (tmux/workarounds)
 
 Subcommands (optional but recommended):
+
 - `tui init` — interactive config bootstrap (writes discovered/defaults)
 - `tui doctor` — connectivity + permission checks with diagnostics
 - `tui demo` — launch in demo mode with seeded data (safe, local)
@@ -63,10 +71,12 @@ Subcommands (optional but recommended):
 - `tui version` — print version/build info
 
 Environment mapping (read at startup):
+
 - `GRQ_CONFIG`, `GRQ_REDIS_URL`, `GRQ_CLUSTER`, `GRQ_NAMESPACE`, `GRQ_READ_ONLY`
 - `GRQ_METRICS_ADDR`, `GRQ_LOG_LEVEL`, `GRQ_THEME`, `GRQ_FPS`
 
 ### Config Discovery (precedence high → low)
+
 1) Flag `--config`
 2) Env `GRQ_CONFIG`
 3) XDG: `~/.config/go-redis-work-queue/config.yaml` (or `~/.config/grq/config.yaml`)
@@ -74,10 +84,12 @@ Environment mapping (read at startup):
 5) Built‑in defaults (localhost, db 0, namespace `rq`)
 
 If a path is found but invalid, show a modal with:
+
 - Error summary + first offending line/field
 - Options: `[o] Open file`, `[r] Retry`, `[d] Use defaults`, `[q] Quit`
 
 ### First‑Run Flow (no config, no flags)
+
 1) Terminal probe: detect size → select breakpoint; print compact welcome.
 2) Show full‑screen Welcome overlay:
    - "Quick Connect" (input Redis URL, optional auth, test connection)
@@ -87,6 +99,7 @@ If a path is found but invalid, show a modal with:
 4) Default to Read‑only ON with clear toggle; dangerous ops gated behind confirm.
 
 ### Launch Sequence (happy path)
+
 0) Parse flags/env → resolve config → start logger
 1) Start metrics server on `:9090`; if busy, fall back to random free port and show hint in status bar
 2) Render skeleton UI immediately (tab bar, empty tables, placeholders)
@@ -95,30 +108,36 @@ If a path is found but invalid, show a modal with:
 5) Fade out overlay → live polling begins; frame‑gated updates for smoothness
 
 ### Error & Offline States
+
 - Redis unreachable: modal with last error, `Retry (r)`, `Edit (e)`, `Demo (d)`, `Quit (q)`
 - Auth failure: prompt re‑entry; support `redis://user:pass@host:port/db`
 - Network flaps: degrade to reduced polling; show toast, do not exit
 - Channel permissions (ACL) missing: label features as unavailable; link to docs
 
 ### Demo Mode (instant value)
+
 - Seeds queues, workers, and DLQ samples via existing `Bench` helpers
 - Read‑only hard‑enforced; purge/requeue disabled
 - Clearly labeled headers and accent color so it’s unmistakable
 
 ### Persistence
+
 - UI state file under XDG data dir: active tab, split ratio, filters, theme, last cluster
 - Last good config path and redis URL cached (never secrets in plain text; prefer URL without password or store OS‑keychain ref)
 
 ### Safety Guardrails
+
 - Global Read‑only toggle (visible in status bar)
 - Destructive actions require confirm modal with explicit target summary
 - `--read-only` flag overrides any persisted writable state
 
 ### Accessibility & Help at Launch
+
 - First run auto‑opens compact Help overlay with keybindings relevant to current breakpoint
 - Help includes numeric tab shortcuts (1‑4), filter (`/`), peek (`p`/Enter), bench (`b`), DLQ purge (`D`), help (`?`/`esc`)
 
 ### Doctor Command Checklist
+
 - DNS/host reachability, TCP connect, TLS/mTLS if configured
 - Redis `PING`, role (master/replica), db index, latency sample
 - ACL check for needed commands (LLEN, XRANGE, HGETALL, etc.)
@@ -126,6 +145,7 @@ If a path is found but invalid, show a modal with:
 - Report and exit code suitable for CI
 
 ### Cross‑Platform Notes
+
 - Respect `NO_COLOR`; degrade gracefully on Windows/WT without truecolor
 - tmux: advise `set -g allow-passthrough` if mouse issues; `--no-mouse` escape hatch
 - WSL/SSH detection: default to 30fps if terminal reports slow writes
@@ -185,9 +205,11 @@ graph TB
 ## Breakpoint System
 
 ### Mobile Mode (≤40 cols)
+
 ![Mobile Layout](images/mobile-layout.svg)
 
 **Design Principles:**
+
 - Single column, card-based UI
 - Swipe navigation between sections
 - Essential information only
@@ -195,36 +217,43 @@ graph TB
 - Collapsible sections with expand/collapse
 
 **Features:**
+
 - Queue overview cards
 - Worker status summary
 - Critical DLQ alerts only
 - Voice command prominent (accessibility)
 
 ### Tablet Mode (41-80 cols)
+
 ![Tablet Layout](images/tablet-layout.svg)
 
 **Design Principles:**
+
 - Two-column layouts
 - Tabbed navigation
 - Medium information density
 - Mixed mouse/keyboard interaction
 
 **Features:**
+
 - Queue table + basic charts
 - Worker list with status
 - DLQ with actions
 - Simplified settings
 
 ### Desktop Mode (81-120 cols)
+
 ![Desktop Layout](images/desktop-layout.svg)
 
 **Design Principles:**
+
 - Multi-panel dashboard
 - Rich data visualization
 - Full feature access
 - Power user shortcuts
 
 **Features:**
+
 - Full dashboard experience
 - Advanced charts and metrics
 - Complete DLQ remediation
@@ -232,15 +261,18 @@ graph TB
 - Plugin panels
 
 ### Ultrawide Mode (121+ cols)
+
 ![Ultrawide Layout](images/ultrawide-layout.svg)
 
 **Design Principles:**
+
 - Side-by-side multi-view
 - Comparative analysis
 - Mission control feel
 - Professional monitoring
 
 **Features:**
+
 - Multi-cluster comparison
 - Split screen views
 - Advanced analytics
@@ -266,6 +298,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 ![Command Palette](images/command-palette.svg)
 
 **Features:**
+
 - Fuzzy search all actions
 - Context-aware suggestions
 - Keyboard shortcuts shown
@@ -275,6 +308,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 ## Feature Integration
 
 ### Time Travel Debugger
+
 ![Time Travel Interface](images/time-travel-debugger.svg)
 
 **Mobile:** Timeline scrubber, job state viewer
@@ -283,6 +317,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Multi-job comparison view
 
 **Features:**
+
 - Scrub through job execution timeline
 - Step debugging with breakpoints
 - State diff visualization
@@ -290,6 +325,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Share debug sessions via URL
 
 ### Multi-Cluster Control
+
 ![Multi-Cluster Interface](images/multi-cluster.svg)
 
 **Mobile:** Cluster selector + focused view
@@ -298,6 +334,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Full monitoring wall (8+ clusters)
 
 **Features:**
+
 - Unified cluster switching
 - Comparative metrics dashboards
 - Synchronized actions across clusters
@@ -305,6 +342,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Configuration drift detection
 
 ### DLQ Remediation Suite
+
 ![DLQ Remediation](images/dlq-remediation.svg)
 
 **Mobile:** Essential failure info + quick actions
@@ -313,6 +351,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Pattern analysis + automated remediation
 
 **Features:**
+
 - Failure pattern recognition
 - Bulk requeue with preview
 - Payload editing and validation
@@ -320,6 +359,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Failure trend analysis
 
 ### Visual DAG Builder
+
 ![DAG Builder](images/dag-builder.svg)
 
 **Mobile:** Linear workflow view (steps as cards)
@@ -328,6 +368,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Split design + execution view
 
 **Features:**
+
 - Drag-and-drop workflow creation
 - Visual dependency management
 - Real-time execution visualization
@@ -335,6 +376,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Version control integration
 
 ### Plugin System
+
 ![Plugin Interface](images/plugin-system.svg)
 
 **Mobile:** Plugin cards with basic info
@@ -343,6 +385,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Multi-plugin dashboard + metrics
 
 **Features:**
+
 - Hot-loadable plugins (Go, WASM, Lua)
 - Plugin marketplace integration
 - Custom panel creation
@@ -350,6 +393,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Sandboxed execution environment
 
 ### Worker Fleet Management
+
 ![Worker Fleet](images/worker-fleet.svg)
 
 **Mobile:** Worker health summary + alerts
@@ -358,6 +402,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Ultrawide:** Multi-environment fleet view
 
 **Features:**
+
 - Real-time worker health monitoring
 - Graceful drain and deployment
 - Auto-scaling recommendations
@@ -367,9 +412,11 @@ Accessible via `Ctrl+P` or voice command "Command":
 ## Advanced UX Features
 
 ### Gesture System
+
 ![Gesture System](images/gesture-system.svg)
 
 **Touch-inspired terminal interactions:**
+
 - Two-finger scroll for fine navigation
 - Pinch-to-zoom for data density
 - Long-press for context menus
@@ -377,9 +424,11 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Double-tap for focus mode
 
 ### Voice Command Integration
+
 ![Voice Commands](images/voice-commands.svg)
 
 **Natural language processing for accessibility:**
+
 - "Show queue health"
 - "Drain worker 3"
 - "Requeue failed jobs from last hour"
@@ -389,9 +438,11 @@ Accessible via `Ctrl+P` or voice command "Command":
 **Multilingual support and offline processing**
 
 ### Theme Playground
+
 ![Theme System](images/theme-system.svg)
 
 **Adaptive theming system:**
+
 - Auto dark/light based on terminal
 - High contrast mode for accessibility
 - Color blindness friendly palettes
@@ -399,9 +450,11 @@ Accessible via `Ctrl+P` or voice command "Command":
 - Per-breakpoint theme variants
 
 ### Smart Notifications
+
 ![Notification System](images/notification-system.svg)
 
 **Progressive notification levels:**
+
 - Terminal title updates
 - Status bar alerts
 - Modal dialogs for critical issues
@@ -411,6 +464,7 @@ Accessible via `Ctrl+P` or voice command "Command":
 ## Performance Architecture
 
 ### Rendering Pipeline
+
 ```mermaid
 graph LR
     Data[Data Layer] --> Cache[Smart Cache]
@@ -430,12 +484,14 @@ graph LR
 ```
 
 ### Adaptive Polling
+
 - **Mobile:** 10-second intervals, minimal data
 - **Tablet:** 5-second intervals, moderate data
 - **Desktop:** 2-second intervals, full data
 - **Ultrawide:** 1-second intervals, streaming data
 
 ### Memory Management
+
 - **Circular buffers** for time series data
 - **LRU caches** for frequently accessed information
 - **Lazy loading** for expensive operations
@@ -444,6 +500,7 @@ graph LR
 ## Security Model
 
 ### Authentication Tiers
+
 ```mermaid
 graph TD
     User[User] --> Auth{Authentication}
@@ -463,6 +520,7 @@ graph TD
 ```
 
 ### RBAC Integration
+
 - **Read-only** users: View all, change nothing
 - **Operator** users: Standard operations, no destructive actions
 - **Admin** users: Full access including dangerous operations
@@ -471,17 +529,20 @@ graph TD
 ## Testing Strategy
 
 ### Visual Regression Testing
+
 - **Screenshot diffs** for each breakpoint
 - **ASCII art comparison** for layout validation
 - **Color accuracy** testing across terminal types
 
 ### Interaction Testing
+
 - **Gesture simulation** for mobile mode
 - **Keyboard navigation** validation
 - **Mouse interaction** accuracy testing
 - **Voice command** recognition testing
 
 ### Performance Testing
+
 - **Frame rate** measurements at each breakpoint
 - **Memory usage** profiling under load
 - **Network efficiency** for remote operations
@@ -490,30 +551,35 @@ graph TD
 ## Migration Strategy
 
 ### Phase 1: Foundation (Month 1)
+
 - [ ] Implement responsive layout engine
 - [ ] Create breakpoint system
 - [ ] Build adaptive navigation
 - [ ] Add basic gesture support
 
 ### Phase 2: Core Features (Month 2)
+
 - [ ] Time Travel Debugger (MVP)
 - [ ] Enhanced DLQ Remediation
 - [ ] Multi-cluster foundation
 - [ ] Plugin system architecture
 
 ### Phase 3: Advanced UX (Month 3)
+
 - [ ] Visual DAG Builder
 - [ ] Voice command integration
 - [ ] Theme playground
 - [ ] Advanced gestures
 
 ### Phase 4: Enterprise Features (Month 4)
+
 - [ ] RBAC implementation
 - [ ] Audit logging
 - [ ] Performance monitoring
 - [ ] Security hardening
 
 ### Phase 5: Ecosystem (Month 5-6)
+
 - [ ] Plugin marketplace
 - [ ] Advanced analytics
 - [ ] Multi-tenant support
@@ -522,18 +588,21 @@ graph TD
 ## Success Metrics
 
 ### User Experience
+
 - **Time to insight**: How quickly users find key information
 - **Navigation efficiency**: Clicks/keystrokes to complete tasks
 - **Error recovery**: Time to resolve issues using TUI
 - **User satisfaction**: Net Promoter Score from terminal users
 
 ### Technical Performance
+
 - **Frame rate**: Consistent 60fps across all breakpoints
 - **Memory usage**: <100MB baseline, <500MB peak
 - **Network efficiency**: <10KB/s for normal operations
 - **Battery life**: Minimal impact on laptop battery
 
 ### Feature Adoption
+
 - **Voice commands**: 30% of users try within first week
 - **Time travel**: 60% of debugging sessions use time travel
 - **Multi-cluster**: 80% of enterprise users use comparison features
@@ -542,18 +611,21 @@ graph TD
 ## Implementation Roadmap
 
 ### Technical Foundation
+
 1. **Responsive Layout System**: Breakpoint-aware component rendering
 2. **Gesture Engine**: Touch-inspired terminal interactions
 3. **Performance Pipeline**: 60fps rendering with smart caching
 4. **Plugin Architecture**: Hot-loadable extension system
 
 ### User Experience
+
 1. **Progressive Enhancement**: Feature layers based on capabilities
 2. **Accessibility First**: Voice commands, high contrast, screen readers
 3. **Mobile Patterns**: Card layouts, swipe navigation, touch targets
 4. **Power User Tools**: Command palette, keyboard shortcuts, automation
 
 ### Enterprise Integration
+
 1. **Multi-cluster Management**: Unified control across environments
 2. **RBAC & Audit**: Enterprise security and compliance
 3. **Advanced Analytics**: Performance monitoring and capacity planning

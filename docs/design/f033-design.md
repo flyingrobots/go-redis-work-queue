@@ -182,6 +182,7 @@ GET /api/v1/schedules/window
 ```
 
 **Parameters:**
+
 - `from` (required): Start timestamp (ISO 8601)
 - `till` (required): End timestamp (ISO 8601)
 - `queue` (optional): Filter by queue name
@@ -189,6 +190,7 @@ GET /api/v1/schedules/window
 - `granularity` (optional): Time bucket size (hour, day, week)
 
 **Response:**
+
 ```json
 {
   "window": {
@@ -226,12 +228,14 @@ GET /api/v1/schedules/detailed
 ```
 
 **Parameters:**
+
 - `date` (required): Specific date (YYYY-MM-DD)
 - `timezone` (optional): Display timezone
 - `queue` (optional): Filter by queue
 - `limit` (optional): Maximum jobs to return
 
 **Response:**
+
 ```json
 {
   "date": "2025-09-14",
@@ -273,6 +277,7 @@ POST /api/v1/schedules/{job_id}/reschedule
 ```
 
 **Request Body:**
+
 ```json
 {
   "new_time": "2025-09-14T14:30:00Z",
@@ -283,6 +288,7 @@ POST /api/v1/schedules/{job_id}/reschedule
 ```
 
 **Response:**
+
 ```json
 {
   "job_id": "job_12345",
@@ -302,6 +308,7 @@ POST /api/v1/schedules/bulk-reschedule
 ```
 
 **Request Body:**
+
 ```json
 {
   "jobs": [
@@ -328,6 +335,7 @@ POST /api/v1/schedules/rules
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Weekly Maintenance",
@@ -352,6 +360,7 @@ POST /api/v1/schedules/rules
 ```
 
 **Response:**
+
 ```json
 {
   "rule_id": "rule_002",
@@ -377,6 +386,7 @@ POST /api/v1/schedules/rules/{rule_id}/resume
 ```
 
 **Response:**
+
 ```json
 {
   "rule_id": "rule_002",
@@ -397,6 +407,7 @@ GET /api/v1/calendar/config
 ```
 
 **Response:**
+
 ```json
 {
   "default_timezone": "UTC",
@@ -971,16 +982,19 @@ GET /api/v1/calendar/config
 ### Unit Testing
 
 #### Time Calculation Testing
+
 - **Timezone Conversion**: Test various timezone conversions and edge cases
 - **Cron Parsing**: Test cron expression parsing and next run calculations
 - **Density Calculation**: Test heatmap density scoring algorithms
 
 #### Calendar Logic Testing
+
 - **Grid Generation**: Test month/week/day grid layout algorithms
 - **Navigation**: Test keyboard navigation and date jumping logic
 - **Filtering**: Test job filtering by queue, type, and date ranges
 
 #### Security Testing
+
 - **Input Validation**: Test malicious cron expressions and date inputs
 - **Access Control**: Test RBAC enforcement for schedule operations
 - **Rate Limiting**: Test API rate limits and bulk operation controls
@@ -988,11 +1002,13 @@ GET /api/v1/calendar/config
 ### Integration Testing
 
 #### End-to-End Calendar Workflows
+
 - **Complete Calendar Flow**: Test full calendar navigation and job management
 - **Cross-Timezone Operations**: Test scheduling across multiple timezones
 - **Rule Integration**: Test recurring rule creation and execution
 
 #### API Integration Testing
+
 - **Schedule Management**: Test all schedule CRUD operations
 - **Real-time Updates**: Test WebSocket updates for calendar changes
 - **Error Handling**: Test graceful handling of backend failures
@@ -1000,16 +1016,19 @@ GET /api/v1/calendar/config
 ### Performance Testing
 
 #### Load Testing
+
 - **High Schedule Volume**: Test calendar with 10,000+ jobs per day
 - **Concurrent Users**: Test 500+ simultaneous calendar users
 - **Complex Rules**: Test many recurring rules with complex cron patterns
 
 #### Stress Testing
+
 - **Memory Usage**: Test calendar rendering with large datasets
 - **Database Load**: Test ZSET queries under high load
 - **Network Latency**: Test calendar performance with slow network
 
 #### Accuracy Testing
+
 - **Timezone Accuracy**: Validate timezone handling across DST transitions
 - **Cron Accuracy**: Verify recurring rule execution timing
 - **Calendar Navigation**: Test date navigation accuracy
@@ -1019,16 +1038,19 @@ GET /api/v1/calendar/config
 ### Rollout Strategy
 
 #### Phase 1: Basic Calendar View (Week 1-2)
+
 - Deploy month view with basic job visualization
 - Implement schedule window API and basic navigation
 - Add timezone support and basic heatmap rendering
 
 #### Phase 2: Interactive Features (Week 3-4)
+
 - Add job rescheduling with confirmation dialogs
 - Implement week and day views with detailed timelines
 - Add keyboard navigation and accessibility features
 
 #### Phase 3: Advanced Management (Week 5-6)
+
 - Deploy recurring rule CRUD operations
 - Add bulk operations and advanced filtering
 - Implement real-time updates and performance optimizations
@@ -1036,6 +1058,7 @@ GET /api/v1/calendar/config
 ### Configuration Management
 
 #### Default Configuration
+
 ```yaml
 calendar:
   enabled: true
@@ -1055,12 +1078,14 @@ calendar:
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 - **Calendar Load Times**: Track P95/P99 calendar rendering performance
 - **Schedule Query Performance**: Monitor database query response times
 - **User Engagement**: Track calendar view usage and feature adoption
 - **Error Rates**: Monitor reschedule failures and timezone errors
 
 #### Alert Conditions
+
 - Calendar load time >1 second consistently
 - Schedule query failure rate >5%
 - High memory usage in calendar rendering
@@ -1069,11 +1094,13 @@ calendar:
 ### Rollback Plan
 
 #### Graceful Degradation
+
 - Disable calendar view while maintaining schedule management
 - Fall back to text-based schedule listing
 - Maintain core scheduling functionality if calendar fails
 
 #### Emergency Procedures
+
 - Immediate disable of calendar features via feature flag
 - Rollback to previous schedule management interface
 - Manual override controls for critical scheduling operations

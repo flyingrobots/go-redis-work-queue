@@ -5,6 +5,7 @@
 The Forecasting system transforms reactive queue management into proactive capacity planning by applying time-series analysis to queue metrics. It provides operators with predictive insights about future load, enabling preventive scaling actions and informed maintenance scheduling. The system combines statistical rigor with operator-friendly visualizations, turning complex mathematical models into clear, actionable recommendations.
 
 This design delivers three core capabilities:
+
 1. **Predictive Analytics**: Forecast backlog, throughput, and error trends using EWMA, Holt-Winters, and optional ARIMA models
 2. **Actionable Recommendations**: Translate statistical forecasts into specific operator guidance with timing and confidence levels
 3. **TUI Integration**: Overlay forecast bands on existing charts with dedicated recommendations panel
@@ -159,12 +160,14 @@ GET /api/v1/forecasting/queues/{queue_name}/forecast
 ```
 
 **Parameters:**
+
 - `queue_name` (required): Queue identifier
 - `horizon` (optional): Forecast horizon in minutes (default: 120)
 - `model` (optional): Model type (ewma, holt-winters, arima)
 - `confidence` (optional): Confidence level (default: 0.95)
 
 **Response:**
+
 ```json
 {
   "queue_name": "high-priority",
@@ -193,11 +196,13 @@ GET /api/v1/forecasting/recommendations
 ```
 
 **Parameters:**
+
 - `priority` (optional): Filter by priority (critical, high, medium, low)
 - `category` (optional): Filter by category (scaling, slo, maintenance)
 - `time_horizon` (optional): Recommendations for next N minutes
 
 **Response:**
+
 ```json
 {
   "recommendations": [
@@ -237,6 +242,7 @@ PUT /api/v1/forecasting/models/{model_name}/config
 ```
 
 **Request Body:**
+
 ```json
 {
   "model_type": "holt-winters",
@@ -454,11 +460,13 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Unit Testing
 
 #### Model Testing
+
 - **EWMA Model**: Test smoothing parameter edge cases, forecast accuracy
 - **Holt-Winters**: Test seasonal decomposition, parameter optimization
 - **ARIMA**: Test model fitting, forecast generation, error handling
 
 #### Component Testing
+
 - **Data Collector**: Mock time series data, validate preprocessing
 - **Recommendation Engine**: Test threshold logic, priority assignment
 - **Cache Layer**: Test TTL behavior, memory limits, eviction policies
@@ -466,11 +474,13 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Integration Testing
 
 #### End-to-End Workflows
+
 - **Forecast Generation**: Complete pipeline from metrics to recommendations
 - **Model Switching**: Graceful fallback when models fail
 - **TUI Integration**: Forecast display and user interaction
 
 #### API Testing
+
 - **REST Endpoints**: All API endpoints with various parameter combinations
 - **Error Handling**: Invalid inputs, service unavailable scenarios
 - **Rate Limiting**: Verify limits and proper error responses
@@ -478,11 +488,13 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Performance Testing
 
 #### Load Testing
+
 - **Concurrent Forecasts**: 100+ simultaneous forecast requests
 - **Model Training**: Large historical datasets (10K+ points)
 - **Memory Usage**: Extended operation without memory leaks
 
 #### Stress Testing
+
 - **Resource Exhaustion**: Behavior under CPU/memory pressure
 - **Model Complexity**: ARIMA models with large parameter spaces
 - **Data Volume**: High-frequency time series (1 point/second)
@@ -490,11 +502,13 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Accuracy Testing
 
 #### Model Validation
+
 - **Historical Backtesting**: Test against known historical data
 - **Cross-Validation**: Time series split validation
 - **Benchmark Comparison**: Compare against naive forecasts
 
 #### Recommendation Testing
+
 - **Threshold Sensitivity**: Validate recommendation triggers
 - **False Positive Rate**: Measure unnecessary alerts
 - **User Acceptance**: Track recommendation follow-through rates
@@ -504,16 +518,19 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Rollout Strategy
 
 #### Phase 1: Basic EWMA (Week 1-2)
+
 - Deploy EWMA model with basic TUI integration
 - Monitor performance and accuracy metrics
 - Gather user feedback on recommendation usefulness
 
 #### Phase 2: Advanced Models (Week 3-4)
+
 - Add Holt-Winters seasonal forecasting
 - Implement confidence bands and uncertainty quantification
 - Enhanced recommendation engine with SLO budget tracking
 
 #### Phase 3: Production Optimization (Week 5-6)
+
 - Performance tuning and cache optimization
 - Advanced alerting and model health monitoring
 - Optional ARIMA integration for power users
@@ -521,12 +538,14 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 - **Model Accuracy**: Track RMSE, MAE, MAPE over time
 - **Prediction Latency**: P95/P99 forecast generation times
 - **Recommendation Acceptance**: User follow-through on suggestions
 - **System Health**: Memory usage, CPU utilization, error rates
 
 #### Alert Conditions
+
 - Model accuracy degradation (RMSE increase >20%)
 - Forecast generation failures
 - API response time >500ms consistently
@@ -535,11 +554,13 @@ POST /api/v1/forecasting/models/{model_name}/reset
 ### Rollback Plan
 
 #### Graceful Degradation
+
 - Disable forecasting while maintaining basic monitoring
 - Fallback to simple moving averages if models fail
 - Maintain historical data for quick re-enablement
 
 #### Emergency Procedures
+
 - Circuit breaker for model computation
 - Immediate fallback to cached forecasts
 - Manual override controls for critical situations

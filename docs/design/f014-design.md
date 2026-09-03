@@ -203,6 +203,7 @@ DELETE /api/v1/webhooks/subscriptions/{id}
 ```
 
 **Create Subscription Request:**
+
 ```json
 {
   "name": "Payment Notifications",
@@ -227,6 +228,7 @@ POST /api/v1/webhooks/subscriptions/{id}/test
 ```
 
 **Test Request:**
+
 ```json
 {
   "event_type": "job_failed",
@@ -256,6 +258,7 @@ GET /api/v1/webhooks/subscriptions/{id}/metrics
 ```
 
 **Metrics Response:**
+
 ```json
 {
   "subscription_id": "sub_abc123",
@@ -672,6 +675,7 @@ X-Webhook-Delivery: uuid-delivery-id
 ```
 
 **Verification Process:**
+
 ```go
 func VerifyWebhook(payload []byte, signature, secret string, timestamp int64) bool {
     // 1. Check timestamp freshness (prevent replay attacks)
@@ -850,6 +854,7 @@ func (hd *HTTPDeliverer) getClient(url string) *http.Client {
 ### Unit Testing
 
 #### Event Bus Testing
+
 ```go
 func TestEventBus_Emit(t *testing.T) {
     tests := []struct {
@@ -879,6 +884,7 @@ func TestEventBus_Emit(t *testing.T) {
 ```
 
 #### HMAC Signature Testing
+
 ```go
 func TestHMACSignature_Verification(t *testing.T) {
     secret := "test-secret"
@@ -903,6 +909,7 @@ func TestHMACSignature_Verification(t *testing.T) {
 ### Integration Testing
 
 #### Webhook Delivery Testing
+
 ```go
 func TestWebhookDelivery_Integration(t *testing.T) {
     // Setup mock webhook endpoint
@@ -953,6 +960,7 @@ func TestWebhookDelivery_Integration(t *testing.T) {
 ### Load Testing
 
 #### Performance Benchmarks
+
 ```go
 func BenchmarkEventBus_Emit(b *testing.B) {
     bus := NewEventBus()
@@ -986,6 +994,7 @@ func BenchmarkWebhookDelivery_Concurrent(b *testing.B) {
 ### Security Testing
 
 #### HMAC Security Tests
+
 ```go
 func TestWebhookSecurity_ReplayAttack(t *testing.T) {
     // Capture legitimate webhook
@@ -1018,24 +1027,28 @@ func TestWebhookSecurity_SignatureTampering(t *testing.T) {
 ### Rollout Strategy
 
 #### Phase 1: Core Infrastructure (Week 1-2)
+
 - Deploy event bus with basic webhook support
 - Implement HMAC signing and verification
 - Set up basic subscription management
 - Deploy metrics collection
 
 #### Phase 2: Reliability Features (Week 3)
+
 - Implement retry logic with exponential backoff
 - Deploy Dead Letter Hook (DLH) system
 - Add rate limiting and circuit breakers
 - Implement subscription health monitoring
 
 #### Phase 3: Advanced Features (Week 4)
+
 - Add NATS transport support
 - Implement deep link generation
 - Deploy TUI management interface
 - Add bulk operations for DLH management
 
 #### Phase 4: Production Optimization (Week 5)
+
 - Performance tuning and optimization
 - Security hardening and penetration testing
 - Documentation and training materials
@@ -1151,12 +1164,14 @@ alerts:
 ### Migration Strategy
 
 #### Backward Compatibility
+
 - All existing job processing continues unchanged
 - Event emission is additive - no impact on current functionality
 - Optional feature activation via configuration
 - Graceful degradation when event system is disabled
 
 #### Zero-Downtime Deployment
+
 1. Deploy event infrastructure in passive mode
 2. Enable event emission with minimal subscriptions
 3. Gradually migrate existing polling-based integrations
@@ -1199,17 +1214,20 @@ alerts:
 ### Risk Assessment & Mitigation
 
 **LOW RISK**:
+
 - Well-defined API contracts with comprehensive error handling
 - Gradual rollout strategy with feature flags and phased deployment
 - Extensive test coverage across all system components
 
 **MEDIUM RISK**:
+
 - External dependency on webhook endpoints → **Mitigated by circuit breakers and DLH**
 - Performance impact on job processing → **Mitigated by async event bus and connection pooling**
 
 ### Implementation Readiness
 
 The design is **READY FOR IMPLEMENTATION** with the following foundation:
+
 - Complete technical specifications with no gaps
 - Clear implementation phases with risk mitigation
 - Comprehensive testing and monitoring strategies

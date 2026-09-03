@@ -119,6 +119,7 @@ graph TB
 The event capture system records every meaningful state transition during job execution without impacting performance.
 
 **Capture Strategy**:
+
 - Automatic capture for all failed jobs (retained 7 days)
 - Random 1% sampling of successful jobs
 - On-demand recording for specific jobs or queues
@@ -239,11 +240,13 @@ func (r *ReplayEngine) StepForward() (*Event, error) {
 The TUI provides an intuitive interface for navigating through execution history.
 
 **Three-Panel Layout**:
+
 - **Event Timeline** (25% width): Chronological list of state transitions
 - **State Viewer** (35% width): Complete state at selected timeline position
 - **Diff Panel** (40% width): Shows what changed from previous state
 
 **Playback Controls**:
+
 - Timeline scrubber with visual activity representation
 - Transport controls (play, pause, step, seek)
 - Speed control (0.25x to 10x playback speed)
@@ -293,11 +296,13 @@ sequenceDiagram
 #### Event Storage Strategy
 
 **Redis Streams for Hot Data**:
+
 - Recent events (last 24 hours) stored in Redis Streams
 - Enables real-time access and efficient range queries
 - Automatic expiration and memory management
 
 **Compressed Archive for Cold Data**:
+
 - Events older than 24 hours compressed with zstd
 - Stored in local filesystem or cloud storage
 - 8:1 average compression ratio reduces storage costs
@@ -321,16 +326,19 @@ type ArchiveStore interface {
 #### Retention Policies
 
 **Time-Based Retention**:
+
 - Failed jobs: 7 days in hot storage, 90 days in archive
 - Successful jobs: 24 hours in hot storage, 30 days in archive
 - Critical jobs: 30 days in hot storage, 1 year in archive
 
 **Importance-Based Retention**:
+
 - Jobs with high business impact retained longer
 - Configurable importance scoring based on queue, user, or custom tags
 - Manual preservation for training and reference cases
 
 **Storage Optimization**:
+
 - Delta compression between similar job executions
 - Deduplication of identical payloads and states
 - Automatic pruning based on storage pressure and access patterns
@@ -423,11 +431,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Information Disclosure
 
 **Attack Scenarios**:
+
 - Developer exports recording containing customer PII for debugging
 - Malicious insider accesses recordings with payment information
 - Misconfigured access controls expose sensitive job data
 
 **Mitigations**:
+
 - **Automatic Data Redaction**: AI-powered detection and masking of sensitive patterns
 - **Field-Level Controls**: Configure specific fields to exclude from recording
 - **Payload Sampling**: Store only sanitized excerpts for sensitive queues
@@ -444,11 +454,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Elevation of Privilege, Information Disclosure
 
 **Attack Scenarios**:
+
 - Credential compromise allows access to debug recordings
 - Session hijacking during active replay sessions
 - Privilege escalation to access restricted recordings
 
 **Mitigations**:
+
 - **Multi-Factor Authentication**: Require MFA for accessing sensitive recordings
 - **Session Management**: Automatic session timeout and secure session tokens
 - **Role-Based Access**: Granular permissions based on user roles and data sensitivity
@@ -465,11 +477,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Tampering, Repudiation
 
 **Attack Scenarios**:
+
 - Insider modifies recordings to hide malicious activity
 - Storage system compromise leads to data corruption
 - Replay engine manipulation shows false execution history
 
 **Mitigations**:
+
 - **Cryptographic Signatures**: SHA-256 checksums for all events and snapshots
 - **Immutable Storage**: Write-once storage with integrity verification
 - **Chain of Custody**: Tamper-evident logging of all data modifications
@@ -486,11 +500,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Information Disclosure
 
 **Attack Scenarios**:
+
 - Bulk export of recordings containing sensitive business data
 - Automated scripts harvest debugging information
 - Insider threat using export features for competitive intelligence
 
 **Mitigations**:
+
 - **Export Quotas**: Rate limiting and volume restrictions per user
 - **Approval Workflows**: Required approvals for sensitive data exports
 - **Watermarking**: Embed user identification in exported data
@@ -507,11 +523,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Denial of Service
 
 **Attack Scenarios**:
+
 - Multiple concurrent replay sessions exhaust memory
 - Complex state reconstruction operations consume CPU
 - Large recording exports overwhelm storage bandwidth
 
 **Mitigations**:
+
 - **Resource Quotas**: Per-user limits on concurrent sessions and memory usage
 - **Circuit Breakers**: Automatic session termination when limits exceeded
 - **Priority Queuing**: Critical users get priority during resource contention
@@ -528,11 +546,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Tampering, Information Disclosure, Elevation of Privilege
 
 **Attack Scenarios**:
+
 - Redis compromise exposes hot storage data
 - Cloud storage misconfiguration allows unauthorized access
 - Storage encryption keys compromised
 
 **Mitigations**:
+
 - **Encryption at Rest**: AES-256 encryption for all stored recordings
 - **Key Management**: Secure key rotation and hardware security modules
 - **Network Segmentation**: Isolated storage networks with minimal access
@@ -549,11 +569,13 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 **STRIDE Categories**: Tampering, Elevation of Privilege
 
 **Attack Scenarios**:
+
 - SQL injection in job metadata compromises storage queries
 - XSS in payload data affects TUI rendering
 - Code injection through serialized objects in recordings
 
 **Mitigations**:
+
 - **Input Sanitization**: Strict validation and encoding of all captured data
 - **Parameterized Queries**: Prevent SQL injection in storage operations
 - **Safe Serialization**: Use safe serialization formats for complex objects
@@ -568,18 +590,21 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 #### Preventive Controls
 
 **Authentication and Authorization**:
+
 - SAML/OIDC integration with enterprise identity providers
 - Role-based access control with principle of least privilege
 - Multi-factor authentication for sensitive recording access
 - API key management for programmatic access
 
 **Data Protection**:
+
 - Automatic PII detection and redaction using ML models
 - Field-level encryption for highly sensitive data
 - Data loss prevention (DLP) integration
 - Geographic data residency controls
 
 **Input Validation**:
+
 - Comprehensive validation of all captured event data
 - Sanitization of user inputs in TUI and API
 - Safe deserialization practices for complex objects
@@ -588,18 +613,21 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 #### Detective Controls
 
 **Security Monitoring**:
+
 - Real-time monitoring of access patterns and anomalies
 - Automated alerting on suspicious export activities
 - User behavior analytics for insider threat detection
 - Integration with SIEM systems for correlation
 
 **Audit and Compliance**:
+
 - Immutable audit logs for all system activities
 - Compliance reporting for regulatory requirements (GDPR, HIPAA)
 - Regular access reviews and permission audits
 - Data retention compliance tracking
 
 **Integrity Monitoring**:
+
 - Continuous integrity verification of stored recordings
 - File integrity monitoring for system components
 - Cryptographic verification of data chains
@@ -608,12 +636,14 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 #### Responsive Controls
 
 **Incident Response**:
+
 - Automated data breach detection and notification
 - Emergency access revocation capabilities
 - Forensic data collection for security incidents
 - Coordinated response procedures with security team
 
 **Data Recovery**:
+
 - Secure backup and restore procedures
 - Point-in-time recovery for corrupted recordings
 - Disaster recovery with geographic redundancy
@@ -624,12 +654,14 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 #### Data Protection Regulations
 
 **GDPR Compliance**:
+
 - Right to access: Users can request their recorded data
 - Right to erasure: Ability to delete recordings containing personal data
 - Data minimization: Capture only necessary debugging information
 - Purpose limitation: Use recordings only for debugging and analysis
 
 **Industry Standards**:
+
 - SOC 2 Type II compliance for data handling procedures
 - ISO 27001 alignment for information security management
 - PCI DSS compliance for systems handling payment data
@@ -638,12 +670,14 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 #### Data Classification and Handling
 
 **Sensitivity Levels**:
+
 - **Public**: Non-sensitive debugging data, anonymized metrics
 - **Internal**: Business logic and operational data
 - **Confidential**: Customer data and proprietary algorithms
 - **Restricted**: Payment information, authentication credentials
 
 **Handling Requirements**:
+
 - Automatic classification based on payload content analysis
 - Differential retention policies based on sensitivity level
 - Enhanced access controls for higher sensitivity classifications
@@ -652,18 +686,21 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 ### Implementation Roadmap
 
 #### Phase 1: Foundation Security (Weeks 1-2)
+
 - Implement basic data redaction and sanitization
 - Deploy encryption at rest with secure key management
 - Create role-based access control framework
 - Establish audit logging infrastructure
 
 #### Phase 2: Advanced Protections (Weeks 3-4)
+
 - Deploy ML-based PII detection and classification
 - Implement export controls and approval workflows
 - Add integrity monitoring and tamper detection
 - Create security monitoring and alerting systems
 
 #### Phase 3: Compliance and Integration (Weeks 5-6)
+
 - Complete GDPR and regulatory compliance features
 - Integrate with enterprise security infrastructure
 - Implement advanced threat detection capabilities
@@ -672,12 +709,14 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 ### Security Metrics and Monitoring
 
 **Security Posture Indicators**:
+
 - Data exposure incidents per month (target: 0)
 - Unauthorized access attempts detected and blocked
 - Time to detect security violations (target: <1 minute)
 - Compliance audit findings (target: 0 critical findings)
 
 **Operational Security Metrics**:
+
 - Percentage of recordings with sensitive data properly redacted
 - Average time for security incident response
 - User access review completion rate
@@ -686,24 +725,28 @@ The Time Travel Debugger captures and stores comprehensive execution data, creat
 ## Deployment Plan
 
 ### Phase 1: Core Recording Infrastructure (Weeks 1-2)
+
 - Implement event capture system with Redis Streams storage
 - Create basic state snapshotting with compression
 - Build fundamental retention and archival mechanisms
 - Deploy monitoring and alerting for capture performance
 
 ### Phase 2: Replay Engine Development (Weeks 3-4)
+
 - Implement timeline reconstruction algorithms
 - Create state rebuilding and diff calculation
 - Build breakpoint and filtering systems
 - Add export and sharing capabilities
 
 ### Phase 3: TUI Integration (Weeks 5-6)
+
 - Design and implement three-panel timeline interface
 - Create playback controls and navigation
 - Add diff visualization and comparison tools
 - Integrate with existing TUI framework and navigation
 
 ### Phase 4: Advanced Features (Weeks 7-8)
+
 - Implement multi-job comparison capabilities
 - Add pattern detection and analysis tools
 - Create collaborative features and annotation system

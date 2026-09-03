@@ -289,18 +289,21 @@ Common error codes:
 ### cURL Examples
 
 #### Get Statistics
+
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   http://localhost:8080/api/v1/exactly-once/stats
 ```
 
 #### Trigger Outbox Publishing
+
 ```bash
 curl -X POST -H "Authorization: Bearer ${API_TOKEN}" \
   http://localhost:8080/api/v1/exactly-once/outbox/publish
 ```
 
 #### Update Configuration
+
 ```bash
 curl -X PUT -H "Authorization: Bearer ${API_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -309,6 +312,7 @@ curl -X PUT -H "Authorization: Bearer ${API_TOKEN}" \
 ```
 
 #### Health Check
+
 ```bash
 curl -H "Authorization: Bearer ${API_TOKEN}" \
   http://localhost:8080/api/v1/exactly-once/health

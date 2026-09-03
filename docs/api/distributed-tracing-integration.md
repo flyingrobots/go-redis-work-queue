@@ -19,17 +19,20 @@ The go-redis-work-queue system provides comprehensive distributed tracing capabi
 ### Instrumented Operations
 
 #### Producer Operations
+
 - `queue.enqueue`: Traces job enqueue operations with queue and priority attributes
 - Automatic trace ID generation or context propagation
 - Queue depth and enqueue latency metrics
 
 #### Worker Operations
+
 - `queue.dequeue`: Traces job dequeue from Redis queues
 - `job.process`: Full processing lifecycle with parent context restoration
 - Retry tracking with backoff timing
 - Dead letter queue operations
 
 #### Admin Operations
+
 - `admin.*`: Instrumented admin operations (stats, peek, purge)
 - Audit trail with trace correlation
 - Destructive operation tracking
@@ -145,6 +148,7 @@ ctx, span := obs.ContextWithJobSpan(ctx, job)
 ### Standard Attributes
 
 All spans include these standard attributes:
+
 - `service.name`: "go-redis-work-queue"
 - `service.version`: Application version
 - `host.name`: Hostname
@@ -153,6 +157,7 @@ All spans include these standard attributes:
 ### Operation-Specific Attributes
 
 #### Enqueue Spans
+
 - `queue.name`: Target queue name
 - `queue.priority`: Job priority (high/low)
 - `queue.operation`: "enqueue"
@@ -161,11 +166,13 @@ All spans include these standard attributes:
 - `job.filesize`: Size in bytes
 
 #### Dequeue Spans
+
 - `queue.name`: Source queue name
 - `queue.operation`: "dequeue"
 - `queue.wait_time_ms`: Time spent waiting
 
 #### Process Spans
+
 - `job.id`: Job identifier
 - `job.filepath`: File path
 - `job.filesize`: File size
@@ -182,14 +189,17 @@ All spans include these standard attributes:
 Spans include events marking significant points in processing:
 
 ### Enqueue Events
+
 - `enqueueing_job`: Before enqueue
 - `job_enqueued`: After successful enqueue
 
 ### Dequeue Events
+
 - `job_dequeuing`: Attempting dequeue
 - `job_dequeued`: Successfully dequeued
 
 ### Processing Events
+
 - `job.processing.started`: Processing begins
 - `job.processing.completed`: Successful completion
 - `job.processing.failed`: Processing failure
@@ -248,29 +258,37 @@ observability:
 ## Sampling Strategies
 
 ### Always Sample
+
 ```yaml
 sampling_strategy: "always"
 ```
+
 Samples every trace. Use only in development.
 
 ### Never Sample
+
 ```yaml
 sampling_strategy: "never"
 ```
+
 Disables sampling. Useful for testing without overhead.
 
 ### Probabilistic Sampling
+
 ```yaml
 sampling_strategy: "probabilistic"
 sampling_rate: 0.01  # 1% sampling
 ```
+
 Random sampling based on trace ID.
 
 ### Adaptive Sampling
+
 ```yaml
 sampling_strategy: "adaptive"
 sampling_rate: 0.001  # 0.1% baseline
 ```
+
 Adjusts sampling based on traffic patterns and errors.
 
 ## TUI Integration
@@ -368,6 +386,7 @@ The TUI provides these actions for each traced job:
 ### Sensitive Data Redaction
 
 When `redact_sensitive` is enabled:
+
 - File paths are anonymized
 - Personal identifiers are removed
 - Credentials are never logged
@@ -397,6 +416,7 @@ observability:
 ## Performance Impact
 
 Typical overhead with 1% sampling:
+
 - CPU: < 1% increase
 - Memory: ~10MB for tracer
 - Network: ~1KB per sampled trace
@@ -407,6 +427,7 @@ Typical overhead with 1% sampling:
 ### No Traces Appearing
 
 1. Check tracing is enabled:
+
    ```yaml
    observability:
      tracing:
@@ -414,11 +435,13 @@ Typical overhead with 1% sampling:
    ```
 
 2. Verify endpoint connectivity:
+
    ```bash
    telnet localhost 4317
    ```
 
 3. Check sampling rate isn't 0:
+
    ```yaml
    sampling_rate: 0.01  # At least 1%
    ```
@@ -426,6 +449,7 @@ Typical overhead with 1% sampling:
 ### Missing Trace Context
 
 Ensure jobs have trace IDs:
+
 ```go
 log.Info("Job trace info",
   zap.String("trace_id", job.TraceID),
@@ -435,6 +459,7 @@ log.Info("Job trace info",
 ### High Memory Usage
 
 Reduce batch size:
+
 ```yaml
 max_export_batch_size: 128  # Smaller batches
 batch_timeout: 1s  # More frequent exports
@@ -442,7 +467,7 @@ batch_timeout: 1s  # More frequent exports
 
 ## Example Trace Flow
 
-```
+```text
 [Browser/CLI] → [Producer] → [Redis] → [Worker] → [Complete]
      |             |           |          |           |
   TraceID:123   SpanID:456     |     SpanID:789   SpanID:abc

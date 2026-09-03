@@ -15,7 +15,7 @@ The Multi-Cluster Control module provides a unified interface for managing multi
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Multi-Cluster Manager                      │
 ├─────────────────────────────────────────────────────────────┤
@@ -87,13 +87,15 @@ The Multi-Cluster Control module provides a unified interface for managing multi
 ### Cluster Management
 
 #### List Clusters
-```
+
+```text
 GET /api/v1/clusters
 ```
 
 Returns all configured clusters.
 
 **Response:**
+
 ```json
 [
   {
@@ -107,11 +109,13 @@ Returns all configured clusters.
 ```
 
 #### Add Cluster
-```
+
+```text
 POST /api/v1/clusters
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "new-cluster",
@@ -125,21 +129,24 @@ POST /api/v1/clusters
 ```
 
 #### Get Cluster
-```
+
+```text
 GET /api/v1/clusters/{name}
 ```
 
 Returns details for a specific cluster including connection status.
 
 #### Update Cluster
-```
+
+```text
 PUT /api/v1/clusters/{name}
 ```
 
 Updates cluster configuration.
 
 #### Delete Cluster
-```
+
+```text
 DELETE /api/v1/clusters/{name}
 ```
 
@@ -148,13 +155,15 @@ Removes a cluster from configuration.
 ### Statistics & Monitoring
 
 #### Get Stats
-```
+
+```text
 GET /api/v1/stats?cluster={name}
 ```
 
 Returns statistics for a specific cluster or all clusters if no name provided.
 
 **Response:**
+
 ```json
 {
   "cluster_name": "production",
@@ -172,11 +181,13 @@ Returns statistics for a specific cluster or all clusters if no name provided.
 ```
 
 #### Compare Clusters
-```
+
+```text
 POST /api/v1/stats/compare
 ```
 
 **Request Body:**
+
 ```json
 {
   "clusters": ["production", "staging"]
@@ -184,6 +195,7 @@ POST /api/v1/stats/compare
 ```
 
 **Response:**
+
 ```json
 {
   "clusters": ["production", "staging"],
@@ -212,13 +224,15 @@ POST /api/v1/stats/compare
 ```
 
 #### Health Check
-```
+
+```text
 GET /api/v1/health?cluster={name}
 ```
 
 Returns health status for a specific cluster or all clusters.
 
 **Response:**
+
 ```json
 {
   "healthy": true,
@@ -235,11 +249,13 @@ Returns health status for a specific cluster or all clusters.
 ### Multi-Cluster Actions
 
 #### Execute Action
-```
+
+```text
 POST /api/v1/actions
 ```
 
 **Request Body:**
+
 ```json
 {
   "type": "purge_dlq",
@@ -255,6 +271,7 @@ POST /api/v1/actions
 ```
 
 **Response:**
+
 ```json
 {
   "id": "action-123456",
@@ -276,18 +293,21 @@ POST /api/v1/actions
 ```
 
 #### Get Action Status
-```
+
+```text
 GET /api/v1/actions/{id}
 ```
 
 Returns the status and results of a specific action.
 
 #### Confirm Action
-```
+
+```text
 POST /api/v1/actions/{id}/confirm
 ```
 
 **Request Body:**
+
 ```json
 {
   "confirmed_by": "admin@example.com"
@@ -295,7 +315,8 @@ POST /api/v1/actions/{id}/confirm
 ```
 
 #### Cancel Action
-```
+
+```text
 POST /api/v1/actions/{id}/cancel
 ```
 
@@ -304,25 +325,29 @@ Cancels a pending action.
 ### Event Streaming
 
 #### Subscribe to Events
-```
+
+```text
 GET /api/v1/events
 ```
 
 Server-Sent Events (SSE) stream of cluster events.
 
 **Event Format:**
-```
+
+```text
 data: {"id":"evt-123","type":"cluster_connected","cluster":"production","message":"Connected to cluster production","timestamp":"2025-01-14T10:30:00Z"}
 ```
 
 ### TUI Support
 
 #### Get Tab Configuration
-```
+
+```text
 GET /api/v1/ui/tabs
 ```
 
 **Response:**
+
 ```json
 {
   "tabs": [
@@ -340,11 +365,13 @@ GET /api/v1/ui/tabs
 ```
 
 #### Set Compare Mode
-```
+
+```text
 PUT /api/v1/ui/compare
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
@@ -425,6 +452,7 @@ The module provides structured error types for different scenarios:
 - `ConnectionError`: Connection-related errors
 
 Errors are classified by severity:
+
 - **Critical**: System cannot continue (e.g., no enabled clusters)
 - **Error**: Operation failed but system continues
 - **Warning**: Degraded functionality (e.g., cluster disconnected)

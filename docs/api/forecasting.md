@@ -131,6 +131,7 @@ func (fe *ForecastingEngine) UpdateMetrics(metrics *QueueMetrics) error
 Updates the engine with new metric observations.
 
 **Example:**
+
 ```go
 metrics := &forecasting.QueueMetrics{
     Timestamp:     time.Now(),
@@ -156,6 +157,7 @@ func (fe *ForecastingEngine) GetForecasts(horizonMinutes int) (map[MetricType]*F
 Generates forecasts for the specified time horizon.
 
 **Example:**
+
 ```go
 forecasts, err := engine.GetForecasts(120) // 2-hour forecast
 
@@ -174,6 +176,7 @@ func (fe *ForecastingEngine) GetRecommendations() []Recommendation
 Returns current recommendations based on latest forecasts.
 
 **Example:**
+
 ```go
 recs := engine.GetRecommendations()
 
@@ -201,6 +204,7 @@ func (fe *ForecastingEngine) GetHistoricalData(
 Retrieves historical metric data.
 
 **Example:**
+
 ```go
 history := engine.GetHistoricalData(
     forecasting.MetricBacklog,

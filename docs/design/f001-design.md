@@ -86,11 +86,13 @@ flowchart TB
 ### Component Descriptions
 
 #### API Gateway Layer
+
 - **Load Balancer**: Distributes requests across multiple API instances
 - **HTTP Server**: RESTful API on port 8080, handles JSON requests/responses
 - **gRPC Server**: Optional gRPC interface on port 9090 for high-performance clients
 
 #### Middleware Stack
+
 - **Auth Middleware**: Validates bearer tokens, enforces RBAC policies
 - **Rate Limiter**: Prevents abuse with configurable limits per endpoint
 - **Request Logger**: Logs all requests with correlation IDs
@@ -98,6 +100,7 @@ flowchart TB
 - **Metrics Collector**: Tracks latency, errors, and throughput per endpoint
 
 #### Handler Layer
+
 - **Stats Handler**: Queue statistics and system health
 - **Peek Handler**: Non-destructive queue inspection
 - **Purge Handler**: Destructive operations with confirmation
@@ -352,24 +355,28 @@ graph LR
 ### Test Scenarios
 
 #### Unit Tests
+
 - Middleware logic (auth, rate limiting)
 - Request validation
 - Response serialization
 - Error handling
 
 #### Integration Tests
+
 - Database interactions
 - Redis operations
 - Multi-component flows
 - Circuit breaker behavior
 
 #### Security Tests
+
 - Token validation
 - Permission enforcement
 - SQL injection attempts
 - Rate limit enforcement
 
 #### Performance Tests
+
 - Load testing (1000 req/sec)
 - Stress testing (10000 req/sec)
 - Endurance testing (24 hours)

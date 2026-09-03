@@ -58,6 +58,7 @@ type DeduplicationManager interface {
 ### Data Structures
 
 #### Chunk
+
 Represents a deduplicated data chunk:
 
 ```go
@@ -73,6 +74,7 @@ type Chunk struct {
 ```
 
 #### PayloadMap
+
 Represents a deduplicated payload as chunk references:
 
 ```go
@@ -87,6 +89,7 @@ type PayloadMap struct {
 ```
 
 #### ChunkReference
+
 References a chunk within a payload:
 
 ```go
@@ -106,6 +109,7 @@ type ChunkReference struct {
 Deduplicates a job payload into chunk references.
 
 **Request Body:**
+
 ```json
 {
     "job_id": "job_12345",
@@ -114,6 +118,7 @@ Deduplicates a job payload into chunk references.
 ```
 
 **Response:**
+
 ```json
 {
     "job_id": "job_12345",
@@ -145,6 +150,7 @@ Deduplicates a job payload into chunk references.
 Reconstructs original payload from chunk references.
 
 **Request Body:**
+
 ```json
 {
     "payload_map": {
@@ -159,6 +165,7 @@ Reconstructs original payload from chunk references.
 ```
 
 **Response:**
+
 ```json
 {
     "job_id": "job_12345",
@@ -175,6 +182,7 @@ Reconstructs original payload from chunk references.
 Returns comprehensive deduplication statistics.
 
 **Response:**
+
 ```json
 {
     "total_payloads": 15420,
@@ -208,6 +216,7 @@ Returns comprehensive deduplication statistics.
 Returns popular chunks by reference count.
 
 **Response:**
+
 ```json
 {
     "chunks": [
@@ -230,6 +239,7 @@ Returns popular chunks by reference count.
 Deletes a specific chunk (decrements reference count).
 
 **Response:**
+
 ```json
 {
     "hash": "abc123...",
@@ -244,6 +254,7 @@ Deletes a specific chunk (decrements reference count).
 Manually triggers garbage collection.
 
 **Response:**
+
 ```json
 {
     "started": "2025-01-15T10:30:00Z",
@@ -260,6 +271,7 @@ Manually triggers garbage collection.
 Returns system health information.
 
 **Response:**
+
 ```json
 {
     "enabled": true,
@@ -289,6 +301,7 @@ Returns system health information.
 Returns current configuration.
 
 **Response:**
+
 ```json
 {
     "enabled": true,
@@ -329,6 +342,7 @@ Updates system configuration.
 **Request Body:** (Same structure as GET response)
 
 **Response:**
+
 ```json
 {
     "updated": true,

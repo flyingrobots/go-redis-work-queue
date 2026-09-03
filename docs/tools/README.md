@@ -17,15 +17,18 @@ A lightweight static analysis pass (`tools/requestidlint`) keeps HTTP handlers o
 - Overall progress bar also mirrored in `README.md`
 
 Status model (with emoji mapping)
+
 - 📋 Planned → ⏳ In Progress → 🚼 MVP → 🅰️ Alpha → 🅱️ Beta → ✅ V1
 - Definitions are documented near the top of `docs/features-ledger.md`.
 
 Weighted progress (how it’s computed)
+
 - Weight per feature ≈ `1 + log10(KLoC + 10)/3` (min 0.5 if no code path)
 - KLoC is computed from the directories linked in the Code column
 - Progress is a weighted average across features and per-group tables
 
 Updater script
+
 - Path: `scripts/update_progress.py`
 - What it does:
   - Recomputes weighted overall progress and per-group progress
@@ -37,18 +40,21 @@ Updater script
   - The script uses the `<!-- progress:begin --> ... <!-- progress:end -->` markers to replace bars
 
 Local pre-commit hook
+
 - A pre-commit hook runs `update_progress.py` and stages the ledger/README changes
 - Enable once per clone: `make hooks` (sets `core.hooksPath=.githooks`)
 
 CI auto-update
+
 - Workflow: `.github/workflows/update-progress.yml`
 - On merges to `main`, CI runs the updater and commits any changes (skip-ci tagged)
 
 Authoring tips
+
 - Always put valid repo links in the Code column (e.g., `[internal/tui](../internal/tui)`) so KLoC can be computed
 - If a feature needs a manual weight tweak, you can add an HTML comment in the row, e.g. `<!-- weight: 2.0 -->` (optional)
 
-## Extracting CodeRabbit PR Comments and Prompts
+## Extraction CLI Reference
 
 We often want a local, searchable copy of review feedback from CodeRabbit — and specifically the “Prompt for AI Agents” sections.
 
@@ -91,10 +97,12 @@ Create a comprehensive, fill-in-place worksheet from a PR’s CodeRabbit “Prom
 We often want a local, searchable copy of review feedback from CodeRabbit — and specifically the “Prompt for AI Agents” sections.
 
 Script
+
 - Path: `scripts/extract_pr_comments.py`
 - Requirements: `gh` CLI authenticated to GitHub
 
 Examples
+
 - Full comments from a PR by CodeRabbit:
   - `python3 scripts/extract_pr_comments.py --pr 123 --author coderabbit --out docs/audits/coderabbit-pr123-comments.md`
 - Prompts-only extraction (finds “Prompt for AI Agents” blocks):
@@ -103,6 +111,7 @@ Examples
 - `--author` is a substring match (case-insensitive); defaults to `coderabbit`.
 
 What gets extracted
+
 - Issue comments, review comments (inline), and review bodies authored by CodeRabbit
 - Prompts-only mode searches for fenced code following the heading and for inline text near the “Prompt for AI Agents” header
 - Output is chronological, with file/line and direct links to the comments

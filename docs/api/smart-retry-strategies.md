@@ -12,7 +12,7 @@ The system consists of three recommendation layers:
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                Smart Retry Strategies Manager                │
 ├─────────────────────────────────────────────────────────────┤
@@ -34,6 +34,7 @@ The system consists of three recommendation layers:
 ## Core Concepts
 
 ### Attempt History
+
 Each job attempt is recorded with comprehensive metadata:
 
 ```json
@@ -61,6 +62,7 @@ Each job attempt is recorded with comprehensive metadata:
 ```
 
 ### Retry Features
+
 Features extracted for recommendation generation:
 
 ```json
@@ -84,6 +86,7 @@ Features extracted for recommendation generation:
 ```
 
 ### Retry Recommendation
+
 Structured recommendation with confidence and rationale:
 
 ```json
@@ -105,6 +108,7 @@ Structured recommendation with confidence and rationale:
 ### Recommendation Generation
 
 #### Get Retry Recommendation
+
 ```http
 POST /api/v1/retry/recommendation
 Content-Type: application/json
@@ -122,6 +126,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "should_retry": true,
@@ -136,6 +141,7 @@ Content-Type: application/json
 ```
 
 #### Preview Retry Schedule
+
 ```http
 POST /api/v1/retry/preview
 Content-Type: application/json
@@ -151,6 +157,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "job_id": "email_send_preview",
@@ -181,6 +188,7 @@ Content-Type: application/json
 ### Data Collection
 
 #### Record Attempt
+
 ```http
 POST /api/v1/retry/attempt
 Content-Type: application/json
@@ -198,11 +206,13 @@ Content-Type: application/json
 ```
 
 #### Get Statistics
+
 ```http
 GET /api/v1/retry/stats?job_type=email_send&error_class=timeout&window=24h
 ```
 
 **Response:**
+
 ```json
 {
   "job_type": "email_send",
@@ -221,11 +231,13 @@ GET /api/v1/retry/stats?job_type=email_send&error_class=timeout&window=24h
 ### Policy Management
 
 #### List Policies
+
 ```http
 GET /api/v1/retry/policies
 ```
 
 **Response:**
+
 ```json
 {
   "policies": [
@@ -244,6 +256,7 @@ GET /api/v1/retry/policies
 ```
 
 #### Add Policy
+
 ```http
 POST /api/v1/retry/policies
 Content-Type: application/json
@@ -262,6 +275,7 @@ Content-Type: application/json
 ```
 
 #### Remove Policy
+
 ```http
 DELETE /api/v1/retry/policies/custom_timeout
 ```
@@ -269,6 +283,7 @@ DELETE /api/v1/retry/policies/custom_timeout
 ### Model Management
 
 #### Update Bayesian Model
+
 ```http
 POST /api/v1/retry/bayesian/update
 Content-Type: application/json
@@ -280,6 +295,7 @@ Content-Type: application/json
 ```
 
 #### Train ML Model
+
 ```http
 POST /api/v1/retry/ml/train
 Content-Type: application/json
@@ -303,6 +319,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "version": "v1642680000",
@@ -322,6 +339,7 @@ Content-Type: application/json
 ```
 
 #### Deploy ML Model
+
 ```http
 POST /api/v1/retry/ml/deploy
 Content-Type: application/json
@@ -336,6 +354,7 @@ Content-Type: application/json
 ```
 
 #### Rollback ML Model
+
 ```http
 POST /api/v1/retry/ml/rollback
 ```
@@ -343,11 +362,13 @@ POST /api/v1/retry/ml/rollback
 ### Configuration
 
 #### Get Strategy
+
 ```http
 GET /api/v1/retry/strategy
 ```
 
 **Response:**
+
 ```json
 {
   "name": "production",
@@ -374,6 +395,7 @@ GET /api/v1/retry/strategy
 ```
 
 #### Update Guardrails
+
 ```http
 PUT /api/v1/retry/guardrails
 Content-Type: application/json
@@ -393,6 +415,7 @@ Content-Type: application/json
 The system ships with sensible default policies:
 
 ### Rate Limiting Policy
+
 - **Patterns:** `429`, `rate_limit`, `too_many_requests`
 - **Strategy:** Exponential backoff with high jitter
 - **Max Attempts:** 5
@@ -401,6 +424,7 @@ The system ships with sensible default policies:
 - **Jitter:** 25%
 
 ### Service Unavailable Policy
+
 - **Patterns:** `503`, `service_unavailable`, `timeout`
 - **Strategy:** Moderate exponential backoff
 - **Max Attempts:** 3
@@ -409,12 +433,14 @@ The system ships with sensible default policies:
 - **Jitter:** 20%
 
 ### Validation Error Policy
+
 - **Patterns:** `400`, `validation`, `invalid_input`
 - **Strategy:** No retry (fail fast)
 - **Max Attempts:** 1
 - **Stop on Validation:** true
 
 ### Default Fallback Policy
+
 - **Patterns:** (matches all)
 - **Strategy:** Standard exponential backoff
 - **Max Attempts:** 3
@@ -427,14 +453,17 @@ The system ships with sensible default policies:
 The Bayesian recommender uses Beta distributions to model success probability over delay buckets:
 
 ### Delay Buckets
+
 - 0-1s, 1-5s, 5-15s, 15-30s, 30-60s, 1-5m, 5-15m, 15m+
 
 ### Model Updates
+
 - Automatic updates when sufficient new data is available
 - Minimum 10 samples required for initial model
 - Updates triggered after every 20 new samples
 
 ### Confidence Calculation
+
 - Based on sample size and confidence interval width
 - Penalized for insufficient data (< 50 samples)
 - Used to determine recommendation fallback
@@ -442,16 +471,19 @@ The Bayesian recommender uses Beta distributions to model success probability ov
 ## Machine Learning
 
 ### Supported Models
+
 - **Logistic Regression:** Fast, interpretable binary classification
 - **Gradient Boosting:** More complex patterns, higher accuracy
 
 ### Feature Engineering
+
 - Categorical encoding via hash functions
 - Temporal features (time of day, since last failure)
 - System health metrics integration
 - Cross-validation for hyperparameter tuning
 
 ### Deployment Strategy
+
 - **Canary Testing:** Gradual rollout with percentage-based traffic
 - **A/B Testing:** Compare ML vs Bayesian recommendations
 - **Rollback:** Instant rollback to previous model or Bayesian layer
@@ -459,12 +491,14 @@ The Bayesian recommender uses Beta distributions to model success probability ov
 ## Safety Guardrails
 
 ### Hard Limits
+
 - **Max Attempts:** Absolute maximum retry attempts
 - **Max Delay:** Maximum delay between retries
 - **Budget Limits:** Percentage of total processing time for retries
 - **Emergency Stop:** Manual override to disable retries
 
 ### Explainability
+
 - All recommendations include rationale
 - Decision audit trail maintained
 - Feature importance tracking for ML models
@@ -472,6 +506,7 @@ The Bayesian recommender uses Beta distributions to model success probability ov
 ## Integration Examples
 
 ### Go Client
+
 ```go
 package main
 
@@ -528,6 +563,7 @@ func main() {
 ```
 
 ### HTTP Client (JavaScript)
+
 ```javascript
 const retryClient = {
   async getRecommendation(features) {
@@ -579,6 +615,7 @@ if (recommendation.should_retry) {
 ## Configuration
 
 ### Environment Variables
+
 - `RETRY_REDIS_ADDR` - Redis connection address
 - `RETRY_REDIS_PASSWORD` - Redis password
 - `RETRY_ENABLED` - Enable/disable retry strategies
@@ -587,6 +624,7 @@ if (recommendation.should_retry) {
 - `RETRY_BAYESIAN_THRESHOLD` - Minimum confidence for Bayesian recommendations
 
 ### Configuration File Example
+
 ```json
 {
   "enabled": true,
@@ -630,16 +668,19 @@ if (recommendation.should_retry) {
 ## Monitoring & Observability
 
 ### Health Check
+
 ```http
 GET /api/v1/retry/health
 ```
 
 ### Metrics Endpoint
+
 ```http
 GET /api/v1/retry/metrics
 ```
 
 ### Key Metrics
+
 - Recommendation accuracy
 - Model performance (accuracy, F1 score)
 - Cache hit rates
@@ -661,6 +702,7 @@ All API endpoints return structured error responses:
 ```
 
 ### Error Categories
+
 - **Configuration Errors** (400): Invalid config or parameters
 - **Model Errors** (404/500): Model not found or training failed
 - **Data Errors** (500): Storage or retrieval failures

@@ -18,6 +18,7 @@ The DLQ Remediation Pipeline transforms dead letter queue management from reacti
 This design addresses the critical operational pain point where DLQs become graveyards of failed jobs that require manual archaeology. By capturing institutional knowledge as executable rules, the pipeline reduces Mean Time To Recovery (MTTR) from hours to seconds for common failure patterns.
 
 ### Key Benefits
+
 - **Automated Recovery**: 90%+ of common failures resolved without human intervention
 - **Reduced Toil**: SRE time savings of 15-20 hours per week on DLQ management
 - **Institutional Memory**: Failure patterns captured as reusable remediation rules
@@ -220,6 +221,7 @@ Complete data model definitions are available in [F029 JSON Schema](../schemas/f
 ### Core Entities
 
 #### RemediationRule
+
 ```go
 type RemediationRule struct {
     ID           string                 `json:"id" db:"id"`
@@ -239,6 +241,7 @@ type RemediationRule struct {
 ```
 
 #### ClassificationResult
+
 ```go
 type ClassificationResult struct {
     JobID        string    `json:"job_id"`
@@ -252,6 +255,7 @@ type ClassificationResult struct {
 ```
 
 #### RemediationAction
+
 ```go
 type RemediationAction struct {
     Type       ActionType             `json:"type"`
@@ -273,6 +277,7 @@ const (
 ```
 
 #### SafetyConfig
+
 ```go
 type SafetyConfig struct {
     MaxPerMinute         int           `json:"max_per_minute"`
@@ -293,6 +298,7 @@ type CircuitConfig struct {
 ### Database Schema
 
 #### Rules Table
+
 ```sql
 CREATE TABLE remediation_rules (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -320,6 +326,7 @@ CREATE INDEX idx_rules_enabled ON remediation_rules(enabled) WHERE enabled = tru
 ```
 
 #### Audit Log Table
+
 ```sql
 CREATE TABLE remediation_audit (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -348,18 +355,21 @@ CREATE INDEX idx_audit_success ON remediation_audit(success, timestamp);
 ### Threat Model
 
 #### Assets Protected
+
 1. **DLQ Jobs**: Failed job data containing potentially sensitive payloads
 2. **Remediation Rules**: Business logic defining automated recovery patterns
 3. **Audit Logs**: Historical record of all remediation actions
 4. **Pipeline Configuration**: System settings and security parameters
 
 #### Threat Actors
+
 - **External Attackers**: Seeking to access or corrupt job data
 - **Malicious Insiders**: Attempting to exfiltrate sensitive information
 - **Compromised Services**: Internal services with elevated access
 - **Misconfigured Rules**: Automation causing unintended data exposure
 
 #### Attack Vectors
+
 - **Rule Injection**: Malicious transformation scripts in remediation rules
 - **PII Exfiltration**: Using redaction rules to expose sensitive data
 - **Resource Exhaustion**: Overwhelming pipeline with excessive rate limits
@@ -368,6 +378,7 @@ CREATE INDEX idx_audit_success ON remediation_audit(success, timestamp);
 ### Security Controls
 
 #### Authentication & Authorization
+
 ```go
 type SecurityContext struct {
     UserID      string   `json:"user_id"`
@@ -394,18 +405,21 @@ const (
 ```
 
 #### Input Validation & Sanitization
+
 - **Rule Validation**: Schema validation for all rule components
 - **Script Sandboxing**: JavaScript execution in isolated V8 context
 - **JSON Path Validation**: Whitelist approved field access patterns
 - **Rate Limit Validation**: Enforce maximum safe processing rates
 
 #### Data Protection
+
 - **Field Encryption**: Sensitive fields encrypted at rest using AES-256
 - **PII Detection**: Automatic detection and protection of personally identifiable information
 - **Audit Immutability**: Audit logs written to append-only storage
 - **Secure Defaults**: Conservative safety limits applied to all rules
 
 #### Network Security
+
 - **TLS Encryption**: All API communication over HTTPS/TLS 1.3
 - **Certificate Pinning**: External classifier hooks validated with certificate pinning
 - **Network Isolation**: Pipeline runs in isolated network segment
@@ -414,12 +428,14 @@ const (
 ### Compliance Considerations
 
 #### Data Residency
+
 - **Regional Processing**: Jobs processed in same geographic region as source
 - **Data Classification**: Automatic tagging based on payload analysis
 - **Retention Policies**: Configurable data retention with automatic purging
 - **Cross-Border Controls**: Prevention of data transfer across jurisdictions
 
 #### Privacy Protection
+
 - **GDPR Compliance**: Right to erasure and data portability support
 - **PII Minimization**: Automatic redaction of unnecessary personal data
 - **Consent Tracking**: Audit trail includes data processing consent status
@@ -448,18 +464,21 @@ const (
 ### Resource Utilization
 
 #### CPU Usage
+
 - **Baseline**: 10-20% CPU utilization during normal operation
 - **Peak Processing**: 60-80% CPU during batch remediation
 - **Classification**: Pattern matching is CPU-intensive
 - **Transformation**: JSON manipulation requires significant CPU
 
 #### Memory Usage
+
 - **Base Memory**: 100MB for pipeline infrastructure
 - **Per Rule**: 5MB average memory per active rule
 - **Batch Buffer**: 50MB for job batch processing
 - **Classification Cache**: 25MB for pattern matching cache
 
 #### Network Bandwidth
+
 - **Internal Traffic**: 10-50 Mbps for Redis communication
 - **External Classifier**: 5-20 Mbps for HTTP classification calls
 - **Audit Logging**: 2-10 Mbps for log transmission
@@ -468,6 +487,7 @@ const (
 ### Scalability Architecture
 
 #### Horizontal Scaling
+
 ```go
 type PipelineCluster struct {
     Coordinator *ClusterCoordinator
@@ -482,6 +502,7 @@ type PipelineCluster struct {
 ```
 
 #### Vertical Scaling
+
 - **Dynamic Resource Allocation**: Auto-scaling based on queue depth
 - **Memory Pool Management**: Efficient memory reuse for job processing
 - **Connection Pooling**: Shared connections for external services
@@ -492,12 +513,14 @@ type PipelineCluster struct {
 ### Unit Testing
 
 #### Coverage Targets
+
 - **Core Logic**: 95% line coverage for classification and action execution
 - **Safety Systems**: 100% coverage for rate limiters and circuit breakers
 - **Error Handling**: 90% coverage for all error paths
 - **Configuration**: 85% coverage for rule validation and parsing
 
 #### Test Categories
+
 ```go
 // Pattern Matching Tests
 func TestErrorPatternMatcher(t *testing.T)
@@ -520,6 +543,7 @@ func TestIdempotencyTracker_DuplicateDetection(t *testing.T)
 ### Integration Testing
 
 #### Test Scenarios
+
 1. **End-to-End Remediation**: Complete flow from DLQ job to successful requeue
 2. **External Classifier Integration**: HTTP-based classification with timeout handling
 3. **Multi-Rule Processing**: Complex job matching multiple remediation rules
@@ -527,6 +551,7 @@ func TestIdempotencyTracker_DuplicateDetection(t *testing.T)
 5. **Safety System Integration**: Rate limiting and circuit breaker coordination
 
 #### Test Environment
+
 ```yaml
 integration_environment:
   redis:
@@ -551,12 +576,14 @@ integration_environment:
 ### Performance Testing
 
 #### Load Testing
+
 - **Sustained Load**: 1,000 jobs/minute for 8 hours
 - **Burst Testing**: 5,000 jobs/minute for 15 minutes
 - **Soak Testing**: 500 jobs/minute for 48 hours
 - **Stress Testing**: Gradual load increase until system failure
 
 #### Benchmark Scenarios
+
 ```go
 func BenchmarkClassificationEngine(b *testing.B) {
     // Classification performance across different pattern types
@@ -574,12 +601,14 @@ func BenchmarkEndToEndProcessing(b *testing.B) {
 ### Security Testing
 
 #### Vulnerability Assessment
+
 - **Rule Injection**: Attempt to inject malicious code in transformation scripts
 - **Authentication Bypass**: Test JWT validation and session management
 - **Authorization Escalation**: Verify role-based access controls
 - **Data Leakage**: Ensure PII protection in logs and audit trails
 
 #### Penetration Testing
+
 - **API Security**: Automated security scanning of all REST endpoints
 - **Infrastructure**: Network security and container escape testing
 - **Data Protection**: Encryption validation and key management testing
@@ -590,6 +619,7 @@ func BenchmarkEndToEndProcessing(b *testing.B) {
 ### Infrastructure Requirements
 
 #### Production Environment
+
 ```yaml
 infrastructure:
   compute:
@@ -620,6 +650,7 @@ infrastructure:
 ```
 
 #### Monitoring Stack
+
 ```yaml
 monitoring:
   metrics:
@@ -646,6 +677,7 @@ monitoring:
 ### Deployment Strategy
 
 #### Blue-Green Deployment
+
 1. **Pre-Deployment**: Validate new version in staging environment
 2. **Green Deployment**: Deploy new version to inactive environment
 3. **Health Checks**: Comprehensive validation of green environment
@@ -653,6 +685,7 @@ monitoring:
 5. **Blue Retirement**: Decommission old version after successful migration
 
 #### Feature Flags
+
 ```go
 type FeatureFlags struct {
     EnableExternalClassifier bool `json:"enable_external_classifier"`
@@ -666,12 +699,14 @@ type FeatureFlags struct {
 ### Migration Strategy
 
 #### Data Migration
+
 - **Rule Import**: Bulk import of existing manual remediation procedures
 - **Audit History**: Migration of historical DLQ processing logs
 - **Configuration**: Transfer of existing queue and worker configurations
 - **Rollback Plan**: Complete rollback capability with data preservation
 
 #### Gradual Rollout
+
 1. **Phase 1**: Dry-run mode only, no actual job processing
 2. **Phase 2**: Process 10% of DLQ jobs with simple requeue rules
 3. **Phase 3**: Increase to 50% with transform and redact actions
@@ -681,12 +716,14 @@ type FeatureFlags struct {
 ### Operational Procedures
 
 #### Standard Operating Procedures
+
 - **Pipeline Start/Stop**: Safe startup and shutdown procedures
 - **Rule Deployment**: Testing and validation before rule activation
 - **Emergency Response**: Incident response for pipeline failures
 - **Capacity Planning**: Scaling procedures for increased load
 
 #### Monitoring & Alerting
+
 - **SLA Monitoring**: Real-time tracking of performance targets
 - **Error Rate Alerts**: Immediate notification of classification failures
 - **Safety Threshold Alerts**: Early warning for approaching rate limits
@@ -727,18 +764,21 @@ type FeatureFlags struct {
 ### Key Performance Indicators
 
 #### Operational Metrics
+
 - **DLQ Processing Rate**: Jobs processed per minute
 - **Success Rate**: Percentage of jobs successfully remediated
 - **MTTR Reduction**: Decrease in mean time to recovery
 - **SRE Time Savings**: Reduction in manual DLQ management hours
 
 #### Business Metrics
+
 - **Customer Satisfaction**: Reduced impact from failed job processing
 - **Cost Reduction**: Operational efficiency improvements
 - **System Reliability**: Overall queue processing uptime
 - **Developer Productivity**: Reduced time spent on job debugging
 
 #### Quality Metrics
+
 - **Classification Accuracy**: Percentage of correctly classified jobs
 - **False Positive Rate**: Jobs incorrectly processed by rules
 - **Audit Compliance**: Complete audit trail coverage
@@ -747,6 +787,7 @@ type FeatureFlags struct {
 ### Acceptance Criteria
 
 #### Functional Requirements
+
 - ✅ **Rule-Based Classification**: Pattern matching with 95% accuracy
 - ✅ **Action Execution**: All five action types implemented and tested
 - ✅ **Safety Systems**: Rate limiting and circuit breakers operational
@@ -754,6 +795,7 @@ type FeatureFlags struct {
 - ✅ **Dry-Run Mode**: Safe testing of rules before deployment
 
 #### Non-Functional Requirements
+
 - ✅ **Performance**: 1,000 jobs/minute processing capacity
 - ✅ **Availability**: 99.9% uptime with graceful degradation
 - ✅ **Security**: End-to-end encryption and access controls

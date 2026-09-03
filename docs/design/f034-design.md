@@ -5,6 +5,7 @@
 The Collaborative Session feature enables real-time sharing of TUI sessions over the network, allowing a presenter to invite read-only observers or temporarily grant control to participants. This system addresses critical operational needs for incident response, training, and collaborative debugging by providing a secure, low-latency alternative to traditional screen sharing.
 
 **Key Benefits:**
+
 - Instant incident response coordination without video call overhead
 - Crisp terminal rendering preserving exact visual fidelity
 - Secure token-based authentication with automatic expiry
@@ -12,6 +13,7 @@ The Collaborative Session feature enables real-time sharing of TUI sessions over
 - Built-in redaction of sensitive information
 
 **Core Components:**
+
 - Session multiplexing server with WebSocket/SSH transport
 - Frame differential encoding for bandwidth optimization
 - Token-based authentication with role-based permissions
@@ -77,24 +79,28 @@ graph TB
 ### Component Responsibilities
 
 #### Session Manager
+
 - Coordinates frame capture and distribution
 - Manages participant lifecycle (join/leave/handoff)
 - Maintains session state and metadata
 - Handles network reconnection and error recovery
 
 #### Frame Capturer
+
 - Efficiently captures terminal output changes
 - Implements differential encoding to minimize bandwidth
 - Buffers frames for late-joining observers
 - Applies redaction rules before transmission
 
 #### Auth Manager
+
 - Validates session tokens and participant credentials
 - Enforces role-based access controls
 - Manages token expiration and renewal
 - Provides audit logging for security events
 
 #### Multiplexer
+
 - Distributes frame updates to all connected observers
 - Routes control input from active presenter
 - Manages bandwidth throttling and QoS
@@ -206,6 +212,7 @@ graph TB
 ### Session Management Endpoints
 
 #### Create Session
+
 ```http
 POST /api/v1/sessions
 Authorization: Bearer <api-key>
@@ -222,6 +229,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "sessionId": "sess_abc123",
@@ -233,6 +241,7 @@ Content-Type: application/json
 ```
 
 #### Join Session
+
 ```http
 GET /api/v1/sessions/{sessionId}/join?token={observerToken}
 Upgrade: websocket
@@ -240,6 +249,7 @@ Connection: Upgrade
 ```
 
 #### Grant Control
+
 ```http
 POST /api/v1/sessions/{sessionId}/control
 Authorization: Bearer <presenter-token>
@@ -253,6 +263,7 @@ Content-Type: application/json
 ```
 
 #### Revoke Control
+
 ```http
 DELETE /api/v1/sessions/{sessionId}/control
 Authorization: Bearer <presenter-token>
@@ -261,6 +272,7 @@ Authorization: Bearer <presenter-token>
 ### WebSocket Protocol
 
 #### Frame Update Message
+
 ```json
 {
   "type": "frame_update",
@@ -278,6 +290,7 @@ Authorization: Bearer <presenter-token>
 ```
 
 #### Control Grant Message
+
 ```json
 {
   "type": "control_granted",
@@ -289,6 +302,7 @@ Authorization: Bearer <presenter-token>
 ```
 
 #### Input Event Message
+
 ```json
 {
   "type": "input_event",
@@ -305,6 +319,7 @@ Authorization: Bearer <presenter-token>
 ## Data Models
 
 ### Session Model
+
 ```json
 {
   "sessionId": "sess_abc123",
@@ -327,6 +342,7 @@ Authorization: Bearer <presenter-token>
 ```
 
 ### Participant Model
+
 ```json
 {
   "participantId": "part_xyz789",
@@ -346,6 +362,7 @@ Authorization: Bearer <presenter-token>
 ```
 
 ### Frame Model
+
 ```json
 {
   "frameId": "frame_123456",
@@ -369,6 +386,7 @@ Authorization: Bearer <presenter-token>
 ```
 
 ### Token Model
+
 ```json
 {
   "tokenId": "tok_abc123",
@@ -392,16 +410,19 @@ Authorization: Bearer <presenter-token>
 ### Threat Analysis
 
 #### Authentication Threats
+
 - **Token theft/interception**: Mitigated by short-lived tokens (1hr default) and HTTPS-only transmission
 - **Session hijacking**: Prevented by binding tokens to client IP and User-Agent
 - **Replay attacks**: Countered by one-time token usage and sequence numbers
 
 #### Authorization Threats
+
 - **Privilege escalation**: Role-based permissions with explicit grant/revoke flows
 - **Unauthorized control**: Control handoff requires presenter approval and timeout enforcement
 - **Session bombing**: Rate limiting and maximum observer caps
 
 #### Content Security Threats
+
 - **Sensitive data exposure**: Configurable redaction patterns for passwords, tokens, secrets
 - **Frame injection**: Content validation and sanitization before broadcast
 - **Data exfiltration**: Session logging and audit trails for compliance
@@ -454,24 +475,28 @@ redactionRules:
 ## Performance Requirements
 
 ### Latency Requirements
+
 - **Frame propagation**: <50ms from presenter to observers
 - **Control handoff**: <100ms acknowledgment time
 - **Session join**: <200ms from token to first frame
 - **WebSocket reconnection**: <500ms automatic retry
 
 ### Throughput Requirements
+
 - **Concurrent sessions**: 100 active sessions per server instance
 - **Observers per session**: 50 maximum concurrent observers
 - **Frame rate**: 30 fps sustained during high activity
 - **Bandwidth per observer**: <100KB/s average, <500KB/s peak
 
 ### Scalability Targets
+
 - **Horizontal scaling**: Stateless session servers with Redis coordination
 - **Geographic distribution**: Multi-region deployment with <200ms inter-region sync
 - **Auto-scaling**: CPU-based scaling from 2-20 server instances
 - **Session persistence**: 1-hour default expiry, 8-hour maximum
 
 ### Resource Utilization
+
 - **Memory per session**: <10MB for session state and frame buffer
 - **CPU per session**: <5% of single core for frame processing
 - **Network bandwidth**: <1Mbps per session including all observers
@@ -480,24 +505,28 @@ redactionRules:
 ## Testing Strategy
 
 ### Unit Testing
+
 - **Frame differential algorithm**: Verify minimal delta generation
 - **Redaction engine**: Test pattern matching and replacement accuracy
 - **Token validation**: Confirm expiry, revocation, and permission enforcement
 - **Input event routing**: Validate control flow and permission checks
 
 ### Integration Testing
+
 - **Multi-observer scenarios**: Test frame consistency across observers
 - **Network resilience**: Simulate disconnections and reconnections
 - **Control handoff flows**: Verify permission transitions and timeouts
 - **Security boundaries**: Confirm isolation between sessions
 
 ### Performance Testing
+
 - **Load testing**: 100 concurrent sessions with 10 observers each
 - **Latency measurement**: Frame propagation timing under various loads
 - **Memory profiling**: Session state and frame buffer optimization
 - **Bandwidth analysis**: Network utilization patterns and optimization
 
 ### Security Testing
+
 - **Penetration testing**: Attempt unauthorized session access
 - **Token security**: Test token generation, validation, and revocation
 - **Content validation**: Verify redaction effectiveness
@@ -506,12 +535,14 @@ redactionRules:
 ## Deployment Plan
 
 ### Infrastructure Requirements
+
 - **Container runtime**: Docker with Kubernetes orchestration
 - **Load balancer**: NGINX with WebSocket proxy support
 - **Session storage**: Redis cluster for session state persistence
 - **Monitoring**: Prometheus metrics with Grafana dashboards
 
 ### Configuration Management
+
 ```yaml
 sessionService:
   maxConcurrentSessions: 100
@@ -538,6 +569,7 @@ sessionService:
 ```
 
 ### Deployment Steps
+
 1. **Infrastructure provisioning**: Deploy Redis cluster and load balancers
 2. **Service deployment**: Roll out session service containers with health checks
 3. **Client integration**: Update TUI applications with session manager SDK
@@ -545,6 +577,7 @@ sessionService:
 5. **Documentation**: Publish API docs and usage guides
 
 ### Rollback Strategy
+
 - **Blue-green deployment**: Maintain parallel service versions
 - **Session migration**: Graceful handoff of active sessions
 - **Feature flags**: Disable collaborative features without service restart
@@ -553,6 +586,7 @@ sessionService:
 ## Monitoring and Observability
 
 ### Key Metrics
+
 ```yaml
 sessionMetrics:
   - name: "active_sessions_total"
@@ -573,12 +607,14 @@ sessionMetrics:
 ```
 
 ### Alerting Rules
+
 - **High latency**: Frame propagation >100ms for 5 minutes
 - **Session failures**: >5% session creation failures in 10 minutes
 - **Memory usage**: Session service memory >80% for 15 minutes
 - **Security events**: Failed authentication attempts >10/minute
 
 ### Logging Strategy
+
 ```json
 {
   "timestamp": "2024-01-15T15:45:30Z",
@@ -600,6 +636,7 @@ sessionMetrics:
 ## Implementation Interfaces
 
 ### Session Manager Interface
+
 ```go
 type SessionManager interface {
     // Core session lifecycle
@@ -623,6 +660,7 @@ type SessionManager interface {
 ```
 
 ### Frame Capturer Interface
+
 ```go
 type FrameCapturer interface {
     // Frame capture and processing
@@ -637,6 +675,7 @@ type FrameCapturer interface {
 ```
 
 ### Authentication Interface
+
 ```go
 type AuthManager interface {
     // Token management
@@ -653,6 +692,7 @@ type AuthManager interface {
 ```
 
 ### Transport Interface
+
 ```go
 type Transport interface {
     // Connection management

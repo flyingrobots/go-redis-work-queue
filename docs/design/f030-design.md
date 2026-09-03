@@ -1,4 +1,5 @@
 # Patterned Load Generator Design Document
+
 **Feature ID:** F030
 **Version:** 1.0
 **Last Updated:** 2024-01-15
@@ -599,9 +600,11 @@ func (qi *QueueIntegration) MonitorQueueHealth() *QueueHealth {
 ### Core Pattern Management Endpoints
 
 #### POST /api/v1/load-test/patterns/start
+
 Start a patterned load test.
 
 **Request Body:**
+
 ```json
 {
   "pattern": {
@@ -628,6 +631,7 @@ Start a patterned load test.
 ```
 
 **Response:**
+
 ```json
 {
   "test_id": "test_123456",
@@ -642,40 +646,51 @@ Start a patterned load test.
 ```
 
 #### GET /api/v1/load-test/patterns/{testId}/status
+
 Get current test status and metrics.
 
 #### POST /api/v1/load-test/patterns/{testId}/stop
+
 Stop a running load test.
 
 #### GET /api/v1/load-test/patterns/{testId}/metrics
+
 Get detailed test metrics and visualization data.
 
 ### Profile Management Endpoints
 
 #### GET /api/v1/load-test/profiles
+
 List available load test profiles.
 
 #### POST /api/v1/load-test/profiles
+
 Create a new load test profile.
 
 #### GET /api/v1/load-test/profiles/{profileId}
+
 Get profile details.
 
 #### PUT /api/v1/load-test/profiles/{profileId}
+
 Update an existing profile.
 
 #### DELETE /api/v1/load-test/profiles/{profileId}
+
 Delete a profile.
 
 #### POST /api/v1/load-test/profiles/{profileId}/run
+
 Run a load test from a saved profile.
 
 ### Real-time Streaming
 
 #### WebSocket: /api/v1/load-test/stream/{testId}
+
 Real-time updates for pattern execution.
 
 **Message Types:**
+
 - `rate_update`: Current target and actual rates
 - `metrics_update`: System metrics (CPU, memory, queue depth)
 - `violation`: Guardrail violations
@@ -781,6 +796,7 @@ Real-time updates for pattern execution.
 
 **Threat**: Malicious patterns designed to overwhelm system resources
 **Mitigation**:
+
 - Hard-coded maximum rate limits
 - CPU and memory monitoring with automatic shutoff
 - Queue depth monitoring with backpressure
@@ -790,6 +806,7 @@ Real-time updates for pattern execution.
 
 **Threat**: Runaway load tests affecting production systems
 **Mitigation**:
+
 - Mandatory guardrails with no override capability
 - Environment-specific rate limits
 - Automatic emergency stops
@@ -799,6 +816,7 @@ Real-time updates for pattern execution.
 
 **Threat**: Test profiles containing sensitive configuration data
 **Mitigation**:
+
 - Profile encryption at rest
 - Secure profile sharing mechanisms
 - Access control for profile management
@@ -1147,6 +1165,7 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Manual Testing Checklist
 
 #### Pattern Visualization
+
 - [ ] Sine wave pattern displays correctly in charts
 - [ ] Burst pattern shows clear spikes
 - [ ] Ramp pattern shows smooth transitions
@@ -1154,18 +1173,21 @@ func TestHighRatePatternExecution(t *testing.T) {
 - [ ] Charts update in real-time without lag
 
 #### Guardrail Functionality
+
 - [ ] Rate limits are enforced correctly
 - [ ] Emergency stop triggers on violations
 - [ ] Warning thresholds work as expected
 - [ ] System recovers gracefully after limits
 
 #### Profile Management
+
 - [ ] Profiles save and load correctly
 - [ ] Profile list displays all saved profiles
 - [ ] Profile deletion works properly
 - [ ] Profile sharing works across users
 
 #### Error Handling
+
 - [ ] Invalid patterns are rejected with clear messages
 - [ ] Network failures are handled gracefully
 - [ ] System overload triggers appropriate responses
@@ -1176,12 +1198,14 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Phase 1: Core Pattern Engine (Week 1-2)
 
 **Deliverables:**
+
 - Basic pattern generators (sine, burst, ramp)
 - Guardrail system with safety limits
 - Integration with existing bench tool
 - Unit tests for pattern mathematics
 
 **Success Criteria:**
+
 - Patterns generate mathematically correct rates
 - Guardrails prevent system overload
 - Integration works with existing bench infrastructure
@@ -1189,12 +1213,14 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Phase 2: Visualization and UI (Week 3-4)
 
 **Deliverables:**
+
 - Real-time chart visualization
 - WebSocket streaming for live updates
 - CLI interface for pattern control
 - Basic profile save/load functionality
 
 **Success Criteria:**
+
 - Charts display target vs actual rates accurately
 - UI is responsive and intuitive
 - Profiles persist correctly across sessions
@@ -1202,12 +1228,14 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Phase 3: Advanced Features (Week 5-6)
 
 **Deliverables:**
+
 - Custom pattern support
 - Advanced guardrail configurations
 - Profile sharing and import/export
 - Enhanced visualization options
 
 **Success Criteria:**
+
 - Users can create custom traffic patterns
 - Profile management is fully functional
 - Advanced features integrate seamlessly
@@ -1215,12 +1243,14 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Phase 4: Performance and Polish (Week 7-8)
 
 **Deliverables:**
+
 - Performance optimizations
 - Comprehensive testing suite
 - Documentation and examples
 - Production deployment preparation
 
 **Success Criteria:**
+
 - System meets all performance requirements
 - All tests pass consistently
 - Documentation is complete and accurate
@@ -1228,16 +1258,19 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Rollout Strategy
 
 #### Alpha Release (Internal Testing)
+
 - Development team testing with synthetic patterns
 - Performance baseline establishment
 - Integration verification with existing systems
 
 #### Beta Release (Limited Users)
+
 - Controlled rollout to power users
 - Real-world pattern testing
 - Feedback collection and iteration
 
 #### General Availability
+
 - Full feature rollout
 - Complete documentation
 - Training materials and examples
@@ -1245,24 +1278,28 @@ func TestHighRatePatternExecution(t *testing.T) {
 ### Monitoring and Success Metrics
 
 #### Usage Metrics
+
 - Number of pattern tests run per day
 - Most popular pattern types
 - Average test duration
 - Profile creation and sharing rates
 
 #### Performance Metrics
+
 - Pattern generation latency
 - Chart rendering performance
 - WebSocket message delivery times
 - System resource usage during tests
 
 #### Quality Metrics
+
 - Pattern accuracy (target vs actual rates)
 - Guardrail effectiveness
 - Error rates and recovery times
 - User satisfaction scores
 
 #### Success Criteria
+
 - 90% of pattern tests complete successfully
 - < 5% deviation between target and actual rates
 - 100% guardrail effectiveness (no system overloads)

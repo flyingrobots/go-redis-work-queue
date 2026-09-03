@@ -5,6 +5,7 @@ The DLQ Remediation Pipeline provides automated classification and remediation o
 ## Overview
 
 The remediation pipeline automates DLQ cleanup through:
+
 - **Intelligent Classification**: Pattern-based job classification with optional external ML models
 - **Configurable Actions**: Requeue, transform, redact, drop, route, delay, tag, and notify actions
 - **Safety Controls**: Rate limiting, circuit breakers, dry-run mode, and audit trails
@@ -35,6 +36,7 @@ POST /pipeline/start
 ```
 
 **Response:**
+
 ```json
 {
   "status": "started"
@@ -50,6 +52,7 @@ POST /pipeline/stop
 ```
 
 **Response:**
+
 ```json
 {
   "status": "stopped"
@@ -65,6 +68,7 @@ POST /pipeline/pause
 ```
 
 **Response:**
+
 ```json
 {
   "status": "paused"
@@ -80,6 +84,7 @@ POST /pipeline/resume
 ```
 
 **Response:**
+
 ```json
 {
   "status": "resumed"
@@ -95,6 +100,7 @@ GET /pipeline/status
 ```
 
 **Response:**
+
 ```json
 {
   "status": "running",
@@ -121,6 +127,7 @@ GET /pipeline/metrics
 ```
 
 **Response:**
+
 ```json
 {
   "timestamp": "2024-01-15T10:05:30Z",
@@ -156,9 +163,11 @@ POST /pipeline/process-batch
 ```
 
 **Headers:**
+
 - `Idempotency-Key` (string, optional but required for safe retries): repeated values within 24 hours return the original `200` response body without re-executing actions.
 
 **Response:**
+
 ```json
 {
   "started_at": "2024-01-15T10:05:00Z",
@@ -205,10 +214,12 @@ GET /rules?enabled=true&tag=validation
 ```
 
 **Query Parameters:**
+
 - `enabled` (boolean): Filter by enabled status
 - `tag` (string): Filter by tag
 
 **Response:**
+
 ```json
 {
   "rules": [
@@ -308,6 +319,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "status": "created",
@@ -380,6 +392,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "status": "updated"
@@ -395,6 +408,7 @@ DELETE /rules/{ruleID}
 ```
 
 **Response:**
+
 ```json
 {
   "status": "deleted"
@@ -410,6 +424,7 @@ POST /rules/{ruleID}/enable
 ```
 
 **Response:**
+
 ```json
 {
   "status": "enabled"
@@ -425,6 +440,7 @@ POST /rules/{ruleID}/disable
 ```
 
 **Response:**
+
 ```json
 {
   "status": "disabled"
@@ -456,6 +472,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "rule_id": "rule_def456",
@@ -506,6 +523,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "job_id": "job_789",
@@ -545,6 +563,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "classifications": [
@@ -579,6 +598,7 @@ GET /audit?job_id=job_123&start_time=2024-01-15T09:00:00Z&limit=100
 ```
 
 **Query Parameters:**
+
 - `job_id` (string): Filter by job ID
 - `rule_id` (string): Filter by rule ID
 - `action` (string): Filter by action type
@@ -593,6 +613,7 @@ GET /audit?job_id=job_123&start_time=2024-01-15T09:00:00Z&limit=100
 - `sort_order` (string): Sort order (asc/desc)
 
 **Response:**
+
 ```json
 {
   "entries": [
@@ -646,9 +667,11 @@ GET /audit/stats?days=30
 ```
 
 **Query Parameters:**
+
 - `days` (integer): Number of days to analyze (default: 30)
 
 **Response:**
+
 ```json
 {
   "total_entries": 15423,
@@ -678,6 +701,7 @@ GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -727,6 +751,7 @@ All endpoints return standardized error envelopes and emit an `X-Request-ID` hea
 - `internal_error` — unexpected server-side failure; contact support with the `request_id`
 
 **Common HTTP Status Codes:**
+
 - `200 OK` - Successful operation
 - `201 Created` - Resource created successfully
 - `400 Bad Request` - Invalid request format or parameters
@@ -741,11 +766,13 @@ All endpoints return standardized error envelopes and emit an `X-Request-ID` hea
 ## Rate Limiting
 
 API endpoints are rate limited:
+
 - **Standard operations**: 1000 requests per minute
 - **Batch operations**: 100 requests per minute
 - **Rule modifications**: 60 requests per minute
 
 Rate limit headers are included in responses:
+
 - `X-RateLimit-Limit`: Requests allowed per window
 - `X-RateLimit-Remaining`: Remaining requests in the active window for the evaluated limit (per-principal or per-IP)
 - `X-RateLimit-Reset`: Unix timestamp (seconds since epoch) when the evaluated window resets
@@ -758,10 +785,12 @@ Limits are enforced per token (principal) and per source IP simultaneously. The 
 List endpoints support both offset and cursor pagination.
 
 ### Offset pagination
+
 - `limit`: Maximum items per page (default: 50, max: 1000)
 - `offset`: Number of items to skip (default: 0)
 
 Offset responses include:
+
 ```json
 {
   "data": [...],
@@ -802,27 +831,32 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ## Rule Matcher Patterns
 
 ### Error Pattern Matching
+
 - **Regex**: `"validation.*failed|invalid.*format"`
 - **Substring**: `"connection timeout"`
 - **Exact match**: `"user not found"`
 
 ### Numeric Conditions
+
 - **Greater than**: `"> 3"`
 - **Less than**: `"< 5"`
 - **Equal**: `"= 0"` or `"0"`
 - **Range**: `">= 1"`, `"<= 10"`
 
 ### Size Conditions
+
 - **Bytes**: `"> 1024"`, `"< 100"`
 - **KB/MB/GB**: `"> 1MB"`, `"< 500KB"`, `"> 2GB"`
 
 ### Time Patterns
+
 - **Business hours**: `"business_hours"`
 - **Weekends**: `"weekends"`
 - **Nights**: `"nights"`
 - **Peak hours**: `"peak_hours"`
 
 ### Duration Conditions
+
 - **Seconds**: `"> 30s"`, `"< 5s"`
 - **Minutes**: `"> 5m"`, `"< 30m"`
 - **Hours**: `"> 1h"`, `"< 24h"`
@@ -830,6 +864,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ## Action Types and Parameters
 
 ### Requeue Action
+
 ```json
 {
   "type": "requeue",
@@ -843,6 +878,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Transform Action
+
 ```json
 {
   "type": "transform",
@@ -860,6 +896,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Redact Action
+
 ```json
 {
   "type": "redact",
@@ -871,6 +908,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Drop Action
+
 ```json
 {
   "type": "drop",
@@ -882,6 +920,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Route Action
+
 ```json
 {
   "type": "route",
@@ -902,6 +941,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Tag Action
+
 ```json
 {
   "type": "tag",
@@ -916,6 +956,7 @@ Clients should persist the returned `next_cursor` (and `prev_cursor` when presen
 ```
 
 ### Notify Action
+
 ```json
 {
   "type": "notify",
@@ -986,6 +1027,7 @@ Example event payload:
 ```
 
 **Event Types:**
+
 - `pipeline_started` - Pipeline started
 - `pipeline_stopped` - Pipeline stopped
 - `pipeline_paused` - Pipeline paused

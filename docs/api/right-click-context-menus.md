@@ -112,6 +112,7 @@ type BubbleZone struct {
 The system comes with pre-configured actions for each context type:
 
 #### Queue Row Actions
+
 - **Peek Jobs** (p): View jobs in the queue
 - **Enqueue Job** (e): Add a new job to the queue
 - **Purge Queue** (P): Delete all jobs (destructive, requires confirmation)
@@ -119,6 +120,7 @@ The system comes with pre-configured actions for each context type:
 - **Export Sample** (x): Export sample data
 
 #### DLQ Item Actions
+
 - **Requeue Job** (r): Move job back to active queue
 - **Purge from DLQ** (P): Permanently delete job (destructive)
 - **Copy Job ID** (i): Copy job identifier
@@ -126,10 +128,12 @@ The system comes with pre-configured actions for each context type:
 - **Open Trace** (t): Open distributed trace
 
 #### Tab Actions
+
 - **Close Tab** (w): Close the current tab
 - **Duplicate Tab** (d): Create a copy of the tab
 
 #### Chart Actions
+
 - **Export Chart** (x): Export chart data
 - **Configure Chart** (c): Open chart settings
 - **Reset Zoom** (z): Reset chart zoom level

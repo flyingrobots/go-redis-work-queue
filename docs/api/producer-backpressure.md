@@ -92,6 +92,7 @@ type BacklogWindow struct {
 ```
 
 **Default Values:**
+
 - High Priority: Green=1000, Yellow=5000, Red=10000
 - Medium Priority: Green=500, Yellow=2000, Red=5000
 - Low Priority: Green=100, Yellow=500, Red=1000
@@ -111,6 +112,7 @@ type CircuitConfig struct {
 ```
 
 **Default Values:**
+
 - FailureThreshold: 5
 - RecoveryThreshold: 3
 - TripWindow: 30 seconds
@@ -133,6 +135,7 @@ type PollingConfig struct {
 ```
 
 **Default Values:**
+
 - Interval: 5 seconds
 - Jitter: 1 second
 - Timeout: 3 seconds
@@ -249,18 +252,21 @@ err := controller.ProcessBatch(ctx, jobs)
 The system supports three priority levels with different throttling behaviors:
 
 ### HighPriority
+
 - **Use for**: Critical operations (payments, authentication, high-value user actions)
 - **Throttling**: Minimal throttling even under high load
 - **Shedding**: Never shed, always processed
 - **Delay scaling**: 50% of base throttling delay
 
 ### MediumPriority
+
 - **Use for**: Standard operations (notifications, reports, user requests)
 - **Throttling**: Standard throttling based on backlog
 - **Shedding**: Throttled but not shed
 - **Delay scaling**: 100% of base throttling delay
 
 ### LowPriority
+
 - **Use for**: Background operations (analytics, cleanup, bulk processing)
 - **Throttling**: Aggressive throttling under load
 - **Shedding**: Shed when system is overloaded
@@ -271,16 +277,19 @@ The system supports three priority levels with different throttling behaviors:
 The system uses a three-zone throttling algorithm:
 
 ### Green Zone (Healthy)
+
 - **Condition**: Backlog ≤ Green threshold
 - **Action**: No throttling
 - **Delay**: 0ms
 
 ### Yellow Zone (Warning)
+
 - **Condition**: Green < Backlog ≤ Yellow threshold
 - **Action**: Light throttling
 - **Delay**: 10ms to 500ms (linear scaling)
 
 ### Red Zone (Critical)
+
 - **Condition**: Backlog > Yellow threshold
 - **Action**: Heavy throttling/shedding
 - **Delay**: 500ms to 5s (with priority scaling)
@@ -289,14 +298,17 @@ The system uses a three-zone throttling algorithm:
 ## Circuit Breaker States
 
 ### Closed (Normal)
+
 - **Behavior**: All requests allowed
 - **Transition**: Opens after failure threshold reached
 
 ### Open (Blocked)
+
 - **Behavior**: All requests blocked/shed
 - **Transition**: Moves to half-open after recovery timeout
 
 ### Half-Open (Probing)
+
 - **Behavior**: Limited probes allowed
 - **Transition**: Closes on success threshold or opens on failure
 
@@ -424,41 +436,49 @@ cb.Reset()      // Reset to clean state
 ## Performance Characteristics
 
 ### Latency
+
 - **Throttle Decision**: <1ms typical
 - **Cache Hit**: <0.1ms
 - **Cache Miss**: 1-5ms (depending on stats provider)
 
 ### Memory Usage
+
 - **Controller Overhead**: ~50KB base
 - **Per Queue**: ~1KB (circuit breaker + cache entries)
 - **Cache**: ~100 bytes per cached decision
 
 ### CPU Usage
+
 - **Steady State**: <0.1% CPU
 - **High Load**: <1% CPU (with 1000+ RPS)
 
 ### Network
+
 - **Polling**: 1 API call per interval (default: 5s)
 - **Bandwidth**: <1KB per poll
 
 ## Best Practices
 
 ### Configuration
+
 1. **Start Conservative**: Begin with default thresholds and adjust
 2. **Monitor Metrics**: Watch shed rates and compliance
 3. **Environment-Specific**: Different thresholds for prod vs staging
 
 ### Integration
+
 1. **Graceful Degradation**: Handle shed errors appropriately
 2. **Retry Logic**: Implement exponential backoff for retries
 3. **Priority Classification**: Correctly classify job priorities
 
 ### Monitoring
+
 1. **Alert on High Shed Rates**: >10 sheds/minute for critical queues
 2. **Alert on Circuit Trips**: Any circuit breaker opening
 3. **Monitor Compliance**: Producer compliance should be >90%
 
 ### Testing
+
 1. **Load Testing**: Verify behavior under various load conditions
 2. **Failure Testing**: Test circuit breaker behavior
 3. **Integration Testing**: Verify with real queue systems
@@ -491,21 +511,25 @@ config.Thresholds = backpressure.DefaultThresholds()
 ### Common Issues
 
 **High Shed Rates**
+
 - Check if thresholds are too aggressive
 - Verify queue processing capacity
 - Monitor for seasonal traffic patterns
 
 **Circuit Breaker Tripping**
+
 - Investigate underlying queue/worker health
 - Check for configuration issues
 - Verify stats provider connectivity
 
 **Poor Performance**
+
 - Check cache hit rates (should be >80%)
 - Verify polling interval isn't too frequent
 - Monitor stats provider latency
 
 **Unexpected Behavior**
+
 - Verify manual override is disabled
 - Check emergency mode status
 - Validate configuration with `config.Validate()`

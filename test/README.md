@@ -29,6 +29,7 @@ Run it with:
 ## Integration Tests (`test/integration/`)
 
 ### integration/rbac_integration_test.go
+
 - **Scope**: Spins up the Admin API and RBAC stack against `miniredis` to verify role-based permissions, token revocation, and audit logging.
 - **Quality**: High-value cross-package coverage; it depends on both `internal/admin-api` and `internal/rbac-and-tokens`, so keeping it in this shared integration space makes sense.
 - **Run hint**: `go test -tags integration_tests ./test/integration -run '^TestRBACIntegration'`

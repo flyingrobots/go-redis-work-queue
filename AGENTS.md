@@ -1,12 +1,13 @@
 # AGENTS
 
-- Quick notes for working on this repo (Go Redis Work Queue) 
+- Quick notes for working on this repo (Go Redis Work Queue)
 - Things learned / want to remember when iterating fast
 - Activity log
 - Tasklist
 - Ideas
 
 ---
+
 ## Important Information
 
 ### Sections You Must Actively Maintain
@@ -35,10 +36,13 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
+- Markdownlint scans all tracked Markdown with zero findings. Hard line width,
+  adjacent GitHub-admonition blockquotes, and intentional bold lead-ins are the
+  only disabled default style rules.
 
 ### Job Queue
 
-This project is a legit job queue backed by Redis, implemented in Go. The aim is to build a robust, horizontally scalable job system, balancing powerful features against real-world pragmatism, and keep things easy to use and understand. 
+This project is a legit job queue backed by Redis, implemented in Go. The aim is to build a robust, horizontally scalable job system, balancing powerful features against real-world pragmatism, and keep things easy to use and understand.
 
 See the [README.md](./README.md) for more information.
 
@@ -48,20 +52,21 @@ There's a fancy TUI for interacting with and monitoring the job system. The app'
 
 #### TUI stack and structure
 
-  - Bubble Tea + Lip Gloss + Bubbles (`table`, `viewport`, `spinner`, `progress`) and a custom scrim overlay (no external overlay dep now).
-  - Entry point: `cmd/tui/main.go` constructs `internal/tui` model with config + redis + zap logger.
-  - Core TUI files: `internal/tui/{model,init,app,view,commands,overlays}.go`.
-  - Tabs: `internal/tui/tabs.go` renders "Job Queue", "Workers", "Dead Letter", "Settings" with per-tab border colors + mouse switching.
-  - Data polling: periodic `stats` + `keys` via `internal/admin` helpers; charts maintain short time series per queue alias.
+- Bubble Tea + Lip Gloss + Bubbles (`table`, `viewport`, `spinner`, `progress`) and a custom scrim overlay (no external overlay dep now).
+- Entry point: `cmd/tui/main.go` constructs `internal/tui` model with config + redis + zap logger.
+- Core TUI files: `internal/tui/{model,init,app,view,commands,overlays}.go`.
+- Tabs: `internal/tui/tabs.go` renders "Job Queue", "Workers", "Dead Letter", "Settings" with per-tab border colors + mouse switching.
+- Data polling: periodic `stats` + `keys` via `internal/admin` helpers; charts maintain short time series per queue alias.
 
 #### Overlays and input behavior
 
-  - Confirmation modal and Help use a full-screen scrim overlay that centers content and dims background; resilient to any terminal size.
-  - ESC priority:
+- Confirmation modal and Help use a full-screen scrim overlay that centers content and dims background; resilient to any terminal size.
+- ESC priority:
     1) Close confirm modal if open
     2) Exit bench inputs if focused
     3) Clear active filter
     4) Otherwise toggle Help overlay
+
 #### Current tabs
 
 - Job Queue: existing dashboard (Queues table + Charts + Info). Filter (`f`/`/`), peek (`p`/enter), bench (`b` then enter), progress bar.
@@ -71,34 +76,34 @@ There's a fancy TUI for interacting with and monitoring the job system. The app'
 
 #### Keybindings (important)
 
-  - `q`/`ctrl+c`: quit (asks to confirm)
-  - `esc`: help toggle, or exit modal/input as above
-  - `tab`/`shift+tab`: move panel focus (within Job Queue tab)
-  - `j/k`, mouse wheel: scroll
-  - `p`/enter on a queue: peek
-  - `b`: bench form (tab cycles inputs, enter runs)
-  - `f` or `/`: filter queues (fuzzy); `esc` clears
-  - `D` / `A`: confirm purge DLQ / purge ALL
-  - Mouse: click tabs to switch, left-click (Job Queue) peeks selected
+- `q`/`ctrl+c`: quit (asks to confirm)
+- `esc`: help toggle, or exit modal/input as above
+- `tab`/`shift+tab`: move panel focus (within Job Queue tab)
+- `j/k`, mouse wheel: scroll
+- `p`/enter on a queue: peek
+- `b`: bench form (tab cycles inputs, enter runs)
+- `f` or `/`: filter queues (fuzzy); `esc` clears
+- `D` / `A`: confirm purge DLQ / purge ALL
+- Mouse: click tabs to switch, left-click (Job Queue) peeks selected
 
 #### Redis/admin plumbing
 
-  - Uses `internal/admin` for `Stats`, `StatsKeys`, `Peek`, `Bench`, `Purge*`.
-  - Completed progress for bench is polled from `cfg.Worker.CompletedList` (keep in mind large lists can be slow to LLen).
+- Uses `internal/admin` for `Stats`, `StatsKeys`, `Peek`, `Bench`, `Purge*`.
+- Completed progress for bench is polled from `cfg.Worker.CompletedList` (keep in mind large lists can be slow to LLen).
 
 #### Config + run
 
-  - Config path flag: `--config config/config.yaml`, refresh via `--refresh`.
-  - Build: `make build` or `go build -o bin/tui ./cmd/tui`; run `./bin/tui --config config/config.yaml`.
+- Config path flag: `--config config/config.yaml`, refresh via `--refresh`.
+- Build: `make build` or `go build -o bin/tui ./cmd/tui`; run `./bin/tui --config config/config.yaml`.
 
 #### Observability
 
-  - Zap logger; metrics on `:9090/metrics`; liveness `/healthz`, readiness `/readyz`.
+- Zap logger; metrics on `:9090/metrics`; liveness `/healthz`, readiness `/readyz`.
 
 ##### Guardrails
 
-  - Purge actions gated by confirm modal (DLQ / ALL). Don’t run in prod without care.
-  - Bench can generate many jobs fast; prefer test env and lower rates.
+- Purge actions gated by confirm modal (DLQ / ALL). Don’t run in prod without care.
+- Bench can generate many jobs fast; prefer test env and lower rates.
 
 ### Project Status
 
@@ -123,28 +128,31 @@ Near-term TODOs I’m targeting:
 > [!NOTE]
 > Phase II — Green the Tests. Run suites first, capture failures, and feed fixes back into the backlog.
 
-
 (maintain and use this from now on)
 
 Note: Whenever you update this tasklist, please also update the features ledger document at `docs/features-ledger.md`.
 
 Progress automation
+
 - To refresh the overall project progress bars (in the Features Ledger and README) after editing the features table, run: `python3 scripts/update_progress.py` and commit the changes.
 - The script weights features by approximate Go LOC of the linked code paths and recomputes the overall percent, updating both docs in place between `<!-- progress:begin -->` and `<!-- progress:end -->` markers.
 - When adding rows, use valid repo paths in the Code column (e.g., `[internal/admin-api](../internal/admin-api)`) so LOC can be computed. If no code path, the row gets a minimum weight.
 
 Pre-commit hook
+
 - A pre-commit hook runs the progress update script automatically and stages `docs/features-ledger.md` and `README.md` so bars/KLoC stay current.
 - Enable hooks once per clone: `make hooks` (sets `core.hooksPath=.githooks`).
 - Reminder: Whenever you touch `AGENTS.md`, also ensure the features ledger is current (the hook will do this, but run the script manually if needed).
 
-#### Updating Backlog & Features Ledger
+### Updating Backlog & Features Ledger
+
 1. Edit the `Prioritized Backlog` section here in `AGENTS.md` with the new item status/notes.
 2. Mirror the change in `docs/features-ledger.md` (same feature row or add a new one) so both artifacts stay aligned.
 3. Run `python3 scripts/update_progress.py` to refresh the progress bars in `docs/features-ledger.md` and `README.md`.
 4. Review the script output, then stage/commit the updated files together with your backlog changes.
 
 CI auto-update
+
 - On merges to `main`, a GitHub Actions workflow (`.github/workflows/update-progress.yml`) runs the progress updater and commits any changes to the ledger/README automatically.
 - This provides a consistent source of truth even if local hooks are bypassed.
 
@@ -222,8 +230,10 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
 - [x] Tooling: Clear the repository-wide `go vet ./...` baseline
+- [x] Docs: Clear the repository-wide Markdownlint baseline
 
 ### Finished Log
+
 - [x] Rewrite `AGENTS.md` **2025-09-13 07:18** [Link to PR #123](https://github.com/flyingrobots/go-redis-work-queue/pull/123)
 
 - [x] TUI layout revamp (flexbox + animation) **2025-09-13**
@@ -257,8 +267,10 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 Step-by-step task list to build the TUI up to design spec.
 
 - [ ] `TUI001`
+
 > [!NOTE] Launch CLI + Config Discovery
 > Implement flags/env/config bootstrap for smooth first-run.
+>
 > - Add flags in `cmd/tui/main.go`: `--config`, `--redis-url`, `--cluster`, `--namespace`, `--read-only`, `--refresh`, `--metrics-addr`, `--log-level`, `--theme`, `--fps`, `--no-mouse`.
 > - Read env overrides: `GRQ_*` (see docs/design/TUI2-design.md Launch section).
 > - Config discovery precedence: flag > env > XDG (`~/.config/grq/config.yaml`) > `./config/config.yaml` > defaults.
@@ -266,101 +278,130 @@ Step-by-step task list to build the TUI up to design spec.
 > - Persist last-good config path and last cluster (no secrets) under XDG data dir.
 
 - [ ] `TUI002`
+
 > [!NOTE] First‑Run Welcome Overlay
 > Fullscreen scrim with: Quick Connect, Demo Mode, Init Config.
+>
 > - Add `internal/tui/overlays.go` view+model for Welcome; trigger when no config/URL or connection fails.
 > - Inputs: Redis URL (with auth), cluster name, namespace; test button runs a lightweight `PING`.
 > - Actions: `Enter` connect, `d` Demo Mode, `i` Init Config, `esc` to Help.
 > - On success, dismiss and hydrate dashboard; store connection metadata in state.
 
 - [ ] `TUI003`
+
 > [!NOTE] Demo Mode (Seeded, Read‑only)
 > Provide instant value safely.
+>
 > - Add `tui demo` subcommand and Welcome shortcut; seed queues/workers using existing `admin.Bench` with low rate and cap.
 > - Mark UI as read‑only (status bar badge + theme accent); gate destructive ops.
 > - Auto-clean on exit or keep ephemeral keys under `rq:demo:*` namespace.
 
 - [ ] `TUI004`
+
 > [!NOTE] Doctor Subcommand
 > Connectivity and permissions diagnostics for support and CI.
+>
 > - Implement `tui doctor` in `cmd/tui`: DNS/TCP, TLS/mTLS, Redis PING, role (INFO), latency sample.
 > - ACL probe for required commands (LLEN, XRANGE, HGETALL, etc.); print table + exit code.
 > - Optional `--redis-url`/`--cluster`; respect config discovery.
 
 - [ ] `TUI005`
+
 > [!NOTE] Global Read‑only Mode + Guardrails
 > Enforce safe defaults everywhere.
+>
 > - Add `readOnly bool` to `internal/tui/model.go`; render status bar indicator and toggle (if allowed).
 > - Wrap dangerous actions: Purge, Requeue, Enqueue > confirm modal; block when read‑only.
 > - `--read-only` flag overrides persisted state; cannot be disabled from UI.
 
 - [ ] `TUI006`
+
 > [!NOTE] Responsive Breakpoints (Mobile/Tablet/Desktop/Ultrawide)
 > Finish breakpoint-aware layouts using stickers flexbox.
+>
 > - Implement thresholds (≤40, 41–80, 81–120, 121+) in `WindowSizeMsg` handler.
 > - Define per-breakpoint cell grids and hide/reflow panels accordingly.
 > - Adaptive tab bar: bottom (mobile), top (tablet/desktop), sidebar (ultrawide).
 > - Ensure charts/tables clamp to cell inner dims; test very small widths.
 
 - [ ] `TUI007`
+
 > [!NOTE] Precise Mouse Hitboxes (bubblezone)
 > Map clickable regions for tabs, rows, splitters, context menus.
+>
 > - Integrate `github.com/lrstanley/bubblezone` (or maintained fork) in `internal/tui/view.go`.
 > - Register zones for: tab labels, tables rows, charts panel, splitter.
 > - Update `MouseMsg` handling to resolve zone hits deterministically.
 
 - [ ] `TUI008`
+
 > [!NOTE] Table Polish (Threshold Colors, Glyphs, Striping)
 > Improve readability and status signaling in Queues table.
+>
 > - Add thresholds (green/yellow/red) for backlog, latency; centralize in `internal/tui/styles.go`.
 > - Selection glyph and alternating row background; clamp height to cell.
 > - Ensure color accessibility in high-contrast theme.
 
 - [ ] `TUI009`
+
 > [!NOTE] Persist UI State
 > Restore previous session: tab, focus, filters, theme, split ratio.
+>
 > - XDG data file (JSON/YAML) with `activeTab`, `focus`, `filter`, `theme`, `split`, `lastCluster`.
 > - Load at start, save on change (debounced); allow `--no-state` flag to disable.
 
 - [ ] `TUI010`
+
 > [!NOTE] Adjustable Panel Split (Keys + Mouse)
 > User-controlled left/right ratio within bounds.
+>
 > - Keys `[`/`]` adjust ratio; mouse drag on splitter via bubblezone.
 > - Persist split ratio; constrain to 25–75% range; animate with Harmonica.
 
 - [ ] `TUI011`
+
 > [!NOTE] Enqueue Actions (`e`/`E`)
 > Quick enqueue to selected queue from Job Queue tab.
+>
 > - `e` enqueue 1 with default payload; `E` opens inline form for count, payload size, jitter.
 > - Use admin enqueue/bench helper; show toasts on success/failure; respect read‑only.
 
 - [ ] `TUI012`
+
 > [!NOTE] Right‑click Peek on Queues
 > Contextual mouse shortcut for discoverability.
+>
 > - Right‑click selected row to trigger Peek; fallback long‑press on touch terminals.
 > - Reuse existing peek panel; add bubblezone hit region per row.
 
 - [ ] `TUI013`
+
 > [!NOTE] Bench UX Enhancements
 > Cancel, ETA, live throughput, payload size/jitter, concurrency.
+>
 > - Convert bench to non-blocking; ESC cancels (context cancel).
 > - Compute ETA from baseline + current rate; show progress + rate sparkline.
 > - Inputs for payload size, jitter %, concurrency; validate before run.
 
 - [ ] `TUI014`
+
 > [!NOTE] Bench Progress Baseline
 > Avoid overcount when Completed list pre-populated.
+>
 > - On bench start, record `LLEN` of `cfg.Worker.CompletedList` as baseline; subtract from subsequent counts.
 > - Handle overflow/reset; guard against large lists by capping scan.
 
 - [ ] `TUI015` [blocked by Admin: Requeue-from-DLQ]
+
 > [!NOTE] DLQ Tab (List, Peek, Requeue, Purge, Search)
 > Full remediation workflow.
+>
 > - Paginate DLQ items (cursor-based); peek full payload with pretty JSON.
 > - Actions: requeue selected, purge selected, bulk operations with confirm.
 > - Fuzzy search/filter, sort by age/queue; respect read‑only; show counts.
 >
 > Unblockers (Backend API Contract)
+>
 > - Admin function: `admin.DLQList(ctx, ns string, cursor string, limit int) (items []DLQItem, next string, err error)`
 >   - DLQItem: `{ID string, Queue string, Payload []byte, Reason string, Attempts int, FirstSeen time.Time, LastSeen time.Time}`
 >   - Backed by Redis list/stream; stable cursor (opaque string) with upper bound on `limit` (e.g., 200)
@@ -375,12 +416,15 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (DLQList, DLQRequeue, DLQPurge)
 
 - [ ] `TUI016` [blocked by Admin: Workers-list API]
+
 > [!NOTE] Workers Tab (Live View)
 > Worker IDs, last heartbeat, active job/queue; sort/filter.
+>
 > - Admin call for workers list (IDs, timestamps, active item); poll periodically.
 > - Table with status coloring and sort; drill-in to worker details/log tail.
 >
 > Unblockers (Backend API Contract)
+>
 > - Admin function: `admin.Workers(ctx, ns string) ([]WorkerInfo, error)`
 >   - WorkerInfo: `{ID string, LastHeartbeat time.Time, Queue string, JobID string, StartedAt *time.Time, Version string, Host string}`
 >   - Consider TTL (e.g., 15s) to mark workers stale/offline
@@ -392,92 +436,121 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (Workers)
 
 - [ ] `TUI017`
+
 > [!NOTE] Settings Tab (Interactive)
 > Theme toggle, config path, copy, open config.
+>
 > - Implement theme chooser; display current config path; add "copy value" actions.
 > - Shortcut to open config in `$EDITOR` when available.
 
 - [ ] `TUI018`
+
 > [!NOTE] Theme System (Centralized + High Contrast)
 > Consistent styling with adaptive colors and playground integration.
+>
 > - Centralize styles in `internal/tui/theme/*.go`; add dark/light/high-contrast palettes.
 > - Respect `NO_COLOR` and terminal truecolor detection; expose `--theme` and UI toggle.
 > - Surface Theme Playground under Settings.
 
 - [ ] `TUI019`
+
 > [!NOTE] Help Overlay Expansion
 > List all shortcuts (tabs, enqueue, right-click), mouse hints, README link.
+>
 > - Context-aware help per tab and breakpoint; `?` or `esc` toggles.
 > - Include numeric tab shortcuts (1–4) and new commands.
 
 - [ ] `TUI020`
+
 > [!NOTE] Mouse UX Extras
 > Double-click row to peek; header click to sort (if supported).
+>
 > - Implement double-click detection with time threshold; use bubblezone for headers.
 > - Sort toggles per column where data supports it; visual sort glyphs.
 
 - [ ] `TUI021`
+
 > [!NOTE] Non‑blocking Toasts / Status Area
 > Transient error/info messages without stealing focus.
+>
 > - Top-right stack with auto-dismiss timers; queue messages; log tail in Info panel.
 > - Provide API `tui.toast(level, msg)` for internal use.
 
 - [ ] `TUI022`
+
 > [!NOTE] Command Palette (`Ctrl+P`)
 > Fuzzy action launcher with context-aware suggestions.
+>
 > - Action registry with IDs, labels, shortcuts; integrate fzf-like filter.
 > - Invoke enqueue, peek, switch tabs, toggle theme, open docs, etc.
 
 - [ ] `TUI023`
+
 > [!NOTE] Frame‑Gated Batching (60/30fps)
 > Smooth updates without over-rendering.
+>
 > - Switch `Update` to pointer receiver; implement coalescing buffer + `tea.Tick` frame messages.
 > - Cap FPS via `--fps` and auto-drop to 30fps if render >12ms.
 > - Enable `viewport.HighPerformanceRendering` and incremental content updates.
 
 - [ ] `TUI024`
+
 > [!NOTE] Cross‑Platform Compatibility
 > Terminal quirks and fallbacks.
+>
 > - Windows/WSL truecolor detection; degrade gracefully; default 30fps on slow terms.
 > - tmux mouse escape hatch `--no-mouse`; document recommended settings.
 > - Verify selection/clipboard friendliness; avoid clearing screen unnecessarily.
 
 - [ ] `TUI025`
+
 > [!NOTE] TUI Runtime Metrics
 > Optional instrumentation for debugging.
+>
 > - Export FPS, render time, RPC latency histograms at `:9090/metrics`.
 > - Add on/off flag `--metrics`; annotate frames with dropped/merged counts.
 
 - [ ] `TUI026`
+
 > [!NOTE] Tests (Helpers + Layout)
 > Unit tests for pure helpers; snapshot-ish rendering checks.
+>
 > - Test filtering, formatting, thresholds, clamp functions.
 > - Add layout tests that render at key widths and assert presence of key strings.
 
 - [ ] `TUI027`
+
 > [!NOTE] Docs Update (README TUI)
 > Screenshots, tabs description, new keybindings, launch flags.
+>
 > - Update README TUI section; include SVG mockups; cross-link design doc.
 > - Add short “Quickstart” with Demo Mode and Doctor.
 
 - [ ] `TUI028`
+
 > [!NOTE] Release Notes
 > Changelog entries for tabbed layout, overlays, and new UX.
+>
 > - Summarize user-visible changes; include safety guardrails and flags.
 
 - [ ] `TUI029`
+
 > [!NOTE] Multi‑Cluster Foundation (Ultrawide)
 > Basic cluster selector + compare view scaffold.
+>
 > - Add cluster switcher UI; persist recent clusters; wire to config.
 > - In ultrawide, render two clusters side-by-side (read-only compare to start).
 
 - [ ] `TUI030` [blocked by Admin: Job events stream]
+
 > [!NOTE] Time Travel Debugger (MVP)
 > Minimal timeline + state viewer for a single job.
+>
 > - Open by ID; fetch event stream; scrub timeline with left/right.
 > - Show state deltas; no step-in code view yet; export link placeholder.
 >
 > Unblockers (Backend API Contract)
+>
 > - Admin function: `admin.JobTimeline(ctx, ns, jobID string, start, end *time.Time, limit int) ([]JobEvent, error)`
 >   - JobEvent: `{TS time.Time, Type string, Data map[string]any}` with canonical types: enqueued, dequeued, started, heartbeat, completed, failed, retried, moved_to_dlq, requeued
 >   - Ordering ascending; `limit` cap (e.g., 1000); filterable by time range
@@ -490,14 +563,18 @@ Step-by-step task list to build the TUI up to design spec.
 > - Code stubs: see `internal/admin/tui_contracts.go` (JobTimeline, SubscribeJob)
 
 - [ ] `TUI031`
+
 > [!NOTE] Voice Command Integration (MVP)
 > Hook Terminal Voice Commands to simple actions.
+>
 > - Map phrases to palette actions (peek queue, switch tab, run bench).
 > - Provide visual feedback toast when recognized; allow disable in Settings.
 
 - [ ] `TUI032`
+
 > [!NOTE] Error & Offline Degrade
 > Friendly failure modes, no dead ends.
+>
 > - On connection loss, show non-blocking banner + retry loop with backoff.
 > - Offer "Edit connection" and "Switch to Demo" inline; keep UI responsive.
 
@@ -547,6 +624,7 @@ Sequenced dependencies across tasks. Use these to plan workstreams; items in par
 Suggested execution order with safe parallel tracks. Parentheses note external prerequisites.
 
 **Start‑Here Priority (Suggested Order)**
+
 - P1 — Foundation: TUI001 (Launch/Config), TUI002 (Welcome), TUI004 (Doctor, parallel), TUI003 (Demo), TUI005 (Read‑only)
 - P2 — Performance Baseline: TUI023 (Frame‑gated batching), TUI025 (Runtime metrics, optional)
 - P3 — Responsive Layout: TUI006 (Breakpoints/adaptive tabs)
@@ -560,6 +638,7 @@ Suggested execution order with safe parallel tracks. Parentheses note external p
 - P11 — Docs & Release: TUI027 (Docs Update), TUI028 (Release Notes)
 
 **Parallelization Groups**
+
 - Group A — Boot Flow: TUI001, TUI002, TUI004 (small team can run these in parallel; coordinate shared config/types)
 - Group B — Safety/Demo: TUI003, TUI005 (can proceed after TUI001)
 - Group C — Performance: TUI023, TUI025 (unblocks UI smoothness; safe to start after skeleton renders)
@@ -574,6 +653,7 @@ Suggested execution order with safe parallel tracks. Parentheses note external p
 - Group L — Docs/Release: TUI027, TUI028 (finalization; can draft alongside feature work)
 
 Notes
+
 - If switching TUI data source to Admin API v1 for stats, perform that switchover before P2 for realistic performance testing.
 - Where tasks overlap on input handling and overlays, designate a single owner to avoid keybinding conflicts.
 
@@ -586,13 +666,46 @@ Notes
   - Add’l e2e coverage planned
 
 ---
+
 ## Daily Activity Logs
+>
 > [!NOTE]
+>
+> ### 2026-09-03 – Markdownlint Baseline Cleared
+>
+> Converted the repository-wide documentation gate from 5,688 findings to a
+> clean all-files check without adding an ignore list or per-file waivers.
+>
+> Changes
+>
+> - Used Markdownlint's own fixer to normalize heading, list, fence, whitespace,
+>   and end-of-file structure across the tracked documentation corpus.
+> - Added `text` to previously unlabeled fences, corrected two broken link
+>   targets and two heading-level jumps, and made a duplicate heading unique.
+> - Disabled only `MD013`, `MD028`, and `MD036`: hard line width conflicts with
+>   technical tables and commands, adjacent blockquotes implement GitHub
+>   admonitions/activity logs, and bold lead-ins are intentional compact labels.
+>
+> Validation
+>
+> - RED: the clean `212ce243` tree reported 5,688 findings across 136 files.
+> - GREEN: the same 136-file Markdownlint invocation reports zero findings;
+>   `git diff --check` also passes.
+>
+> Follow-ups
+>
+> - Keep the workflow on the complete Markdown corpus; do not introduce new
+>   disabled rules or ignored files to bypass future failures.
+
+> [!NOTE]
+>
 > ### 2026-09-03 – Repository-wide Go Vet Baseline Cleared
+>
 > Removed all five findings that prevented the CI job from reaching build and
 > test execution.
 >
 > Changes
+>
 > - Split collaborative-session terminal colors into independent `r`, `g`, and
 >   `b` JSON fields; the previous shared tag caused every channel to disappear
 >   during marshaling.
@@ -601,21 +714,26 @@ Notes
 > - Added a byte-exact color JSON round-trip regression.
 >
 > Validation
+>
 > - RED: `go vet ./...` reported two duplicate-tag findings and three mutex-copy
 >   findings; the color regression observed only `is_default` in the payload.
 > - GREEN: `go vet ./...`, `go build ./...`, and the collaborative-session race
 >   test pass.
 >
 > Follow-ups
+>
 > - The opt-in chaos-harness suite still has its separately tracked Real Green
 >   failures; this task changed no suite gates or runtime-integration claims.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 4: Per-key FIFO
+>
 > Completed the queue-core roadmap with crash-safe, fair ordering for jobs that
 > share a non-empty key while retaining the ordinary empty-key path.
 >
 > Changes
+>
 > - Wrote `design/per-key-fifo.md` before implementation, choosing hashed
 >   key-sharded lists, a round-robin ready ring, an active-set deduplicator,
 >   and compare-owned TTL leases.
@@ -629,6 +747,7 @@ Notes
 >   Redis 7 CI gate for the complete ordered suite.
 >
 > Validation
+>
 > - RED on the pre-implementation head observed eight same-key handlers in
 >   flight and out-of-order completion `[1 2 3 4 5 7 6 8 ...]`.
 > - Real Redis passed 100 jobs on one key and 100 across ten keys with eight
@@ -642,15 +761,19 @@ Notes
 >   below the 3% no-regression threshold.
 >
 > Follow-ups
+>
 > - Keep Draft PR #6 open until repository-wide baseline lint/vet failures are
 >   resolved or explicitly separated from this queue-core campaign.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 3: Public Enqueue Surfaces
+>
 > Made the queue usable from other Go modules, scripts, and HTTP clients while
 > preserving the worker's existing Redis list protocol.
 >
 > Changes
+>
 > - Captured compile-time REDs for the missing public client, CLI command,
 >   HTTP endpoint, ordering metadata, and shared key constants.
 > - Added `pkg/queueclient` with single/batch enqueue, Stats/Peek, generated
@@ -663,6 +786,7 @@ Notes
 >   separate at-least-once deliveries.
 >
 > Validation
+>
 > - Public client, CLI, HTTP, admin-key, reaper, and shared-key tests passed
 >   under the race detector.
 > - A separate Go module imported the public package and exercised enqueue
@@ -675,14 +799,18 @@ Notes
 >   checks passed.
 >
 > Follow-ups
+>
 > - Execute ROADMAP Item 4 next; `OrderingKey` is not enforced before then.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 2: Real Worker Handlers
+>
 > Replaced the simulated middle of the worker with an application callback while
 > preserving the reliable Redis intake, retry, completion, and reaper protocol.
 >
 > Changes
+>
 > - Captured compile-time REDs for the missing `Handler` type and `Worker.Handle` seam.
 > - Added concurrent handler registration with the legacy simulator as explicit `BenchHandler` fallback.
 > - Mapped nil, error, panic, and cancellation outcomes to completion, retry/DLQ, recovery, and reaper handoff.
@@ -690,19 +818,24 @@ Notes
 > - Documented `max_retries + 1` total calls and the at-least-once/idempotency boundary.
 >
 > Validation
+>
 > - Worker/reaper race suites passed five consecutive runs.
 > - The real-Redis handler and heartbeat smoke passed five consecutive race-enabled runs.
 > - Full default race suite, focused vet, build, test-count canary, and diff checks passed.
 >
 > Follow-ups
+>
 > - Execute ROADMAP Item 3 next.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 1: Byte-exact Job Payloads
+>
 > Added real application data to the durable core job envelope without breaking
 > legacy benchmark jobs.
 >
 > Changes
+>
 > - Captured a compile-time RED proving `Job` had no payload or enqueue guard.
 > - Added opaque payload bytes, an optional caller-owned schema, and base64 JSON encoding.
 > - Added a typed 1 MiB-by-default guard that rejects before modifying Redis.
@@ -710,20 +843,25 @@ Notes
 > - Preserved legacy JSON fields and documented `FilePath`/`FileSize` as bench metadata.
 >
 > Validation
+>
 > - Payload/schema Redis round-trip remained byte-exact for UTF-8, embedded JSON, and arbitrary bytes.
 > - Legacy fixtures, empty/exact/over-limit payloads, empty schemas, and custom priorities passed.
 > - A payload containing `"fail"` completed because only the legacy filepath oracle inspects that word.
 > - `go test ./... -race -count=1`, focused vet, build, and diff checks passed.
 >
 > Follow-ups
+>
 > - Execute ROADMAP Item 2 next.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 5: Truthful Default Tests
+>
 > Restored core worker coverage to the default suite and made the Redis e2e CI
 > step prove that it executes a real test.
 >
 > Changes
+>
 > - Captured the default-suite RED for an umask-sensitive `0644` assertion.
 > - Captured the tagged e2e RED for unused imports and orphaned migration configs.
 > - Un-gated all three worker test files; queue, producer, reaper, and breaker were already default.
@@ -732,6 +870,7 @@ Notes
 > - Added explicit gate reasons and un-gate conditions to all 68 remaining opt-in test files.
 >
 > Validation
+>
 > - `go test ./... -count=1`
 > - `go test ./... -race -count=1`
 > - Tagged Redis e2e smoke passed five consecutive race-enabled runs.
@@ -744,103 +883,137 @@ Notes
 >   touched Markdown files; this task did not attempt a global docs rewrite.
 >
 > Follow-ups
+>
 > - Execute ROADMAP Item 1 next.
 
 > [!NOTE]
+>
 > ### 2026-09-02 – ROADMAP Item 0: Honest Idempotency Config
+>
 > Removed the example configuration for an exactly-once subsystem that is not
 > connected to the queue runtime.
 >
 > Changes
+>
 > - Captured a failing regression proving unsupported `exactly_once` config was silently accepted.
 > - Switched config decoding to reject unknown keys and removed commented-out exactly-once loader code.
 > - Removed the dead example block and aligned the README and Features Ledger with the unwired state.
 > - Audited live GitHub issues: zero open issues; the repository's three open issue-count entries are PRs #1, #2, and #5.
 >
 > Validation
+>
 > - `go test ./internal/config -count=1`
 > - `go test ./... -count=1` reached the known Item 5 RED:
 >   `internal/theme-playground` expects mode `0644` but the host umask produces `0640`;
 >   all other default packages passed.
 >
 > Follow-ups
+>
 > - Execute ROADMAP Item 5 next.
 
 > [!NOTE]
+>
 > ### 2025-09-20 – `make clean` Fix
+>
 > Resolved permission denials when cleaning the repo.
 >
 > Changes
+>
 > - Added a pre-removal `chmod` step in `Makefile` so `.gocache` modules become writable before deletion.
 >
 > Follow-ups
+>
 > - None — `make clean` now succeeds even with read-only module cache entries.
 
 > [!NOTE]
+>
 > ### 2025-09-20 – Request ID Linter Docs
+>
 > Added documentation so teammates can discover and run the internal analyzer.
 >
 > Changes
+>
 > - Wrote `tools/requestidlint/README.md` covering purpose, invocation, and tests.
 >
 > Follow-ups
+>
 > - Consider wiring the analyzer back into a `make lint` target or CI job.
 
 > [!NOTE]
+>
 > ### 2025-09-20 – `test/` Map-of-Contents
+>
 > Documented every test and script under `test/` so the directory is navigable.
 >
 > Changes
+>
 > - Replaced `test/README.md` with a MoC summarizing purpose, execution notes, quality, and dependencies for each file.
 >
 > Follow-ups
+>
 > - Clean up unused fixtures and consider parameterizing shell scripts that hard-code absolute paths.
 
 > [!NOTE]
+>
 > ### 2025-09-20 – `test/` Cleanup
+>
 > Removed dead scaffolding so only real integration/E2E suites remain.
 >
 > Changes
+>
 > - Deleted unused synthetic tests, fixtures, and stray macOS metadata from `test/`.
 > - Moved the package-specific integration suites next to their source (`internal/exactly_once`, `internal/multi-cluster-control`, `internal/storage-backends`, `internal/obs`).
 > - Relocated the Event Hooks test plan to `docs/testing/event-hooks-test-plan.md` and refreshed `test/README.md` to match the slimmer directory.
 >
 > Follow-ups
+>
 > - Parameterize the acceptance shell scripts (they still assume `/Users/james/...`).
 
 > [!NOTE]
+>
 > ### 2025-09-20 – Phase II Kickoff (Green the Tests)
+>
 > Lifted the testing freeze now that builds are stable.
 >
 > Changes
+>
 > - Updated project notes to emphasize Phase II goal (test pass) instead of the previous build-only stance.
 > - Ran `make test` (race-enabled `go test ./...`) to get a fresh failure inventory.
 >
 > Follow-ups
+>
 > - See next entry for fixes; continue monitoring for regressions as we add TUI wiring.
 
 > [!NOTE]
+>
 > ### 2025-09-20 – Worker Fleet Controls Suite Stabilized
+>
 > Addressed the failures uncovered during the Phase II kickoff.
 >
 > Changes
+>
 > - Relaxed the tests to avoid racing on async controller responses and updated expectations to match the current safety-check messages.
 > - Taught the safety checker to honor `force` overrides for healthy-worker and percentage thresholds.
 > - Fixed signal ordering assumptions and stopped the Redis signal receiver from spamming errors when the client closes.
 >
 > Follow-ups
+>
 > - None for this suite—`make test` is now green again.
 
 > [!NOTE]
+>
 > ### 2025-09-18 – GREEN MACHINE progress
+>
 > Focused on making the build green module-by-module.
 >
 > Changes
+>
 > - Documented the internal module dependency DAG and stabilization order in AGENTS.md/README.
 > - Brought `internal/storage-backends`, `internal/trace-drilldown-log-tail`, and `cmd/tui` back to a clean `go build`; experimental TUI view now lives behind `tui_experimental`.
 > - Recorded per-module build status READMEs so breakages and fixes stay visible.
 >
 > Follow-ups
+>
 > - JSON payload studio, job budgeting, kubernetes operator, long-term archives, collaborative session, worker fleet controls, and calendar view now build; next target is `cmd/job-queue-system`.
 > - Keep updating the dependency map as we clean additional modules.
 >
@@ -850,40 +1023,49 @@ Notes
 Please keep this document up-to-date with records of what you've worked on as you're working. When you start a task, write down what you're about to do. When you finish something, log that you've finished it. If it was an item off the backlog (see below), check it off. Build up a commit graph of the day's activity and keep it up-to-date as you make commits. Use this not only to record activity, but to capture ideas, make notes/observations/insights, and jot down bugs you don't have time to deal with in the moment.
 
 > [!NOTE]
+>
 > ### 2025-09-13–Rewrote `AGENTS.md`
+>
 > Today we rewrote `AGENTS.md` and now it's a very useful artifact that records past activity, captures current activity, plans for future activity, and helps both AI agents and humans remember what they're doing.
-> 
+>
 > ```mermaid
-> gitGraph 
-> 	commit 
-> 	commit 
-> 	branch docs/example
-> 	checkout docs/example 
-> 	commit 
-> 	commit 
-> 	checkout main 
-> 	merge docs/example id: "PR #213"
+> gitGraph
+>  commit
+>  commit
+>  branch docs/example
+>  checkout docs/example
+>  commit
+>  commit
+>  checkout main
+>  merge docs/example id: "PR #213"
 > ```
-> ##### 06:39 – Starting `AGENTS.md` Enhancements
-> 
+>
+> #### 06:39 – Starting `AGENTS.md` Enhancements
+>
 > - Switched to branch `docs/example`
 > - Refining the `AGENTS.md` file to be the one-top-shop/HUB of governance for this project, maintained by AI agents.
-> - Organized top picks from yesterday's brainstorm 
-> ##### 07:23 – Finished `AGENTS.md` Enhancements
-> 
+> - Organized top picks from yesterday's brainstorm
+>
+> #### 07:23 – Finished `AGENTS.md` Enhancements
+>
 > - PR open at [PR #213](https://github.com/flyingrobots/go-redis-work-queue/pull/213)
 > - Tests added: `/path/to/tests.whatever`
-> ##### 13:42 – Bug Report
->   > [!WARNING] **Bug: Infinite Loop in Foo.bar**
->   > Repro steps:
->   > etc…
+>
+> #### 13:42 – Bug Report
+> >
+> > [!WARNING] **Bug: Infinite Loop in Foo.bar**
+> > Repro steps:
+> > etc…
 
 ---
 > [!NOTE]
+>
 > ### 2025-09-13 – TUI Layout Revamp (Flexbox + Animation + Docs)
+>
 > Implemented a responsive, animated TUI layout and added design docs.
 >
 > Changes
+>
 > - Switched panel layout to stickers flexbox across all tabs
 > - Borders are drawn at cell level; content sized to inner width/height
 > - Charts expansion uses Harmonica spring animation (click right to expand, left to balance)
@@ -894,16 +1076,20 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Wrote `docs/TUI/README.md` and color-coded SVG mockups for all screens
 >
 > Follow-ups
+>
 > - Bubblezone for precise mouse hitboxes (tabs/panels/rows)
 > - Add `c` keyboard toggle for expand
 > - Tune stacking threshold; optionally add min-widths per cell
 >
 
 > [!NOTE]
+>
 > ### 2025-09-15 – 24h Commit Review (Admin API hardening, TVC, Theme, Patterned Load)
+>
 > Summary of changes over the last 24 hours across core modules.
 >
 > Highlights
+>
 > - Admin API: hardened handlers/server; exactly-once integration; tests fixed (handlers, server, integration)
 > - Terminal Voice Commands: added core module and full test suite; docs added under docs/api/
 > - Theme Playground: added persistence/playground with tests; MVP complete
@@ -913,16 +1099,19 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - RBAC & Tokens: critical security fixes merged; middleware tests updated
 >
 > Follow-ups
+>
 > - Wire TUI to Admin API for stats/ops where applicable
 > - Add runtime Admin API for rate-limits (advanced RL); surface in TUI
 > - Add DLQ pagination + filters; extend tests
 
-
 > [!NOTE]
+>
 > ### 2025-09-15 – TUI Launch UX, Admin DLQ/Workers, Features Ledger
+>
 > Summary of today’s changes to align TUI with the redesign and extend Admin API.
 >
 > Changes
+>
 > - TUI2 design: added "Launch & First‑Run UX" section with flags/env mapping, config discovery, welcome wizard, error/offline flows, and guardrails (`docs/design/TUI2-design.md`).
 > - AGENTS: added “TUI Tasks”, “TUI Task Chains”, and “TUI Parallelization & Priorities”; marked blockers and documented backend contracts.
 > - Admin (library): added DLQ/Workers contracts and implementations (`internal/admin/tui_contracts.go`) — `DLQList`, `DLQRequeue`, `DLQPurge`, `Workers`.
@@ -932,23 +1121,29 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Docs: created Features Ledger tracking progress, domain tables, drift, and ported TUI task list (`docs/features-ledger.md`).
 >
 > Validation
+>
 > - Built `./internal/admin/...` and `./internal/admin-api/...` successfully; noted unrelated repo-wide build issues and left them unchanged.
 >
 > Follow-ups
+>
 > - Wire TUI DLQ and Workers tabs to new Admin API endpoints; decide DLQ requeue destination semantics.
 > - Unify Redis client versions (v8→v9) or keep TUI over HTTP Admin API to avoid coupling.
 > - Implement Job Timeline API and TUI Time Travel view.
 > - Add integration tests for the new endpoints.
 
 > [!NOTE]
+>
 > ### 2025-09-16 – PR#3 Review Chunk 005
+>
 > - Completed CodeRabbit chunk_005 (30/30 items) covering compose secrets, admin API manifests, PRD clarifications, and API/README updates.
 > - Added `scripts/check_yaml_newlines.py` plus `make lint` to enforce YAML trailing newlines; pinned admin API deployment image and externalized JWT secret.
 > - Logged dispositions in the chunk file and updated the progress bar to 100%.
 > - Lessons: automate format safety (lint scripts, pinned images) instead of relying on manual edits; update review artifacts immediately to keep evidence aligned with commits.
 
 > [!NOTE]
+>
 > ### 2025-09-16 – PR#3 Review Chunk 006
+>
 > - Addressed CodeRabbit chunk_006 (30/30 items) touching Docker/Kubernetes manifests, deployment scripts, and docs.
 > - Introduced `deployments/scripts/lib/logging.sh`, parameterized Alertmanager SMTP settings, and derived runtime checks from live manifests.
 > - Extracted the feature palette into `docs/colors.yml` and standardized template formatting; chunk log now reads 100%.
@@ -956,129 +1151,160 @@ Please keep this document up-to-date with records of what you've worked on as yo
 > - Lessons: keep scripting helpers centralized, source production credentials from env/secret inputs, treat design tokens as structured data, and wrap optional integrations (SMTP) behind feature flags for safer defaults.
 > - Follow-up: Alertmanager emails now gated by `ENABLE_ALERTMANAGER_SMTP`; defaults to webhook-only routing when disabled.
 
-
 > [!NOTE]
+>
 > ### 2025-09-16 – CodeRabbit PR#3 chunk_007 sweep
+>
 > - Cleared CodeRabbit chunk_007 (30/30 items) with per-item commits and refreshed the chunk progress bar to 100%.
 > - Hardened admin API docs/config (dedicated confirmation phrases, CORS guidance), refreshed webhook signing/idempotency guidance, and aligned RBAC monitoring with real metrics.
 > - Standardized event-hooks testing docs around package-aware `go test` patterns and made the postmortem coordinator task derive dependencies dynamically.
 > - Lessons: keep documentation commands module-aware (no filename globs) and generate orchestration dependencies from shared data instead of static lists.
 
 > [!NOTE]
+>
 > ### 2025-09-16 – CodeRabbit PR#3 chunk_008 sweep
+>
 > - Closed CodeRabbit chunk_008 (30/30) with a bench payload-size flag, deterministic producer fixtures, and updated performance baseline guidance.
 > - Hardened admin API build artifacts (trimpath, VERSION ldflags, non-root images) and expanded anomaly radar docs with versioning policy, metrics collector interface, units, and idempotent exporter examples.
 > - Logged outstanding work (OpenAPI spec, full auth/error policy, pagination) as follow-ups after the API stabilises.
 > - Lessons: keep docs wired to real entrypoints, prefer idempotent Prometheus patterns, and centralise policy sections for reuse across APIs.
 
-
 > [!NOTE]
+>
 > ### 2025-09-16 – Redis v9 migration & chunk 004 wrap-up
-> 
+>
 > Changes
+>
 > - Migrated the entire repository (and helper modules) to `github.com/redis/go-redis/v9`; removed v8 imports in favour of the consolidated client.
 > - Hardened `cmd/tui` flag handling and plumbed runtime options (cluster/namespace/read-only/theme/FPS/metrics) into the TUI with fail-fast Redis health checks.
 > - Standardised admin-api namespaces/docs and tightened deployment scripts (strict bash, quoting, docker compose pre-checks, JWT secret enforcement).
 > - Finished PR#3 chunk_004 worksheet (30/30 items) and refreshed the progress bar.
-> 
+>
 > Follow-ups
+>
 > - Run `go test ./...` once the existing suite failures (forecasting, exactly-once outbox, etc.) are resolved upstream.
 
 > [!NOTE]
+>
 > ### 2025-09-17 – Anomaly Radar Scope Guardrails & Pagination UX
+>
 > Scoped the anomaly radar HTTP surface, made cursor pagination first-class, and refreshed docs/specs to match.
 >
 > Changes
+>
 > - Added scope-aware HTTP helpers, cursor utilities, and idempotent start/stop responses under `internal/anomaly-radar-slo-budget/`.
 > - Updated handlers/tests to enforce scope checks, default/max pagination, and the standard JSON error envelope; new docs outline auth, error policy, and pagination flow.
 > - Published `docs/api/anomaly-radar-openapi.yaml` with CI validation plus contract notes in `docs/design/anomaly-radar-api-contract.md`.
 > - Exported a public wrapper at `pkg/anomaly-radar-slo-budget/` and refreshed the docs/OpenAPI spec with scope tables, error envelope notes, and a paginated metrics example.
 >
 > Important Learnings
+>
 > - Centralised error helpers keep CLI/UI clients aligned once scopes are enforced—no divergent envelopes during failures.
 > - Treat cursors as opaque tokens in tests to avoid brittle assumptions; golden fixtures now flex with redis-backed pagination.
 > - Writing the OpenAPI spec early flushes review gaps (auth scopes, error schema) before client integration work starts.
 > - Stabilising the import path via a thin wrapper lets docs and clients converge without exposing internal packages prematurely.
 >
 > Next Steps
+>
 > - Implement SLO budget calculations/visuals so the TUI widget has real data to render.
 > - Wire the TUI/Admin API integration to consume the new paginated endpoints and surface scope errors.
 > - Expand integration coverage for the gateway scope propagation once end-to-end plumbing completes.
 
 > [!NOTE]
+>
 > ### 2025-09-17 – PR#3 Review Chunk 009
+>
 > Cleared the next CodeRabbit batch (30/30) and hardened docs + tooling along the way.
 >
 > Changes
+>
 > - DLQ API docs now spell out auth scopes, server-enforced limits, purge-all schema/idempotency, and valid JSON responses (`docs/api/dlq-remediation-ui.md`).
 > - Added public wrappers for anomaly radar and chaos harness packages (`pkg/anomaly-radar-slo-budget/`, `pkg/chaos-harness/`) and updated docs accordingly.
 > - Improved auxiliary scripts (append_metadata, review task generators) with safer I/O, UTC timestamps, and accurate logging; trimmed slow sleeps from `demos/responsive-tui.tape`.
 > - Hardened Redis deployment manifest and Docker image health checks; updated BUGS.md guidance for heartbeats/schedulers/ledgers.
 >
 > Important Learnings
+>
 > - Documentation needs to carry real contracts (auth, rate limits, JSON schemas) so downstream tooling stays in sync.
 > - Wrapper packages are a low-friction way to expose internal modules without destabilising the tree.
 > - Investing in script hygiene (UTC times, error handling) prevents subtle drift when other automation depends on them.
 >
 > Follow-ups
+>
 > - Chunk 010 (remaining CodeRabbit feedback) still open; expect similar breadth across docs + tooling.
 > - Continue chipping away at backlog items once CodeRabbit sequence is complete (ExactlyOnce→AtLeastOnce rename already queued).
 
 > [!NOTE]
+>
 > ### 2025-09-17 – CodeRabbit PR#3 chunk_010 sweep
+>
 > Closed the final CodeRabbit batch with deployment hardening, documentation polish, and secret handling fixes.
 >
 > Changes
+>
 > - Hardened admin API and RBAC Kubernetes manifests: pod/container security contexts, RuntimeDefault seccomp, disabled SA token mounts, distinct health/readiness probes, and corrected Grafana compose mounts.
 > - Shifted the RBAC token service to file-backed secrets plus RS256 keys, updated token-service config/startup validation, and refreshed deployment docs (`deployments/docker/rbac-configs/token-service.yaml`, `deployments/README-RBAC-Deployment.md`).
 > - Clarified key docs (release plan freeze policy, purge reason validation, DLQ pipeline guardrails, HTTPS defaults, hit_percent rename) and converted `AGENTS.md` TOC to standard anchors.
 > - Completed the chunk_010 worksheet with accepted dispositions and a 100% progress bar (`docs/audits/code-reviews/PR3/e35da518e543d331abf0b57fa939d682d39f5a88.md.chunk_010.md`).
 >
 > Validation
+>
 > - Updated shell scripts (`deploy-staging.sh`, `health-check-rbac.sh`, `setup-monitoring.sh`) to manage port-forward PIDs safely; existing Go test failures remain pre-existing and were not re-run.
 >
 > Follow-ups
+>
 > - Propagate the new port-forward helpers to other deployment scripts.
 > - Add policy-as-code checks to enforce secret volume usage and security context drift.
 
 > [!NOTE]
+>
 > ### 2025-09-17 – CodeRabbit PR#3 chunk_011 sweep
+>
 > Closed the remaining CodeRabbit review items with documentation polish and onboarding fixes.
 >
 > Changes
+>
 > - Standardized DLQ pipeline error envelopes (codes + request IDs), clarified rate-limit headers, and documented cursor pagination.
 > - Updated DLQ UI purge-all example to the safe JSON POST form with idempotency and restructured the claude-008 reflection with front matter.
 > - Added a `go mod download` preflight step to README so first-time TUI users fetch dependencies before running.
 >
 > Follow-ups
+>
 > - Verify other API docs reference the shared error envelope pattern.
 > - Consider adding automated checks for missing `X-Request-ID` logging in new handlers.
 >
 > Important Learnings
+>
 > - Shared error envelope docs prevent API drift—keeping the pattern centralized avoids per-endpoint divergence.
 > - Adding dependency preflight steps in README shortens new contributor setup loops and avoids common module errors.
 
 > [!NOTE]
+>
 > ### 2025-09-17 – Error envelope harmonization
+>
 > Brought the remaining Admin API docs and handlers into alignment with the standardized error envelope.
 >
 > Changes
+>
 > - Updated Admin API, DLQ UI, Worker Fleet, Multi-tenant, and Exactly-Once docs to show `code`, `status`, `request_id`, and `timestamp` in error examples.
 > - Extended `writeError` to propagate/generate request IDs and added tests validating the enriched envelope.
 >
 > Validation
+>
 > - `go test ./internal/admin-api` still hits pre-existing ExactlyOnce handler test failures (missing `PurgeDLQ`/`RunBenchmark`); no new regressions introduced.
 >
 > Important Learnings
+>
 > - Docs drift quickly when multiple teams own surfaces—central helpers/tests anchor expectations.
 > - Request ID coverage is easiest to enforce at the helper level; tests give immediate feedback when handlers regress.
 
-
 ## Module Dependency Map
+
 - Captured on 2025-09-18
 - Keep this section updated as dependencies shift
 
 ### Dependency Graph (module → direct internal deps)
+
 - admin → config, distributed-tracing-integration
 - admin-api → admin, anomaly-radar-slo-budget, config, exactly-once-patterns, exactly_once
 - anomaly-radar-slo-budget → (none)
@@ -1128,4 +1354,5 @@ Please keep this document up-to-date with records of what you've worked on as yo
 - worker-fleet-controls → (none)
 
 ### Suggested Stabilization Order
+
 advanced-rate-limiting → anomaly-radar-slo-budget → automatic-capacity-planning → breaker → calendar-view → canary-deployments → chaos-harness → collaborative-session → config → dlq-remediation-pipeline → event-hooks → exactly-once-patterns → exactly_once → forecasting → job-budgeting → job-genealogy-navigator → json-payload-studio → kubernetes-operator → long-term-archives → multi-tenant-isolation → patterned-load-generator → plugin-panel-system → policy-simulator → producer-backpressure → queue → queue-snapshot-testing → rbac-and-tokens → right-click-context-menus → smart-payload-deduplication → smart-retry-strategies → storage-backends → tenant → theme-playground → time-travel-debugger → visual-dag-builder → worker-fleet-controls → distributed-tracing-integration → redisclient → obs → admin → producer → reaper → worker → admin-api → multi-cluster-control → trace-drilldown-log-tail → tui

@@ -205,6 +205,7 @@ GET /api/v1/jobs/{job_id}/trace
 ```
 
 **Response:**
+
 ```json
 {
   "job_id": "job_12345",
@@ -227,6 +228,7 @@ GET /api/v1/traces/{trace_id}/summary
 ```
 
 **Response:**
+
 ```json
 {
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
@@ -269,6 +271,7 @@ POST /api/v1/logs/streams
 ```
 
 **Request Body:**
+
 ```json
 {
   "filters": {
@@ -288,6 +291,7 @@ POST /api/v1/logs/streams
 ```
 
 **Response:**
+
 ```json
 {
   "stream_id": "stream_001",
@@ -300,11 +304,12 @@ POST /api/v1/logs/streams
 
 #### WebSocket Log Stream
 
-```
+```text
 WebSocket: /api/v1/logs/streams/{stream_id}
 ```
 
 **Message Format:**
+
 ```json
 {
   "timestamp": "2025-09-14T18:47:37.123Z",
@@ -332,6 +337,7 @@ PUT /api/v1/config/tracing
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
@@ -354,6 +360,7 @@ PUT /api/v1/config/logging
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
@@ -666,16 +673,19 @@ PUT /api/v1/config/logging
 ### Unit Testing
 
 #### Trace Processing Testing
+
 - **Trace ID Extraction**: Test various header formats, payload structures
 - **Correlation Logic**: Test job-to-trace mapping accuracy
 - **URL Generation**: Test template rendering with different backends
 
 #### Log Stream Testing
+
 - **Filter Logic**: Test complex filter combinations and edge cases
 - **Rate Limiting**: Test backpressure under various load patterns
 - **Buffer Management**: Test memory usage and overflow handling
 
 #### Security Testing
+
 - **Access Control**: Test RBAC enforcement for trace/log access
 - **Data Sanitization**: Test PII detection and redaction
 - **Input Validation**: Test malicious trace IDs and filter parameters
@@ -683,11 +693,13 @@ PUT /api/v1/config/logging
 ### Integration Testing
 
 #### End-to-End Workflows
+
 - **Trace Discovery**: Test full flow from job execution to trace visualization
 - **Log Correlation**: Test job-filtered log streaming with trace context
 - **Cross-System Integration**: Test with multiple tracing backends
 
 #### External System Integration
+
 - **Jaeger Integration**: Test trace fetching and URL generation
 - **Log Source Integration**: Test various log formats and sources
 - **Error Handling**: Test graceful degradation when external systems fail
@@ -695,16 +707,19 @@ PUT /api/v1/config/logging
 ### Performance Testing
 
 #### Load Testing
+
 - **High Trace Volume**: Test 10K+ traces per minute extraction
 - **Concurrent Streams**: Test 500+ simultaneous log streams
 - **Large Trace Processing**: Test traces with 1000+ spans
 
 #### Stress Testing
+
 - **Memory Pressure**: Test behavior under low memory conditions
 - **Log Volume Spikes**: Test handling of sudden log volume increases
 - **Network Latency**: Test performance with slow external systems
 
 #### Accuracy Testing
+
 - **Trace Correlation**: Validate accuracy of job-to-trace mapping
 - **Log Filtering**: Verify filter precision and recall rates
 - **Timeline Accuracy**: Test chronological ordering of events
@@ -714,16 +729,19 @@ PUT /api/v1/config/logging
 ### Rollout Strategy
 
 #### Phase 1: Basic Trace Integration (Week 1-2)
+
 - Deploy trace ID extraction and basic URL generation
 - Add "Open Trace" action to job viewer
 - Implement basic external system connectivity
 
 #### Phase 2: Log Streaming (Week 3-4)
+
 - Implement real-time log streaming with WebSocket
 - Add filtering capabilities and rate limiting
 - Integrate log correlation with job context
 
 #### Phase 3: Advanced Features (Week 5-6)
+
 - Add PII redaction and security controls
 - Implement advanced correlation and timeline views
 - Performance optimization and caching
@@ -731,6 +749,7 @@ PUT /api/v1/config/logging
 ### Configuration Management
 
 #### Default Configuration
+
 ```yaml
 tracing:
   enabled: true
@@ -758,12 +777,14 @@ logging:
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 - **Trace Extraction Rate**: Monitor successful trace ID extractions
 - **Log Stream Health**: Track active streams and error rates
 - **Correlation Accuracy**: Measure job-to-trace mapping success
 - **System Performance**: Monitor memory usage and response times
 
 #### Alert Conditions
+
 - Trace extraction failure rate >5%
 - Log stream error rate >10%
 - Memory usage >80% of allocated
@@ -772,11 +793,13 @@ logging:
 ### Rollback Plan
 
 #### Graceful Degradation
+
 - Disable trace extraction while maintaining job monitoring
 - Fall back to basic logging without real-time streaming
 - Maintain job functionality if tracing systems are unavailable
 
 #### Emergency Procedures
+
 - Immediate disable of log streaming for performance issues
 - Circuit breaker for external tracing system calls
 - Manual override controls for rate limiting and filtering

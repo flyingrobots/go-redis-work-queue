@@ -17,6 +17,7 @@ The RBAC system implements industry-standard security patterns: JWT/PASETO token
 ### Scope
 
 This feature implements:
+
 - Token-based authentication with JWT/PASETO support
 - Hierarchical role system with additive permissions
 - Fine-grained scope-based authorization
@@ -481,6 +482,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 ### Threat Model
 
 #### Assets
+
 - **API Tokens**: High-value credentials providing API access
 - **User Accounts**: Administrative access to queue operations
 - **Audit Logs**: Compliance and forensic evidence
@@ -502,6 +504,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 ### Security Controls
 
 #### Authentication Security
+
 - **Token Format**: PASETO v2 or JWT with HMAC-SHA256
 - **Token Lifetime**: Configurable, default 30 days maximum
 - **Key Rotation**: Automatic every 90 days with overlap period
@@ -509,6 +512,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 - **Rate Limiting**: 1000 requests/hour per token by default
 
 #### Authorization Security
+
 - **Default Deny**: All actions require explicit permission
 - **Least Privilege**: Minimal scopes granted by default
 - **Resource Isolation**: Per-queue and per-cluster constraints
@@ -516,6 +520,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 - **Time-based Access**: Optional schedule-based restrictions
 
 #### Audit Security
+
 - **Immutable Logs**: Append-only audit storage
 - **Integrity Verification**: Cryptographic event hashing
 - **Retention Policy**: Configurable retention (default 2 years)
@@ -523,6 +528,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 - **Secure Export**: Encrypted audit exports for compliance
 
 #### Operational Security
+
 - **Key Storage**: Hardware security modules or encrypted files
 - **Backup Strategy**: Encrypted key and configuration backups
 - **Monitoring**: Real-time alerts on security events
@@ -567,24 +573,28 @@ All existing Admin API endpoints are protected with appropriate scopes:
 ### Resource Usage
 
 #### Memory Requirements
+
 - **Base Service**: 128MB minimum, 512MB recommended
 - **Token Cache**: 50KB per 1000 active tokens
 - **Key Storage**: 10KB per signing key
 - **Audit Buffer**: 1MB per 1000 events/second ingestion rate
 
 #### CPU Requirements
+
 - **Token Validation**: 0.1ms CPU time per validation
 - **Audit Processing**: 0.05ms CPU time per event
 - **Key Rotation**: 10ms CPU time per rotation cycle
 - **Background Tasks**: 5% CPU for maintenance operations
 
 #### Storage Requirements
+
 - **Token Metadata**: 1KB per token in Redis
 - **User Data**: 2KB per user in Redis
 - **Audit Events**: 500B per event in SQL database
 - **Key Storage**: 5KB per key pair on disk
 
 #### Network Bandwidth
+
 - **API Requests**: 50KB average request/response size
 - **Audit Events**: 1KB average event size
 - **Token Distribution**: 2KB token + metadata
@@ -595,6 +605,7 @@ All existing Admin API endpoints are protected with appropriate scopes:
 ### Unit Testing
 
 #### Authentication Service Tests
+
 - Token generation and validation logic
 - Key rotation and expiration handling
 - Signature verification and key lookup
@@ -619,6 +630,7 @@ func TestKeyRotation(t *testing.T) {
 ```
 
 #### Authorization Service Tests
+
 - Role-based permission checking
 - Scope validation and matching
 - Resource constraint enforcement
@@ -636,6 +648,7 @@ func TestScopeAuthorization(t *testing.T) {
 ```
 
 #### Audit Service Tests
+
 - Event collection and formatting
 - Query engine with filters
 - Retention policy enforcement
@@ -645,6 +658,7 @@ func TestScopeAuthorization(t *testing.T) {
 ### Integration Testing
 
 #### End-to-End Authentication Flow
+
 ```go
 func TestE2EAuthFlow(t *testing.T) {
     // 1. Create user and assign roles
@@ -658,6 +672,7 @@ func TestE2EAuthFlow(t *testing.T) {
 ```
 
 #### Multi-User Scenario Testing
+
 - Concurrent token validation
 - Resource isolation verification
 - Role permission conflicts
@@ -665,6 +680,7 @@ func TestE2EAuthFlow(t *testing.T) {
 - Performance under concurrent load
 
 #### Admin API Integration
+
 - Protected endpoint access control
 - Scope enforcement across all handlers
 - Audit logging for administrative actions
@@ -674,6 +690,7 @@ func TestE2EAuthFlow(t *testing.T) {
 ### Security Testing
 
 #### Authentication Security
+
 ```go
 func TestSecurityVulnerabilities(t *testing.T) {
     // Token signature forgery attempts
@@ -685,6 +702,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 ```
 
 #### Authorization Security
+
 - Privilege escalation attempts
 - Resource constraint bypass attempts
 - Role inheritance exploitation
@@ -692,6 +710,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 - Time-based access control bypass
 
 #### Operational Security
+
 - Key rotation under load
 - Audit log integrity verification
 - Backup and recovery procedures
@@ -701,6 +720,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 ### Performance Testing
 
 #### Load Testing Scenarios
+
 - 10,000 concurrent token validations
 - 5,000 audit events per second ingestion
 - Large audit query performance (100K+ events)
@@ -708,6 +728,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 - Memory usage under sustained load
 
 #### Stress Testing
+
 - Token validation at 2x normal load
 - Audit system at burst traffic levels
 - Key storage with 10x normal key count
@@ -717,6 +738,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 ### Compliance Testing
 
 #### Audit Trail Verification
+
 - Complete action traceability
 - Immutable log verification
 - Retention policy compliance
@@ -724,6 +746,7 @@ func TestSecurityVulnerabilities(t *testing.T) {
 - Access control audit
 
 #### Data Protection Testing
+
 - Token encryption at rest
 - Audit data anonymization
 - Key storage security
@@ -777,6 +800,7 @@ graph TB
 ### Deployment Phases
 
 #### Phase 1: Infrastructure Setup (Week 1)
+
 - Deploy authentication service infrastructure
 - Set up Redis clusters for token and user storage
 - Configure audit database with proper schemas
@@ -784,6 +808,7 @@ graph TB
 - Deploy monitoring and alerting systems
 
 #### Phase 2: Service Integration (Week 2)
+
 - Integrate authentication middleware with Admin API
 - Configure role definitions and initial user accounts
 - Set up audit logging for all administrative endpoints
@@ -791,6 +816,7 @@ graph TB
 - Perform integration testing with existing systems
 
 #### Phase 3: Security Validation (Week 3)
+
 - Conduct security penetration testing
 - Validate audit trail completeness and integrity
 - Test token rotation and revocation procedures
@@ -798,6 +824,7 @@ graph TB
 - Complete compliance validation and documentation
 
 #### Phase 4: Production Rollout (Week 4)
+
 - Deploy to production with feature flags
 - Gradual rollout to admin users with monitoring
 - Full authentication enforcement activation
@@ -809,6 +836,7 @@ graph TB
 #### Environment-Specific Configurations
 
 **Development Environment**:
+
 ```yaml
 auth:
   token_expiry: "1d"
@@ -819,6 +847,7 @@ auth:
 ```
 
 **Staging Environment**:
+
 ```yaml
 auth:
   token_expiry: "7d"
@@ -829,6 +858,7 @@ auth:
 ```
 
 **Production Environment**:
+
 ```yaml
 auth:
   token_expiry: "30d"
@@ -842,6 +872,7 @@ auth:
 ### Migration Strategy
 
 #### Existing System Migration
+
 1. **Audit Phase**: Deploy auth system alongside existing API
 2. **Dual Mode**: Support both authenticated and legacy access
 3. **User Onboarding**: Gradual user migration to token-based access
@@ -849,6 +880,7 @@ auth:
 5. **Legacy Sunset**: Remove legacy access after migration completion
 
 #### Data Migration
+
 - Export existing user configurations to new user store
 - Generate initial tokens for active administrative users
 - Migrate any existing audit logs to new audit system
@@ -857,6 +889,7 @@ auth:
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 - Token validation success/failure rates
 - Authentication latency percentiles
 - Audit event ingestion rates
@@ -864,6 +897,7 @@ auth:
 - Security event frequencies
 
 #### Critical Alerts
+
 - Failed token validations exceeding threshold
 - Audit database connectivity issues
 - Key rotation failures
@@ -871,6 +905,7 @@ auth:
 - System resource exhaustion warnings
 
 #### Security Dashboards
+
 - Real-time authentication activity
 - User permission usage patterns
 - Audit event timeline and filtering
@@ -880,12 +915,14 @@ auth:
 ### Backup and Disaster Recovery
 
 #### Backup Strategy
+
 - **Key Material**: Encrypted daily backups to secure storage
 - **User Data**: Real-time Redis replication with daily snapshots
 - **Audit Logs**: Continuous replication to secondary database
 - **Configuration**: Version-controlled configuration management
 
 #### Recovery Procedures
+
 - **Key Compromise**: Emergency key rotation with token revocation
 - **Database Failure**: Automatic failover to secondary audit database
 - **Service Outage**: Load balancer failover to backup authentication service
@@ -894,18 +931,21 @@ auth:
 ### Performance Optimization
 
 #### Caching Strategy
+
 - Token validation result caching (5-minute TTL)
 - Role permission caching with invalidation
 - User session data caching in Redis
 - Audit query result caching for common patterns
 
 #### Database Optimization
+
 - Audit table partitioning by timestamp
 - Index optimization for common query patterns
 - Connection pooling and query optimization
 - Automated statistics collection and maintenance
 
 #### Scaling Considerations
+
 - Horizontal scaling of authentication services
 - Redis cluster scaling for token storage
 - Read replicas for audit database queries

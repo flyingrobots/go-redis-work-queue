@@ -609,31 +609,37 @@ alerts:
 ## Migration Plan
 
 ### Phase 1: Interface Definition (Week 1)
+
 - Define QueueBackend interface
 - Implement capability model
 - Create backend registry
 
 ### Phase 2: Redis Lists Refactor (Week 2)
+
 - Extract current implementation
 - Implement interface compliance
 - Add capability reporting
 
 ### Phase 3: Redis Streams (Week 3-4)
+
 - Implement streams backend
 - Consumer group management
 - Replay functionality
 
 ### Phase 4: High-Performance Backends (Week 5-6)
+
 - KeyDB integration
 - Dragonfly support
 - Performance tuning
 
 ### Phase 5: Migration Tools (Week 7)
+
 - Migration manager
 - UI integration
 - Safety checks
 
 ### Phase 6: Kafka Bridge (Week 8)
+
 - Outbox implementation
 - Async publishing
 - Recovery mechanisms

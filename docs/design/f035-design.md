@@ -5,6 +5,7 @@
 The JSON Payload Studio transforms job creation from a chore into a delightful developer experience by providing an in-TUI JSON editor with intelligent templates, real-time validation, dynamic snippets, and visual scheduling. This feature addresses the critical gap between raw job queueing and developer productivity by offering a "Postman for job queues" experience directly within the terminal interface.
 
 **Key Benefits:**
+
 - Eliminate context switching with integrated JSON editing and validation
 - Prevent malformed payloads through schema-driven intelligence
 - Accelerate development with reusable templates and dynamic snippets
@@ -12,6 +13,7 @@ The JSON Payload Studio transforms job creation from a chore into a delightful d
 - Provide comprehensive payload testing and debugging capabilities
 
 **Core Components:**
+
 - Multi-panel TUI layout with editor, templates, and validation helpers
 - Smart template system with variable interpolation
 - Real-time JSON schema validation with inline error reporting
@@ -188,12 +190,14 @@ sequenceDiagram
 ### Template Management Endpoints
 
 #### Load Template
+
 ```http
 GET /api/v1/studio/templates/{templateId}
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "templateId": "user_signup",
@@ -226,12 +230,14 @@ Authorization: Bearer <token>
 ```
 
 #### List Templates
+
 ```http
 GET /api/v1/studio/templates?category={category}&search={query}
 Authorization: Bearer <token>
 ```
 
 #### Save Template
+
 ```http
 POST /api/v1/studio/templates
 Authorization: Bearer <token>
@@ -248,6 +254,7 @@ Content-Type: application/json
 ### Validation Endpoints
 
 #### Validate Payload
+
 ```http
 POST /api/v1/studio/validate
 Authorization: Bearer <token>
@@ -261,6 +268,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "valid": false,
@@ -286,6 +294,7 @@ Content-Type: application/json
 ### Job Scheduling Endpoints
 
 #### Schedule Job
+
 ```http
 POST /api/v1/studio/schedule
 Authorization: Bearer <token>
@@ -307,6 +316,7 @@ Content-Type: application/json
 ```
 
 #### Batch Enqueue
+
 ```http
 POST /api/v1/studio/batch
 Authorization: Bearer <token>
@@ -326,12 +336,14 @@ Content-Type: application/json
 ### History and Draft Endpoints
 
 #### Get Job History
+
 ```http
 GET /api/v1/studio/history?limit=50&queue={queueName}
 Authorization: Bearer <token>
 ```
 
 #### Save Draft
+
 ```http
 POST /api/v1/studio/drafts
 Authorization: Bearer <token>
@@ -347,6 +359,7 @@ Content-Type: application/json
 ## Data Models
 
 ### Template Model
+
 ```json
 {
   "templateId": "user_signup_v2",
@@ -412,6 +425,7 @@ Content-Type: application/json
 ```
 
 ### Editor State Model
+
 ```json
 {
   "sessionId": "sess_editor_123",
@@ -454,6 +468,7 @@ Content-Type: application/json
 ```
 
 ### Validation Result Model
+
 ```json
 {
   "validationId": "val_123456",
@@ -508,6 +523,7 @@ Content-Type: application/json
 ```
 
 ### Job Schedule Model
+
 ```json
 {
   "scheduleId": "sched_abc123",
@@ -543,6 +559,7 @@ Content-Type: application/json
 ```
 
 ### Snippet Function Model
+
 ```json
 {
   "functions": {
@@ -642,6 +659,7 @@ graph TB
 ```
 
 ### Permission Model
+
 ```yaml
 permissions:
   studio.use:
@@ -676,6 +694,7 @@ permissions:
 ### Content Security
 
 #### PII Detection Engine
+
 ```yaml
 pii_patterns:
   - name: "email"
@@ -700,6 +719,7 @@ pii_patterns:
 ```
 
 #### Safety Checks
+
 ```go
 type SafetyChecker struct {
     MaxPayloadSize   int64
@@ -744,6 +764,7 @@ func (sc *SafetyChecker) ValidateOperation(op Operation) []SafetyIssue {
 ## Performance Requirements
 
 ### Response Time Targets
+
 - **Template loading**: <100ms for cached templates
 - **Syntax highlighting**: <50ms for files up to 1MB
 - **Real-time validation**: <200ms for schema validation
@@ -751,18 +772,21 @@ func (sc *SafetyChecker) ValidateOperation(op Operation) []SafetyIssue {
 - **Save operations**: <500ms for template saves
 
 ### Throughput Requirements
+
 - **Concurrent users**: 50 active studio sessions per server
 - **Template operations**: 1,000 template loads per minute
 - **Validation requests**: 500 validations per minute
 - **Job submissions**: 100 jobs per minute per user
 
 ### Resource Utilization
+
 - **Memory per session**: <50MB including editor buffer and caches
 - **CPU per operation**: <5% of single core for validation
 - **Storage**: <1GB for templates, history, and cache per user
 - **Network**: <10KB/s sustained for real-time features
 
 ### Scalability Targets
+
 ```yaml
 performance_targets:
   editor:
@@ -790,6 +814,7 @@ performance_targets:
 ## Testing Strategy
 
 ### Unit Testing
+
 ```go
 func TestJSONEditor(t *testing.T) {
     tests := []struct {
@@ -831,6 +856,7 @@ func TestJSONEditor(t *testing.T) {
 ```
 
 ### Integration Testing
+
 ```go
 func TestStudioWorkflow(t *testing.T) {
     studio := NewStudio(t)
@@ -857,6 +883,7 @@ func TestStudioWorkflow(t *testing.T) {
 ```
 
 ### Performance Testing
+
 ```go
 func BenchmarkSyntaxHighlighting(b *testing.B) {
     editor := NewJSONEditor()
@@ -884,6 +911,7 @@ func TestValidationPerformance(t *testing.T) {
 ```
 
 ### User Experience Testing
+
 ```yaml
 ux_test_scenarios:
   - name: "New user onboarding"
@@ -913,6 +941,7 @@ ux_test_scenarios:
 ## Deployment Plan
 
 ### Infrastructure Requirements
+
 ```yaml
 studio_service:
   containers:
@@ -938,6 +967,7 @@ studio_service:
 ```
 
 ### Configuration Management
+
 ```yaml
 # config/studio.yaml
 studio:
@@ -971,6 +1001,7 @@ studio:
 ```
 
 ### Deployment Steps
+
 1. **Schema Registry Setup**: Deploy schema validation service
 2. **Template Migration**: Import existing job examples as templates
 3. **Service Deployment**: Roll out studio API with feature flags
@@ -979,6 +1010,7 @@ studio:
 6. **Gradual Rollout**: Enable for dev environments first, then staging/prod
 
 ### Monitoring and Observability
+
 ```yaml
 metrics:
   usage:
@@ -1015,6 +1047,7 @@ alerts:
 ## Implementation Interfaces
 
 ### Core Studio Interface
+
 ```go
 type Studio interface {
     // Session management
@@ -1041,6 +1074,7 @@ type Studio interface {
 ```
 
 ### Template Manager Interface
+
 ```go
 type TemplateManager interface {
     // Template CRUD
@@ -1060,6 +1094,7 @@ type TemplateManager interface {
 ```
 
 ### JSON Editor Interface
+
 ```go
 type JSONEditor interface {
     // Content management
@@ -1088,6 +1123,7 @@ type JSONEditor interface {
 ```
 
 ### Snippet Engine Interface
+
 ```go
 type SnippetEngine interface {
     // Snippet evaluation
@@ -1107,6 +1143,7 @@ type SnippetEngine interface {
 ```
 
 ### Schema Validator Interface
+
 ```go
 type SchemaValidator interface {
     // Schema management

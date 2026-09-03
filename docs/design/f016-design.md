@@ -115,7 +115,8 @@ sequenceDiagram
 The cost model uses a weighted formula that captures true resource consumption:
 
 **Cost Formula:**
-```
+
+```text
 TotalCost = (
     BaseJobCost +
     (CPUTimeSeconds × CPUTimeWeight) +
@@ -937,24 +938,28 @@ graph TB
 ## Deployment Plan
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - Cost model implementation and calibration
 - Basic budget management (CRUD operations)
 - Simple enforcement (warning level only)
 - Core data storage and aggregation
 
 ### Phase 2: Core Features (Weeks 3-4)
+
 - Full enforcement ladder (warn, throttle, block)
 - Rate limiter integration
 - Basic forecasting algorithm
 - Notification system integration
 
 ### Phase 3: Advanced Features (Weeks 5-6)
+
 - TUI integration with budget panels
 - Advanced forecasting with seasonal adjustments
 - Cost breakdown and analytics API
 - Performance optimization and caching
 
 ### Phase 4: Production Readiness (Weeks 7-8)
+
 - Comprehensive monitoring and alerting
 - Security hardening and audit logging
 - Documentation and operator training
@@ -1028,16 +1033,19 @@ alerts:
 ## Success Metrics
 
 ### Adoption Metrics
+
 - **Budget Coverage**: % of tenants with active budgets (Target: 90% within 3 months)
 - **Cost Visibility**: % of jobs with cost attribution (Target: 99%)
 - **Enforcement Adoption**: % of tenants using enforcement features (Target: 70%)
 
 ### Financial Impact
+
 - **Cost Savings**: Monthly savings from enforcement and optimization (Target: 15-25%)
 - **Budget Accuracy**: Forecast accuracy within 10% of actual spend (Target: 85% accuracy)
 - **Overspend Prevention**: Reduction in budget overruns (Target: 80% reduction)
 
 ### Operational Metrics
+
 - **System Performance**: Maintain < 5ms budget check latency (Target: 99.9% SLA)
 - **Data Accuracy**: Cost model accuracy within calibration bounds (Target: ±5%)
 - **User Satisfaction**: TUI responsiveness and feature utility (Target: 4.5/5 rating)
@@ -1045,16 +1053,19 @@ alerts:
 ## Future Enhancements
 
 ### Short-term (3-6 months)
+
 - **Multi-cloud Integration**: Pull actual AWS/GCP costs for model calibration
 - **Advanced Analytics**: Cost optimization recommendations based on job patterns
 - **Budget Templates**: Pre-configured budgets for common use cases
 
 ### Medium-term (6-12 months)
+
 - **Predictive Scaling**: Use budget forecasts to predict capacity requirements
 - **Chargeback Integration**: Export cost data to accounting systems
 - **Cost Anomaly Detection**: ML-powered detection of unusual spending patterns
 
 ### Long-term (12+ months)
+
 - **Carbon Footprint Tracking**: Environmental impact calculations alongside cost
 - **Multi-region Cost Allocation**: Geographic cost modeling for distributed systems
 - **Smart Budget Optimization**: AI-driven budget recommendations and auto-adjustments

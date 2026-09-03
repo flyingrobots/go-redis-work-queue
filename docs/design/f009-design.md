@@ -156,18 +156,21 @@ type InjectionStep struct {
 The fault injection engine provides controlled failure injection across multiple system layers.
 
 **Worker Injector**:
+
 - Processing delays with configurable latency distributions
 - Random failure injection at specified rates
 - Worker panic/restart simulation
 - Partial processing failures (half-completed jobs)
 
 **Redis Proxy Injector**:
+
 - Network latency injection between workers and Redis
 - Connection drops and timeouts
 - Sentinel/cluster failover simulation
 - Memory pressure simulation
 
 **Load Injector**:
+
 - Traffic spike generation
 - Sustained load patterns
 - Burst load with gradual ramp-down
@@ -291,18 +294,21 @@ sequenceDiagram
 #### Chaos Dashboard Design
 
 **Scenario Selection Panel**:
+
 - Categorized scenario library (load testing, failure injection, recovery validation)
 - Quick-start templates for common reliability tests
 - Custom scenario builder with guided wizard
 - Environment-specific scenario filtering
 
 **Real-Time Monitoring Panel**:
+
 - Live system health visualization during chaos
 - Recovery progress indicators and timelines
 - Visual markers showing injection start/stop points
 - Side-by-side comparison with baseline metrics
 
 **Chaos Control Panel**:
+
 - Emergency stop button with instant injection termination
 - TTL countdown timers for active injections
 - Safety status indicators and constraint validation
@@ -329,18 +335,21 @@ type ScenarioPanel struct {
 #### Pre-built Chaos Scenarios
 
 **Basic Resilience Tests**:
+
 - Worker Overload: Simulate worker saturation with high latency
 - Redis Latency: Inject network delays to Redis cluster
 - Partial Failures: Random job processing failures at 10% rate
 - Queue Flooding: Burst traffic 5x normal load for 2 minutes
 
 **Advanced Chaos Scenarios**:
+
 - Cascading Failures: Multiple injection points with staggered timing
 - Split Brain: Simulate network partitions between worker groups
 - Resource Exhaustion: Memory pressure leading to worker restarts
 - Circuit Breaker: Test backpressure and recovery behavior
 
 **Game Day Scenarios**:
+
 - Black Friday Load: Sustained 10x traffic with periodic spikes
 - Database Failover: Simulate primary Redis failure with sentinel failover
 - Deployment Chaos: Rolling restart of workers during peak load
@@ -446,11 +455,13 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 **STRIDE Categories**: Elevation of Privilege, Denial of Service
 
 **Attack Scenarios**:
+
 - Malicious insider launches chaos in production during business hours
 - Compromised credentials used to execute destructive scenarios
 - API exploitation bypasses safety constraints
 
 **Mitigations**:
+
 - **Strong Authentication**: Multi-factor authentication for chaos access
 - **Role-Based Permissions**: Granular access controls per environment
 - **Approval Workflows**: Required approvals for production-adjacent scenarios
@@ -467,11 +478,13 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 **STRIDE Categories**: Tampering, Denial of Service
 
 **Attack Scenarios**:
+
 - Direct manipulation of safety configuration
 - TTL bypass allowing indefinite chaos injection
 - Blast radius limits circumvented through multiple scenarios
 
 **Mitigations**:
+
 - **Immutable Safety Config**: Safety parameters enforced at system level
 - **Hardware Kill Switch**: Physical emergency stop independent of software
 - **Distributed Safety Checks**: Multiple independent safety validators
@@ -488,11 +501,13 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 **STRIDE Categories**: Information Disclosure
 
 **Attack Scenarios**:
+
 - Chaos reports contain sensitive operational data
 - Metrics databases compromised exposing system vulnerabilities
 - Scenario definitions reveal security weaknesses
 
 **Mitigations**:
+
 - **Data Sanitization**: Remove sensitive information from chaos reports
 - **Access Controls**: Encrypt and restrict access to chaos metrics
 - **Retention Policies**: Automatic purging of detailed chaos data
@@ -507,12 +522,14 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 #### Preventive Controls
 
 **Environment Protection**:
+
 - Production environment lockout with policy enforcement
 - Staging-only execution with explicit production blocks
 - Environment validation before scenario execution
 - Compliance integration for regulated environments
 
 **Access Control**:
+
 - Role-based access with principle of least privilege
 - Time-limited access tokens for chaos operations
 - Approval workflows for high-impact scenarios
@@ -521,6 +538,7 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 #### Detective Controls
 
 **Monitoring and Alerting**:
+
 - Real-time monitoring of chaos experiment scope
 - Automated alerting on safety constraint violations
 - Anomaly detection for unusual chaos patterns
@@ -529,6 +547,7 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 #### Responsive Controls
 
 **Emergency Response**:
+
 - Instant kill switch for all active chaos experiments
 - Automatic rollback of system changes
 - Incident escalation for safety violations
@@ -537,24 +556,28 @@ func (sl *ScenarioLibrary) GetScenario(id string) (*ChaosScenario, error) {
 ## Deployment Plan
 
 ### Phase 1: Core Infrastructure (Weeks 1-2)
+
 - Implement basic fault injectors for workers and Redis
 - Create scenario definition framework and validation
 - Build safety guardian with environment protection
 - Deploy basic TUI integration for scenario selection
 
 ### Phase 2: Advanced Injections (Weeks 3-4)
+
 - Add network and load injection capabilities
 - Implement comprehensive metrics collection system
 - Create scenario library with pre-built chaos tests
 - Build real-time recovery tracking and visualization
 
 ### Phase 3: Safety and Polish (Weeks 5-6)
+
 - Complete safety system integration and testing
 - Add advanced TUI features and emergency controls
 - Implement chaos reporting and historical analysis
 - Conduct security review and penetration testing
 
 ### Phase 4: Game Day Features (Weeks 7-8)
+
 - Create advanced scenario composition tools
 - Add team collaboration features for game days
 - Implement chaos experiment scheduling and automation
