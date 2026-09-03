@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/spf13/viper"
 )
 
@@ -115,16 +116,19 @@ func defaultConfig() *Config {
 			MaxRetries:         3,
 		},
 		Worker: Worker{
-			Count:                 16,
-			HeartbeatTTL:          30 * time.Second,
-			MaxRetries:            3,
-			Backoff:               Backoff{Base: 500 * time.Millisecond, Max: 10 * time.Second},
-			Priorities:            []string{"high", "low"},
-			Queues:                map[string]string{"high": "jobqueue:high_priority", "low": "jobqueue:low_priority"},
-			ProcessingListPattern: "jobqueue:worker:%s:processing",
-			HeartbeatKeyPattern:   "jobqueue:processing:worker:%s",
-			CompletedList:         "jobqueue:completed",
-			DeadLetterList:        "jobqueue:dead_letter",
+			Count:        16,
+			HeartbeatTTL: 30 * time.Second,
+			MaxRetries:   3,
+			Backoff:      Backoff{Base: 500 * time.Millisecond, Max: 10 * time.Second},
+			Priorities:   []string{"high", "low"},
+			Queues: map[string]string{
+				"high": queuekeys.DefaultHighPriorityQueue,
+				"low":  queuekeys.DefaultLowPriorityQueue,
+			},
+			ProcessingListPattern: queuekeys.DefaultProcessingListPattern,
+			HeartbeatKeyPattern:   queuekeys.DefaultHeartbeatKeyPattern,
+			CompletedList:         queuekeys.DefaultCompletedList,
+			DeadLetterList:        queuekeys.DefaultDeadLetterList,
 			BRPopLPushTimeout:     1 * time.Second,
 			BreakerPause:          100 * time.Millisecond,
 		},
@@ -135,7 +139,7 @@ func defaultConfig() *Config {
 			DefaultPriority:  "low",
 			HighPriorityExts: []string{".pdf", ".docx", ".xlsx", ".zip"},
 			RateLimitPerSec:  100,
-			RateLimitKey:     "jobqueue:rate_limit:producer",
+			RateLimitKey:     queuekeys.DefaultProducerRateLimitKey,
 		},
 		Queue: QueueConfig{
 			MaxPayloadSize: queue.DefaultMaxPayloadSize,
@@ -236,6 +240,12 @@ func Validate(cfg *Config) error {
 		if _, ok := cfg.Worker.Queues[p]; !ok {
 			return fmt.Errorf("worker.queues missing entry for priority %q", p)
 		}
+	}
+	if strings.Count(cfg.Worker.ProcessingListPattern, "%s") != 1 {
+		return fmt.Errorf("worker.processing_list_pattern must contain exactly one %%s placeholder")
+	}
+	if strings.Count(cfg.Worker.HeartbeatKeyPattern, "%s") != 1 {
+		return fmt.Errorf("worker.heartbeat_key_pattern must contain exactly one %%s placeholder")
 	}
 	if cfg.Worker.HeartbeatTTL < 5*time.Second {
 		return fmt.Errorf("worker.heartbeat_ttl must be >= 5s")

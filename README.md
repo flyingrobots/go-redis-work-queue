@@ -29,7 +29,7 @@ For full details, see the Features Ledger at [docs/features-ledger.md](docs/feat
 
 <!-- progress:begin -->
 ```text
-█████████████████████▓░░░░░░░░░░░░░░░░░░ 54%
+█████████████████████▓░░░░░░░░░░░░░░░░░░ 55%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -99,8 +99,75 @@ the worker can resolve. Oversized jobs are rejected before Redis is modified.
 
 `FilePath` and `FileSize` remain in the envelope for compatibility with the
 legacy producer and benchmark flow; they are metadata, not the application
-payload. The repository-external client, CLI, and HTTP enqueue surfaces are
-tracked as ROADMAP Item 3.
+payload. `OrderingKey` is also stored in the envelope for forward
+compatibility, but per-key FIFO is not enforced until ROADMAP Item 4 lands.
+
+### Enqueue jobs
+
+Applications outside this repository should use `pkg/queueclient`. Its `Job`
+alias has the exact durable representation consumed by the worker, and its
+default configuration uses the same Redis keys as the binary:
+
+```go
+cfg := queueclient.DefaultConfig()
+client, err := queueclient.New(&redis.Options{Addr: "localhost:6379"}, cfg)
+if err != nil {
+    return err
+}
+defer client.Close()
+
+id, err := client.Enqueue(ctx, queueclient.Job{
+    Payload:       []byte(`{"x":1}`),
+    PayloadSchema: "demo.v1",
+    Priority:      "high",
+})
+```
+
+`Enqueue` generates an ID and UTC creation time when they are omitted. An empty
+priority selects `Config.DefaultPriority`; any other priority must name an
+entry in `Config.Queues`. `Stats` and `Peek` expose the corresponding read-only
+admin views. Redis command failures use `*queueclient.ConnectionError` and can
+also be matched with `errors.Is(err, queueclient.ErrConnection)`.
+
+`EnqueueBatch` validates and encodes the entire slice before opening a Redis
+transaction. A bad priority or oversized payload rejects the whole batch with
+no writes. An accepted batch is applied atomically by Redis, and generated IDs
+and timestamps are copied into the supplied slice. Caller-supplied duplicate
+IDs are intentionally not deduplicated: each entry is a separate at-least-once
+delivery, so handlers should remain idempotent.
+
+The binary has a matching `enqueue` subcommand. It reads stdin by default and
+prints only the accepted job ID to stdout:
+
+```bash
+echo '{"x":1}' | ./bin/job-queue-system enqueue \
+  --config config/config.yaml \
+  --schema demo.v1 \
+  --priority high
+```
+
+Use `--payload-file path/to/payload.bin` for a file, or
+`--payload-file -` for stdin. `--ordering-key` stores the future FIFO key, and
+`--id` supplies a caller-owned ID. Empty stdin is a valid zero-byte payload.
+
+The Admin API exposes the same guard at `POST /api/v1/enqueue`. Because job
+payloads are opaque bytes, JSON represents `payload` as base64 (`format: byte`):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/enqueue \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "payload": "eyJ4IjoxfQ==",
+    "payload_schema": "demo.v1",
+    "priority": "high"
+  }'
+```
+
+Success returns HTTP `201` with `{"id":"...","timestamp":"..."}`. Invalid
+priorities return `400`, oversized decoded payloads return `413` with the typed
+size error message, and Redis connection failures return `503`. The live
+OpenAPI document is served at `/api/v1/openapi.yaml`.
 
 ### Worker handlers
 

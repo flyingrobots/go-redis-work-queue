@@ -6,10 +6,10 @@ import (
     "errors"
     "fmt"
     "sort"
-    "strings"
     "time"
 
     "github.com/flyingrobots/go-redis-work-queue/internal/config"
+    "github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
     "github.com/redis/go-redis/v9"
 )
 
@@ -217,8 +217,10 @@ type WorkerService interface {
 // Workers lists currently known workers in the given namespace.
 func Workers(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string) ([]WorkerInfo, error) {
     // Discover workers from heartbeat and processing keys
-    hbPattern := "jobqueue:processing:worker:*"
-    plPattern := "jobqueue:worker:*:processing"
+    hbFormat := heartbeatKeyPattern(cfg)
+    plFormat := processingKeyPattern(cfg)
+    hbPattern := queuekeys.ScanPattern(hbFormat)
+    plPattern := queuekeys.ScanPattern(plFormat)
 
     workerMap := map[string]*WorkerInfo{}
 
@@ -231,7 +233,10 @@ func Workers(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         }
         cursor = cur
         for _, k := range keys {
-            id := k[strings.LastIndex(k, ":")+1:]
+            id, ok := queuekeys.Extract(hbFormat, k)
+            if !ok || id == "" {
+                continue
+            }
             wi := workerMap[id]
             if wi == nil {
                 wi = &WorkerInfo{ID: id}
@@ -253,13 +258,8 @@ func Workers(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         }
         cursor = cur
         for _, k := range keys {
-            // Format: jobqueue:worker:<id>:processing
-            parts := strings.Split(k, ":")
-            id := ""
-            if len(parts) >= 3 {
-                id = parts[2]
-            }
-            if id == "" {
+            id, ok := queuekeys.Extract(plFormat, k)
+            if !ok || id == "" {
                 continue
             }
             wi := workerMap[id]

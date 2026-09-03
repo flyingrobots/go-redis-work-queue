@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-# Worker coverage is part of the default suite as of ROADMAP Item 5.
-expected_minimum=21
+# Core and public-client coverage are part of the default suite as of Items 5 and 3.
+expected_minimum=25
 
 packages="$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./...)"
 actual="$(printf '%s\n' "$packages" | awk 'NF {count++} END {print count+0}')"

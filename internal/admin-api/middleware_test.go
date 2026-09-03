@@ -229,6 +229,7 @@ func TestIsDestructiveOperation(t *testing.T) {
 		destructive bool
 	}{
 		{"GET", "/api/v1/stats", false},
+		{"POST", "/api/v1/enqueue", true},
 		{"DELETE", "/api/v1/queues/dlq", true},
 		{"DELETE", "/api/v1/queues/all", true},
 		{"POST", "/api/v1/bench", true},

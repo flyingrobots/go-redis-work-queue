@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 func setupHandlerTest(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
@@ -92,6 +95,140 @@ func TestHandlerGetStats(t *testing.T) {
 
 	if resp.Queues["low(jobqueue:low)"] != 1 {
 		t.Errorf("Expected low queue to have 1 item, got %d", resp.Queues["low(jobqueue:low)"])
+	}
+}
+
+func TestEnqueueJobReturnsCreatedIDAndPreservesEnvelope(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 64
+
+	reqBody := EnqueueRequest{
+		ID:            "http-job",
+		Payload:       []byte(`{"x":1}`),
+		PayloadSchema: "demo.v1",
+		Priority:      "high",
+		OrderingKey:   "account:42",
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", w.Code, w.Body.String())
+	}
+	var response EnqueueResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.ID != "http-job" {
+		t.Fatalf("response ID = %q", response.ID)
+	}
+	items, err := mr.List("jobqueue:high")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("high queue length = %d, want 1", len(items))
+	}
+	job, err := queue.UnmarshalJob(items[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.ID != response.ID || !bytes.Equal(job.Payload, reqBody.Payload) || job.PayloadSchema != reqBody.PayloadSchema || job.OrderingKey != reqBody.OrderingKey {
+		t.Fatalf("queued envelope changed: %#v", job)
+	}
+}
+
+func TestEnqueueJobOversizedPayloadReturnsTypedMessageWithoutQueueChange(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 4
+	reqBody := EnqueueRequest{Payload: []byte("12345"), Priority: "low"}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "PAYLOAD_TOO_LARGE" || response.Error != "payload is 5 bytes; maximum is 4 bytes" {
+		t.Fatalf("unexpected error response: %#v", response)
+	}
+	if mr.Exists("jobqueue:low") {
+		items, listErr := mr.List("jobqueue:low")
+		t.Fatalf("rejected enqueue changed queue: %v (err=%v)", items, listErr)
+	}
+}
+
+func TestSetupRoutesExposesEnqueueEndpoint(t *testing.T) {
+	handler, _, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	server := &Server{
+		cfg:    handler.apiCfg,
+		appCfg: handler.cfg,
+		rdb:    handler.rdb,
+		logger: handler.logger,
+	}
+	body, err := json.Marshal(EnqueueRequest{Payload: []byte("route"), Priority: "low"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	server.SetupRoutes().ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
+	var document struct {
+		Paths      map[string]map[string]any `yaml:"paths"`
+		Components struct {
+			Schemas map[string]any `yaml:"schemas"`
+		} `yaml:"components"`
+	}
+	if err := yaml.Unmarshal([]byte(openAPISpec), &document); err != nil {
+		t.Fatalf("OpenAPI YAML is invalid: %v", err)
+	}
+	for path, method := range map[string]string{
+		"/enqueue":     "post",
+		"/dlq":         "get",
+		"/dlq/requeue": "post",
+		"/dlq/purge":   "post",
+		"/workers":     "get",
+	} {
+		if _, ok := document.Paths[path][method]; !ok {
+			t.Errorf("OpenAPI paths does not contain %s %s", strings.ToUpper(method), path)
+		}
+	}
+	if _, ok := document.Components.Schemas["EnqueueRequest"]; !ok {
+		t.Fatal("OpenAPI components does not contain EnqueueRequest")
+	}
+	if _, ok := document.Components.Schemas["EnqueueResponse"]; !ok {
+		t.Fatal("OpenAPI components does not contain EnqueueResponse")
+	}
+	for name := range document.Components.Schemas {
+		if strings.HasPrefix(name, "/") {
+			t.Errorf("OpenAPI path %q is incorrectly nested under component schemas", name)
+		}
 	}
 }
 

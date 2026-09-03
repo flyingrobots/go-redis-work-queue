@@ -262,6 +262,7 @@ func isDestructiveOperation(method, path string) bool {
 	}
 
 	destructivePaths := []string{
+		"/api/v1/enqueue",
 		"/api/v1/queues/dlq",
 		"/api/v1/queues/all",
 		"/api/v1/bench",

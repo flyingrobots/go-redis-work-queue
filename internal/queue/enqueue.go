@@ -30,20 +30,39 @@ func (e *PayloadTooLargeError) Unwrap() error {
 	return ErrPayloadTooLarge
 }
 
-// Enqueue validates and atomically appends one job to the Redis list consumed
-// by workers. A non-positive limit uses DefaultMaxPayloadSize so callers that
-// construct Config values directly retain the safe default.
-func Enqueue(ctx context.Context, rdb redis.Cmdable, queueName string, job Job, maxPayloadSize int) error {
+// ValidatePayloadSize applies the enqueue payload guard without modifying
+// Redis. A non-positive limit uses DefaultMaxPayloadSize.
+func ValidatePayloadSize(payload []byte, maxPayloadSize int) error {
 	if maxPayloadSize <= 0 {
 		maxPayloadSize = DefaultMaxPayloadSize
 	}
-	if len(job.Payload) > maxPayloadSize {
-		return &PayloadTooLargeError{Size: len(job.Payload), Limit: maxPayloadSize}
+	if len(payload) > maxPayloadSize {
+		return &PayloadTooLargeError{Size: len(payload), Limit: maxPayloadSize}
+	}
+	return nil
+}
+
+// EncodeForEnqueue applies the payload guard and returns the durable job JSON
+// without modifying Redis.
+func EncodeForEnqueue(job Job, maxPayloadSize int) (string, error) {
+	if err := ValidatePayloadSize(job.Payload, maxPayloadSize); err != nil {
+		return "", err
 	}
 
 	encoded, err := job.Marshal()
 	if err != nil {
-		return fmt.Errorf("marshal job: %w", err)
+		return "", fmt.Errorf("marshal job: %w", err)
+	}
+	return encoded, nil
+}
+
+// Enqueue validates and atomically appends one job to the Redis list consumed
+// by workers. A non-positive limit uses DefaultMaxPayloadSize so callers that
+// construct Config values directly retain the safe default.
+func Enqueue(ctx context.Context, rdb redis.Cmdable, queueName string, job Job, maxPayloadSize int) error {
+	encoded, err := EncodeForEnqueue(job, maxPayloadSize)
+	if err != nil {
+		return err
 	}
 	if err := rdb.LPush(ctx, queueName, encoded).Err(); err != nil {
 		return fmt.Errorf("enqueue job: %w", err)

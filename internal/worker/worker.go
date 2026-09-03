@@ -12,6 +12,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -79,8 +80,8 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) runOne(ctx context.Context, workerID string) {
-	procList := fmt.Sprintf(w.cfg.Worker.ProcessingListPattern, workerID)
-	hbKey := fmt.Sprintf(w.cfg.Worker.HeartbeatKeyPattern, workerID)
+	procList := queuekeys.Format(w.cfg.Worker.ProcessingListPattern, workerID)
+	hbKey := queuekeys.Format(w.cfg.Worker.HeartbeatKeyPattern, workerID)
 
 	for ctx.Err() == nil {
 		if !w.cb.Allow() {

@@ -50,6 +50,37 @@ func TestReaperRequeuesWithoutHeartbeat(t *testing.T) {
 	}
 }
 
+func TestReaperUsesConfiguredProcessingPattern(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg, err := config.Load("nonexistent.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Worker.ProcessingListPattern = "custom:{worker:%s}:active"
+	cfg.Worker.HeartbeatKeyPattern = "custom:{heartbeat:%s}"
+	cfg.Worker.Queues["low"] = "custom:low"
+
+	job := queue.NewJob("custom-key-job", "", 0, "low", "", "")
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.LPush(context.Background(), "custom:{worker:alpha:one}:active", payload).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	New(cfg, rdb, zap.NewNop()).scanOnce(context.Background())
+
+	if got, err := rdb.LLen(context.Background(), "custom:low").Result(); err != nil || got != 1 {
+		t.Fatalf("custom queue length = %d, want 1 (err=%v)", got, err)
+	}
+	if mr.Exists("custom:{worker:alpha:one}:active") {
+		t.Fatal("custom processing list was not drained")
+	}
+}
+
 func TestReaperDoesNotStealJobFromLiveHandler(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

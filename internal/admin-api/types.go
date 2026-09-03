@@ -11,6 +11,16 @@ type PeekRequest struct {
 	Count int `json:"count" validate:"min=1,max=100"`
 }
 
+// EnqueueRequest accepts arbitrary payload bytes as JSON base64. Priority may
+// be omitted to use the configured producer default.
+type EnqueueRequest struct {
+	ID            string `json:"id,omitempty"`
+	Payload       []byte `json:"payload,omitempty"`
+	PayloadSchema string `json:"payload_schema,omitempty"`
+	Priority      string `json:"priority,omitempty"`
+	OrderingKey   string `json:"ordering_key,omitempty"`
+}
+
 type BenchRequest struct {
 	Count       int    `json:"count" validate:"required,min=1,max=10000"`
 	Priority    string `json:"priority" validate:"required,oneof=high low"`
@@ -61,6 +71,11 @@ type PeekResponse struct {
 	Queue     string    `json:"queue"`
 	Items     []string  `json:"items"`
 	Count     int       `json:"count"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type EnqueueResponse struct {
+	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
 }
 

@@ -3,13 +3,12 @@ package reaper
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -39,23 +38,28 @@ func (r *Reaper) Run(ctx context.Context) {
 
 func (r *Reaper) scanOnce(ctx context.Context) {
 	// Scan all processing lists
+	processingPattern := r.cfg.Worker.ProcessingListPattern
+	if processingPattern == "" {
+		processingPattern = queuekeys.DefaultProcessingListPattern
+	}
 	var cursor uint64
 	for {
-		keys, cur, err := r.rdb.Scan(ctx, cursor, "jobqueue:worker:*:processing", 100).Result()
+		keys, cur, err := r.rdb.Scan(ctx, cursor, queuekeys.ScanPattern(processingPattern), 100).Result()
 		if err != nil {
 			r.log.Warn("reaper scan error", obs.Err(err))
 			return
 		}
 		cursor = cur
 		for _, plist := range keys {
-			// derive worker id
-			// jobqueue:worker:<ID>:processing
-			parts := strings.Split(plist, ":")
-			if len(parts) < 4 {
+			workerID, ok := queuekeys.Extract(processingPattern, plist)
+			if !ok || workerID == "" {
 				continue
 			}
-			workerID := parts[2]
-			hbKey := fmt.Sprintf(r.cfg.Worker.HeartbeatKeyPattern, workerID)
+			hbPattern := r.cfg.Worker.HeartbeatKeyPattern
+			if hbPattern == "" {
+				hbPattern = queuekeys.DefaultHeartbeatKeyPattern
+			}
+			hbKey := queuekeys.Format(hbPattern, workerID)
 			exists, _ := r.rdb.Exists(ctx, hbKey).Result()
 			if exists == 1 {
 				continue

@@ -25,6 +25,14 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "enqueue" {
+		if err := runEnqueue(os.Args[2:], os.Stdin, os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "enqueue: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	var role string
 	var configPath string
 	var adminCmd string

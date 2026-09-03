@@ -69,4 +69,14 @@ func TestValidateFails(t *testing.T) {
 	if err := Validate(cfg); err == nil {
 		t.Fatalf("expected error for queue.max_payload_size <= 0")
 	}
+	cfg = defaultConfig()
+	cfg.Worker.ProcessingListPattern = "jobqueue:processing-without-placeholder"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected processing pattern without a placeholder to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = "jobqueue:%s:heartbeat:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected heartbeat pattern with two placeholders to fail")
+	}
 }

@@ -104,6 +104,14 @@ heartbeats throughout long calls and retry backoff.
 
 ## Item 3 — An enqueue surface: `pkg/client` + CLI
 
+**Status:** Complete on 2026-09-02. The supported `pkg/queueclient` package now
+aliases the durable core job type, validates single and transactional batch
+enqueue operations, reports typed priority/payload/connection errors, and
+mirrors Stats/Peek. The binary and Admin API use the same guard and shared key
+layout. Duplicate explicit IDs remain separate at-least-once deliveries; empty
+stdin is a valid payload. `OrderingKey` is persisted now but is intentionally
+not enforced until Item 4.
+
 > **PROMPT**
 >
 > You are working in `go-redis-work-queue`. Nothing outside this repo can enqueue a job.
@@ -159,7 +167,7 @@ heartbeats throughout long calls and retry backoff.
 
 **Status:** Complete on 2026-09-02. The worker, queue, producer, reaper, and
 breaker suites run by default and pass under the race detector; CI enables and
-proves the Redis e2e smoke test; a 21-package minimum guards against silent
+proves the Redis e2e smoke test; a 25-package minimum guards against silent
 re-gating; and every remaining opt-in test names its gate and exit condition.
 
 > **PROMPT**

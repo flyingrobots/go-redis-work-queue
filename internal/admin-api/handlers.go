@@ -4,6 +4,7 @@ package adminapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queueclient"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -81,6 +83,60 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// EnqueueJob handles POST /api/v1/enqueue.
+func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
+	var req EnqueueRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+
+	client, err := queueclient.NewWithClient(h.rdb, queueclient.Config{
+		Queues:                h.cfg.Worker.Queues,
+		DefaultPriority:       h.cfg.Producer.DefaultPriority,
+		ProcessingListPattern: h.cfg.Worker.ProcessingListPattern,
+		HeartbeatKeyPattern:   h.cfg.Worker.HeartbeatKeyPattern,
+		CompletedList:         h.cfg.Worker.CompletedList,
+		DeadLetterList:        h.cfg.Worker.DeadLetterList,
+		MaxPayloadSize:        h.cfg.Queue.MaxPayloadSize,
+	})
+	if err != nil {
+		h.logger.Error("Invalid queue client configuration", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "QUEUE_CONFIG_ERROR", err.Error())
+		return
+	}
+
+	id, err := client.Enqueue(r.Context(), queueclient.Job{
+		ID:            req.ID,
+		Payload:       req.Payload,
+		PayloadSchema: req.PayloadSchema,
+		Priority:      req.Priority,
+		OrderingKey:   req.OrderingKey,
+	})
+	if err != nil {
+		var sizeErr *queueclient.PayloadTooLargeError
+		var priorityErr *queueclient.UnknownPriorityError
+		var connectionErr *queueclient.ConnectionError
+		switch {
+		case errors.As(err, &sizeErr):
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", sizeErr.Error())
+		case errors.As(err, &priorityErr):
+			writeError(w, http.StatusBadRequest, "INVALID_PRIORITY", priorityErr.Error())
+		case errors.As(err, &connectionErr):
+			h.logger.Error("Failed to enqueue job", zap.Error(err))
+			writeError(w, http.StatusServiceUnavailable, "REDIS_UNAVAILABLE", connectionErr.Error())
+		default:
+			h.logger.Error("Failed to enqueue job", zap.Error(err))
+			writeError(w, http.StatusInternalServerError, "ENQUEUE_ERROR", err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, EnqueueResponse{ID: id, Timestamp: time.Now().UTC()})
 }
 
 // PeekQueue handles GET /api/v1/queues/{queue}/peek

@@ -13,6 +13,10 @@ import (
 // bytes exactly. PayloadSchema is an optional, caller-owned type or version
 // discriminator; an empty schema is valid.
 //
+// OrderingKey is stored for forward compatibility with ordered delivery. Until
+// per-key FIFO is enabled, it is metadata only and does not serialize handler
+// execution.
+//
 // FilePath and FileSize are legacy benchmark fields. They remain for backward
 // compatibility and for the built-in benchmark handler, but they are metadata,
 // not the application payload.
@@ -22,6 +26,7 @@ type Job struct {
 	FileSize      int64  `json:"filesize"`
 	Payload       []byte `json:"payload,omitempty"`
 	PayloadSchema string `json:"payload_schema,omitempty"`
+	OrderingKey   string `json:"ordering_key,omitempty"`
 	Priority      string `json:"priority"`
 	Retries       int    `json:"retries"`
 	CreationTime  string `json:"creation_time"`

@@ -19,13 +19,18 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- Queue core ROADMAP Items 0, 5, 1, and 2 are complete on Draft PR #6; Item 3 is next.
+- Queue core ROADMAP Items 0, 5, 1, 2, and 3 are complete on Draft PR #6;
+  Item 4 is next.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
 - All core enqueue writers use the shared pre-write size guard; larger data
   belongs in object storage with only a reference in the job.
 - Workers accept concurrent application handlers; long calls renew heartbeats,
   while shutdown leaves work in processing for at-least-once reaping.
+- External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
+  subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
+  Redis key layout. Duplicate IDs remain separate deliveries.
+- `OrderingKey` is durable metadata only until ROADMAP Item 4 implements FIFO.
 
 ### Job Queue
 
@@ -147,7 +152,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 5: make the tests tell the truth
 - [x] Queue core ROADMAP Item 1: give `Job` a payload
 - [x] Queue core ROADMAP Item 2: add a real worker handler
-- [ ] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
+- [x] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
 - [ ] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [ ] TUI: Integrate `bubblezone` for precise mouse hitboxes (tabs, table rows, future context menus)
@@ -577,6 +582,38 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 3: Public Enqueue Surfaces
+> Made the queue usable from other Go modules, scripts, and HTTP clients while
+> preserving the worker's existing Redis list protocol.
+>
+> Changes
+> - Captured compile-time REDs for the missing public client, CLI command,
+>   HTTP endpoint, ordering metadata, and shared key constants.
+> - Added `pkg/queueclient` with single/batch enqueue, Stats/Peek, generated
+>   IDs, and typed payload, priority, and Redis failures.
+> - Added stdin/file CLI enqueue and a base64-payload HTTP endpoint in a
+>   structurally validated OpenAPI document.
+> - Consolidated active-core key defaults and made admin/reaper scans honor
+>   configured patterns.
+> - Defined all-or-nothing local batch validation and duplicate IDs as
+>   separate at-least-once deliveries.
+>
+> Validation
+> - Public client, CLI, HTTP, admin-key, reaper, and shared-key tests passed
+>   under the race detector.
+> - A separate Go module imported the public package and exercised enqueue
+>   plus Peek.
+> - Client enqueue fed a real Item-2 worker handler and incremented the
+>   completed list.
+> - The built CLI enqueued into real Redis; Admin Peek saw it before and after
+>   worker completion.
+> - Full default tests, the 25-package canary, focused vet, build, and diff
+>   checks passed.
+>
+> Follow-ups
+> - Execute ROADMAP Item 4 next; `OrderingKey` is not enforced before then.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 2: Real Worker Handlers
 > Replaced the simulated middle of the worker with an application callback while

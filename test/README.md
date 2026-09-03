@@ -8,9 +8,23 @@ enabling unwired feature suites prematurely.
 
 Core worker, queue, producer, reaper, and breaker tests run under
 `go test ./... -race -count=1`. Run
-`./scripts/check_test_package_count.sh` to assert that at least 21 packages
+`./scripts/check_test_package_count.sh` to assert that at least 25 packages
 still contribute tests to the default build. CI runs this canary after the
 default suite.
+
+## External Client Contract (`test/external-queueclient/`)
+
+This nested Go module imports `pkg/queueclient` through the public module path,
+then enqueues and peeks a job against `miniredis`. The separate `go.mod` is the
+compile-time proof that the supported API does not leak Go `internal/`
+boundaries. CI runs it independently because `go test ./...` does not recurse
+into nested modules.
+
+Run it with:
+
+```bash
+(cd test/external-queueclient && go test ./... -race -count=1)
+```
 
 ## Integration Tests (`test/integration/`)
 
@@ -49,4 +63,6 @@ _These are human-facing acceptance checklists. None were executed._
 
 _Note_: several scripts still hard-code `/Users/james/...`; parameterize them before relying on the automation.
 
-No standalone fixtures remain under `test/`; the helper package that used to live here now resides under `docs/testing/event-hooks-test-plan.md`.
+The external-client module is the only standalone fixture under `test/`; the
+event-hooks test plan that used to live here now resides under
+`docs/testing/event-hooks-test-plan.md`.

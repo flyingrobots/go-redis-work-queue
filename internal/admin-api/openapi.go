@@ -25,6 +25,8 @@ tags:
     description: Queue statistics and monitoring
   - name: queues
     description: Queue management operations
+  - name: enqueue
+    description: Durable job submission
   - name: dlq
     description: Dead Letter Queue listing and remediation
   - name: workers
@@ -33,6 +35,50 @@ tags:
     description: Performance testing
 
 paths:
+  /enqueue:
+    post:
+      tags:
+        - enqueue
+      summary: Enqueue one job
+      description: >-
+        Appends one job to its configured priority queue. Payload is base64 so
+        arbitrary bytes round-trip exactly; the decoded payload size is checked
+        before Redis is modified. Duplicate caller-supplied IDs are accepted as
+        separate at-least-once deliveries. Ordering keys are stored but are not
+        enforced until per-key FIFO is enabled.
+      operationId: enqueueJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnqueueRequest'
+      responses:
+        '201':
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Decoded payload exceeds the configured queue limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Redis is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /stats:
     get:
       tags:
@@ -198,6 +244,132 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /dlq:
+    get:
+      tags:
+        - dlq
+      summary: List DLQ items
+      description: Returns a page of DLQ items with an opaque next cursor
+      operationId: listDLQ
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Namespace/prefix
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor for pagination
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Page size
+      responses:
+        '200':
+          description: DLQ items page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/requeue:
+    post:
+      tags:
+        - dlq
+      summary: Requeue selected DLQ items
+      operationId: requeueDLQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQRequeueRequest'
+      responses:
+        '200':
+          description: Requeue summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQRequeueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/purge:
+    post:
+      tags:
+        - dlq
+      summary: Purge selected DLQ items
+      operationId: purgeDLQSelection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQPurgeSelectionRequest'
+      responses:
+        '200':
+          description: Purge summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQPurgeSelectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workers:
+    get:
+      tags:
+        - workers
+      summary: List workers
+      description: Returns summary of worker fleet
+      operationId: listWorkers
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -249,6 +421,39 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    EnqueueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Optional caller-owned ID; duplicates are separate deliveries
+        payload:
+          type: string
+          format: byte
+          description: Base64-encoded opaque application bytes
+        payload_schema:
+          type: string
+          description: Optional caller-owned payload type or version
+        priority:
+          type: string
+          description: Configured priority name; omitted uses the producer default
+        ordering_key:
+          type: string
+          description: Per-key FIFO identity; stored now and enforced when ordered delivery is enabled
+
+    EnqueueResponse:
+      type: object
+      required:
+        - id
+        - timestamp
+      properties:
+        id:
+          type: string
+          description: Durable job ID
+        timestamp:
+          type: string
+          format: date-time
+
     ErrorResponse:
       type: object
       required:
@@ -444,131 +649,6 @@ components:
           type: string
           format: date-time
 
-  /dlq:
-    get:
-      tags:
-        - dlq
-      summary: List DLQ items
-      description: Returns a page of DLQ items with an opaque next cursor
-      operationId: listDLQ
-      parameters:
-        - name: ns
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Namespace/prefix
-        - name: cursor
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Opaque cursor for pagination
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 500
-            default: 100
-          description: Page size
-      responses:
-        '200':
-          description: DLQ items page
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /dlq/requeue:
-    post:
-      tags:
-        - dlq
-      summary: Requeue selected DLQ items
-      operationId: requeueDLQ
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DLQRequeueRequest'
-      responses:
-        '200':
-          description: Requeue summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQRequeueResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /dlq/purge:
-    post:
-      tags:
-        - dlq
-      summary: Purge selected DLQ items
-      operationId: purgeDLQSelection
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DLQPurgeSelectionRequest'
-      responses:
-        '200':
-          description: Purge summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQPurgeSelectionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /workers:
-    get:
-      tags:
-        - workers
-      summary: List workers
-      description: Returns summary of worker fleet
-      operationId: listWorkers
-      parameters:
-        - name: ns
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Workers list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkersResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
     DLQItem:
       type: object
       required: [id, payload]
