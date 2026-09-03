@@ -1,411 +1,183 @@
-# Event Hooks Testing Documentation
+# Event Hooks Test Status and Plan
 
-This document provides comprehensive documentation for the Event Hooks testing suite, covering all test categories, their purpose, and how to run them.
+This document records the Event Hooks coverage that exists in the repository
+and the work required before the feature can claim integration, security, or
+performance coverage.
 
-## Overview
+## Current Status
 
-The Event Hooks testing suite validates the complete webhook-based event notification system for the go-redis-work-queue. The tests cover:
-
-- Unit tests for core components (signature generation, backoff scheduling, event filtering)
-- Integration tests for webhook delivery, NATS transport, and Dead Letter Hook (DLH) replay
-- Security tests for signature tampering protection and data redaction
-- Performance benchmarks for all critical components
-
-## Test Categories
-
-### 1. Unit Tests
-
-#### Signature Generation and Verification (`webhook_signature_test.go`)
-
-**Purpose**: Validates HMAC-SHA256 signature generation and verification for webhook security.
-
-**Test Coverage**:
-
-- `TestHMACSigner_SignPayload`: Tests signature generation with various payload types
-- `TestHMACSigner_VerifySignature`: Tests signature validation including tamper detection
-- `TestBackoffScheduler_*`: Tests exponential, linear, and fixed backoff strategies
-- `TestWebhookDeliveryWithRetries`: Integration test for complete delivery flow
-
-**Key Test Cases**:
-
-```go
-// Consistent signature generation
-signer.SignPayload(payload, secret) == signer.SignPayload(payload, secret)
-
-// Tamper detection
-signer.VerifySignature(tamperedPayload, originalSignature, secret) == false
-
-// Exponential backoff
-delays: [1s, 2s, 4s, 8s, 16s] with max cap at 30s
-```
-
-**Running**:
+As of 2026-09-03, `internal/event-hooks` builds and has seven tests in two
+files. The package-level race and coverage run passes with 11.6% statement
+coverage:
 
 ```bash
-go test -v ./... -run '^TestHMACSigner_'
+go test -race -cover ./internal/event-hooks -count=1
 ```
 
-#### Event Filter Matching (`event_filter_test.go`)
+That percentage is an observed snapshot, not a coverage target or a
+production-readiness claim. The package
+[README](../../internal/event-hooks/README.md) still classifies Event Hooks as
+scaffolding that requires manager, replay, and transport work.
 
-**Purpose**: Validates webhook subscription filtering logic for events, queues, and priorities.
-
-**Test Coverage**:
-
-- `TestEventFilter_MatchesSubscription`: Tests event/queue/priority matching
-- `TestEventFilter_GetMatchingSubscriptions`: Tests finding all matching subscriptions
-- `TestEventFilter_FilterEventsBySubscription`: Tests filtering events by subscription criteria
-- `TestEventFilter_ValidateSubscriptionFilters`: Tests subscription validation
-
-**Key Filter Rules**:
-
-- Event type matching: exact match or wildcard (`*`)
-- Queue matching: exact match or wildcard (`*`)
-- Priority filtering: minimum priority threshold
-- Wildcard patterns: `events.*.job_failed.*` matches all job failures
-
-**Running**:
+List the exact live tests without executing them:
 
 ```bash
-go test -v ./... -run '^TestEventFilter_'
+go test ./internal/event-hooks -list '^Test'
 ```
 
-### 2. Integration Tests
+## Coverage That Exists
 
-#### Webhook Endpoint Harness (`test/integration/webhook_harness_test.go`)
+### Event types and filters
 
-**Purpose**: Tests complete webhook delivery including HTTP transport, retries, and error handling.
+[types_test.go](../../internal/event-hooks/types_test.go) covers:
 
-**Test Coverage**:
+- event-type, queue, wildcard-queue, and minimum-priority matching in
+  `TestEventFilter_Matches`;
+- the values returned by `DefaultRetryPolicy`; and
+- concurrent locking around `WebhookSubscription.FailureCount`.
 
-- `TestWebhookHarness_BasicDelivery`: Basic webhook delivery success
-- `TestWebhookHarness_RetryOnFailure`: Retry logic with temporary failures
-- `TestWebhookHarness_NonRetriableError`: 4xx errors that shouldn't retry
-- `TestWebhookHarness_Timeout`: Connection timeout handling
-- `TestWebhookHarness_ConcurrentDeliveries`: Concurrent webhook delivery
-- `TestWebhookHarness_SignatureValidation`: HMAC signature validation
+It does not cover wildcard event patterns, subscription validation, bulk
+filter selection, or backoff execution.
 
-**Mock Server Features**:
+### Webhook delivery and registry
 
-- Configurable response codes and delays
-- Request capture and analysis
-- Custom response handlers for complex scenarios
-- Concurrent request handling
+[webhook_test.go](../../internal/event-hooks/webhook_test.go) covers:
 
-**Running**:
+- one successful HTTP delivery through an `httptest` server, including the
+  presence of signature and event headers;
+- classification of an unreachable endpoint as a retryable
+  `DeliveryError`;
+- a rate-limit smoke path; and
+- add, get, list, and remove operations on `WebhookDeliverer`.
+
+The rate-limit test references a public `httpbin.org` endpoint and permits
+multiple outcomes. It is not deterministic integration evidence and should be
+replaced with a local server.
+
+## Runnable Commands
+
+Run only the Event Hooks package:
 
 ```bash
-cd test/integration && go test -v -run '^TestWebhookHarness_'
+go test ./internal/event-hooks -count=1
+go test -race ./internal/event-hooks -count=1
+go test -cover ./internal/event-hooks -count=1
 ```
 
-#### NATS Transport (`test/integration/nats_transport_test.go`)
-
-**Purpose**: Tests NATS-based event transport for scalable event distribution.
-
-**Test Coverage**:
-
-- `TestNATSTransport_BasicEventPublishing`: Event publishing to NATS subjects
-- `TestNATSTransport_SubjectGeneration`: Subject naming patterns
-- `TestNATSTransport_EventSubscription`: Pattern-based subscriptions
-- `TestNATSTransport_MultipleSubscribers`: Fan-out to multiple subscribers
-- `TestNATSTransport_ConcurrentPublishing`: High-throughput publishing
-
-**NATS Subject Patterns**:
-
-```text
-events.{queue}.{event_type}.{priority}
-
-Examples:
-- events.user_queue.job_failed.normal
-- events.priority_queue.job_dlq.high
-- events.*.job_failed.*  (subscription pattern)
-```
-
-**Running**:
+The default repository suite also includes these tests:
 
 ```bash
-cd test/integration && go test -v -run '^TestNATSTransport_'
+go test ./... -race -count=1
 ```
 
-#### Dead Letter Hook Replay (`test/integration/dlh_replay_test.go`)
+There is currently no Event Hooks build tag, standalone module, acceptance
+script, benchmark suite, fuzz corpus, or service-backed integration command.
 
-**Purpose**: Tests failed webhook replay functionality and storage management.
+## Coverage That Does Not Exist
 
-**Test Coverage**:
+The following files were removed and have not been relocated:
 
-- `TestDLH_BasicStorage`: DLH entry storage and retrieval
-- `TestDLH_FilteringAndList`: DLH entry filtering and querying
-- `TestReplayManager_SingleEntryReplay`: Individual webhook replay
-- `TestReplayManager_BatchReplay`: Batch webhook replay
-- `TestDLH_ConcurrentOperations`: Concurrent DLH operations
+- `test/integration/webhook_harness_test.go`;
+- `test/integration/nats_transport_test.go`;
+- `test/integration/dlh_replay_test.go`; and
+- `test/fixtures/webhook_test_data.go`.
 
-**DLH Features**:
+There are also no live Event Hooks files named `webhook_signature_test.go`,
+`event_filter_test.go`, or `security_test.go`.
 
-- Failed webhook storage with metadata
-- Retry attempt tracking and exponential backoff
-- Status management (pending, retrying, exhausted, completed)
-- Batch replay with configurable concurrency
-- Metrics and monitoring
+Consequently, selectors such as `TestWebhookHarness_`, `TestNATSTransport_`,
+`TestDLH_`, and `TestSignatureService_` do not identify current tests.
+The prior claims about 45+ tests, 150+ cases, security scenario percentages,
+integration coverage percentages, benchmark percentiles, and archived
+benchmark artifacts were not reproducible from the repository and have been
+retired.
 
-**Running**:
+## Known Test Gaps
+
+Before Event Hooks can be considered production-ready, tests still need to
+cover:
+
+- exact HMAC-SHA256 signature bytes, malformed signatures, and payload
+  tampering;
+- retry scheduling, maximum attempts, response classification, timeouts, and
+  cancellation;
+- payload inclusion, field filtering, redaction, size limits, and custom
+  headers;
+- deterministic rate limiting without public network access;
+- concurrent delivery and subscriber lifecycle behavior;
+- Redis-backed subscription creation, update, deletion, and reload;
+- manager start/stop behavior and API handler authorization/error responses;
+- NATS and JetStream publishing, subjects, headers, reconnects, and failures;
+- dead-letter-hook storage, listing, replay, idempotency, and concurrency; and
+- bounded-load performance and allocation measurements.
+
+## Reconstruction Roadmap
+
+### 1. Make webhook unit tests deterministic
+
+- Replace the `httpbin.org` dependency with `httptest.Server`.
+- Inject or expose the HTTP client, clock, and retry scheduler where necessary.
+- Assert the request body, signature bytes, headers, redaction, and response
+  classification.
+- Run the package repeatedly under the race detector.
+
+Acceptance command:
 
 ```bash
-cd test/integration && go test -v -run '^TestDLH_'
+go test -race ./internal/event-hooks -count=20
 ```
 
-### 3. Security Tests (`security_test.go`)
-
-#### Signature Tampering Protection
-
-**Purpose**: Validates protection against webhook payload and signature tampering.
-
-**Test Coverage**:
-
-- `TestSignatureService_PayloadTampering`: Detects payload modifications
-- `TestSignatureService_SignatureTampering`: Detects signature modifications
-- `TestSignatureService_ComplexTamperingAttempts`: Advanced attack scenarios
-- `TestSignatureService_TimingAttacks`: Constant-time comparison validation
-
-**Attack Scenarios Tested**:
-
-- Event type modification (`job_failed` → `job_succeeded`)
-- Job ID manipulation (`123` → `456`)
-- Privilege escalation (adding `"admin": true`)
-- Field removal attacks
-- Signature format tampering
-
-#### Data Redaction Protection
-
-**Purpose**: Validates sensitive data redaction in webhook payloads.
-
-**Test Coverage**:
-
-- `TestPayloadRedactor_BasicFieldRedaction`: Basic field masking
-- `TestPayloadRedactor_NestedFieldRedaction`: Nested object redaction
-- `TestPayloadRedactor_PatternBasedRedaction`: Pattern-based PII detection
-- `TestPayloadRedactor_RedactionValidation`: Redaction compliance checking
-
-**Redaction Rules**:
-
-```go
-// Field-based redaction
-email: "user@example.com" → "****@****.***"
-credit_card: "4111111111111111" → "****-****-****-****"
-ssn: "123-45-6789" → "***-**-****"
-password: "secret123" → "[REDACTED]"
-
-// Pattern-based redaction
-"Payment failed for card 1234567890123456" →
-"Payment failed for card ****-****-****-****"
-```
-
-**Running**:
-
-```bash
-go test -v ./... -run '^TestSignatureService_'
-```
-
-### 4. Test Fixtures and Mock Data
-
-#### Webhook Test Data (`test/fixtures/webhook_test_data.go`)
-
-**Purpose**: Provides reusable test data and mock generators for consistent testing.
-
-**Components**:
-
-- `TestJobEvent`: Standard job lifecycle events
-- `TestWebhookSubscription`: Webhook subscription configurations
-- `TestRetryPolicy`: Retry policy configurations
-- Mock data generators for bulk testing
-
-**Event Generators**:
-
-```go
-NewTestJobFailedEvent() - Creates a job failure event
-NewTestJobSucceededEvent() - Creates a job success event
-NewTestWebhookSubscription() - Creates a webhook subscription
-GenerateJobEvents(count) - Bulk event generation
-```
-
-**Usage Example**:
-
-```go
-event := fixtures.NewTestJobFailedEvent()
-subscription := fixtures.NewTestWebhookSubscription()
-assert.True(t, event.MatchesSubscription(subscription))
-```
-
-## Running All Tests
-
-### Complete Test Suite
-
-```bash
-# Run all tests with verbose output
-go test -v ./...
-
-# Run with coverage
-go test -v -coverprofile=coverage.out ./...
-go tool cover -func=coverage.out
-go tool cover -html=coverage.out -o coverage.html
-```
-
-### Integration Tests Only
-
-```bash
-go test -v ./test/integration
-```
-
-### Security Tests Only
-
-```bash
-go test -v ./... -run '^TestSignatureService_'
-```
-
-### Benchmarks
-
-```bash
-# Run all benchmarks
-go test -run '^$' -bench=. ./...
-
-# Run specific benchmark
-go test -run '^$' -bench='^BenchmarkHMACSigner_SignPayload$' ./...
-```
-
-## Test Performance and Metrics
-
-### Unit Test Performance
-
-| Metric | Test Harness | Environment | Workload | p50 | p95 | p99 | Notes |
-|--------|--------------|-------------|----------|-----|-----|-----|-------|
-| `BenchmarkHMACSigner_SignPayload` | `go test -bench=SignPayload -benchtime=3s` | MacBook Pro M2 (2023), macOS 14.5, Go 1.22.5 | 256 B payload, single goroutine | 92µs | 118µs | 140µs | Averaged over 5 runs; raw output stored in `benchmarks/event-hooks/hmac.json`. |
-| `BenchmarkMatchEventFilter` | `go test -bench=MatchEvent -benchtime=3s` | Same as above | 10 filters, 4 attributes/event | 12µs | 18µs | 23µs | Captured with `BENCH_MEM=1` to record allocations. |
-| `BenchmarkBackoffCalculator` | `go test -bench=BackoffCalculator -benchtime=1s` | Same as above | Exponential backoff, jitter enabled | 950ns | 1.3µs | 1.6µs | Measured with race detector disabled. |
-
-Reproduce by running the corresponding `go test -bench` commands above; persist the raw output (for example `go test ... > benchmarks/event-hooks/latest.txt`) alongside the commit that changes these numbers.
-
-### Integration Test Performance
-
-| Scenario | Tooling | Environment | Payload | Concurrency | Duration | p50 | p95 | p99 | Notes |
-|----------|---------|-------------|---------|-------------|----------|-----|-----|-----|-------|
-| Webhook delivery end-to-end | `go test ./test/integration -run WebhookDelivery -bench=.` | MacBook Pro M2 (2023), macOS 14.5, Go 1.22.5, local Redis 7.2.4 in Docker | 2 KB JSON payload | 16 workers | 5 minutes | 11ms | 18ms | 24ms | Histogram captured by the integration test under `artifacts/webhook_delivery_histogram.json`. |
-| NATS publish/ack | `go test ./test/integration -run NATS -bench=.` | Dockerized NATS 2.9.15, localhost network | 512 B | 32 publishers | 3 minutes | 1.6ms | 2.3ms | 3.1ms | TLS enabled; logs archived in `artifacts/nats_bench/`. |
-| Dead-letter hydration replay | `go test ./test/integration -run DLHReplay -bench=.` | Redis 7.2.4 via Docker (localhost) | 5 KB payload | Batch size 100 | 10 minutes | 6.2ms | 9.8ms | 13.4ms | Uses Lua script for atomic pop/push; metrics dumped to `artifacts/dlh_replay.json`. |
-
-### Coverage Metrics
-
-- Unit tests: 86.4 % statement coverage (`go test ./... -coverprofile=coverage/unit.out`)
-- Integration tests: 77.1 % scenario coverage (`scripts/coverage/run_integration.sh`)
-- Security fuzz tests: 91.3 % attack scenario coverage (`make fuzz-event-hooks` corpus reports in `fuzz/event-hooks/coverage.txt`)
-
-## Test Data and Scenarios
-
-### Job Events
-
-```json
-{
-  "event": "job_failed",
-  "timestamp": "2023-01-15T10:30:00Z",
-  "job_id": "job_12345",
-  "queue": "test_queue",
-  "priority": 5,
-  "attempt": 1,
-  "error": "Connection timeout to external service",
-  "worker": "worker_001",
-  "trace_id": "trace_abc123",
-  "request_id": "req_xyz789",
-  "user_id": "user_456"
-}
-```
-
-### Webhook Subscriptions
-
-```json
-{
-  "id": "sub_001",
-  "name": "High Priority Alerts",
-  "url": "https://alerts.example.com/webhook",
-  "events": ["job_failed", "job_dlq"],
-  "queues": ["*"],
-  "min_priority": 8,
-  "max_retries": 5,
-  "timeout": "30s",
-  "include_payload": true,
-  "redact_fields": ["user_id", "api_key"]
-}
-```
-
-## Troubleshooting Tests
-
-### Common Issues
-
-1. **Test Timeout**: Increase timeout for integration tests
-
-   ```bash
-   go test -timeout 5m ./test/integration/
-   ```
-
-2. **Port Conflicts**: Mock servers use random ports to avoid conflicts
-
-3. **Race Conditions**: Tests use proper synchronization with mutexes and channels
-
-4. **Flaky Tests**: All tests are deterministic with controlled randomness
-
-### Debug Mode
-
-```bash
-# Enable verbose logging with debug flag for all packages
-go test -v ./... -args -debug
-
-# Run single test by name (anchored regex)
-go test -v ./... -run "^TestSpecificTest$"
-```
-
-## Extending Tests
-
-### Adding New Test Cases
-
-1. **Unit Tests**: Add to appropriate `*_test.go` file
-2. **Integration Tests**: Add to `test/integration/` directory
-3. **Security Tests**: Add to `security_test.go`
-4. **Test Data**: Add generators to `test/fixtures/`
-
-### Test Naming Conventions
-
-- `Test{Component}_{Feature}`: Unit tests
-- `Test{Component}_{Scenario}`: Integration tests
-- `Benchmark{Component}_{Operation}`: Performance tests
-
-### Example New Test
-
-```go
-func TestEventFilter_CustomScenario(t *testing.T) {
-    filter := NewEventFilter()
-
-    t.Run("specific_test_case", func(t *testing.T) {
-        // Test implementation
-        assert.True(t, condition)
-    })
-}
-```
-
-## Conclusion
-
-The Event Hooks testing suite provides comprehensive validation of:
-
-✅ **Unit Tests**: Core component functionality with 85%+ coverage
-✅ **Integration Tests**: End-to-end webhook delivery scenarios
-✅ **Security Tests**: Tampering protection and data redaction
-✅ **Performance Tests**: Benchmarks for all critical operations
-✅ **Test Infrastructure**: Reusable fixtures and mock data
-
-The test suite ensures the Event Hooks feature is production-ready with robust error handling, security protection, and reliable performance characteristics.
-
-**Total Test Coverage**: 📊
-
-- Test Files: 7
-- Test Functions: 45+
-- Test Cases: 150+
-- Lines of Test Code: 2,000+
-- Security Scenarios: 20+
-- Integration Scenarios: 15+
-
-All tests are designed to be deterministic, fast, and maintainable for continuous integration and development workflows.
+### 2. Add local webhook integration coverage
+
+- Exercise Event Bus to subscriber to HTTP receiver as one flow.
+- Cover success, retryable and terminal responses, timeout, cancellation, and
+  concurrent delivery.
+- Keep the harness local and deterministic; do not depend on public services.
+
+The integration selector and command should be documented only after its test
+file exists.
+
+### 3. Cover persistence, manager, and API behavior
+
+- Use `miniredis` for subscription persistence and reload scenarios.
+- Exercise manager lifecycle and route handlers through `httptest`.
+- Verify cleanup when registration or subscription fails.
+- Add authorization and stable error-envelope assertions when the routes are
+  connected to the Admin API boundary.
+
+### 4. Restore NATS integration deliberately
+
+- Add a service-backed test target with an explicit build tag.
+- Pin and document the NATS/JetStream version.
+- Cover publish, subject generation, headers, reconnects, and unavailable
+  service behavior.
+- Make the CI job and local startup command part of the same change as the
+  suite.
+
+### 5. Implement and test dead-letter-hook replay
+
+- Define the durable storage and replay contract first.
+- Cover single and batch replay, missing entries, retry state, idempotency,
+  concurrency, and cancellation.
+- Do not claim DLH coverage while only HTTP queue dead-letter behavior exists.
+
+### 6. Add security and performance gates
+
+- Add tamper and redaction tests using fixed vectors.
+- Add fuzzing only with a checked-in seed corpus and a documented bounded
+  command.
+- Add benchmarks only after the behavior is stable.
+- Record environment, workload, raw output path, and repeat count with every
+  published performance number.
+
+## Definition of Done
+
+Event Hooks testing is complete only when:
+
+- all documented test files and selectors exist;
+- unit tests are deterministic and require no public network;
+- service-backed suites declare their dependencies and build tags;
+- unit and integration suites pass under the race detector;
+- security claims are backed by executable fixed-vector tests;
+- performance claims link to checked-in raw evidence; and
+- this document and the package README describe the same implementation state.
