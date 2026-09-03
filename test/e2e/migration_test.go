@@ -1,6 +1,8 @@
 //go:build e2e_tests
 // +build e2e_tests
 
+// Gated because end-to-end scenarios require explicit services; un-gate individual files when default CI provisions their dependencies.
+
 package e2e
 
 import (
@@ -8,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	storage "github.com/flyingrobots/go-redis-work-queue/internal/storage-backends"
@@ -54,27 +54,11 @@ func (suite *MigrationE2ETestSuite) SetupTest() {
 func (suite *MigrationE2ETestSuite) TestMigrationE2E_SuccessfulMigration() {
 	ctx := context.Background()
 
-	// Setup source backend
-	sourceConfig := storage.RedisListsConfig{
-		URL:        "redis://localhost:6379",
-		Database:   1,
-		KeyPrefix:  "test_source:",
-		MaxRetries: 3,
-	}
-
 	err := suite.manager.AddBackend("source_queue", storage.BackendConfig{
 		Type: storage.BackendTypeRedisLists,
 		Name: "source_backend",
 	})
 	suite.Require().NoError(err)
-
-	// Setup target backend
-	targetConfig := storage.RedisListsConfig{
-		URL:        "redis://localhost:6379",
-		Database:   2,
-		KeyPrefix:  "test_target:",
-		MaxRetries: 3,
-	}
 
 	err = suite.manager.AddBackend("target_queue", storage.BackendConfig{
 		Type: storage.BackendTypeRedisLists,

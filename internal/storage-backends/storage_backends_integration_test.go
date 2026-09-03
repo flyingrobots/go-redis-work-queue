@@ -1,6 +1,8 @@
 //go:build integration_tests
 // +build integration_tests
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 package storage_backends_test
 
 import (

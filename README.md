@@ -234,6 +234,19 @@ To reproduce evidence locally, see `docs/evidence/README.md`.
 
 See `docs/testing-guide.md` for a package-by-package overview and copy/paste commands to run individual tests or the full suite with the race detector.
 
+The default suite includes the core worker, queue, producer, reaper, and
+breaker tests:
+
+```bash
+go test ./... -race -count=1
+./scripts/check_test_package_count.sh
+```
+
+The package-count check enforces a minimum of 21 default test-bearing packages
+so a build tag cannot silently remove core coverage. CI also runs the
+Redis-backed worker smoke test with `-tags e2e_tests` and verifies its verbose
+`--- PASS` record.
+
 ## Module Status Map
 
 | Module | Status | Summary |
@@ -255,7 +268,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/tui](internal/tui/README.md) | BUILDS | Legacy view builds cleanly; enhanced view remains behind `tui_experimental`. |
 | [internal/trace-drilldown-log-tail](internal/trace-drilldown-log-tail/README.md) | BUILDS | Compiles; log streaming endpoints still placeholders. |
 | [internal/worker-fleet-controls](internal/worker-fleet-controls/README.md) | BUILDS | Compiles; action execution remains scaffolded for now. |
-| [internal/worker](internal/worker/README.md) | BUILDS | Runtime compiles; lacks dedicated unit tests. |
+| [internal/worker](internal/worker/README.md) | TESTED | Backoff, processing, retry/DLQ, and breaker behavior run in the default race-enabled suite. |
 
 ----
 

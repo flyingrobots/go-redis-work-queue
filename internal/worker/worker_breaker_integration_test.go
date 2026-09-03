@@ -1,6 +1,3 @@
-//go:build worker_tests
-// +build worker_tests
-
 // Copyright 2025 James Ross
 package worker
 

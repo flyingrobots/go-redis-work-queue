@@ -133,7 +133,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 ### Prioritized Backlog
 
 - [x] Queue core ROADMAP Item 0: remove the unwired idempotency config
-- [ ] Queue core ROADMAP Item 5: make the tests tell the truth
+- [x] Queue core ROADMAP Item 5: make the tests tell the truth
 - [ ] Queue core ROADMAP Item 1: give `Job` a payload
 - [ ] Queue core ROADMAP Item 2: add a real worker handler
 - [ ] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
@@ -566,6 +566,34 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 5: Truthful Default Tests
+> Restored core worker coverage to the default suite and made the Redis e2e CI
+> step prove that it executes a real test.
+>
+> Changes
+> - Captured the default-suite RED for an umask-sensitive `0644` assertion.
+> - Captured the tagged e2e RED for unused imports and orphaned migration configs.
+> - Un-gated all three worker test files; queue, producer, reaper, and breaker were already default.
+> - Made the permissions oracle require owner read/write while rejecting unsafe write/execute bits.
+> - Added a 21-package default-test canary and a tagged, verbose e2e PASS assertion to CI.
+> - Added explicit gate reasons and un-gate conditions to all 68 remaining opt-in test files.
+>
+> Validation
+> - `go test ./... -count=1`
+> - `go test ./... -race -count=1`
+> - Tagged Redis e2e smoke passed five consecutive race-enabled runs.
+> - `./scripts/check_test_package_count.sh` reported 21 packages.
+> - In-scope `go vet`, tagged-e2e `go vet`, `go build ./...`,
+>   Actionlint, and ShellCheck passed.
+> - Repo-wide `go vet ./...` retains pre-existing warnings only in the
+>   out-of-scope chaos-harness and collaborative-session feature modules.
+> - Markdownlint retains a repository baseline of 716 errors across the five
+>   touched Markdown files; this task did not attempt a global docs rewrite.
+>
+> Follow-ups
+> - Execute ROADMAP Item 1 next.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 0: Honest Idempotency Config
 > Removed the example configuration for an exactly-once subsystem that is not

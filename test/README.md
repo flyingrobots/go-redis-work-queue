@@ -1,6 +1,16 @@
 # test/ Directory Map
 
-This catalog enumerates the remaining artifacts under `test/`. Consistent with the standing guidance (“HALT ALL TESTING UNTIL BUILD IS GREEN”), I did not execute any tests or scripts while compiling these notes—run commands are documented purely for future reference.
+This catalog enumerates the remaining artifacts under `test/`. Phase II
+actively runs the default suite and restores valuable gated coverage without
+enabling unwired feature suites prematurely.
+
+## Default Coverage Canary
+
+Core worker, queue, producer, reaper, and breaker tests run under
+`go test ./... -race -count=1`. Run
+`./scripts/check_test_package_count.sh` to assert that at least 21 packages
+still contribute tests to the default build. CI runs this canary after the
+default suite.
 
 ## Integration Tests (`test/integration/`)
 
@@ -17,7 +27,7 @@ _All E2E suites require the `e2e_tests` build tag; some also need environment va
 
 | File | Purpose | Runtime Notes | External Needs |
 |------|---------|---------------|----------------|
-| `e2e/e2e_test.go` | Smoke-test that a worker drains a queue against a real Redis instance. | `E2E_REDIS_ADDR=host:port go test -tags e2e_tests ./test/e2e -run '^TestE2E_WorkerCompletesJobWithRealRedis$'` | Reachable Redis, `zap`. |
+| `e2e/e2e_test.go` | Smoke-test that a worker drains a queue against a real Redis instance. | `E2E_REDIS_ADDR=host:port go test -tags e2e_tests -v ./test/e2e -run '^TestE2E_WorkerCompletesJobWithRealRedis$'`; CI asserts the verbose PASS line. | Reachable Redis, `zap`. |
 | `e2e/migration_test.go` | Exercises `internal/storage-backends` migrations end-to-end using the registry/migrator APIs. | `go test -tags e2e_tests ./test/e2e -run MigrationE2ETestSuite` | Redis at `localhost:6379`, `testify/suite`. |
 | `e2e/tracing_e2e_test.go` | Verifies distributed tracing across producer/worker with an OTLP collector stub. | `E2E_TESTS=true go test -tags 'e2e_tests integration' ./test/e2e -run '^TestE2EDistributedTracingFlow$'` | Redis, HTTP span collector (httptest inside the suite). |
 | `e2e/rbac_e2e_test.go` | Walks complete RBAC workflows (tokens, destructive ops, audit logs). | `go test -tags e2e_tests ./test/e2e -run '^TestE2E'` | `miniredis`, Admin API stack, `testify`. |

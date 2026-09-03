@@ -147,6 +147,11 @@ wiring that does not exist.
 
 ## Item 5 — Make the tests tell the truth
 
+**Status:** Complete on 2026-09-02. The worker, queue, producer, reaper, and
+breaker suites run by default and pass under the race detector; CI enables and
+proves the Redis e2e smoke test; a 21-package minimum guards against silent
+re-gating; and every remaining opt-in test names its gate and exit condition.
+
 > **PROMPT**
 >
 > You are working in `go-redis-work-queue`. The test suite is majority-disabled and one CI step is vacuous.

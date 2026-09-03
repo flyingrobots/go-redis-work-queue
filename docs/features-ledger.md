@@ -46,7 +46,7 @@ Update via script
 ### Core & Platform
 <!-- group-progress:core-platform:begin -->
 ```text
-████████████████████████████████▓░░░░░░░ 81%
+████████████████████████████████▓░░░░░░░ 82%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 weight=8.59 features=9 kloc=17.4
@@ -55,7 +55,7 @@ weight=8.59 features=9 kloc=17.4
 
 | Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
 | ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
-|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | MVP | 55% (conf: high) | `██████░░░░` | Crash-safe benchmark flow has priority queues, retries, reaping, and metrics; jobs remain filepath metadata and workers simulate work. | Add payload/size guard, handler, public enqueue surfaces, per-key FIFO, and truthful default test coverage. | Some unit/integration coverage; core suites remain gated. | Reliable foundation, not yet a general-purpose queue product. |
+|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 0.8 | MVP | 60% (conf: high) | `██████░░░░` | Crash-safe benchmark flow has priority queues, retries, reaping, metrics, and default worker coverage; jobs remain filepath metadata and workers simulate work. | Add payload/size guard, handler, public enqueue surfaces, and per-key FIFO. | Worker, queue, producer, reaper, and breaker run by default and pass under the race detector. | Reliable foundation, not yet a general-purpose queue product. |
 |🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.4 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | Storage Backends | Core/Storage | — | [internal/storage-backends](../internal/storage-backends) | 5.9 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | RBAC & Tokens | Security | — | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |
@@ -74,7 +74,7 @@ weight=8.59 features=9 kloc=17.4
 █████████████████▓░░░░░░░░░░░░░░░░░░░░░░ 43%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=14.46 features=13 kloc=39.3
+weight=14.46 features=13 kloc=39.4
 ```
 <!-- group-progress:tui-ux:end -->
 
@@ -88,7 +88,7 @@ weight=14.46 features=13 kloc=39.3
 |📋 | Bubblezone Hitboxes | UX/TUI | — | [internal/right-click-context-menus](../internal/right-click-context-menus) | 2.3 | Planned | 10% (conf: med) | █░░░░░░░░░ | Not started; design known. | Integrate bubblezone; zone mapping for tabs/rows/splitter. | None. | Enables precise mouse UX. |
 |⏳ | JSON Payload Studio | UX/TUI | — | [internal/json-payload-studio](../internal/json-payload-studio) | 4.4 | In Progress | 40% (conf: med) | ████░░░░░░ | Core handlers; not in TUI. | TUI editor; schemas/templates; enqueue path. | Unit present. | UX heavy. |
 |⏳ | Calendar View | UX/TUI | — | [internal/calendar-view](../internal/calendar-view) | 5.0 | In Progress | 45% (conf: med) | ████░░░░░░ | Routes/UI; auth/multi‑queue TODOs. | Add auth context; filters; paging. | Unit + TODOs. | Verify perf. |
-|🚼 | Theme Playground | UX/TUI | — | [internal/theme-playground](../internal/theme-playground) | 5.3 | MVP | 70% (conf: high) | ███████░░░ | Persistence + tests shipped. | Centralize styles; Settings toggle; accessible palettes. | Unit + integration; good. | Accessibility focus. |
+|🚼 | Theme Playground | UX/TUI | — | [internal/theme-playground](../internal/theme-playground) | 5.3 | MVP | 70% (conf: high) | ███████░░░ | Persistence + tests shipped. | Centralize styles; Settings toggle; accessible palettes. | Unit + integration; permissions oracle is umask-safe. | Accessibility focus. |
 |📋 | Terminal Voice Commands | UX/CLI | — | — | 0.0 | Planned | 0% (conf: low) | ░░░░░░░░░░ | Archived 2025-09-20; terminal voice module removed from repo. | Re-evaluate approach if feature resurfaces. | — | Optional, flashy. |
 |⏳ | Plugin Panel System | Extensibility | — | [internal/plugin-panel-system](../internal/plugin-panel-system) | 3.7 | In Progress | 50% (conf: med) | █████░░░░░ | Lifecycle + permissions. | Sandbox; TUI registry; SDK docs. | Unit present. | Watch plugin trust. |
 |⏳ | Visual DAG Builder | UX/Flow | — | [internal/visual-dag-builder](../internal/visual-dag-builder) | 4.0 | In Progress | 40% (conf: med) | ████░░░░░░ | Orchestrator/types; not wired. | Backend validation; DAG execution; TUI builder. | Unit partial. | Longer‑term. |
@@ -100,7 +100,7 @@ weight=14.46 features=13 kloc=39.3
 ███████████████████▓░░░░░░░░░░░░░░░░░░░░ 49%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=16.83 features=14 kloc=60.2
+weight=16.83 features=14 kloc=60.3
 ```
 <!-- group-progress:reliability-ops:end -->
 
@@ -109,10 +109,10 @@ weight=16.83 features=14 kloc=60.2
 |⏳ | DLQ Remediation Pipeline | Reliability | — | [internal/dlq-remediation-pipeline](../internal/dlq-remediation-pipeline) | 4.7 | In Progress | 45% (conf: med) | ████░░░░░░ | Pipeline scaffolding; classifiers/rules TBD. | Rules engine; rate‑limited requeue; safety bounds. | Light unit; needs scenario tests. | Integrate with DLQ UI. |
 |⏳ | Exactly‑once Patterns | Reliability | — | [internal/exactly_once](../internal/exactly_once), [internal/exactly-once-patterns](../internal/exactly-once-patterns) | 7.9 | In Progress | 35% (conf: high) | ███░░░░░░░ | Two internal prototypes exist; neither is wired into config, worker intake, or producer enqueue. | Choose one implementation, wire the runtime path and admin stats, then prove end-to-end deduplication. | Internal/opt-in tests only; no runtime integration proof. | Not advertised in the example config until it is wired. |
 |⏳ | Advanced Rate Limiting | Throughput | — | [internal/advanced-rate-limiting](../internal/advanced-rate-limiting) | 1.6 | In Progress | 55% (conf: high) | █████░░░░░ | Lua token bucket + fairness done. | Admin API runtime updates; TUI widget; producer/worker hooks. | Unit + integration; good. | High leverage; wire into SDKs. |
-|⏳ | Producer Backpressure | SDKs | — | [internal/producer-backpressure](../internal/producer-backpressure) | 3.3 | In Progress | 40% (conf: med) | ████░░░░░░ | Signals present; not linked to RL. | Integrate with rate limiter; client SDK examples. | Unit present. | Needs producer docs. |
+|⏳ | Producer Backpressure | SDKs | — | [internal/producer-backpressure](../internal/producer-backpressure) | 3.4 | In Progress | 40% (conf: med) | ████░░░░░░ | Signals present; not linked to RL. | Integrate with rate limiter; client SDK examples. | Unit present. | Needs producer docs. |
 |⏳ | Policy Simulator | Ops/Safety | — | [internal/policy-simulator](../internal/policy-simulator) | 4.7 | In Progress | 45% (conf: med) | ████░░░░░░ | Core present; retrieval/rollback TODO. | Preview/apply/rollback endpoints; persist scenarios. | Unit present. | Pair with Admin API. |
 |⏳ | Worker Fleet Controls | Ops | — | [internal/worker-fleet-controls](../internal/worker-fleet-controls) | 3.1 | In Progress | 45% (conf: med) | ████░░░░░░ | Control scaffolding; safety checks TBD. | Pause/drain/resume + RBAC; per‑node metrics; TUI controls. | Unit present. | Add safety gates. |
-|⏳ | Long‑term Archives | Ops/Data | — | [internal/long-term-archives](../internal/long-term-archives) | 4.2 | In Progress | 45% (conf: med) | ████░░░░░░ | Archival hooks; adapters TBD. | S3/ClickHouse adapters; retention; export path. | Unit partial. | Define retention/SLO. |
+|⏳ | Long‑term Archives | Ops/Data | — | [internal/long-term-archives](../internal/long-term-archives) | 4.3 | In Progress | 45% (conf: med) | ████░░░░░░ | Archival hooks; adapters TBD. | S3/ClickHouse adapters; retention; export path. | Unit partial. | Define retention/SLO. |
 |⏳ | Event Hooks | Integrations | — | [internal/event-hooks](../internal/event-hooks) | 3.6 | In Progress | 50% (conf: med) | █████░░░░░ | Plumbing exists; config/signing TODO. | Configurable base URL; HMAC signatures; retries; Admin mgmt. | Unit present. | Security first. |
 
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
@@ -153,7 +153,7 @@ weight=10.49 features=9 kloc=28.7
 
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-|🅰️ | Distributed Tracing Integration | Observability | — | [internal/distributed-tracing-integration](../internal/distributed-tracing-integration) | 3.0 | Alpha | 85% (conf: high) | █████████░ | OTEL propagation + trace URLs done. | Link from TUI; config docs. | Unit + integration; good. | Low risk polish. |
+|🅰️ | Distributed Tracing Integration | Observability | — | [internal/distributed-tracing-integration](../internal/distributed-tracing-integration) | 3.1 | Alpha | 85% (conf: high) | █████████░ | OTEL propagation + trace URLs done. | Link from TUI; config docs. | Unit + integration; good. | Low risk polish. |
 |⏳ | Trace Drill‑down + Log Tail | Observability | — | [internal/trace-drilldown-log-tail](../internal/trace-drilldown-log-tail) | 3.9 | In Progress | 50% (conf: med) | █████░░░░░ | Trace links ok; log tail TBD. | Tail with filters; privacy; TUI links. | Unit partial. | Watch PII. |
 |⏳ | Anomaly Radar + SLO Budget | Observability | — | [internal/anomaly-radar-slo-budget](../internal/anomaly-radar-slo-budget) | 3.2 | In Progress | 60% (conf: med) | ██████░░░░ | Scope-aware handlers, pagination cursors, public pkg wrapper, and OpenAPI/docs alignment landed; SLO maths and widget still pending. | Add SLO budget calc + TUI widget. | Unit + handler tests cover cursors; docs/spec CI validates. | Needs calibration + UI wiring. |
 |⏳ | Forecasting | Planning | — | [internal/forecasting](../internal/forecasting) | 2.7 | In Progress | 40% (conf: med) | ████░░░░░░ | Stubs exist. | Baseline models; eval harness; TUI preview. | Unit partial. | Keep simple first. |

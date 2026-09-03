@@ -1,6 +1,8 @@
 //go:build anomaly_radar_tests
 // +build anomaly_radar_tests
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 package anomalyradarslobudget
 
 import (

@@ -1,6 +1,8 @@
 //go:build job_budgeting_tests
 // +build job_budgeting_tests
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 package budgeting
 
 import (

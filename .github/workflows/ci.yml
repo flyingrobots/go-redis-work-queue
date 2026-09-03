@@ -51,6 +51,8 @@ jobs:
         env:
           E2E_REDIS_ADDR: localhost:6379
         run: go test ./... -race -count=1
+      - name: Verify default test package count
+        run: ./scripts/check_test_package_count.sh
       - name: E2E determinism (5x)
         env:
           E2E_REDIS_ADDR: localhost:6379
@@ -58,9 +60,16 @@ jobs:
           set -euo pipefail
           for i in {1..5}; do
             echo "Run #$i";
-            go test ./test/e2e -run TestE2E_WorkerCompletesJobWithRealRedis -race -count=1 || exit 1;
+            output="$(go test -tags e2e_tests -v ./test/e2e \
+              -run '^TestE2E_WorkerCompletesJobWithRealRedis$' -race -count=1)"
+            printf '%s\n' "$output"
+            if ! printf '%s\n' "$output" |
+              grep -Fq -- '--- PASS: TestE2E_WorkerCompletesJobWithRealRedis'; then
+              echo "Tagged E2E command did not execute the expected test" >&2
+              exit 1
+            fi
           done
       - name: Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          $(go env GOPATH)/bin/govulncheck ./...
+          "$(go env GOPATH)/bin/govulncheck" ./...

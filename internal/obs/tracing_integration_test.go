@@ -1,6 +1,8 @@
 //go:build integration_tests && integration
 // +build integration_tests,integration
 
+// Gated because tracing integration needs explicit infrastructure; un-gate when default CI provisions and verifies it.
+
 // Copyright 2025 James Ross
 
 package obs_test

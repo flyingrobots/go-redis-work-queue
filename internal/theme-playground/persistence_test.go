@@ -578,25 +578,23 @@ func TestPersistenceManager_FilePermissions(t *testing.T) {
 		t.Errorf("Failed to save theme: %v", err)
 	}
 
-	// Check file permissions
-	themePath := filepath.Join(pm.themesDir, "permission-test.json")
-	info, err := os.Stat(themePath)
-	if err != nil {
-		t.Errorf("Failed to stat theme file: %v", err)
+	paths := []string{
+		filepath.Join(pm.themesDir, "permission-test.json"),
+		pm.prefsFile,
 	}
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Errorf("Failed to stat %s: %v", path, err)
+			continue
+		}
 
-	expectedMode := os.FileMode(0644)
-	if info.Mode().Perm() != expectedMode {
-		t.Errorf("Expected file mode %v, got %v", expectedMode, info.Mode().Perm())
-	}
-
-	// Check preferences file permissions
-	prefsInfo, err := os.Stat(pm.prefsFile)
-	if err != nil {
-		t.Errorf("Failed to stat preferences file: %v", err)
-	}
-
-	if prefsInfo.Mode().Perm() != expectedMode {
-		t.Errorf("Expected preferences file mode %v, got %v", expectedMode, prefsInfo.Mode().Perm())
+		mode := info.Mode().Perm()
+		if mode&0o600 != 0o600 {
+			t.Errorf("Expected owner read/write permissions for %s, got %v", path, mode)
+		}
+		if mode&0o133 != 0 {
+			t.Errorf("Expected no write access outside the owner and no execute bits for %s, got %v", path, mode)
+		}
 	}
 }
