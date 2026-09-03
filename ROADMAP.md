@@ -73,6 +73,11 @@ compatible.
 
 ## Item 2 — Real worker: a handler interface
 
+**Status:** Complete on 2026-09-02. Workers now invoke a concurrent-safe
+application handler, preserve the explicit benchmark handler as the default,
+recover panics with stacks, leave canceled work for the reaper, and renew
+heartbeats throughout long calls and retry backoff.
+
 > **PROMPT**
 >
 > You are working in `go-redis-work-queue`. The worker does not execute work — it simulates it.

@@ -19,11 +19,13 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- Queue core ROADMAP Items 0, 5, and 1 are complete on Draft PR #6; Item 2 is next.
+- Queue core ROADMAP Items 0, 5, 1, and 2 are complete on Draft PR #6; Item 3 is next.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
 - All core enqueue writers use the shared pre-write size guard; larger data
   belongs in object storage with only a reference in the job.
+- Workers accept concurrent application handlers; long calls renew heartbeats,
+  while shutdown leaves work in processing for at-least-once reaping.
 
 ### Job Queue
 
@@ -144,7 +146,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 0: remove the unwired idempotency config
 - [x] Queue core ROADMAP Item 5: make the tests tell the truth
 - [x] Queue core ROADMAP Item 1: give `Job` a payload
-- [ ] Queue core ROADMAP Item 2: add a real worker handler
+- [x] Queue core ROADMAP Item 2: add a real worker handler
 - [ ] Queue core ROADMAP Item 3: add `pkg/queueclient` + CLI/HTTP enqueue
 - [ ] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
@@ -575,6 +577,26 @@ Notes
 
 ---
 ## Daily Activity Logs
+> [!NOTE]
+> ### 2026-09-02 – ROADMAP Item 2: Real Worker Handlers
+> Replaced the simulated middle of the worker with an application callback while
+> preserving the reliable Redis intake, retry, completion, and reaper protocol.
+>
+> Changes
+> - Captured compile-time REDs for the missing `Handler` type and `Worker.Handle` seam.
+> - Added concurrent handler registration with the legacy simulator as explicit `BenchHandler` fallback.
+> - Mapped nil, error, panic, and cancellation outcomes to completion, retry/DLQ, recovery, and reaper handoff.
+> - Renewed heartbeats during handler execution and retry backoff, with race-free cleanup.
+> - Documented `max_retries + 1` total calls and the at-least-once/idempotency boundary.
+>
+> Validation
+> - Worker/reaper race suites passed five consecutive runs.
+> - The real-Redis handler and heartbeat smoke passed five consecutive race-enabled runs.
+> - Full default race suite, focused vet, build, test-count canary, and diff checks passed.
+>
+> Follow-ups
+> - Execute ROADMAP Item 3 next.
+
 > [!NOTE]
 > ### 2026-09-02 – ROADMAP Item 1: Byte-exact Job Payloads
 > Added real application data to the durable core job envelope without breaking

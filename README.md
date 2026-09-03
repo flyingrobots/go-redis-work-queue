@@ -102,6 +102,29 @@ legacy producer and benchmark flow; they are metadata, not the application
 payload. The repository-external client, CLI, and HTTP enqueue surfaces are
 tracked as ROADMAP Item 3.
 
+### Worker handlers
+
+The worker runtime accepts an application callback with
+`Worker.Handle(func(context.Context, queue.Job) error)`. Handlers may run
+concurrently when `worker.count` is greater than one, so application state must
+be synchronized. A nil handler selects the explicit built-in `BenchHandler`,
+which preserves the legacy `FileSize` delay and `"fail"`-in-filepath demo rule.
+
+Handler outcomes drive the durable queue protocol:
+
+- `nil` moves the job from its per-worker processing list to the completed list.
+- An error uses the configured backoff and retry path, then the dead-letter list.
+  `worker.max_retries: N` means one initial attempt plus N retries.
+- A panic is recovered and logged with a stack, then follows the error path.
+- Shutdown cancellation leaves the job in its processing list. Its heartbeat
+  expires naturally so the reaper can redeliver it.
+
+The runtime renews the worker heartbeat throughout long handler calls and retry
+backoff. Delivery remains at least once: a worker can finish after losing its
+heartbeat or Redis connection while the reaper redelivers the same job. Make
+handlers idempotent by job ID; completed-list entries count executions, not
+globally deduplicated IDs.
+
 ### TUI (Bubble Tea)
 
 An interactive TUI is available for observing and administering the job queue. It uses `Charmbracelet`’s Bubble Tea stack and renders queue stats, keys, peeks, a simple benchmark, and charts.

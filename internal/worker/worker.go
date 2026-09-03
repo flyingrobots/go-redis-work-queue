@@ -3,10 +3,8 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,9 +22,15 @@ type Worker struct {
 	log    *zap.Logger
 	cb     *breaker.CircuitBreaker
 	baseID string
+
+	handlerMu sync.RWMutex
+	handler   Handler
 }
 
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	cb := breaker.New(cfg.CircuitBreaker.Window, cfg.CircuitBreaker.CooldownPeriod, cfg.CircuitBreaker.FailureThreshold, cfg.CircuitBreaker.MinSamples)
 	host, _ := os.Hostname()
 	pid := os.Getpid()
@@ -126,8 +130,6 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 		}
 
 		obs.JobsConsumed.Inc()
-		// heartbeat set
-		_ = w.rdb.Set(ctx, hbKey, payload, w.cfg.Worker.HeartbeatTTL).Err()
 
 		// measure state transition around Record() to count trips
 		start := time.Now()
@@ -169,39 +171,35 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 		obs.KeyValue("worker.id", workerID),
 	)
 
-	// Simulated processing: sleep based on filesize with cancellable timer
-	dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
-	canceled := false
-
-	processingStart := time.Now()
-
-	if dur > 0 {
-		timer := time.NewTimer(dur)
-		defer func() {
-			if !timer.Stop() {
-				<-timer.C
-			}
-		}()
-		select {
-		case <-ctx.Done():
-			canceled = true
-		case <-timer.C:
-		}
-	} else {
-		select {
-		case <-ctx.Done():
-			canceled = true
-		default:
-		}
+	if ctx.Err() != nil {
+		w.log.Info("job interrupted before handler; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
 	}
 
+	stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, payload)
+	defer stopHeartbeat()
+	processingStart := time.Now()
+	handlerErr := w.invokeHandler(ctx, job)
 	processingDuration := time.Since(processingStart)
 	obs.AddSpanAttributes(ctx, obs.KeyValue("processing.duration_ms", processingDuration.Milliseconds()))
 
-	// For demonstration, consider processing success unless canceled or filename contains "fail"
-	success := !canceled && !strings.Contains(strings.ToLower(job.FilePath), "fail")
+	if ctx.Err() != nil {
+		obs.AddEvent(ctx, "job.processing.interrupted",
+			obs.KeyValue("job.id", job.ID),
+			obs.KeyValue("reason", ctx.Err().Error()),
+		)
+		w.log.Info("job interrupted; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	}
 
-	if success {
+	if handlerErr == nil {
+		stopHeartbeat()
 		// Mark span as successful
 		obs.SetSpanSuccess(ctx)
 		obs.AddEvent(ctx, "job.processing.completed",
@@ -229,11 +227,8 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	obs.JobsFailed.Inc()
 
 	// Record failure in span
-	failureReason := "processing_failed"
-	if canceled {
-		failureReason = "canceled"
-	}
-	obs.RecordError(ctx, errors.New(failureReason))
+	failureReason := handlerErr.Error()
+	obs.RecordError(ctx, handlerErr)
 	obs.AddEvent(ctx, "job.processing.failed",
 		obs.KeyValue("job.id", job.ID),
 		obs.KeyValue("reason", failureReason),
@@ -243,12 +238,26 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	job.Retries++
 	// backoff
 	bo := backoff(job.Retries, w.cfg.Worker.Backoff.Base, w.cfg.Worker.Backoff.Max)
+	timer := time.NewTimer(bo)
+	defer timer.Stop()
 	select {
 	case <-ctx.Done():
-	case <-time.After(bo):
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		w.log.Info("retry interrupted; leaving job in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	case <-timer.C:
 	}
 
 	if job.Retries <= w.cfg.Worker.MaxRetries {
+		stopHeartbeat()
 		obs.JobsRetried.Inc()
 		obs.AddEvent(ctx, "job.retrying",
 			obs.KeyValue("job.id", job.ID),
@@ -272,6 +281,7 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	}
 
 	// dead letter
+	stopHeartbeat()
 	obs.AddEvent(ctx, "job.dead_lettered",
 		obs.KeyValue("job.id", job.ID),
 		obs.KeyValue("max_retries_exceeded", true),

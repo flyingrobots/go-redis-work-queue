@@ -46,21 +46,21 @@ Update via script
 ### Core & Platform
 <!-- group-progress:core-platform:begin -->
 ```text
-█████████████████████████████████▓░░░░░░ 83%
+█████████████████████████████████▓░░░░░░ 84%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
-weight=8.63 features=9 kloc=17.6
+weight=8.75 features=9 kloc=18.2
 ```
 <!-- group-progress:core-platform:end -->
 
 | Emoji | Feature                                               | Area          | Spec                                      | Code                                                                                                | KLoC (approx) | Status | Progress %       | Bar          | Current State                                                                        | Todo (Tasks)                                                     | Tests                          | Remarks                                        |
 | ----- | ----------------------------------------------------- | ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------- | ------ | ---------------- | ------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
-|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 1.0 | MVP | 70% (conf: high) | `███████░░░` | Crash-safe flow now carries byte-exact payloads and optional schemas behind a typed, configurable pre-enqueue size guard; workers still simulate work. | Add a real handler, public enqueue surfaces, and per-key FIFO. | Default/race core coverage plus payload round-trip, legacy fixture, size-boundary, schema, custom-priority, and failure-oracle tests. | Payload bytes use base64 in the durable JSON envelope; 1 MiB default. |
+|🚼 | [Core Job Queue](../README.md) | Core/Runtime | [Roadmap](../ROADMAP.md) | [internal/queue](../internal/queue), [worker](../internal/worker), [producer](../internal/producer) | 1.5 | MVP | 80% (conf: high) | `████████░░` | Byte-exact payloads feed concurrent application handlers with retry, panic recovery, cancellation handoff, and renewable heartbeats. | Add public enqueue surfaces and crash-safe per-key FIFO. | Default/race core coverage; real-Redis handler/heartbeat smoke; payload, retry/DLQ, panic, cancellation, and reaper tests. | At-least-once delivery; handlers must be idempotent by job ID. |
 |🅱️ | Admin API v1 (HTTP) | Platform/API | — | [internal/admin-api](../internal/admin-api) | 5.4 | Beta | 90% (conf: high) | `█████████░` | Endpoints + middleware + OpenAPI shipped. | TUI switchover for Stats; expand e2e; gRPC decision; soak/chaos; share port-forward helper across deployment scripts; add policy-as-code checks for manifest security/secret rules. | Unit + integration; good. | Productionize defaults; audit destructive ops. |
 |🅰️ | Storage Backends | Core/Storage | — | [internal/storage-backends](../internal/storage-backends) | 5.9 | Alpha | 75% (conf: med) | ███████░░░ | Adapters + tests; conformance pending. | Complete adapter matrix; conformance; migration docs. | Unit + integration; fair. | Track compat matrix. |
 |🅱️ | RBAC & Tokens | Security | — | [internal/rbac-and-tokens](../internal/rbac-and-tokens) | 3.1 | Beta | 85% (conf: high) | █████████░ | Manager + middleware; hardened. | Expand scopes; e2e coverage; audit trails; soak/rotation tests. | Unit + middleware; good. | Security foundation. |
 |🅱️ | Observability Core | Observability | — | [internal/obs](../internal/obs) | 1.4 | Beta | 85% (conf: high) | █████████░ | Logger/metrics/tracing wiring. | Dashboards; error budgets; SLO dashboards; alert tuning. | Unit present. | Solid base. |
-|🅱️ | Reaper | Maintenance | — | [internal/reaper](../internal/reaper) | 0.1 | Beta | 90% (conf: high) | █████████░ | TTL/cleanup working. | Tune policies; monitoring; long-run soak. | Unit present. | Keep safe defaults. |
+|🅱️ | Reaper | Maintenance | — | [internal/reaper](../internal/reaper) | 0.2 | Beta | 90% (conf: high) | █████████░ | TTL/cleanup working. | Tune policies; monitoring; long-run soak. | Unit present. | Keep safe defaults. |
 
 |Emoji | Feature | Area | Spec | Code | KLoC (approx) | Status | Progress % | Bar | Current State | Todo (Tasks) | Tests | Remarks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
