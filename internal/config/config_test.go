@@ -129,6 +129,32 @@ func TestValidateRejectsIdenticalProcessingAndHeartbeatPatterns(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func(*Config, string)
+	}{
+		{name: "high priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["high"] = key }},
+		{name: "low priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["low"] = key }},
+		{name: "completed", set: func(cfg *Config, key string) { cfg.Worker.CompletedList = key }},
+		{name: "dead letter", set: func(cfg *Config, key string) { cfg.Worker.DeadLetterList = key }},
+		{name: "ordered ready", set: func(cfg *Config, key string) { cfg.Queue.OrderedReadyList = key }},
+		{name: "ordered active", set: func(cfg *Config, key string) { cfg.Queue.OrderedActiveSet = key }},
+		{name: "producer rate limiter", set: func(cfg *Config, key string) { cfg.Producer.RateLimitKey = key }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			cfg.Worker.ProcessingListPattern = "tenant:%s"
+			tt.set(cfg, "tenant:managed")
+			if err := Validate(cfg); err == nil {
+				t.Fatalf("expected %s key matched by processing pattern to fail", tt.name)
+			}
+		})
+	}
+}
+
 func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string

@@ -114,6 +114,31 @@ func TestNormalizeConfigRejectsIdenticalProcessingAndHeartbeatPatterns(t *testin
 	}
 }
 
+func TestNormalizeConfigRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func(*queueclient.Config, string)
+	}{
+		{name: "high priority", set: func(cfg *queueclient.Config, key string) { cfg.Queues["high"] = key }},
+		{name: "low priority", set: func(cfg *queueclient.Config, key string) { cfg.Queues["low"] = key }},
+		{name: "completed", set: func(cfg *queueclient.Config, key string) { cfg.CompletedList = key }},
+		{name: "dead letter", set: func(cfg *queueclient.Config, key string) { cfg.DeadLetterList = key }},
+		{name: "ordered ready", set: func(cfg *queueclient.Config, key string) { cfg.OrderedReadyList = key }},
+		{name: "ordered active", set: func(cfg *queueclient.Config, key string) { cfg.OrderedActiveSet = key }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testClientConfig()
+			cfg.ProcessingListPattern = "tenant:%s"
+			tt.set(&cfg, "tenant:managed")
+			if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+				t.Fatalf("expected %s key matched by processing pattern to fail", tt.name)
+			}
+		})
+	}
+}
+
 func TestNormalizeConfigRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string

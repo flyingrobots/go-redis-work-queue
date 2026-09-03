@@ -460,6 +460,9 @@ func validateStaticQueueKeys(cfg Config) error {
 
 	seen := make(map[string]string, len(roles))
 	for _, role := range roles {
+		if workerID, ok := queuekeys.Extract(cfg.ProcessingListPattern, role.key); ok && workerID != "" {
+			return fmt.Errorf("%s Redis key %q matches the processing list pattern", role.name, role.key)
+		}
 		if previous, ok := seen[role.key]; ok {
 			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
 		}
