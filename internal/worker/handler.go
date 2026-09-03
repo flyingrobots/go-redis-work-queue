@@ -60,11 +60,13 @@ func BenchHandler(ctx context.Context, job queue.Job) error {
 }
 
 // Handle installs the application handler used for future jobs. Passing nil
-// clears the handler; it never enables BenchHandler implicitly. Handle is safe
-// to call while the Worker is running.
+// pauses new consumption until a replacement is installed; it never enables
+// BenchHandler implicitly. Handle is safe to call while the Worker is running.
 func (w *Worker) Handle(handler Handler) *Worker {
 	w.handlerMu.Lock()
 	w.handler = handler
+	close(w.handlerCh)
+	w.handlerCh = make(chan struct{})
 	w.handlerMu.Unlock()
 	return w
 }
@@ -76,10 +78,27 @@ func (w *Worker) selectedHandler() Handler {
 	return handler
 }
 
+func (w *Worker) waitForHandler(ctx context.Context) (Handler, error) {
+	for {
+		w.handlerMu.RLock()
+		handler := w.handler
+		changed := w.handlerCh
+		w.handlerMu.RUnlock()
+		if handler != nil {
+			return handler, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-changed:
+		}
+	}
+}
+
 func (w *Worker) invokeHandler(ctx context.Context, job queue.Job) (err error) {
-	handler := w.selectedHandler()
-	if handler == nil {
-		return ErrHandlerRequired
+	handler, err := w.waitForHandler(ctx)
+	if err != nil {
+		return err
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {

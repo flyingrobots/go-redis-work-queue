@@ -119,6 +119,69 @@ func TestRunRequiresHandlerBeforeStarting(t *testing.T) {
 	}
 }
 
+func TestClearingHandlerPausesConsumptionUntilReplacement(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	activeStarted := make(chan struct{})
+	releaseActive := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() { close(releaseActive) })
+	}
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		if job.ID == "active" {
+			close(activeStarted)
+			<-releaseActive
+		}
+		return nil
+	}))
+
+	active := queue.NewJob("active", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], active, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(func() {
+		release()
+		stopHandlerTestWorker(t, cancel, done)
+	})
+	select {
+	case <-activeStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("active handler did not start")
+	}
+
+	w.Handle(nil)
+	held := queue.NewJob("held", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], held, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+	release()
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 1)
+	time.Sleep(100 * time.Millisecond)
+
+	if got, err := rdb.LLen(context.Background(), cfg.Worker.Queues["low"]).Result(); err != nil || got != 1 {
+		t.Fatalf("queue length with cleared handler = %d (err=%v), want held job untouched", got, err)
+	}
+	if got, err := rdb.LLen(context.Background(), cfg.Worker.DeadLetterList).Result(); err != nil || got != 0 {
+		t.Fatalf("dead-letter length with cleared handler = %d (err=%v), want 0", got, err)
+	}
+
+	replacementCalled := make(chan queue.Job, 1)
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		replacementCalled <- job
+		return nil
+	}))
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 2)
+	select {
+	case got := <-replacementCalled:
+		if got.ID != held.ID {
+			t.Fatalf("replacement handler received %q, want %q", got.ID, held.ID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("replacement handler did not receive held job")
+	}
+}
+
 func TestRegisteredHandlerProcessesEachJobOnce(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 2, 1, nil)
 	received := make(chan queue.Job, 5)

@@ -26,6 +26,7 @@ type Worker struct {
 
 	handlerMu sync.RWMutex
 	handler   Handler
+	handlerCh chan struct{}
 }
 
 type delivery struct {
@@ -44,7 +45,14 @@ func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
 	now := time.Now().UnixNano()
 	randSfx := fmt.Sprintf("%04x", time.Now().UnixNano()&0xffff)
 	base := fmt.Sprintf("%s-%d-%d-%s", host, pid, now, randSfx)
-	return &Worker{cfg: cfg, rdb: rdb, log: log, cb: cb, baseID: base}
+	return &Worker{
+		cfg:       cfg,
+		rdb:       rdb,
+		log:       log,
+		cb:        cb,
+		baseID:    base,
+		handlerCh: make(chan struct{}),
+	}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -96,6 +104,9 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 	unorderedBurst := 0
 
 	for ctx.Err() == nil {
+		if _, err := w.waitForHandler(ctx); err != nil {
+			return
+		}
 		if !w.cb.Allow() {
 			time.Sleep(w.cfg.Worker.BreakerPause)
 			continue
