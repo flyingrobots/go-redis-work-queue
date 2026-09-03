@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -103,6 +104,21 @@ func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
 		if errors.As(err, &bodyTooLarge) {
 			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
 				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		if err == nil {
+			writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body: multiple JSON values")
 			return
 		}
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))

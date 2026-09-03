@@ -170,6 +170,30 @@ func TestEnqueueJobReturnsCreatedIDAndPreservesEnvelope(t *testing.T) {
 	}
 }
 
+func TestEnqueueJobRejectsTrailingJSONWithoutQueueChange(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	body := `{"payload":"YQ==","priority":"low"}{"payload":"Yg==","priority":"low"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "INVALID_REQUEST" {
+		t.Fatalf("error code = %q, want INVALID_REQUEST", response.Code)
+	}
+	if mr.Exists("jobqueue:low") {
+		t.Fatal("request with trailing JSON enqueued the first document")
+	}
+}
+
 func TestEnqueueJobOversizedPayloadReturnsTypedMessageWithoutQueueChange(t *testing.T) {
 	handler, mr, cleanup := setupHandlerTest(t)
 	defer cleanup()
