@@ -140,6 +140,52 @@ func TestRunEnqueueAllowsEmptyStdin(t *testing.T) {
 	}
 }
 
+func TestRunEnqueueBoundsStdinByConfiguredPayloadLimit(t *testing.T) {
+	mr := miniredis.RunT(t)
+	configPath := writeEnqueueCLIConfig(t, mr.Addr(), 4)
+	input := bytes.Repeat([]byte{'x'}, 1024)
+	stdin := bytes.NewReader(input)
+
+	err := runEnqueue([]string{"--config", configPath}, stdin, &bytes.Buffer{}, &bytes.Buffer{})
+	var sizeErr *queueclient.PayloadTooLargeError
+	if !errors.As(err, &sizeErr) {
+		t.Fatalf("expected PayloadTooLargeError, got %v", err)
+	}
+	if consumed := len(input) - stdin.Len(); consumed > 5 {
+		t.Fatalf("stdin reader consumed %d bytes, want at most limit+1 (5)", consumed)
+	}
+	if sizeErr.Size != 5 || sizeErr.Limit != 4 {
+		t.Fatalf("payload size error = %#v, want observed limit+1 and limit", sizeErr)
+	}
+	if keys := mr.Keys(); len(keys) != 0 {
+		t.Fatalf("oversized stdin changed Redis: %v", keys)
+	}
+}
+
+func TestRunEnqueueBoundsPayloadFileByConfiguredPayloadLimit(t *testing.T) {
+	mr := miniredis.RunT(t)
+	configPath := writeEnqueueCLIConfig(t, mr.Addr(), 4)
+	payloadPath := filepath.Join(t.TempDir(), "oversized.bin")
+	if err := os.WriteFile(payloadPath, bytes.Repeat([]byte{'x'}, 1024), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := runEnqueue([]string{
+		"--config", configPath,
+		"--payload-file", payloadPath,
+	}, strings.NewReader("ignored"), &bytes.Buffer{}, &bytes.Buffer{})
+	var sizeErr *queueclient.PayloadTooLargeError
+	if !errors.As(err, &sizeErr) {
+		t.Fatalf("expected PayloadTooLargeError, got %v", err)
+	}
+	if sizeErr.Size != 5 || sizeErr.Limit != 4 {
+		t.Fatalf("payload size error = %#v, want observed limit+1 and limit", sizeErr)
+	}
+	if keys := mr.Keys(); len(keys) != 0 {
+		t.Fatalf("oversized payload file changed Redis: %v", keys)
+	}
+}
+
 func TestRunEnqueueRejectsUnknownPriorityBeforeRedis(t *testing.T) {
 	mr := miniredis.RunT(t)
 	configPath := writeEnqueueCLIConfig(t, mr.Addr(), 1024)

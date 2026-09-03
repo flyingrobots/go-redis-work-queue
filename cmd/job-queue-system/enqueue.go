@@ -39,7 +39,7 @@ func runEnqueue(args []string, stdin io.Reader, stdout, stderr io.Writer) error 
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	payload, err := readPayload(payloadFile, stdin)
+	payload, err := readPayload(payloadFile, stdin, cfg.Queue.MaxPayloadSize)
 	if err != nil {
 		return err
 	}
@@ -66,17 +66,43 @@ func runEnqueue(args []string, stdin io.Reader, stdout, stderr io.Writer) error 
 	return nil
 }
 
-func readPayload(path string, stdin io.Reader) ([]byte, error) {
+func readPayload(path string, stdin io.Reader, maxPayloadSize int) ([]byte, error) {
 	if path == "" || path == "-" {
-		payload, err := io.ReadAll(stdin)
+		payload, err := readPayloadAtMost(stdin, maxPayloadSize)
 		if err != nil {
 			return nil, fmt.Errorf("read payload from stdin: %w", err)
 		}
 		return payload, nil
 	}
-	payload, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read payload file %q: %w", path, err)
+	}
+	defer func() { _ = file.Close() }()
+	payload, err := readPayloadAtMost(file, maxPayloadSize)
+	if err != nil {
+		return nil, fmt.Errorf("read payload file %q: %w", path, err)
+	}
+	return payload, nil
+}
+
+func readPayloadAtMost(reader io.Reader, maxPayloadSize int) ([]byte, error) {
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = queueclient.DefaultMaxPayloadSize
+	}
+	readLimit := int64(maxPayloadSize)
+	if maxPayloadSize < int(^uint(0)>>1) {
+		readLimit++
+	}
+	payload, err := io.ReadAll(io.LimitReader(reader, readLimit))
+	if err != nil {
+		return nil, err
+	}
+	if len(payload) > maxPayloadSize {
+		return nil, &queueclient.PayloadTooLargeError{
+			Size:  len(payload),
+			Limit: maxPayloadSize,
+		}
 	}
 	return payload, nil
 }
