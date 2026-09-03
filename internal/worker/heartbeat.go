@@ -11,9 +11,11 @@ import (
 )
 
 // maintainHeartbeat writes the initial ownership marker and renews it while a
-// handler or its retry backoff is running. The returned stop function waits for
-// the renewal goroutine, preventing a late SET from racing with cleanup.
-func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, owner string) func() {
+// handler or its retry backoff is running. For ordered work, the returned
+// handler context is canceled as soon as lease renewal fails or proves that
+// ownership was lost. The stop function waits for the renewal goroutine,
+// preventing a late SET from racing with cleanup.
+func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, owner string) (context.Context, func()) {
 	ttl := w.cfg.Worker.HeartbeatTTL
 	if ttl <= 0 {
 		ttl = time.Second
@@ -23,8 +25,13 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, 
 		interval = time.Millisecond
 	}
 
-	heartbeatCtx, cancel := context.WithCancel(ctx)
-	set := func() {
+	handlerCtx, cancelHandler := context.WithCancel(ctx)
+	heartbeatCtx, stopRenewal := context.WithCancel(ctx)
+	loseLease := func() {
+		cancelHandler()
+		stopRenewal()
+	}
+	set := func() bool {
 		if err := w.rdb.Set(heartbeatCtx, key, payload, ttl).Err(); err != nil && heartbeatCtx.Err() == nil {
 			w.log.Warn("heartbeat refresh failed", obs.String("key", key), obs.Err(err))
 		}
@@ -32,16 +39,24 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, 
 			owned, err := queue.RenewOrderedLease(heartbeatCtx, w.rdb, leaseKey, owner, ttl)
 			if err != nil && heartbeatCtx.Err() == nil {
 				w.log.Warn("ordered lease refresh failed", obs.String("key", leaseKey), obs.Err(err))
+				loseLease()
+				return false
 			} else if !owned && heartbeatCtx.Err() == nil {
 				w.log.Warn("ordered lease ownership lost", obs.String("key", leaseKey))
+				loseLease()
+				return false
 			}
 		}
+		return heartbeatCtx.Err() == nil
 	}
-	set()
+	keepRenewing := set()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		if !keepRenewing {
+			return
+		}
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -49,15 +64,18 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, payload, leaseKey, 
 			case <-heartbeatCtx.Done():
 				return
 			case <-ticker.C:
-				set()
+				if !set() {
+					return
+				}
 			}
 		}
 	}()
 
 	var once sync.Once
-	return func() {
+	return handlerCtx, func() {
 		once.Do(func() {
-			cancel()
+			stopRenewal()
+			cancelHandler()
 			<-done
 		})
 	}

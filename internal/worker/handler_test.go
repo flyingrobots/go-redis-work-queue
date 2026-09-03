@@ -15,6 +15,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -361,5 +362,85 @@ func TestCancellationLeavesJobForReaper(t *testing.T) {
 	heartbeat := fmt.Sprintf(cfg.Worker.HeartbeatKeyPattern, w.baseID+"-0")
 	if exists, err := rdb.Exists(context.Background(), heartbeat).Result(); err != nil || exists != 1 {
 		t.Fatalf("expected final heartbeat to expire naturally for reaper handoff, exists=%d (err=%v)", exists, err)
+	}
+}
+
+func TestOrderedLeaseLossCancelsRunningHandler(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	cfg.Worker.HeartbeatTTL = 90 * time.Millisecond
+	started := make(chan struct{})
+	canceled := make(chan error, 1)
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseHandler := func() {
+		releaseOnce.Do(func() { close(release) })
+	}
+	defer releaseHandler()
+
+	w.Handle(Handler(func(ctx context.Context, _ queue.Job) error {
+		close(started)
+		select {
+		case <-ctx.Done():
+			canceled <- ctx.Err()
+			return ctx.Err()
+		case <-release:
+			return nil
+		}
+	}))
+
+	job := queue.NewJob("lose-ordered-lease", "", 0, "low", "", "")
+	job.OrderingKey = "lease-loss-key"
+	if err := queue.EnqueueWithOrdering(
+		context.Background(),
+		rdb,
+		cfg.Worker.Queues["low"],
+		job,
+		cfg.Queue.MaxPayloadSize,
+		cfg.OrderingLayout(),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	cancelWorker, done := startHandlerTestWorker(w)
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		stopHandlerTestWorker(t, cancelWorker, done)
+		t.Fatal("ordered handler did not start")
+	}
+
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	leaseKey := queuekeys.Format(cfg.OrderingLayout().LeasePattern, digest)
+	if owner, err := rdb.Get(context.Background(), leaseKey).Result(); err != nil || owner == "" {
+		releaseHandler()
+		stopHandlerTestWorker(t, cancelWorker, done)
+		t.Fatalf("ordered lease was not acquired: owner=%q err=%v", owner, err)
+	}
+	if err := rdb.Set(context.Background(), leaseKey, "replacement-worker", time.Second).Err(); err != nil {
+		releaseHandler()
+		stopHandlerTestWorker(t, cancelWorker, done)
+		t.Fatal(err)
+	}
+
+	select {
+	case err := <-canceled:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("handler cancellation error = %v, want context.Canceled", err)
+		}
+	case <-time.After(time.Second):
+		releaseHandler()
+		stopHandlerTestWorker(t, cancelWorker, done)
+		t.Fatal("ordered handler continued after losing its lease")
+	}
+
+	stopHandlerTestWorker(t, cancelWorker, done)
+	processing := fmt.Sprintf(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
+	if got, err := rdb.LLen(context.Background(), processing).Result(); err != nil || got != 1 {
+		t.Fatalf("lease-lost delivery should remain in processing: length=%d err=%v", got, err)
+	}
+	for _, key := range []string{cfg.Worker.CompletedList, cfg.Worker.DeadLetterList} {
+		if got, err := rdb.LLen(context.Background(), key).Result(); err != nil || got != 0 {
+			t.Fatalf("lease-lost delivery reached %q: length=%d err=%v", key, got, err)
+		}
 	}
 }

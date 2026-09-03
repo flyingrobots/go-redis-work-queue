@@ -283,17 +283,24 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 	if next.ordered != nil {
 		leaseKey = next.ordered.LeaseKey
 	}
-	stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, payload, leaseKey, workerID)
+	handlerCtx, stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, payload, leaseKey, workerID)
 	defer stopHeartbeat()
+	if handlerCtx.Err() != nil {
+		w.log.Info("job interrupted before handler; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	}
 	processingStart := time.Now()
-	handlerErr := w.invokeHandler(ctx, job)
+	handlerErr := w.invokeHandler(handlerCtx, job)
 	processingDuration := time.Since(processingStart)
 	obs.AddSpanAttributes(ctx, obs.KeyValue("processing.duration_ms", processingDuration.Milliseconds()))
 
-	if ctx.Err() != nil {
+	if handlerCtx.Err() != nil {
 		obs.AddEvent(ctx, "job.processing.interrupted",
 			obs.KeyValue("job.id", job.ID),
-			obs.KeyValue("reason", ctx.Err().Error()),
+			obs.KeyValue("reason", handlerCtx.Err().Error()),
 		)
 		w.log.Info("job interrupted; leaving in processing for reaper",
 			obs.String("id", job.ID),
@@ -373,7 +380,7 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 	timer := time.NewTimer(bo)
 	defer timer.Stop()
 	select {
-	case <-ctx.Done():
+	case <-handlerCtx.Done():
 		if !timer.Stop() {
 			select {
 			case <-timer.C:
