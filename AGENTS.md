@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Four exact-head
-  review passes produced 27 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Five exact-head
+  review passes produced 34 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -40,13 +40,17 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   priority within a key; different keys remain parallel. Renewal uncertainty
   or proven lease loss cancels the handler-scoped context before redelivery.
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
-  validate fallible Redis types before mutation. Custom layouts reject
-  static and per-digest role collisions, scan patterns escape fixed glob text,
-  terminal aliases cannot become priorities, and public enqueue resets
-  worker-owned retry counters.
-- Stats deduplicates heartbeat keys across Redis `SCAN` pages. The release
-  changelog and documented PR-comment extractor are tracked again; extractor
-  regressions cover pagination, comment types, prompts, and bare output paths.
+  validate fallible Redis types before mutation. Priority, terminal, and
+  ordered-control keys must be pairwise distinct; worker processing and
+  heartbeat patterns must differ; per-digest roles cannot alias; scan patterns
+  escape fixed glob text; trimmed priority aliases cannot collide; and public
+  enqueue resets worker-owned retry counters.
+- Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
+  ordered queue keys containing real SHA-256 digests. The release changelog,
+  PR-comment extractor, and review-worksheet generator are tracked again.
+  Extractor regressions cover pagination, comment types, prompts, and bare
+  output paths. The Event Hooks test plan now distinguishes its seven live
+  tests and 11.6% observed coverage from removed future suites.
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
@@ -189,6 +193,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 re-review: close ten additional correctness and documentation findings
 - [x] Queue core PR #6 third review: close seven mutation-safety, consistency, and tooling findings
 - [x] Queue core PR #6 fourth review: cancel lease-lost handlers and reject per-job key aliases
+- [x] Queue core PR #6 fifth review: close seven configuration, statistics, and stale-artifact findings
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -697,6 +702,41 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Fifth Review Remediated
+>
+> Closed seven exact-head findings as isolated RED/GREEN/VERIFY commits, plus
+> one forward-only fixture correction discovered by the broader package gate.
+>
+> Changes
+>
+> - Required pairwise-distinct priority, terminal, and ordered-control keys;
+>   separated processing/heartbeat patterns; rejected trimmed alias collisions.
+> - Filtered ordered statistics to the lowercase 64-hex digest keys created by
+>   real intake, skipping broad-pattern controls, leases, and lookalikes.
+> - Retired the unusable exactly-once acceptance script, restored the documented
+>   review-worksheet generator, and replaced fictional Event Hooks coverage
+>   claims with a dated seven-test/11.6% boundary and reconstruction plan.
+> - Updated admin statistics fixtures to use production-shaped ordering digests.
+>
+> Validation
+>
+> - Pairwise static-role RED matrices failed 14 of 15 combinations at both
+>   config boundaries before the fix; all 15 now reject collisions.
+> - Broad-pattern stats reproduced `WRONGTYPE`; trimmed aliases failed 20/20
+>   before the fix and pass 50 race repetitions after it.
+> - Affected packages pass five race repetitions; the full repository race,
+>   tidy, vet, build, request-ID, external-client, Python, workflow-syntax,
+>   137-file Markdown, and 28-package-floor gates pass.
+> - `govulncheck` under Go 1.26.8 reports zero reachable vulnerabilities; the
+>   published code checkpoint also passes hosted Go 1.25.14 CI.
+> - All 34 review threads have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
