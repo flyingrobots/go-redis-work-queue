@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Eight exact-head
-  review passes produced 42 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Nine exact-head
+  review passes produced 45 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -36,11 +36,14 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
   `queue:write`. CLI file and stdin reads stop at the configured limit plus one
-  byte. Duplicate IDs remain separate deliveries.
+  byte. HTTP request bodies must contain exactly one JSON value. Duplicate IDs
+  remain separate deliveries.
 - DLQ listings expose an opaque handle for each list entry, including
-  duplicate-ID and byte-identical envelopes. Requeue and purge verify the exact
-  position and envelope atomically; stale handles are safe no-ops. Destructive
-  HTTP queue handlers dispatch only on their exact registered paths.
+  duplicate-ID and byte-identical envelopes. Handles bind the whole-list
+  snapshot, exact position, and envelope; requeue and purge verify them
+  atomically, chain updated snapshots for bulk actions, and make stale handles
+  safe no-ops. Destructive HTTP queue handlers dispatch only on their exact
+  registered paths.
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel. Invalid UTF-8 keys are
@@ -54,7 +57,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   keys; per-digest roles cannot alias; scan patterns escape fixed glob text;
   trimmed priority aliases cannot collide; and public enqueue resets
   worker-owned retry counters. Malformed processing entries are removed only
-  when the inspected tail bytes still match atomically.
+  when the inspected tail bytes still match atomically. Broad ordered cleanup
+  patterns delete only keys containing canonical SHA-256 ordering digests.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
@@ -208,6 +212,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 sixth review: enforce enqueue RBAC and reject derived-key aliases
 - [x] Queue core PR #6 seventh review: harden ordering input, CLI reads, DLQ handles, and purge routes
 - [x] Queue core PR #6 eighth review: make reaper cleanup race-safe and isolate processing scans
+- [x] Queue core PR #6 ninth review: bind DLQ snapshots, reject trailing JSON, and filter ordered purge
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -718,6 +723,36 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Ninth Review Remediated
+>
+> Closed three exact-head identity, input, and deletion findings as isolated
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Upgraded DLQ selection handles to bind an atomic whole-list snapshot as
+>   well as the exact index and envelope, with snapshot chaining for bulk work.
+> - Required HTTP enqueue bodies to end after one JSON value before any Redis
+>   client construction or enqueue mutation.
+> - Filtered broad ordered queue and lease purge scans to canonical SHA-256
+>   digest keys before deletion.
+>
+> Validation
+>
+> - Identical-envelope prepend RED retargeted both requeue and purge; GREEN
+>   preserves all entries and leaves the destination empty as a stale no-op.
+> - Concatenated-JSON RED returned 201 and enqueued the first object; GREEN
+>   returns typed 400 with zero queue mutation.
+> - Broad-pattern RED deleted `tenant:settings`; GREEN deletes only the real
+>   generated queue and lease. All affected packages pass five race-enabled
+>   repetitions and focused vet, and all 45 review threads are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
