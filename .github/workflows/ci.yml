@@ -82,6 +82,7 @@ jobs:
           printf '%s\n' "$output"
           for test_name in \
             TestE2E_PerKeyFIFOOneKey \
+            TestE2E_PerKeyFIFOEnqueueBatchWrongTypeIsAllOrNothing \
             TestE2E_PerKeyFIFOMultipleKeysRunConcurrently \
             TestE2E_PerKeyFIFORecoveryRedeliversInterruptedJobFirst \
             TestE2E_PerKeyFIFOLeaseHeartbeatOutlivesTTL \

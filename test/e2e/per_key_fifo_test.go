@@ -135,7 +135,7 @@ func TestE2E_PerKeyFIFOOneKey(t *testing.T) {
 	}
 }
 
-func TestE2E_PerKeyBatchWrongTypeIsAllOrNothing(t *testing.T) {
+func TestE2E_PerKeyFIFOEnqueueBatchWrongTypeIsAllOrNothing(t *testing.T) {
 	rdb, addr := newPerKeyRedis(t)
 	cfg := newPerKeyConfig(t, addr, 1)
 	client := newPerKeyClient(t, rdb, cfg)
