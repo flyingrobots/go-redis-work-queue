@@ -256,17 +256,21 @@ func (c *Client) Stats(ctx context.Context) (StatsResult, error) {
 
 	cursor = 0
 	heartbeatPattern := queuekeys.ScanPattern(c.cfg.HeartbeatKeyPattern)
+	heartbeatKeys := map[string]struct{}{}
 	for {
 		keys, next, err := c.rdb.Scan(ctx, cursor, heartbeatPattern, 500).Result()
 		if err != nil {
 			return result, connectionError("scan heartbeats", err)
 		}
-		result.Heartbeats += int64(len(keys))
+		for _, key := range keys {
+			heartbeatKeys[key] = struct{}{}
+		}
 		cursor = next
 		if cursor == 0 {
 			break
 		}
 	}
+	result.Heartbeats = int64(len(heartbeatKeys))
 	return result, nil
 }
 

@@ -50,6 +50,44 @@ func newTestClient(t *testing.T, mr *miniredis.Miniredis, cfg queueclient.Config
 	return client
 }
 
+type duplicateHeartbeatScanHook struct {
+	pattern string
+	page    int
+}
+
+func (h *duplicateHeartbeatScanHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (h *duplicateHeartbeatScanHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		scan, ok := cmd.(*redis.ScanCmd)
+		if !ok || !scanMatchesPattern(scan.Args(), h.pattern) {
+			return next(ctx, cmd)
+		}
+		h.page++
+		if h.page == 1 {
+			scan.SetVal([]string{"jobqueue:test:heartbeat:duplicate"}, 1)
+		} else {
+			scan.SetVal([]string{"jobqueue:test:heartbeat:duplicate"}, 0)
+		}
+		return nil
+	}
+}
+
+func (h *duplicateHeartbeatScanHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+
+func scanMatchesPattern(args []interface{}, pattern string) bool {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "match" && args[i+1] == pattern {
+			return true
+		}
+	}
+	return false
+}
+
 func TestNormalizeConfigRejectsIdenticalOrderedQueueAndLeasePatterns(t *testing.T) {
 	cfg := testClientConfig()
 	cfg.OrderedQueuePattern = "custom:ordered:%s"
@@ -467,6 +505,28 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 	}
 	if peek.Queue != cfg.Queues["high"] || len(peek.Items) != 1 {
 		t.Fatalf("unexpected peek: %#v", peek)
+	}
+}
+
+func TestStatsDeduplicatesHeartbeatKeysAcrossScanPages(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	rdb.AddHook(&duplicateHeartbeatScanHook{
+		pattern: queuekeys.ScanPattern(cfg.HeartbeatKeyPattern),
+	})
+	client, err := queueclient.NewWithClient(rdb, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := client.Stats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Heartbeats != 1 {
+		t.Fatalf("heartbeats = %d, want one unique key", stats.Heartbeats)
 	}
 }
 
