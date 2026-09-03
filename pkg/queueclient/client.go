@@ -419,9 +419,6 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.OrderedActiveSet == "" {
 		cfg.OrderedActiveSet = defaults.OrderedActiveSet
 	}
-	if err := validateStaticQueueKeys(cfg); err != nil {
-		return Config{}, err
-	}
 	if cfg.OrderedQueuePattern == "" {
 		cfg.OrderedQueuePattern = defaults.OrderedQueuePattern
 	}
@@ -436,6 +433,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	}
 	if cfg.OrderedQueuePattern == cfg.OrderedLeasePattern {
 		return Config{}, errors.New("ordered queue and lease patterns must differ")
+	}
+	if err := validateStaticQueueKeys(cfg); err != nil {
+		return Config{}, err
 	}
 	return cfg, nil
 }
@@ -462,6 +462,17 @@ func validateStaticQueueKeys(cfg Config) error {
 			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
 		}
 		seen[role.key] = role.name
+		for _, pattern := range []struct {
+			name  string
+			value string
+		}{
+			{name: "ordered queue", value: cfg.OrderedQueuePattern},
+			{name: "ordered lease", value: cfg.OrderedLeasePattern},
+		} {
+			if queuekeys.MatchesOrderingDigest(pattern.value, role.key) {
+				return fmt.Errorf("%s Redis key %q aliases the %s pattern", role.name, role.key, pattern.name)
+			}
+		}
 	}
 	return nil
 }

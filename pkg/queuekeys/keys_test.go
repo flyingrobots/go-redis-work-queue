@@ -1,7 +1,10 @@
 // Copyright 2026 James Ross
 package queuekeys
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDefaultCoreKeysMatchExistingRedisLayout(t *testing.T) {
 	tests := map[string]string{
@@ -47,6 +50,30 @@ func TestOrderingDigestIsStableAndRedisSafe(t *testing.T) {
 	}
 	if got := len(OrderingDigest(key)); got != 64 {
 		t.Fatalf("digest length = %d, want 64", got)
+	}
+}
+
+func TestMatchesOrderingDigestRequiresCanonicalGeneratedKey(t *testing.T) {
+	pattern := "custom:ordered:%s:jobs"
+	digest := OrderingDigest("account:42")
+	tests := []struct {
+		name string
+		key  string
+		want bool
+	}{
+		{name: "generated digest", key: Format(pattern, digest), want: true},
+		{name: "uppercase digest", key: Format(pattern, strings.ToUpper(digest))},
+		{name: "non-hex token", key: Format(pattern, strings.Repeat("g", 64))},
+		{name: "short token", key: Format(pattern, digest[:63])},
+		{name: "wrong suffix", key: "custom:ordered:" + digest + ":leases"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := MatchesOrderingDigest(pattern, tt.key); got != tt.want {
+				t.Fatalf("MatchesOrderingDigest(%q, %q) = %v, want %v", pattern, tt.key, got, tt.want)
+			}
+		})
 	}
 }
 

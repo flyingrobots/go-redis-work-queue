@@ -27,8 +27,7 @@ func OrderedQueueLengths(ctx context.Context, rdb redis.Cmdable, pattern string)
 			return nil, 0, fmt.Errorf("scan ordered queues: %w", err)
 		}
 		for _, key := range keys {
-			identifier, matches := queuekeys.Extract(pattern, key)
-			if !matches || !isOrderingDigest(identifier) {
+			if !queuekeys.MatchesOrderingDigest(pattern, key) {
 				continue
 			}
 			if _, duplicate := seen[key]; duplicate {
@@ -47,16 +46,4 @@ func OrderedQueueLengths(ctx context.Context, rdb redis.Cmdable, pattern string)
 			return lengths, total, nil
 		}
 	}
-}
-
-func isOrderingDigest(identifier string) bool {
-	if len(identifier) != 64 {
-		return false
-	}
-	for _, char := range identifier {
-		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
-			return false
-		}
-	}
-	return true
 }

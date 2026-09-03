@@ -303,9 +303,6 @@ func Validate(cfg *Config) error {
 	if cfg.Queue.OrderedActiveSet == "" {
 		return fmt.Errorf("queue.ordered_active_set must be non-empty")
 	}
-	if err := validateStaticQueueKeys(cfg); err != nil {
-		return err
-	}
 	if strings.Count(cfg.Queue.OrderedQueuePattern, "%s") != 1 {
 		return fmt.Errorf("queue.ordered_queue_pattern must contain exactly one %%s placeholder")
 	}
@@ -314,6 +311,9 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Queue.OrderedQueuePattern == cfg.Queue.OrderedLeasePattern {
 		return fmt.Errorf("queue.ordered_queue_pattern and queue.ordered_lease_pattern must differ")
+	}
+	if err := validateStaticQueueKeys(cfg); err != nil {
+		return err
 	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")
@@ -332,7 +332,7 @@ func validateStaticQueueKeys(cfg *Config) error {
 	}
 	sort.Strings(aliases)
 
-	roles := make([]keyRole, 0, len(aliases)+4)
+	roles := make([]keyRole, 0, len(aliases)+5)
 	for _, alias := range aliases {
 		roles = append(roles, keyRole{name: fmt.Sprintf("worker queue %q", alias), key: cfg.Worker.Queues[alias]})
 	}
@@ -341,6 +341,7 @@ func validateStaticQueueKeys(cfg *Config) error {
 		keyRole{name: "worker dead-letter list", key: cfg.Worker.DeadLetterList},
 		keyRole{name: "ordered ready list", key: cfg.Queue.OrderedReadyList},
 		keyRole{name: "ordered active set", key: cfg.Queue.OrderedActiveSet},
+		keyRole{name: "producer rate limiter", key: cfg.Producer.RateLimitKey},
 	)
 
 	seen := make(map[string]string, len(roles))
@@ -349,6 +350,17 @@ func validateStaticQueueKeys(cfg *Config) error {
 			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
 		}
 		seen[role.key] = role.name
+		for _, pattern := range []struct {
+			name  string
+			value string
+		}{
+			{name: "ordered queue", value: cfg.Queue.OrderedQueuePattern},
+			{name: "ordered lease", value: cfg.Queue.OrderedLeasePattern},
+		} {
+			if queuekeys.MatchesOrderingDigest(pattern.value, role.key) {
+				return fmt.Errorf("%s Redis key %q aliases the %s pattern", role.name, role.key, pattern.name)
+			}
+		}
 	}
 	return nil
 }

@@ -80,6 +80,21 @@ func Extract(pattern, key string) (string, bool) {
 	return key[len(prefix):end], true
 }
 
+// MatchesOrderingDigest reports whether key is produced by pattern with the
+// canonical lowercase SHA-256 token used for an ordering key.
+func MatchesOrderingDigest(pattern, key string) bool {
+	identifier, ok := Extract(pattern, key)
+	if !ok || len(identifier) != sha256.Size*2 {
+		return false
+	}
+	for _, char := range identifier {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // OrderingDigest maps exact ordering-key bytes to a bounded Redis-safe token.
 // The original ordering key remains in the durable job envelope.
 func OrderingDigest(orderingKey string) string {
