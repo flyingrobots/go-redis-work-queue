@@ -278,13 +278,14 @@ Notes:
 - The TUI calls internal admin APIs, so it reflects the same Redis keys as the CLI admin mode.
 - When a confirmation modal is open, the background dims and a full-screen scrim appears for focus.
 
-Screenshots (examples):
+Design mockups (current and planned states):
 
-![Queues View](docs/images/tui-queues.png)
+![Balanced Job Queue View](docs/TUI/images/job-balanced.svg)
 
-![Peek Modal](docs/images/tui-peek.png)
+![Expanded Charts View](docs/TUI/images/job-expanded.svg)
 
-![Charts View](docs/images/tui-charts.png)
+See the [TUI design and layout guide](docs/TUI/README.md) for the complete
+tracked mockup set and implementation notes.
 
 ### Admin Commands
 
@@ -369,14 +370,18 @@ Promotion gates and confidence summary (details in `docs/15_promotion_checklists
 - **Beta → RC**: overall confidence `~0.70` (needs controlled perf run, chaos tests, soak)
 - **RC → GA**: overall confidence `~0.70` (release flow ready; soak and rollback rehearsal pending)
 
-### Evidence artifacts (`docs/evidence/`)
+### Reproducing release confidence
 
-- `ci_run.json` (CI URL),
-- `bench.json` (throughput/latency),
-- `metrics_before.txt`/`metrics_after.txt`,
-- `config.alpha.yaml`
+- Follow the tracked [promotion checklists](docs/15_promotion_checklists.md) for
+  stage-specific acceptance and rollback gates.
+- Use the [performance baseline](docs/12_performance_baseline.md) for the
+  reproducible throughput and latency protocol.
+- Run the package and race-detector commands in the
+  [testing guide](docs/testing-guide.md).
 
-To reproduce evidence locally, see `docs/evidence/README.md`.
+Exact candidate-commit CI receipts remain attached to GitHub pull-request
+checks; they are not represented by committed snapshots that can drift from
+the tested head.
 
 ----
 
