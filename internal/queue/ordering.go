@@ -123,17 +123,48 @@ return 1
 `)
 
 var claimOrderedScript = redis.NewScript(`
-local digest = redis.call('RPOP', KEYS[1])
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+local digest = redis.call('LINDEX', KEYS[1], -1)
 if not digest then
   return nil
 end
 
 local queue_key = ARGV[1] .. digest .. ARGV[2]
 local lease_key = ARGV[3] .. digest .. ARGV[4]
+local claim_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], queue_key, lease_key}
+for i = 1, #claim_keys do
+  for j = i + 1, #claim_keys do
+    if claim_keys[i] == claim_keys[j] then
+      return redis.error_reply('ordered claim keys must differ')
+    end
+  end
+end
+
+problem = require_type(KEYS[2], 'set')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[3], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[4], 'string')
+if problem then return redis.error_reply(problem) end
+problem = require_type(queue_key, 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(lease_key, 'string')
+if problem then return redis.error_reply(problem) end
+
 local acquired = redis.call('SET', lease_key, ARGV[5], 'NX', 'PX', ARGV[6])
 if not acquired then
   return nil
 end
+redis.call('RPOP', KEYS[1])
 
 local payload = redis.call('RPOP', queue_key)
 if not payload then

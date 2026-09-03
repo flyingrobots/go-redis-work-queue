@@ -149,6 +149,61 @@ func TestOrderedEnqueueWrongTypeControlKeyIsAtomic(t *testing.T) {
 	}
 }
 
+func TestClaimOrderedWrongTypeKeyPreservesReadyJob(t *testing.T) {
+	for _, target := range []string{"processing", "queue", "lease"} {
+		t.Run(target, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			ctx := context.Background()
+			layout := testOrderingLayout()
+
+			job := NewJob("wrong-type-claim-"+target, "", 0, "low", "", "")
+			job.OrderingKey = "account:claim:" + target
+			if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+				t.Fatal(err)
+			}
+			digest := queuekeys.OrderingDigest(job.OrderingKey)
+			queueKey := queuekeys.Format(layout.QueuePattern, digest)
+			leaseKey := queuekeys.Format(layout.LeasePattern, digest)
+			processingKey := "test:processing"
+			switch target {
+			case "processing":
+				if err := rdb.Set(ctx, processingKey, "not-a-list", 0).Err(); err != nil {
+					t.Fatal(err)
+				}
+			case "queue":
+				if err := rdb.Set(ctx, queueKey, "not-a-list", 0).Err(); err != nil {
+					t.Fatal(err)
+				}
+			case "lease":
+				if err := rdb.LPush(ctx, leaseKey, "not-a-string").Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if delivery, ok, err := ClaimOrdered(ctx, rdb, layout, processingKey, "test:heartbeat", "worker-1", time.Second); err == nil || ok {
+				t.Fatalf("claim = (%#v, %v, %v), want wrong-type error", delivery, ok, err)
+			}
+			if ready := rdb.LRange(ctx, layout.ReadyList, 0, -1).Val(); !slices.Equal(ready, []string{digest}) {
+				t.Fatalf("ready ring after failed claim = %#v", ready)
+			}
+			if active := rdb.SIsMember(ctx, layout.ActiveSet, digest).Val(); !active {
+				t.Fatal("failed claim removed the active digest")
+			}
+			if target != "queue" {
+				want, _ := job.Marshal()
+				if queued := rdb.LRange(ctx, queueKey, 0, -1).Val(); !slices.Equal(queued, []string{want}) {
+					t.Fatalf("ordered queue after failed claim = %#v", queued)
+				}
+			}
+			if target != "lease" && rdb.Exists(ctx, leaseKey).Val() != 0 {
+				t.Fatal("failed claim created a lease")
+			}
+		})
+	}
+}
+
 func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
