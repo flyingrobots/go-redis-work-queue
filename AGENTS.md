@@ -39,6 +39,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Markdownlint scans all tracked Markdown with zero findings. Hard line width,
   adjacent GitHub-admonition blockquotes, and intentional bold lead-ins are the
   only disabled default style rules.
+- `govulncheck` reports zero reachable vulnerabilities under the CI Go 1.25.14
+  toolchain after coordinated gRPC, OpenTelemetry, and `golang.org/x` upgrades.
 
 ### Job Queue
 
@@ -231,6 +233,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
 - [x] Tooling: Clear the repository-wide `go vet ./...` baseline
 - [x] Docs: Clear the repository-wide Markdownlint baseline
+- [x] Security: Clear all reachable `govulncheck` findings
 
 ### Finished Log
 
@@ -669,6 +672,38 @@ Notes
 
 ## Daily Activity Logs
 >
+> [!NOTE]
+>
+> ### 2026-09-03 – Reachable Go Vulnerabilities Cleared
+>
+> Updated the dependency graph after the first fully green compile/test run
+> reached the final CI security gate and found seven reachable vulnerabilities.
+>
+> Changes
+>
+> - Upgraded gRPC to `v1.82.1`, `golang.org/x/text` to `v0.39.0`, and
+>   `golang.org/x/net` to the dependency-selected `v0.56.0`.
+> - Upgraded the aligned OpenTelemetry API, SDK, trace, metric, and OTLP trace
+>   exporter family to `v1.44.0`.
+> - Removed the stale `golang.org/x/sys v0.19.0` replacement so the fixed module
+>   graph can select its compatible `v0.46.0` transitive dependency.
+> - Tidied the standalone external queue-client fixture against the new graph.
+>
+> Validation
+>
+> - RED: hosted `govulncheck v1.7.0` found seven reachable vulnerabilities in
+>   six modules; the first fixed-floor graph exposed one additional reachable
+>   OpenTelemetry baggage regression at `v1.43.0`.
+> - GREEN: the same scanner reports zero reachable vulnerabilities under the
+>   CI toolchain, Go 1.25.14.
+> - The full race suite, vet, build, 26-package canary, external-module test,
+>   five deterministic Redis runs, and all seven per-key FIFO e2e cases pass.
+>
+> Follow-ups
+>
+> - The scanner still inventories nine vulnerabilities in required modules that
+>   no repository call path reaches; keep the latest hosted scan authoritative.
+
 > [!NOTE]
 >
 > ### 2026-09-03 – Markdownlint Baseline Cleared
