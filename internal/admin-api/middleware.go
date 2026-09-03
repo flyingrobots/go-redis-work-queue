@@ -9,11 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
 
 	anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+	rbacandtokens "github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
 	"go.uber.org/zap"
 )
 
@@ -63,6 +65,89 @@ func AuthMiddleware(secret string, denyByDefault bool, logger *zap.Logger) func(
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// AuthorizationMiddleware enforces the RBAC endpoint catalog against the
+// authenticated claims installed by AuthMiddleware.
+func AuthorizationMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			required := requiredPermissions(r.Method, r.URL.Path)
+			if len(required) == 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			claims, ok := r.Context().Value(contextKeyClaims).(*Claims)
+			if !ok {
+				writeError(w, http.StatusUnauthorized, "NO_CLAIMS", "No authentication claims found")
+				return
+			}
+
+			for _, permission := range required {
+				if claimsAllow(claims, permission) {
+					continue
+				}
+
+				logger.Warn("Access denied",
+					zap.String("subject", claims.Subject),
+					zap.String("permission", string(permission)),
+					zap.String("path", r.URL.Path),
+					zap.String("method", r.Method))
+				writeError(w, http.StatusForbidden, "ACCESS_DENIED",
+					fmt.Sprintf("Insufficient permissions. Required: %s", permission))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func requiredPermissions(method, requestPath string) []rbacandtokens.Permission {
+	endpointPermissions := rbacandtokens.GetEndpointPermissions()
+	key := method + " " + requestPath
+	if permissions, ok := endpointPermissions[key]; ok {
+		return permissions
+	}
+
+	for endpoint, permissions := range endpointPermissions {
+		patternMethod, patternPath, ok := strings.Cut(endpoint, " ")
+		if !ok || patternMethod != method {
+			continue
+		}
+		if matched, err := path.Match(patternPath, requestPath); err == nil && matched {
+			return permissions
+		}
+	}
+
+	return nil
+}
+
+func claimsAllow(claims *Claims, required rbacandtokens.Permission) bool {
+	for _, role := range claims.Roles {
+		if rbacandtokens.Role(role) == rbacandtokens.RoleAdmin {
+			return true
+		}
+	}
+
+	for _, scope := range claims.Scopes {
+		permission := rbacandtokens.Permission(scope)
+		if permission == required || permission == rbacandtokens.PermAdminAll {
+			return true
+		}
+	}
+
+	rolePermissions := rbacandtokens.GetRolePermissions()
+	for _, role := range claims.Roles {
+		for _, permission := range rolePermissions[rbacandtokens.Role(role)] {
+			if permission == required || permission == rbacandtokens.PermAdminAll {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // RateLimitMiddleware implements token bucket rate limiting

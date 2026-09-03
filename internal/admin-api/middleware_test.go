@@ -130,12 +130,82 @@ func TestAuthMiddlewareInjectsScopesForDownstreamHandlers(t *testing.T) {
 	}
 }
 
+func TestServerMiddlewareEnforcesEnqueuePermission(t *testing.T) {
+	const secret = "test-secret"
+	server := &Server{
+		cfg: &Config{
+			JWTSecret:     secret,
+			RequireAuth:   true,
+			DenyByDefault: true,
+		},
+		logger: zap.NewNop(),
+	}
+
+	requestsHandled := 0
+	handler := server.applyMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestsHandled++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	tests := []struct {
+		name       string
+		role       string
+		wantStatus int
+		wantCalled bool
+	}{
+		{
+			name:       "viewer cannot enqueue",
+			role:       string(rbacandtokens.RoleViewer),
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "operator can enqueue",
+			role:       string(rbacandtokens.RoleOperator),
+			wantStatus: http.StatusNoContent,
+			wantCalled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := requestsHandled
+			token := mustMakeToken(t, secret, []string{tt.role}, nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d: %s", w.Code, tt.wantStatus, w.Body.String())
+			}
+			called := requestsHandled != before
+			if called != tt.wantCalled {
+				t.Fatalf("downstream handler called = %v, want %v", called, tt.wantCalled)
+			}
+			if !tt.wantCalled {
+				var response ErrorResponse
+				if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+					t.Fatalf("decode denial response: %v", err)
+				}
+				if response.Code != "ACCESS_DENIED" {
+					t.Fatalf("error code = %q, want ACCESS_DENIED", response.Code)
+				}
+			}
+		})
+	}
+}
+
 func mustMakeScopedToken(t *testing.T, secret string, scopes []string) string {
+	return mustMakeToken(t, secret, []string{string(rbacandtokens.RoleAdmin)}, scopes)
+}
+
+func mustMakeToken(t *testing.T, secret string, roles, scopes []string) string {
 	t.Helper()
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
 	claims := map[string]interface{}{
 		"sub":    "test@example.com",
-		"roles":  []string{"admin"},
+		"roles":  roles,
 		"scopes": scopes,
 		"exp":    time.Now().Add(time.Hour).Unix(),
 		"iat":    time.Now().Unix(),

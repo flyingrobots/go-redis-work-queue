@@ -155,6 +155,9 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 
 	// Auth middleware
 	if s.cfg.RequireAuth {
+		if s.cfg.DenyByDefault {
+			handler = AuthorizationMiddleware(s.logger)(handler)
+		}
 		handler = AuthMiddleware(s.cfg.JWTSecret, s.cfg.DenyByDefault, s.logger)(handler)
 	}
 
