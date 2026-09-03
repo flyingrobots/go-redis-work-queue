@@ -106,6 +106,62 @@ func TestNormalizeConfigRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) 
 	}
 }
 
+func TestNormalizeConfigRejectsAliasedStaticQueueKeys(t *testing.T) {
+	type keyRole struct {
+		name string
+		get  func(queueclient.Config) string
+		set  func(*queueclient.Config, string)
+	}
+	roles := []keyRole{
+		{
+			name: "high priority",
+			get:  func(cfg queueclient.Config) string { return cfg.Queues["high"] },
+			set:  func(cfg *queueclient.Config, key string) { cfg.Queues["high"] = key },
+		},
+		{
+			name: "low priority",
+			get:  func(cfg queueclient.Config) string { return cfg.Queues["low"] },
+			set:  func(cfg *queueclient.Config, key string) { cfg.Queues["low"] = key },
+		},
+		{
+			name: "completed",
+			get:  func(cfg queueclient.Config) string { return cfg.CompletedList },
+			set:  func(cfg *queueclient.Config, key string) { cfg.CompletedList = key },
+		},
+		{
+			name: "dead letter",
+			get:  func(cfg queueclient.Config) string { return cfg.DeadLetterList },
+			set:  func(cfg *queueclient.Config, key string) { cfg.DeadLetterList = key },
+		},
+		{
+			name: "ordered ready",
+			get:  func(cfg queueclient.Config) string { return cfg.OrderedReadyList },
+			set:  func(cfg *queueclient.Config, key string) { cfg.OrderedReadyList = key },
+		},
+		{
+			name: "ordered active",
+			get:  func(cfg queueclient.Config) string { return cfg.OrderedActiveSet },
+			set:  func(cfg *queueclient.Config, key string) { cfg.OrderedActiveSet = key },
+		},
+	}
+
+	for first := 0; first < len(roles); first++ {
+		for second := first + 1; second < len(roles); second++ {
+			firstRole := roles[first]
+			secondRole := roles[second]
+			t.Run(firstRole.name+"/"+secondRole.name, func(t *testing.T) {
+				cfg := testClientConfig()
+				cfg.OrderedReadyList = "custom:ordered:ready"
+				cfg.OrderedActiveSet = "custom:ordered:active"
+				secondRole.set(&cfg, firstRole.get(cfg))
+				if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+					t.Fatalf("expected %s and %s key alias to fail", firstRole.name, secondRole.name)
+				}
+			})
+		}
+	}
+}
+
 func TestNormalizeConfigRejectsReservedPriorityAliases(t *testing.T) {
 	for _, alias := range []string{"completed", "Completed", "dead_letter", "DEAD_LETTER", "dlq", "DLQ"} {
 		t.Run(alias, func(t *testing.T) {

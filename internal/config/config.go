@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -299,8 +300,8 @@ func Validate(cfg *Config) error {
 	if cfg.Queue.OrderedActiveSet == "" {
 		return fmt.Errorf("queue.ordered_active_set must be non-empty")
 	}
-	if cfg.Queue.OrderedReadyList == cfg.Queue.OrderedActiveSet {
-		return fmt.Errorf("queue.ordered_ready_list and queue.ordered_active_set must differ")
+	if err := validateStaticQueueKeys(cfg); err != nil {
+		return err
 	}
 	if strings.Count(cfg.Queue.OrderedQueuePattern, "%s") != 1 {
 		return fmt.Errorf("queue.ordered_queue_pattern must contain exactly one %%s placeholder")
@@ -313,6 +314,38 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")
+	}
+	return nil
+}
+
+func validateStaticQueueKeys(cfg *Config) error {
+	type keyRole struct {
+		name string
+		key  string
+	}
+	aliases := make([]string, 0, len(cfg.Worker.Queues))
+	for alias := range cfg.Worker.Queues {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
+
+	roles := make([]keyRole, 0, len(aliases)+4)
+	for _, alias := range aliases {
+		roles = append(roles, keyRole{name: fmt.Sprintf("worker queue %q", alias), key: cfg.Worker.Queues[alias]})
+	}
+	roles = append(roles,
+		keyRole{name: "worker completed list", key: cfg.Worker.CompletedList},
+		keyRole{name: "worker dead-letter list", key: cfg.Worker.DeadLetterList},
+		keyRole{name: "ordered ready list", key: cfg.Queue.OrderedReadyList},
+		keyRole{name: "ordered active set", key: cfg.Queue.OrderedActiveSet},
+	)
+
+	seen := make(map[string]string, len(roles))
+	for _, role := range roles {
+		if previous, ok := seen[role.key]; ok {
+			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
+		}
+		seen[role.key] = role.name
 	}
 	return nil
 }

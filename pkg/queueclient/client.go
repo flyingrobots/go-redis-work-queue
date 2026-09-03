@@ -413,8 +413,8 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.OrderedActiveSet == "" {
 		cfg.OrderedActiveSet = defaults.OrderedActiveSet
 	}
-	if cfg.OrderedReadyList == cfg.OrderedActiveSet {
-		return Config{}, errors.New("ordered ready list and active set must differ")
+	if err := validateStaticQueueKeys(cfg); err != nil {
+		return Config{}, err
 	}
 	if cfg.OrderedQueuePattern == "" {
 		cfg.OrderedQueuePattern = defaults.OrderedQueuePattern
@@ -432,6 +432,32 @@ func NormalizeConfig(cfg Config) (Config, error) {
 		return Config{}, errors.New("ordered queue and lease patterns must differ")
 	}
 	return cfg, nil
+}
+
+func validateStaticQueueKeys(cfg Config) error {
+	type keyRole struct {
+		name string
+		key  string
+	}
+	roles := make([]keyRole, 0, len(cfg.Queues)+4)
+	for _, name := range sortedKeys(cfg.Queues) {
+		roles = append(roles, keyRole{name: fmt.Sprintf("priority queue %q", name), key: cfg.Queues[name]})
+	}
+	roles = append(roles,
+		keyRole{name: "completed list", key: cfg.CompletedList},
+		keyRole{name: "dead-letter list", key: cfg.DeadLetterList},
+		keyRole{name: "ordered ready list", key: cfg.OrderedReadyList},
+		keyRole{name: "ordered active set", key: cfg.OrderedActiveSet},
+	)
+
+	seen := make(map[string]string, len(roles))
+	for _, role := range roles {
+		if previous, ok := seen[role.key]; ok {
+			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
+		}
+		seen[role.key] = role.name
+	}
+	return nil
 }
 
 func sortedKeys(values map[string]string) []string {

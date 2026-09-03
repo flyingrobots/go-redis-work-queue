@@ -118,3 +118,57 @@ func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
 		t.Fatal("expected identical ordered ready and active keys to fail")
 	}
 }
+
+func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
+	type keyRole struct {
+		name string
+		get  func(*Config) string
+		set  func(*Config, string)
+	}
+	roles := []keyRole{
+		{
+			name: "high priority",
+			get:  func(cfg *Config) string { return cfg.Worker.Queues["high"] },
+			set:  func(cfg *Config, key string) { cfg.Worker.Queues["high"] = key },
+		},
+		{
+			name: "low priority",
+			get:  func(cfg *Config) string { return cfg.Worker.Queues["low"] },
+			set:  func(cfg *Config, key string) { cfg.Worker.Queues["low"] = key },
+		},
+		{
+			name: "completed",
+			get:  func(cfg *Config) string { return cfg.Worker.CompletedList },
+			set:  func(cfg *Config, key string) { cfg.Worker.CompletedList = key },
+		},
+		{
+			name: "dead letter",
+			get:  func(cfg *Config) string { return cfg.Worker.DeadLetterList },
+			set:  func(cfg *Config, key string) { cfg.Worker.DeadLetterList = key },
+		},
+		{
+			name: "ordered ready",
+			get:  func(cfg *Config) string { return cfg.Queue.OrderedReadyList },
+			set:  func(cfg *Config, key string) { cfg.Queue.OrderedReadyList = key },
+		},
+		{
+			name: "ordered active",
+			get:  func(cfg *Config) string { return cfg.Queue.OrderedActiveSet },
+			set:  func(cfg *Config, key string) { cfg.Queue.OrderedActiveSet = key },
+		},
+	}
+
+	for first := 0; first < len(roles); first++ {
+		for second := first + 1; second < len(roles); second++ {
+			firstRole := roles[first]
+			secondRole := roles[second]
+			t.Run(firstRole.name+"/"+secondRole.name, func(t *testing.T) {
+				cfg := defaultConfig()
+				secondRole.set(cfg, firstRole.get(cfg))
+				if err := Validate(cfg); err == nil {
+					t.Fatalf("expected %s and %s key alias to fail", firstRole.name, secondRole.name)
+				}
+			})
+		}
+	}
+}
