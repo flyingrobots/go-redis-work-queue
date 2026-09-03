@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Ten exact-head
-  review passes produced 46 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Eleven exact-head
+  review passes produced 48 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -31,8 +31,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   Worker-bearing repository-binary roles fail before Redis consumption unless
   the legacy benchmark handler is explicitly enabled with `--bench-worker`.
   Clearing a live handler pauses new consumption until a replacement is
-  installed. Long calls renew heartbeats, while shutdown leaves work in
-  processing for at-least-once reaping.
+  installed. Claims that complete after handler removal are restored to their
+  ordinary source or ordered per-key FIFO. Long calls renew heartbeats, while
+  shutdown leaves work in processing for at-least-once reaping.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -40,11 +41,12 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   byte. HTTP request bodies must contain exactly one JSON value. Duplicate IDs
   remain separate deliveries.
 - DLQ listings expose an opaque handle for each list entry, including
-  duplicate-ID and byte-identical envelopes. Handles bind the whole-list
-  snapshot, exact position, and envelope; requeue and purge verify them
-  atomically, chain updated snapshots for bulk actions, and make stale handles
-  safe no-ops. Destructive HTTP queue handlers dispatch only on their exact
-  registered paths.
+  duplicate-ID and byte-identical envelopes. Handles bind a constant-time
+  mutation generation, list length, exact position, and envelope; requeue and purge
+  verify them atomically, chain updated versions for bulk actions, and make
+  stale handles safe no-ops without hashing the whole list. Every supported
+  DLQ mutation advances the persistent generation. Destructive HTTP queue
+  handlers dispatch only on their exact registered paths.
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel. Invalid UTF-8 keys are
@@ -54,12 +56,13 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
   heartbeat patterns must differ; managed static keys cannot match the
-  processing-list pattern or resolve to generated per-digest queue or lease
-  keys; per-digest roles cannot alias; scan patterns escape fixed glob text;
-  trimmed priority aliases cannot collide; and public enqueue resets
-  worker-owned retry counters. Malformed processing entries are removed only
-  when the inspected tail bytes still match atomically. Broad ordered cleanup
-  patterns delete only keys containing canonical SHA-256 ordering digests.
+  processing-list or heartbeat pattern or resolve to generated per-digest
+  queue or lease keys; per-digest roles cannot alias; scan patterns escape
+  fixed glob text; trimmed priority aliases cannot collide; and public enqueue
+  resets worker-owned retry counters. Malformed processing entries are removed
+  only when the inspected tail bytes still match atomically. Broad ordered
+  cleanup patterns delete only keys containing canonical SHA-256 ordering
+  digests.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
@@ -215,6 +218,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 eighth review: make reaper cleanup race-safe and isolate processing scans
 - [x] Queue core PR #6 ninth review: bind DLQ snapshots, reject trailing JSON, and filter ordered purge
 - [x] Queue core PR #6 tenth review: pause workers when handlers are cleared
+- [x] Queue core PR #6 eleventh review: restore cleared-handler claims and bound DLQ versions
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -725,6 +729,38 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Eleventh Review Remediated
+>
+> Closed both exact-head worker-lifecycle and DLQ-cost findings as isolated
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Bound each delivery to the handler selected before dequeue; a blocked
+>   ordinary or ordered claim that completes after handler removal is restored
+>   to its source queue instead of entering retry or DLQ processing.
+> - Replaced per-request whole-DLQ hashing with an O(1) persistent generation
+>   plus `LLEN`; bounded page reads still return opaque position-and-envelope
+>   handles, and every supported DLQ mutation advances the generation.
+> - Preserved generation metadata across full purges, rejected dynamic worker
+>   key collisions, and made corrupt or exhausted metadata fail closed.
+>
+> Validation
+>
+> - Handler-removal REDs pinned both a live blocked `BRPOPLPUSH` claim and an
+>   ordered claim; GREEN restores FIFO state and resumes through a replacement.
+> - DLQ REDs rejected unbounded `LRANGE 0 -1` scripts and reconstructed a
+>   byte-identical same-length list; GREEN leaves old handles stale. Affected
+>   packages pass five race-enabled repetitions and focused vet.
+> - Commits `8ca056ea` and `7b9526c9` are published, and all 48 review threads
+>   have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
