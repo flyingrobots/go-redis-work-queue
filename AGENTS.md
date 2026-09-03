@@ -739,9 +739,9 @@ Notes
 >
 > Changes
 >
-> - Bound each delivery to the handler selected before dequeue; a blocked
->   ordinary or ordered claim that completes after handler removal is restored
->   to its source queue instead of entering retry or DLQ processing.
+> - Bound each delivery to the handler selected when its dequeue or claim
+>   returns; a blocked operation that completes after handler removal restores
+>   the job to its source queue instead of entering retry or DLQ processing.
 > - Replaced per-request whole-DLQ hashing with an O(1) persistent generation
 >   plus `LLEN`; bounded page reads still return opaque position-and-envelope
 >   handles, and every supported DLQ mutation advances the generation.
