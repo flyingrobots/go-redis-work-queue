@@ -52,6 +52,7 @@ type SuccessResponse struct {
 
 type StatsResponse struct {
 	Queues          map[string]int64 `json:"queues"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists map[string]int64 `json:"processing_lists"`
 	Heartbeats      int64            `json:"heartbeats"`
 	Timestamp       time.Time        `json:"timestamp"`
@@ -59,6 +60,7 @@ type StatsResponse struct {
 
 type StatsKeysResponse struct {
 	QueueLengths    map[string]int64 `json:"queue_lengths"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists int64            `json:"processing_lists"`
 	ProcessingItems int64            `json:"processing_items"`
 	Heartbeats      int64            `json:"heartbeats"`

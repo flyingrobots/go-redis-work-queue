@@ -55,6 +55,7 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	response := StatsResponse{
 		Queues:          stats.Queues,
+		OrderedPending:  stats.OrderedPending,
 		ProcessingLists: stats.ProcessingLists,
 		Heartbeats:      stats.Heartbeats,
 		Timestamp:       time.Now(),
@@ -77,6 +78,7 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 
 	response := StatsKeysResponse{
 		QueueLengths:    stats.QueueLengths,
+		OrderedPending:  stats.OrderedPending,
 		ProcessingLists: stats.ProcessingLists,
 		ProcessingItems: stats.ProcessingItems,
 		Heartbeats:      stats.Heartbeats,

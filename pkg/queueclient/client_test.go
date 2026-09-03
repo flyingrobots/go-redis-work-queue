@@ -282,6 +282,15 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	for i := 0; i < 3; i++ {
+		if _, err := client.Enqueue(context.Background(), queueclient.Job{
+			ID:          fmt.Sprintf("ordered-job-%d", i),
+			Priority:    "low",
+			OrderingKey: "account:42",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	mr.Set(fmt.Sprintf(cfg.HeartbeatKeyPattern, "worker-a"), "1")
 	mr.Lpush(fmt.Sprintf(cfg.ProcessingListPattern, "worker-a"), "in-flight")
 
@@ -291,6 +300,9 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 	}
 	if got := stats.Queues["high("+cfg.Queues["high"]+")"]; got != 2 {
 		t.Fatalf("high queue count = %d, want 2", got)
+	}
+	if stats.OrderedPending != 3 {
+		t.Fatalf("ordered pending count = %d, want 3", stats.OrderedPending)
 	}
 	if stats.Heartbeats != 1 || stats.ProcessingLists[fmt.Sprintf(cfg.ProcessingListPattern, "worker-a")] != 1 {
 		t.Fatalf("unexpected worker stats: %#v", stats)

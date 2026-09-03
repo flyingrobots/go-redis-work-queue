@@ -26,7 +26,7 @@ func (m model) View() string {
 		headerText += fmt.Sprintf(" | Namespace: %s", m.opts.Namespace)
 	}
 	header := lipgloss.NewStyle().Bold(true).Render(headerText)
-	sub := fmt.Sprintf("Focus: %s  |  Heartbeats: %d  |  Processing lists: %d", focusName(m.focus), m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
+	sub := fmt.Sprintf("Focus: %s  |  Ordered pending: %d  |  Heartbeats: %d  |  Processing lists: %d", focusName(m.focus), m.lastStats.OrderedPending, m.lastStats.Heartbeats, len(m.lastStats.ProcessingLists))
 	if m.opts.ReadOnly {
 		sub += "  |  Mode: READ-ONLY"
 	}
@@ -269,7 +269,7 @@ func (m model) View() string {
 }
 
 func summarizeKeys(k admin.KeysStats) string {
-	parts := []string{fmt.Sprintf("processing_lists=%d", k.ProcessingLists), fmt.Sprintf("processing_items=%d", k.ProcessingItems), fmt.Sprintf("heartbeats=%d", k.Heartbeats)}
+	parts := []string{fmt.Sprintf("ordered_pending=%d", k.OrderedPending), fmt.Sprintf("processing_lists=%d", k.ProcessingLists), fmt.Sprintf("processing_items=%d", k.ProcessingItems), fmt.Sprintf("heartbeats=%d", k.Heartbeats)}
 	if k.RateLimitKey != "" {
 		rl := "rate_limit_key=" + k.RateLimitKey
 		if k.RateLimitTTL != "" {
@@ -291,7 +291,7 @@ func renderKeys(k admin.KeysStats) string {
 	for _, name := range keys {
 		fmt.Fprintf(b, "  %-40s %8d\n", name, k.QueueLengths[name])
 	}
-	fmt.Fprintf(b, "\nProcessing lists: %d\nProcessing items: %d\nHeartbeats: %d\n", k.ProcessingLists, k.ProcessingItems, k.Heartbeats)
+	fmt.Fprintf(b, "\nOrdered pending: %d\nProcessing lists: %d\nProcessing items: %d\nHeartbeats: %d\n", k.OrderedPending, k.ProcessingLists, k.ProcessingItems, k.Heartbeats)
 	if k.RateLimitKey != "" {
 		fmt.Fprintf(b, "Rate limit key: %s  TTL: %s\n", k.RateLimitKey, k.RateLimitTTL)
 	}

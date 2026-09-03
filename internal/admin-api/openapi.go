@@ -477,6 +477,7 @@ components:
       type: object
       required:
         - queues
+        - ordered_pending
         - processing_lists
         - heartbeats
         - timestamp
@@ -486,6 +487,9 @@ components:
           additionalProperties:
             type: integer
           description: Queue names and their lengths
+        ordered_pending:
+          type: integer
+          description: Total jobs waiting across strict per-key FIFO queues
         processing_lists:
           type: object
           additionalProperties:
@@ -503,6 +507,7 @@ components:
       type: object
       required:
         - queue_lengths
+        - ordered_pending
         - processing_lists
         - processing_items
         - heartbeats
@@ -513,6 +518,9 @@ components:
           additionalProperties:
             type: integer
           description: Queue names and their lengths
+        ordered_pending:
+          type: integer
+          description: Total jobs waiting across strict per-key FIFO queues
         processing_lists:
           type: integer
           description: Number of processing lists

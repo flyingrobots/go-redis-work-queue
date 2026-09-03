@@ -83,6 +83,9 @@ func TestHandlerGetStats(t *testing.T) {
 	mr.Lpush("jobqueue:high", "job2")
 	mr.Lpush("jobqueue:low", "job3")
 	mr.Lpush("jobqueue:completed", "job4")
+	handler.cfg.Queue.OrderedQueuePattern = queuekeys.DefaultOrderedQueuePattern
+	mr.Lpush("jobqueue:ordered:queue:digest-a", "ordered-1")
+	mr.Lpush("jobqueue:ordered:queue:digest-a", "ordered-2")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/stats", nil)
@@ -108,6 +111,9 @@ func TestHandlerGetStats(t *testing.T) {
 
 	if resp.Queues["low(jobqueue:low)"] != 1 {
 		t.Errorf("Expected low queue to have 1 item, got %d", resp.Queues["low(jobqueue:low)"])
+	}
+	if resp.OrderedPending != 2 {
+		t.Errorf("Expected 2 ordered jobs pending, got %d", resp.OrderedPending)
 	}
 }
 

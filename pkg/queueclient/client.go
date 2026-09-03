@@ -213,6 +213,7 @@ func (c *Client) EnqueueBatch(ctx context.Context, jobs []Job) error {
 // StatsResult mirrors the core admin queue and worker counts.
 type StatsResult struct {
 	Queues          map[string]int64 `json:"queues"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists map[string]int64 `json:"processing_lists"`
 	Heartbeats      int64            `json:"heartbeats"`
 }
@@ -236,6 +237,11 @@ func (c *Client) Stats(ctx context.Context) (StatsResult, error) {
 		}
 		result.Queues[name+"("+key+")"] = count
 	}
+	_, orderedPending, err := internalqueue.OrderedQueueLengths(ctx, c.rdb, c.cfg.OrderedQueuePattern)
+	if err != nil {
+		return result, connectionError("read ordered queue statistics", err)
+	}
+	result.OrderedPending = orderedPending
 
 	var cursor uint64
 	processingPattern := queuekeys.ScanPattern(c.cfg.ProcessingListPattern)

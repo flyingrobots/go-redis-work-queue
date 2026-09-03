@@ -20,6 +20,7 @@ import (
 
 type StatsResult struct {
 	Queues          map[string]int64 `json:"queues"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists map[string]int64 `json:"processing_lists"`
 	Heartbeats      int64            `json:"heartbeats"`
 }
@@ -40,6 +41,11 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 		}
 		res.Queues[name+"("+key+")"] = n
 	}
+	_, orderedPending, err := queue.OrderedQueueLengths(ctx, rdb, orderedQueuePattern(cfg))
+	if err != nil {
+		return res, err
+	}
+	res.OrderedPending = orderedPending
 	// Scan processing lists
 	var cursor uint64
 	for {
@@ -211,6 +217,7 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 // KeysStats summarizes managed Redis keys and queue lengths.
 type KeysStats struct {
 	QueueLengths    map[string]int64 `json:"queue_lengths"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists int64            `json:"processing_lists"`
 	ProcessingItems int64            `json:"processing_items"`
 	Heartbeats      int64            `json:"heartbeats"`
@@ -237,6 +244,14 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 			return out, err
 		}
 		out.QueueLengths[name+"("+key+")"] = n
+	}
+	orderedQueues, orderedPending, err := queue.OrderedQueueLengths(ctx, rdb, orderedQueuePattern(cfg))
+	if err != nil {
+		return out, err
+	}
+	out.OrderedPending = orderedPending
+	for key, length := range orderedQueues {
+		out.QueueLengths["ordered("+key+")"] = length
 	}
 	// Processing lists
 	var cursor uint64
@@ -360,6 +375,13 @@ func heartbeatKeyPattern(cfg *config.Config) string {
 		return queuekeys.DefaultHeartbeatKeyPattern
 	}
 	return cfg.Worker.HeartbeatKeyPattern
+}
+
+func orderedQueuePattern(cfg *config.Config) string {
+	if cfg.Queue.OrderedQueuePattern == "" {
+		return queuekeys.DefaultOrderedQueuePattern
+	}
+	return cfg.Queue.OrderedQueuePattern
 }
 
 func processingScanPattern(cfg *config.Config) string {

@@ -80,3 +80,38 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 		t.Fatalf("purge deleted %d ordered keys; remaining=%v", deleted, mr.Keys())
 	}
 }
+
+func TestStatsIncludeOrderedBacklog(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg, err := config.Load("nonexistent.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Queue.OrderedQueuePattern = "custom:ordered:%s:pending"
+
+	mr.Lpush("custom:ordered:digest-a:pending", "one")
+	mr.Lpush("custom:ordered:digest-a:pending", "two")
+	mr.Lpush("custom:ordered:digest-b:pending", "three")
+
+	stats, err := Stats(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.OrderedPending != 3 {
+		t.Fatalf("ordered pending count = %d, want 3", stats.OrderedPending)
+	}
+
+	keys, err := StatsKeys(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keys.OrderedPending != 3 {
+		t.Fatalf("ordered key pending count = %d, want 3", keys.OrderedPending)
+	}
+	if keys.QueueLengths["ordered(custom:ordered:digest-a:pending)"] != 2 ||
+		keys.QueueLengths["ordered(custom:ordered:digest-b:pending)"] != 1 {
+		t.Fatalf("ordered queue lengths missing: %#v", keys.QueueLengths)
+	}
+}
