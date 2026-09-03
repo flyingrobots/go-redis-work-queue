@@ -304,3 +304,27 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 		t.Fatalf("unexpected peek: %#v", peek)
 	}
 }
+
+func TestPeekPreservesExactCaseSensitiveQueueAliases(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	cfg.Queues = map[string]string{
+		"Urgent": "jobqueue:test:urgent-title-case",
+		"urgent": "jobqueue:test:urgent-lower-case",
+	}
+	cfg.DefaultPriority = "Urgent"
+	client := newTestClient(t, mr, cfg)
+
+	mr.Lpush(cfg.Queues["Urgent"], "title-case-job")
+	mr.Lpush(cfg.Queues["urgent"], "lower-case-job")
+
+	for alias, wantQueue := range cfg.Queues {
+		peek, err := client.Peek(context.Background(), alias, 1)
+		if err != nil {
+			t.Fatalf("peek %q: %v", alias, err)
+		}
+		if peek.Queue != wantQueue {
+			t.Errorf("peek %q resolved queue %q, want %q", alias, peek.Queue, wantQueue)
+		}
+	}
+}

@@ -326,6 +326,10 @@ func (c *Client) orderingLayout() internalqueue.OrderingLayout {
 }
 
 func (c *Client) resolveQueue(alias string) (string, error) {
+	if queueName, ok := c.cfg.Queues[alias]; ok {
+		return queueName, nil
+	}
+
 	normalized := strings.ToLower(alias)
 	if normalized == "completed" {
 		return c.cfg.CompletedList, nil
