@@ -84,8 +84,9 @@ func TestHandlerGetStats(t *testing.T) {
 	mr.Lpush("jobqueue:low", "job3")
 	mr.Lpush("jobqueue:completed", "job4")
 	handler.cfg.Queue.OrderedQueuePattern = queuekeys.DefaultOrderedQueuePattern
-	mr.Lpush("jobqueue:ordered:queue:digest-a", "ordered-1")
-	mr.Lpush("jobqueue:ordered:queue:digest-a", "ordered-2")
+	orderedQueue := queuekeys.Format(handler.cfg.Queue.OrderedQueuePattern, queuekeys.OrderingDigest("account:a"))
+	mr.Lpush(orderedQueue, "ordered-1")
+	mr.Lpush(orderedQueue, "ordered-2")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/stats", nil)

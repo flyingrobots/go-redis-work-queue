@@ -7,6 +7,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -90,10 +91,14 @@ func TestStatsIncludeOrderedBacklog(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Queue.OrderedQueuePattern = "custom:ordered:%s:pending"
+	digestA := queuekeys.OrderingDigest("account:a")
+	digestB := queuekeys.OrderingDigest("account:b")
+	queueA := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digestA)
+	queueB := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digestB)
 
-	mr.Lpush("custom:ordered:digest-a:pending", "one")
-	mr.Lpush("custom:ordered:digest-a:pending", "two")
-	mr.Lpush("custom:ordered:digest-b:pending", "three")
+	mr.Lpush(queueA, "one")
+	mr.Lpush(queueA, "two")
+	mr.Lpush(queueB, "three")
 
 	stats, err := Stats(context.Background(), cfg, rdb)
 	if err != nil {
@@ -110,8 +115,8 @@ func TestStatsIncludeOrderedBacklog(t *testing.T) {
 	if keys.OrderedPending != 3 {
 		t.Fatalf("ordered key pending count = %d, want 3", keys.OrderedPending)
 	}
-	if keys.QueueLengths["ordered(custom:ordered:digest-a:pending)"] != 2 ||
-		keys.QueueLengths["ordered(custom:ordered:digest-b:pending)"] != 1 {
+	if keys.QueueLengths["ordered("+queueA+")"] != 2 ||
+		keys.QueueLengths["ordered("+queueB+")"] != 1 {
 		t.Fatalf("ordered queue lengths missing: %#v", keys.QueueLengths)
 	}
 }
