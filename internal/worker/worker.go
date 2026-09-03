@@ -3,6 +3,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -33,7 +34,31 @@ type delivery struct {
 	payload     string
 	sourceQueue string
 	ordered     *queue.OrderedDelivery
+	handler     Handler
 }
+
+var restoreUnorderedDeliveryScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('processing and source lists must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+if redis.call('LREM', KEYS[1], 1, ARGV[1]) ~= 1 then
+  return 0
+end
+redis.call('RPUSH', KEYS[2], ARGV[1])
+return 1
+`)
 
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
 	if log == nil {
@@ -202,7 +227,29 @@ func (w *Worker) claimOrdered(ctx context.Context, workerID, procList, hbKey str
 	if err != nil || !ok {
 		return delivery{}, false, err
 	}
-	return delivery{payload: claimed.Payload, sourceQueue: claimed.QueueKey, ordered: &claimed}, true, nil
+	handler := w.selectedHandler()
+	if handler == nil {
+		restored, restoreErr := queue.TransitionOrdered(
+			ctx,
+			w.rdb,
+			w.cfg.OrderingLayout(),
+			claimed,
+			procList,
+			hbKey,
+			workerID,
+			"",
+			claimed.Payload,
+			queue.OrderedRetry,
+		)
+		if restoreErr != nil {
+			return delivery{}, false, fmt.Errorf("restore ordered job after handler removal: %w", restoreErr)
+		}
+		if !restored {
+			return delivery{}, false, errors.New("restore ordered job after handler removal: lease ownership changed")
+		}
+		return delivery{}, false, nil
+	}
+	return delivery{payload: claimed.Payload, sourceQueue: claimed.QueueKey, ordered: &claimed, handler: handler}, true, nil
 }
 
 func (w *Worker) dequeueUnordered(ctx context.Context, workerID, procList, hbKey string, block bool) (delivery, bool, error) {
@@ -237,17 +284,48 @@ func (w *Worker) dequeueUnordered(ctx context.Context, workerID, procList, hbKey
 			deqSpan.End()
 			return delivery{}, false, err
 		}
+		handler := w.selectedHandler()
+		if handler == nil {
+			restored, restoreErr := w.restoreUnorderedDelivery(deqCtx, procList, key, payload)
+			if restoreErr != nil {
+				obs.RecordError(deqCtx, restoreErr)
+				deqSpan.End()
+				return delivery{}, false, restoreErr
+			}
+			deqSpan.End()
+			if !restored {
+				return delivery{}, false, nil
+			}
+			return delivery{}, false, nil
+		}
 
 		obs.SetSpanSuccess(deqCtx)
 		obs.AddEvent(deqCtx, "job_dequeued", obs.KeyValue("queue", key))
 		deqSpan.End()
-		return delivery{payload: payload, sourceQueue: key}, true, nil
+		return delivery{payload: payload, sourceQueue: key, handler: handler}, true, nil
 	}
 	return delivery{}, false, nil
 }
 
+func (w *Worker) restoreUnorderedDelivery(ctx context.Context, processing, source, payload string) (bool, error) {
+	restored, err := restoreUnorderedDeliveryScript.Run(
+		ctx,
+		w.rdb,
+		[]string{processing, source},
+		payload,
+	).Int64()
+	if err != nil {
+		return false, fmt.Errorf("restore job after handler removal: %w", err)
+	}
+	return restored == 1, nil
+}
+
 func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, hbKey, payload string) bool {
-	return w.processDelivery(ctx, workerID, procList, hbKey, delivery{payload: payload, sourceQueue: srcQueue})
+	return w.processDelivery(ctx, workerID, procList, hbKey, delivery{
+		payload:     payload,
+		sourceQueue: srcQueue,
+		handler:     w.selectedHandler(),
+	})
 }
 
 func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey string, next delivery) bool {
@@ -304,7 +382,7 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 		return false
 	}
 	processingStart := time.Now()
-	handlerErr := w.invokeHandler(handlerCtx, job)
+	handlerErr := w.invokeHandler(handlerCtx, job, next.handler)
 	processingDuration := time.Since(processingStart)
 	obs.AddSpanAttributes(ctx, obs.KeyValue("processing.duration_ms", processingDuration.Milliseconds()))
 

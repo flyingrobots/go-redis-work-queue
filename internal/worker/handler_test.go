@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	miniredisserver "github.com/alicebob/miniredis/v2/server"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
@@ -22,6 +23,12 @@ import (
 )
 
 func newHandlerTestWorker(t *testing.T, count, maxRetries int, log *zap.Logger) (*Worker, *config.Config, *redis.Client) {
+	t.Helper()
+	w, cfg, rdb, _ := newHandlerTestWorkerWithServer(t, count, maxRetries, log)
+	return w, cfg, rdb
+}
+
+func newHandlerTestWorkerWithServer(t *testing.T, count, maxRetries int, log *zap.Logger) (*Worker, *config.Config, *redis.Client, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -41,7 +48,7 @@ func newHandlerTestWorker(t *testing.T, count, maxRetries int, log *zap.Logger) 
 	if log == nil {
 		log = zap.NewNop()
 	}
-	return New(cfg, rdb, log), cfg, rdb
+	return New(cfg, rdb, log), cfg, rdb, mr
 }
 
 func startHandlerTestWorker(w *Worker) (context.CancelFunc, <-chan error) {
@@ -179,6 +186,107 @@ func TestClearingHandlerPausesConsumptionUntilReplacement(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("replacement handler did not receive held job")
+	}
+}
+
+func TestClearingHandlerRestoresDeliveryFromBlockedDequeue(t *testing.T) {
+	w, cfg, rdb, mr := newHandlerTestWorkerWithServer(t, 1, 0, nil)
+	blocked := make(chan struct{})
+	var blockedOnce sync.Once
+	mr.Server().SetPreHook(func(_ *miniredisserver.Peer, command string, _ ...string) bool {
+		if command == "BRPOPLPUSH" {
+			blockedOnce.Do(func() { close(blocked) })
+		}
+		return false
+	})
+
+	called := make(chan queue.Job, 1)
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		called <- job
+		return nil
+	}))
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(func() { stopHandlerTestWorker(t, cancel, done) })
+	select {
+	case <-blocked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not enter blocking dequeue")
+	}
+
+	w.Handle(nil)
+	held := queue.NewJob("blocked-held", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], held, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	if got, err := rdb.LLen(context.Background(), cfg.Worker.Queues["low"]).Result(); err != nil || got != 1 {
+		t.Fatalf("queue length after clearing blocked dequeue = %d (err=%v), want held job restored", got, err)
+	}
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
+	if got, err := rdb.LLen(context.Background(), processing).Result(); err != nil || got != 0 {
+		t.Fatalf("processing length after clearing blocked dequeue = %d (err=%v), want 0", got, err)
+	}
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, w.baseID+"-0")
+	if got, err := rdb.Exists(context.Background(), heartbeat).Result(); err != nil || got != 0 {
+		t.Fatalf("heartbeat exists after clearing blocked dequeue = %d (err=%v), want 0", got, err)
+	}
+	select {
+	case job := <-called:
+		t.Fatalf("cleared handler received held job %q", job.ID)
+	default:
+	}
+
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		called <- job
+		return nil
+	}))
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 1)
+	select {
+	case got := <-called:
+		if got.ID != held.ID {
+			t.Fatalf("replacement handler received %q, want %q", got.ID, held.ID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("replacement handler did not receive restored job")
+	}
+}
+
+func TestHandlerClearedBeforeOrderedClaimRestoresDelivery(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	w.Handle(nil)
+	job := queue.NewJob("ordered-held", "", 0, "low", "", "")
+	job.OrderingKey = "paused-account"
+	if err := queue.EnqueueWithOrdering(
+		context.Background(),
+		rdb,
+		cfg.Worker.Queues["low"],
+		job,
+		cfg.Queue.MaxPayloadSize,
+		cfg.OrderingLayout(),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	const workerID = "handlerless-ordered"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+	if _, found, err := w.claimOrdered(context.Background(), workerID, processing, heartbeat); err != nil {
+		t.Fatal(err)
+	} else if found {
+		t.Fatal("ordered claim remained assigned without a handler")
+	}
+
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest)
+	leaseKey := queuekeys.Format(cfg.Queue.OrderedLeasePattern, digest)
+	if got, err := rdb.LLen(context.Background(), queueKey).Result(); err != nil || got != 1 {
+		t.Fatalf("ordered queue length after handlerless claim = %d (err=%v), want restored job", got, err)
+	}
+	for _, key := range []string{processing, heartbeat, leaseKey} {
+		if got, err := rdb.Exists(context.Background(), key).Result(); err != nil || got != 0 {
+			t.Fatalf("handlerless ordered claim left key %q: exists=%d err=%v", key, got, err)
+		}
 	}
 }
 

@@ -95,10 +95,12 @@ func (w *Worker) waitForHandler(ctx context.Context) (Handler, error) {
 	}
 }
 
-func (w *Worker) invokeHandler(ctx context.Context, job queue.Job) (err error) {
-	handler, err := w.waitForHandler(ctx)
-	if err != nil {
-		return err
+func (w *Worker) invokeHandler(ctx context.Context, job queue.Job, handler Handler) (err error) {
+	if handler == nil {
+		handler, err = w.waitForHandler(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
