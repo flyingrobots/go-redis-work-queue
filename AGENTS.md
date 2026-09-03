@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Two exact-head
-  review passes produced 18 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Three exact-head
+  review passes produced 25 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -38,10 +38,14 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel.
-- Ordered enqueue, transition, and DLQ-requeue scripts validate fallible Redis
-  types before mutation. Custom layouts reject queue/lease collisions, scan
-  patterns escape fixed glob text, terminal aliases cannot become priorities,
-  and public enqueue resets worker-owned retry counters.
+- Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
+  validate fallible Redis types before mutation. Custom layouts reject
+  queue/lease and ready/active collisions, scan patterns escape fixed glob
+  text, terminal aliases cannot become priorities, and public enqueue resets
+  worker-owned retry counters.
+- Stats deduplicates heartbeat keys across Redis `SCAN` pages. The release
+  changelog and documented PR-comment extractor are tracked again; extractor
+  regressions cover pagination, comment types, prompts, and bare output paths.
 - Repository-wide `go vet ./...` is green. Collaborative-session colors use
   independent `r`, `g`, and `b` JSON fields, and chaos-scenario traversal does
   not copy mutex-bearing injectors.
@@ -182,6 +186,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core ROADMAP Item 4: guarantee per-key FIFO
 - [x] Queue core PR #6 review: close eight findings and add atomic-batch CI coverage
 - [x] Queue core PR #6 re-review: close ten additional correctness and documentation findings
+- [x] Queue core PR #6 third review: close seven mutation-safety, consistency, and tooling findings
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -237,7 +242,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] Admin: Rename ExactlyOnce handler/tests to AtLeastOnce and implement missing AtLeastOnce admin API endpoints
 - [x] Docs: Add TUI design README with SVG mockups
 - [ ] Docs: Update README TUI section with tabs, screenshots, and new keybindings
-- [ ] Release: Add changelog entries for TUI tabbed layout and overlays
+- [x] Release: Add changelog entries for TUI tabbed layout and overlays
 - [x] Observability: Publish Anomaly Radar OpenAPI spec + client CI automation
 - [x] Observability: Finalize Anomaly Radar auth/error/pagination contract and document endpoints
 - [x] Observability: Inject scopes into Anomaly Radar HTTP handlers via Admin API gateway/context plumbing
@@ -247,6 +252,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [ ] DevOps: Add policy-as-code checks for security contexts and secret mounts
 - [x] Docs: Audit API references to ensure they document the standardized error envelope + request IDs
 - [x] Tooling: Add automated checks that validate handlers emit/log `X-Request-ID`
+- [x] Tooling: Restore the documented PR-comment extractor with pagination tests
 - [ ] Tooling: Clear the legacy ShellCheck baseline in release, deployment, and test scripts
 - [ ] CI: Update checkout/setup-go actions for Node 24 runner compatibility
 - [x] Tooling: Clear the repository-wide `go vet ./...` baseline
@@ -689,6 +695,41 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Third Review Remediated
+>
+> Closed seven exact-head findings as seven RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Prevalidated ordered claim and stalled-recovery Redis keys before their
+>   first mutation, preserving ready and processing copies on type errors.
+> - Rejected ready/active control-key aliases at all three config boundaries
+>   and deduplicated worker heartbeats across paginated Redis scans.
+> - Synchronized the README package-count promise with its executable gate.
+> - Restored and updated the release changelog, including pending TUI entries.
+> - Restored the documented PR-comment extractor with paginated API handling,
+>   author-accurate output, prompts-only mode, and executable regressions.
+>
+> Validation
+>
+> - All 25 review threads have commit-specific replies and are resolved at the
+>   published PR head.
+> - Go 1.25.14 full race, byte-stable tidy, vet, build, request-ID lint,
+>   28-package minimum, and external-client race gates pass.
+> - Five real-Redis worker runs and all eight per-key FIFO cases pass; the
+>   10,000-key oldest claim measured 236.625 microseconds.
+> - `govulncheck` reports no reachable vulnerability. Pinned Markdownlint passes
+>   all 137 tracked files; workflow syntax and extractor regressions also pass.
+> - The extractor additionally completed a live PR #6 smoke with 41 matches.
+>
+> Guardrails
+>
+> - Legacy ShellCheck findings and GitHub Actions' Node 24 migration warning
+>   remain separate maintenance slices; do not fold them into queue-core fixes.
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
