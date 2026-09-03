@@ -157,6 +157,97 @@ func TestOrderedEnqueueWrongTypeControlKeyIsAtomic(t *testing.T) {
 	}
 }
 
+func TestOrderedIntakeRejectsPerJobKeyAliasesBeforeWriting(t *testing.T) {
+	type aliasCase struct {
+		name      string
+		configure func(*OrderingLayout, string)
+	}
+	aliases := []aliasCase{
+		{
+			name: "queue-ready",
+			configure: func(layout *OrderingLayout, digest string) {
+				layout.ReadyList = queuekeys.Format(layout.QueuePattern, digest)
+			},
+		},
+		{
+			name: "queue-active",
+			configure: func(layout *OrderingLayout, digest string) {
+				layout.ActiveSet = queuekeys.Format(layout.QueuePattern, digest)
+			},
+		},
+		{
+			name: "lease-ready",
+			configure: func(layout *OrderingLayout, digest string) {
+				layout.ReadyList = queuekeys.Format(layout.LeasePattern, digest)
+			},
+		},
+		{
+			name: "lease-active",
+			configure: func(layout *OrderingLayout, digest string) {
+				layout.ActiveSet = queuekeys.Format(layout.LeasePattern, digest)
+			},
+		},
+		{
+			name: "queue-lease",
+			configure: func(layout *OrderingLayout, digest string) {
+				layout.QueuePattern = "%s" + digest
+				layout.LeasePattern = digest + "%s"
+			},
+		},
+	}
+	intakes := []struct {
+		name string
+		run  func(context.Context, redis.Cmdable, Job, string, OrderingLayout) error
+	}{
+		{
+			name: "single",
+			run: func(ctx context.Context, rdb redis.Cmdable, job Job, encoded string, layout OrderingLayout) error {
+				return AppendEncoded(ctx, rdb, "ignored", job, encoded, layout)
+			},
+		},
+		{
+			name: "batch",
+			run: func(ctx context.Context, rdb redis.Cmdable, job Job, encoded string, layout OrderingLayout) error {
+				return AppendEncodedBatch(ctx, rdb, []PreparedEnqueue{{
+					QueueName: "ignored",
+					Job:       job,
+					Encoded:   encoded,
+				}}, layout)
+			},
+		},
+	}
+
+	for _, alias := range aliases {
+		for _, intake := range intakes {
+			t.Run(alias.name+"/"+intake.name, func(t *testing.T) {
+				mr := miniredis.RunT(t)
+				rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+				t.Cleanup(func() { _ = rdb.Close() })
+				ctx := context.Background()
+				job := NewJob("alias-"+alias.name, "", 0, "low", "", "")
+				job.OrderingKey = "account:" + alias.name
+				digest := queuekeys.OrderingDigest(job.OrderingKey)
+				layout := testOrderingLayout()
+				alias.configure(&layout, digest)
+				if err := layout.Validate(); err != nil {
+					t.Fatalf("alias fixture must pass static layout validation: %v", err)
+				}
+				encoded, err := job.Marshal()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if err := intake.run(ctx, rdb, job, encoded, layout); err == nil {
+					t.Fatal("ordered intake accepted aliased per-job keys")
+				}
+				if keys := rdb.Keys(ctx, "*").Val(); len(keys) != 0 {
+					t.Fatalf("rejected ordered intake changed Redis keys: %v", keys)
+				}
+			})
+		}
+	}
+}
+
 func TestClaimOrderedWrongTypeKeyPreservesReadyJob(t *testing.T) {
 	for _, target := range []string{"processing", "queue", "lease"} {
 		t.Run(target, func(t *testing.T) {

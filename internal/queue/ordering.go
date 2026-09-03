@@ -54,6 +54,33 @@ func (l OrderingLayout) Validate() error {
 	return nil
 }
 
+// keysForDigest resolves every ordered role that is specific to one ordering
+// key and rejects collisions with the shared controls before Redis is touched.
+func (l OrderingLayout) keysForDigest(digest string) (queueKey, leaseKey string, err error) {
+	if err := l.Validate(); err != nil {
+		return "", "", err
+	}
+	queueKey = queuekeys.Format(l.QueuePattern, digest)
+	leaseKey = queuekeys.Format(l.LeasePattern, digest)
+	roles := []struct {
+		name string
+		key  string
+	}{
+		{name: "ready list", key: l.ReadyList},
+		{name: "active set", key: l.ActiveSet},
+		{name: "per-key queue", key: queueKey},
+		{name: "per-key lease", key: leaseKey},
+	}
+	seen := make(map[string]string, len(roles))
+	for _, role := range roles {
+		if previous, ok := seen[role.key]; ok {
+			return "", "", fmt.Errorf("ordered %s must differ from %s (%q)", role.name, previous, role.key)
+		}
+		seen[role.key] = role.name
+	}
+	return queueKey, leaseKey, nil
+}
+
 // OrderedDelivery is the ownership record returned by an atomic key claim.
 // Payload is already present in the worker's processing list.
 type OrderedDelivery struct {
@@ -296,11 +323,11 @@ func AppendEncoded(ctx context.Context, rdb redis.Cmdable, queueName string, job
 		}
 		return nil
 	}
-	if err := layout.Validate(); err != nil {
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey, _, err := layout.keysForDigest(digest)
+	if err != nil {
 		return err
 	}
-	digest := queuekeys.OrderingDigest(job.OrderingKey)
-	queueKey := queuekeys.Format(layout.QueuePattern, digest)
 	if err := enqueueOrderedScript.Eval(ctx, rdb,
 		[]string{queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest).Err(); err != nil {
 		return fmt.Errorf("enqueue ordered job: %w", err)
@@ -326,11 +353,11 @@ func RequeueEncoded(ctx context.Context, rdb redis.Cmdable, source, destination 
 		return result == 1, nil
 	}
 
-	if err := layout.Validate(); err != nil {
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey, _, err := layout.keysForDigest(digest)
+	if err != nil {
 		return false, err
 	}
-	digest := queuekeys.OrderingDigest(job.OrderingKey)
-	queueKey := queuekeys.Format(layout.QueuePattern, digest)
 	result, err := requeueEncodedScript.Eval(ctx, rdb,
 		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered").Int64()
 	if err != nil {

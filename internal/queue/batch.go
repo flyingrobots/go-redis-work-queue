@@ -113,7 +113,11 @@ func AppendEncodedBatch(ctx context.Context, rdb redis.Cmdable, items []Prepared
 		}
 
 		digest := queuekeys.OrderingDigest(item.Job.OrderingKey)
-		queueIndex, err := addKey(queuekeys.Format(layout.QueuePattern, digest), "list")
+		queueKey, _, err := layout.keysForDigest(digest)
+		if err != nil {
+			return err
+		}
+		queueIndex, err := addKey(queueKey, "list")
 		if err != nil {
 			return err
 		}
