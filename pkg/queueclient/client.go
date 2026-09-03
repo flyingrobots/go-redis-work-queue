@@ -362,6 +362,9 @@ func NormalizeConfig(cfg Config) (Config, error) {
 			if name == "" || key == "" {
 				return Config{}, errors.New("queue priority names and Redis keys must not be empty")
 			}
+			if queuekeys.IsReservedQueueAlias(name) {
+				return Config{}, fmt.Errorf("queue priority %q is reserved", name)
+			}
 			queues[name] = key
 		}
 		cfg.Queues = queues

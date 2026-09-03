@@ -58,6 +58,18 @@ func TestNormalizeConfigRejectsIdenticalOrderedQueueAndLeasePatterns(t *testing.
 	}
 }
 
+func TestNormalizeConfigRejectsReservedPriorityAliases(t *testing.T) {
+	for _, alias := range []string{"completed", "Completed", "dead_letter", "DEAD_LETTER", "dlq", "DLQ"} {
+		t.Run(alias, func(t *testing.T) {
+			cfg := testClientConfig()
+			cfg.Queues[alias] = "jobqueue:test:reserved"
+			if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+				t.Fatalf("expected reserved priority alias %q to fail", alias)
+			}
+		})
+	}
+}
+
 func TestClientEnqueueFeedsWorkerHandler(t *testing.T) {
 	mr := miniredis.RunT(t)
 	clientCfg := testClientConfig()

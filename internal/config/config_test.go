@@ -98,3 +98,15 @@ func TestValidateFails(t *testing.T) {
 		t.Fatal("expected identical ordered queue and lease patterns to fail")
 	}
 }
+
+func TestValidateRejectsReservedWorkerQueueAliases(t *testing.T) {
+	for _, alias := range []string{"completed", "Completed", "dead_letter", "DEAD_LETTER", "dlq", "DLQ"} {
+		t.Run(alias, func(t *testing.T) {
+			cfg := defaultConfig()
+			cfg.Worker.Queues[alias] = "jobqueue:test:reserved"
+			if err := Validate(cfg); err == nil {
+				t.Fatalf("expected reserved queue alias %q to fail", alias)
+			}
+		})
+	}
+}

@@ -270,6 +270,11 @@ func Validate(cfg *Config) error {
 			return fmt.Errorf("worker.queues missing entry for priority %q", p)
 		}
 	}
+	for alias := range cfg.Worker.Queues {
+		if queuekeys.IsReservedQueueAlias(alias) {
+			return fmt.Errorf("worker queue alias %q is reserved", alias)
+		}
+	}
 	if strings.Count(cfg.Worker.ProcessingListPattern, "%s") != 1 {
 		return fmt.Errorf("worker.processing_list_pattern must contain exactly one %%s placeholder")
 	}

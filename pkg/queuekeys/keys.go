@@ -26,6 +26,17 @@ const (
 	DefaultOrderedLeasePattern   = Namespace + "ordered:lease:%s"
 )
 
+// IsReservedQueueAlias reports names owned by terminal queue views rather
+// than configurable priority queues.
+func IsReservedQueueAlias(alias string) bool {
+	switch strings.ToLower(strings.TrimSpace(alias)) {
+	case "completed", "dead_letter", "dlq":
+		return true
+	default:
+		return false
+	}
+}
+
 // Format substitutes an identifier into a configured key pattern. Percent
 // sequences other than the single %s placeholder remain literal key bytes.
 func Format(pattern, identifier string) string {
