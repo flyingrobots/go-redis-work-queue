@@ -4,6 +4,8 @@ package reaper
 import (
 	"context"
 	"fmt"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,9 +13,44 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
 	"github.com/flyingrobots/go-redis-work-queue/internal/worker"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+type competingUnorderedReaperHook struct {
+	once        sync.Once
+	competitor  *redis.Client
+	processing  string
+	destination string
+	err         error
+}
+
+func (*competingUnorderedReaperHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (h *competingUnorderedReaperHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		err := next(ctx, cmd)
+		if err != nil || cmd.Name() != "lindex" || len(cmd.Args()) < 3 || fmt.Sprint(cmd.Args()[1]) != h.processing || fmt.Sprint(cmd.Args()[2]) != "-1" {
+			return err
+		}
+		h.once.Do(func() {
+			payload, popErr := h.competitor.RPop(ctx, h.processing).Result()
+			if popErr != nil {
+				h.err = popErr
+				return
+			}
+			h.err = h.competitor.LPush(ctx, h.destination, payload).Err()
+		})
+		return err
+	}
+}
+
+func (*competingUnorderedReaperHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
 
 func TestReaperRequeuesWithoutHeartbeat(t *testing.T) {
 	mr, _ := miniredis.Run()
@@ -119,6 +156,54 @@ func TestRemoveMalformedTailDoesNotPopReplacement(t *testing.T) {
 	}
 	if string(remaining) != string(validPayload) {
 		t.Fatalf("remaining payload = %q, want %q", remaining, validPayload)
+	}
+}
+
+func TestReaperDoesNotMisrouteOrderedTailExposedByConcurrentUnorderedRecovery(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	competitor := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = rdb.Close()
+		_ = competitor.Close()
+	})
+	cfg := config.Default()
+	ctx := context.Background()
+	workerID := "concurrent-reapers"
+	processing := fmt.Sprintf(cfg.Worker.ProcessingListPattern, workerID)
+
+	unordered := queue.NewJob("unordered-tail", "", 0, "low", "", "")
+	unorderedRaw, err := unordered.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordered := queue.NewJob("ordered-behind-tail", "", 0, "low", "", "")
+	ordered.OrderingKey = "account:ordered"
+	orderedRaw, err := ordered.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.RPush(ctx, processing, orderedRaw, unorderedRaw).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := &competingUnorderedReaperHook{
+		competitor:  competitor,
+		processing:  processing,
+		destination: cfg.Worker.Queues["low"],
+	}
+	rdb.AddHook(hook)
+	New(cfg, rdb, zap.NewNop()).scanOnce(ctx)
+	if hook.err != nil {
+		t.Fatalf("competing recovery failed: %v", hook.err)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.Queues["low"], 0, -1).Val(); !slices.Equal(got, []string{unorderedRaw}) {
+		t.Fatalf("ordinary queue = %#v, want only concurrently recovered unordered job", got)
+	}
+	digest := queuekeys.OrderingDigest(ordered.OrderingKey)
+	orderedQueue := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest)
+	if got := rdb.LRange(ctx, orderedQueue, 0, -1).Val(); !slices.Equal(got, []string{orderedRaw}) {
+		t.Fatalf("ordered queue = %#v, want exposed ordered job recovered through FIFO", got)
 	}
 }
 

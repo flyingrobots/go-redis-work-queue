@@ -28,6 +28,31 @@ redis.call("RPOP", KEYS[1])
 return 1
 `)
 
+var requeueTailIfEqualScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('processing and destination queues must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+local current = redis.call('LINDEX', KEYS[1], -1)
+if current == false or current ~= ARGV[1] then
+  return 0
+end
+redis.call('RPOP', KEYS[1])
+redis.call('LPUSH', KEYS[2], ARGV[1])
+return 1
+`)
+
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Reaper {
 	return &Reaper{cfg: cfg, rdb: rdb, log: log}
 }
@@ -119,30 +144,21 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 					)
 					continue
 				}
-				popped, err := r.rdb.RPop(ctx, plist).Result()
-				if err == redis.Nil {
-					break
-				}
-				if err != nil {
-					r.log.Warn("reaper rpop error", obs.Err(err))
-					break
-				}
-				payload = popped
-				job, err = queue.UnmarshalJob(payload)
-				if err != nil {
-					continue
-				}
 				prio := job.Priority
 				dest := r.cfg.Worker.Queues[prio]
 				if dest == "" {
 					dest = r.cfg.Worker.Queues[r.cfg.Producer.DefaultPriority]
 				}
-				if err := r.rdb.LPush(ctx, dest, payload).Err(); err != nil {
+				requeued, err := requeueTailIfEqual(ctx, r.rdb, plist, dest, []byte(payload))
+				if err != nil {
 					r.log.Error("requeue failed", obs.Err(err))
-				} else {
-					obs.ReaperRecovered.Inc()
-					r.log.Warn("requeued abandoned job", obs.String("id", job.ID), obs.String("to", dest), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID))
+					break
 				}
+				if !requeued {
+					continue
+				}
+				obs.ReaperRecovered.Inc()
+				r.log.Warn("requeued abandoned job", obs.String("id", job.ID), obs.String("to", dest), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID))
 			}
 		}
 		if cursor == 0 {
@@ -157,6 +173,14 @@ func removeTailIfEqual(ctx context.Context, rdb *redis.Client, list string, expe
 		return false, err
 	}
 	return removed == 1, nil
+}
+
+func requeueTailIfEqual(ctx context.Context, rdb *redis.Client, processing, destination string, expected []byte) (bool, error) {
+	requeued, err := requeueTailIfEqualScript.Run(ctx, rdb, []string{processing, destination}, expected).Int()
+	if err != nil {
+		return false, err
+	}
+	return requeued == 1, nil
 }
 
 func scanInterval(heartbeatTTL time.Duration) time.Duration {
