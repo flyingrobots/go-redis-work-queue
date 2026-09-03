@@ -2,6 +2,7 @@ package admin
 
 import (
     "context"
+    "crypto/sha1"
     "crypto/sha256"
     "encoding/json"
     "errors"
@@ -40,9 +41,34 @@ type DLQService interface {
     DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespace string, handles []string) (int, error)
 }
 
-const dlqSelectionHandlePrefix = "dlq:v1:"
+const (
+    dlqSelectionHandlePrefix = "dlq:v2:"
+    dlqSnapshotLua = `
+local function dlq_snapshot(key)
+  local entries = redis.call('LRANGE', key, 0, -1)
+  local parts = {tostring(#entries), ':'}
+  for _, entry in ipairs(entries) do
+    parts[#parts + 1] = redis.sha1hex(tostring(string.len(entry)) .. ':' .. entry)
+  end
+  return redis.sha1hex(table.concat(parts))
+end
+`
+)
 
-var removeDLQEntryAtScript = redis.NewScript(`
+var dlqSnapshotScript = redis.NewScript(dlqSnapshotLua + `
+return dlq_snapshot(KEYS[1])
+`)
+
+var dlqListPageScript = redis.NewScript(dlqSnapshotLua + `
+local page = redis.call('LRANGE', KEYS[1], ARGV[1], ARGV[2])
+local result = {dlq_snapshot(KEYS[1])}
+for _, entry in ipairs(page) do
+  result[#result + 1] = entry
+end
+return result
+`)
+
+var removeDLQEntryAtScript = redis.NewScript(dlqSnapshotLua + `
 local type_reply = redis.call('TYPE', KEYS[1])
 local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
 if actual ~= 'none' and actual ~= 'list' then
@@ -52,8 +78,12 @@ local index = tonumber(ARGV[2])
 if not index or index < 0 then
   return redis.error_reply('selection index must be non-negative')
 end
+local current_snapshot = dlq_snapshot(KEYS[1])
+if current_snapshot ~= ARGV[4] then
+  return {'0', current_snapshot}
+end
 if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
-  return 0
+  return {'0', current_snapshot}
 end
 if ARGV[3] == ARGV[1] then
   return redis.error_reply('selection marker must differ from the envelope')
@@ -62,7 +92,7 @@ redis.call('LSET', KEYS[1], index, ARGV[3])
 if redis.call('LREM', KEYS[1], 1, ARGV[3]) ~= 1 then
   return redis.error_reply('selected envelope could not be removed')
 end
-return 1
+return {'1', dlq_snapshot(KEYS[1])}
 `)
 
 type dlqSelection struct {
@@ -71,28 +101,40 @@ type dlqSelection struct {
     raw    string
 }
 
-func makeDLQSelectionHandle(index int64, raw string) string {
+func makeDLQSelectionHandle(snapshot string, index int64, raw string) string {
     digest := sha256.Sum256([]byte(raw))
-    return fmt.Sprintf("%s%d:%x", dlqSelectionHandlePrefix, index, digest)
+    return fmt.Sprintf("%s%s:%d:%x", dlqSelectionHandlePrefix, snapshot, index, digest)
 }
 
-func parseDLQSelectionIndex(handle string) (int64, bool) {
+func parseDLQSelectionHandle(handle string) (string, int64, bool) {
     encoded, ok := strings.CutPrefix(handle, dlqSelectionHandlePrefix)
     if !ok {
-        return 0, false
+        return "", 0, false
+    }
+    snapshot, encoded, ok := strings.Cut(encoded, ":")
+    if !ok || len(snapshot) != sha1.Size*2 {
+        return "", 0, false
     }
     indexText, digest, ok := strings.Cut(encoded, ":")
     if !ok || len(digest) != sha256.Size*2 {
-        return 0, false
+        return "", 0, false
     }
     index, err := strconv.ParseInt(indexText, 10, 64)
     if err != nil || index < 0 {
-        return 0, false
+        return "", 0, false
     }
-    return index, true
+    return snapshot, index, true
 }
 
-func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, handles []string) ([]dlqSelection, error) {
+func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, handles []string) ([]dlqSelection, string, error) {
+    snapshotResult, err := dlqSnapshotScript.Run(ctx, rdb, []string{list}).Result()
+    if err != nil {
+        return nil, "", err
+    }
+    snapshot, ok := snapshotResult.(string)
+    if !ok || snapshot == "" {
+        return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", snapshotResult)
+    }
     selections := make([]dlqSelection, 0, len(handles))
     seen := make(map[string]struct{}, len(handles))
     for _, handle := range handles {
@@ -100,8 +142,8 @@ func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, h
             continue
         }
         seen[handle] = struct{}{}
-        index, ok := parseDLQSelectionIndex(handle)
-        if !ok {
+        handleSnapshot, index, ok := parseDLQSelectionHandle(handle)
+        if !ok || handleSnapshot != snapshot {
             continue
         }
         raw, err := rdb.LIndex(ctx, list, index).Result()
@@ -109,9 +151,9 @@ func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, h
             continue
         }
         if err != nil {
-            return nil, err
+            return nil, "", err
         }
-        if makeDLQSelectionHandle(index, raw) != handle {
+        if makeDLQSelectionHandle(snapshot, index, raw) != handle {
             continue
         }
         selections = append(selections, dlqSelection{handle: handle, index: index, raw: raw})
@@ -119,11 +161,27 @@ func resolveDLQSelections(ctx context.Context, rdb *redis.Client, list string, h
     sort.Slice(selections, func(i, j int) bool {
         return selections[i].index > selections[j].index
     })
-    return selections, nil
+    return selections, snapshot, nil
 }
 
 func dlqSelectionMarker(handle string) string {
     return "\x00grq-dlq-selection:" + handle
+}
+
+func parseDLQMutationResult(result interface{}) (bool, string, error) {
+    values, ok := result.([]interface{})
+    if !ok || len(values) != 2 {
+        return false, "", fmt.Errorf("unexpected DLQ mutation response %T", result)
+    }
+    changed, ok := values[0].(string)
+    if !ok || (changed != "0" && changed != "1") {
+        return false, "", fmt.Errorf("unexpected DLQ mutation status %v", values[0])
+    }
+    snapshot, ok := values[1].(string)
+    if !ok || snapshot == "" {
+        return false, "", fmt.Errorf("unexpected DLQ mutation snapshot %T", values[1])
+    }
+    return changed == "1", snapshot, nil
 }
 
 // DLQList returns a page of DLQ items along with an opaque cursor for the next page.
@@ -147,9 +205,31 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
     // Compute stop index and fetch
     start := offset
     stop := offset + int64(limit) - 1
-    items, err := rdb.LRange(ctx, cfg.Worker.DeadLetterList, start, stop).Result()
+    pageResult, err := dlqListPageScript.Run(
+        ctx,
+        rdb,
+        []string{cfg.Worker.DeadLetterList},
+        start,
+        stop,
+    ).Result()
     if err != nil {
         return nil, "", err
+    }
+    pageValues, ok := pageResult.([]interface{})
+    if !ok || len(pageValues) == 0 {
+        return nil, "", fmt.Errorf("unexpected DLQ page response %T", pageResult)
+    }
+    snapshot, ok := pageValues[0].(string)
+    if !ok || snapshot == "" {
+        return nil, "", fmt.Errorf("unexpected DLQ snapshot response %T", pageValues[0])
+    }
+    items := make([]string, 0, len(pageValues)-1)
+    for _, value := range pageValues[1:] {
+        raw, ok := value.(string)
+        if !ok {
+            return nil, "", fmt.Errorf("unexpected DLQ entry response %T", value)
+        }
+        items = append(items, raw)
     }
     out := make([]DLQItem, 0, len(items))
     for itemIndex, raw := range items {
@@ -161,7 +241,7 @@ func DLQList(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         }
         _ = json.Unmarshal([]byte(raw), &meta)
         it := DLQItem{
-            Handle:   makeDLQSelectionHandle(offset+int64(itemIndex), raw),
+            Handle:   makeDLQSelectionHandle(snapshot, offset+int64(itemIndex), raw),
             ID:       meta.ID,
             Queue:    "", // unknown from payload; left blank
             Payload:  []byte(raw),
@@ -200,7 +280,7 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
             destQueue = cfg.Worker.Queues["low"]
         }
     }
-    selections, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
+    selections, snapshot, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
     if err != nil {
         return 0, err
     }
@@ -210,7 +290,7 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
         if err != nil {
             continue
         }
-        moved, err := queue.RequeueEncodedAt(
+        moved, nextSnapshot, err := queue.RequeueEncodedAt(
             ctx,
             rdb,
             cfg.Worker.DeadLetterList,
@@ -219,14 +299,17 @@ func DLQRequeue(ctx context.Context, cfg *config.Config, rdb *redis.Client, name
             job,
             selection.raw,
             dlqSelectionMarker(selection.handle),
+            snapshot,
             cfg.OrderingLayout(),
         )
         if err != nil {
             return requeued, err
         }
-        if moved {
-            requeued++
+        if !moved {
+            break
         }
+        snapshot = nextSnapshot
+        requeued++
     }
     return requeued, nil
 }
@@ -239,26 +322,33 @@ func DLQPurge(ctx context.Context, cfg *config.Config, rdb *redis.Client, namesp
     if len(handles) == 0 {
         return 0, nil
     }
-    selections, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
+    selections, snapshot, err := resolveDLQSelections(ctx, rdb, cfg.Worker.DeadLetterList, handles)
     if err != nil {
         return 0, err
     }
     purged := 0
     for _, selection := range selections {
-        removed, err := removeDLQEntryAtScript.Eval(
+        result, err := removeDLQEntryAtScript.Eval(
             ctx,
             rdb,
             []string{cfg.Worker.DeadLetterList},
             selection.raw,
             selection.index,
             dlqSelectionMarker(selection.handle),
-        ).Int64()
+            snapshot,
+        ).Result()
         if err != nil {
             return purged, err
         }
-        if removed == 1 {
-            purged++
+        removed, nextSnapshot, err := parseDLQMutationResult(result)
+        if err != nil {
+            return purged, err
         }
+        if !removed {
+            break
+        }
+        snapshot = nextSnapshot
+        purged++
     }
     return purged, nil
 }

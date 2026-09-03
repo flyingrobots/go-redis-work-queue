@@ -227,6 +227,54 @@ func TestDLQStaleSelectionHandleDoesNotTargetShiftedEntry(t *testing.T) {
 	}
 }
 
+func TestDLQStaleSelectionHandleDoesNotRetargetIdenticalEntryAfterLPush(t *testing.T) {
+	for _, action := range []string{"requeue", "purge"} {
+		t.Run(action, func(t *testing.T) {
+			mr := miniredis.RunT(t)
+			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+			t.Cleanup(func() { _ = rdb.Close() })
+			cfg := config.Default()
+			ctx := context.Background()
+
+			job := queue.NewJob("byte-identical", "", 0, "low", "", "")
+			raw, err := job.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := rdb.RPush(ctx, cfg.Worker.DeadLetterList, raw, raw).Err(); err != nil {
+				t.Fatal(err)
+			}
+			items, _, err := DLQList(ctx, cfg, rdb, "", "", 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := rdb.LPush(ctx, cfg.Worker.DeadLetterList, raw).Err(); err != nil {
+				t.Fatal(err)
+			}
+
+			var changed int
+			switch action {
+			case "requeue":
+				changed, err = DLQRequeue(ctx, cfg, rdb, "", []string{items[1].Handle}, "retry:queue")
+			case "purge":
+				changed, err = DLQPurge(ctx, cfg, rdb, "", []string{items[1].Handle})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if changed != 0 {
+				t.Fatalf("%s changed %d entries, want stale selection to be a no-op", action, changed)
+			}
+			if got := rdb.LLen(ctx, cfg.Worker.DeadLetterList).Val(); got != 3 {
+				t.Fatalf("dead-letter length = %d, want all three identical entries preserved", got)
+			}
+			if got := rdb.LLen(ctx, "retry:queue").Val(); got != 0 {
+				t.Fatalf("retry queue length = %d, want 0", got)
+			}
+		})
+	}
+}
+
 func TestDLQRequeueWrongTypePreservesSelectedEntry(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})

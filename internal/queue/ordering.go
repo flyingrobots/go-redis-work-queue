@@ -152,7 +152,18 @@ end
 return 1
 `)
 
-var requeueEncodedAtScript = redis.NewScript(`
+const listSnapshotLua = `
+local function list_snapshot(key)
+  local entries = redis.call('LRANGE', key, 0, -1)
+  local parts = {tostring(#entries), ':'}
+  for _, entry in ipairs(entries) do
+    parts[#parts + 1] = redis.sha1hex(tostring(string.len(entry)) .. ':' .. entry)
+  end
+  return redis.sha1hex(table.concat(parts))
+end
+`
+
+var requeueEncodedAtScript = redis.NewScript(listSnapshotLua + `
 local function require_type(key, expected)
   local type_reply = redis.call('TYPE', key)
   local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
@@ -176,8 +187,12 @@ local index = tonumber(ARGV[4])
 if not index or index < 0 then
   return redis.error_reply('selection index must be non-negative')
 end
+local current_snapshot = list_snapshot(KEYS[1])
+if current_snapshot ~= ARGV[6] then
+  return {'0', current_snapshot}
+end
 if redis.call('LINDEX', KEYS[1], index) ~= ARGV[1] then
-  return 0
+  return {'0', current_snapshot}
 end
 if ARGV[5] == ARGV[1] then
   return redis.error_reply('selection marker must differ from the envelope')
@@ -191,7 +206,7 @@ redis.call('LPUSH', KEYS[2], ARGV[1])
 if ARGV[3] == 'ordered' and redis.call('SADD', KEYS[4], ARGV[2]) == 1 then
   redis.call('LPUSH', KEYS[3], ARGV[2])
 end
-return 1
+return {'1', list_snapshot(KEYS[1])}
 `)
 
 var claimOrderedScript = redis.NewScript(`
@@ -410,40 +425,60 @@ func RequeueEncoded(ctx context.Context, rdb redis.Cmdable, source, destination 
 
 // RequeueEncodedAt atomically removes the exact envelope at a non-negative
 // source-list index and returns it to ordinary or ordered intake. A changed
-// index or envelope is treated as a stale selection and returns moved=false.
-func RequeueEncodedAt(ctx context.Context, rdb redis.Cmdable, source, destination string, index int64, job Job, encoded, marker string, layout OrderingLayout) (bool, error) {
+// source snapshot, index, or envelope is treated as a stale selection and
+// returns moved=false with the current snapshot.
+func RequeueEncodedAt(ctx context.Context, rdb redis.Cmdable, source, destination string, index int64, job Job, encoded, marker, expectedSnapshot string, layout OrderingLayout) (bool, string, error) {
 	if source == "" {
-		return false, errors.New("requeue source must be non-empty")
+		return false, "", errors.New("requeue source must be non-empty")
 	}
 	if index < 0 {
-		return false, errors.New("requeue source index must be non-negative")
+		return false, "", errors.New("requeue source index must be non-negative")
 	}
 	if marker == "" || marker == encoded {
-		return false, errors.New("requeue selection marker must be non-empty and differ from the envelope")
+		return false, "", errors.New("requeue selection marker must be non-empty and differ from the envelope")
+	}
+	if expectedSnapshot == "" {
+		return false, "", errors.New("requeue source snapshot must be non-empty")
 	}
 	if job.OrderingKey == "" {
 		if destination == "" {
-			return false, errors.New("requeue destination must be non-empty")
+			return false, "", errors.New("requeue destination must be non-empty")
 		}
 		result, err := requeueEncodedAtScript.Eval(ctx, rdb,
-			[]string{source, destination, destination, destination}, encoded, "", "ordinary", index, marker).Int64()
+			[]string{source, destination, destination, destination}, encoded, "", "ordinary", index, marker, expectedSnapshot).Result()
 		if err != nil {
-			return false, fmt.Errorf("requeue selected job: %w", err)
+			return false, "", fmt.Errorf("requeue selected job: %w", err)
 		}
-		return result == 1, nil
+		return parseSelectedRequeueResult(result)
 	}
 
 	digest := queuekeys.OrderingDigest(job.OrderingKey)
 	queueKey, _, err := layout.keysForDigest(digest)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	result, err := requeueEncodedAtScript.Eval(ctx, rdb,
-		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered", index, marker).Int64()
+		[]string{source, queueKey, layout.ReadyList, layout.ActiveSet}, encoded, digest, "ordered", index, marker, expectedSnapshot).Result()
 	if err != nil {
-		return false, fmt.Errorf("requeue selected ordered job: %w", err)
+		return false, "", fmt.Errorf("requeue selected ordered job: %w", err)
 	}
-	return result == 1, nil
+	return parseSelectedRequeueResult(result)
+}
+
+func parseSelectedRequeueResult(result interface{}) (bool, string, error) {
+	values, ok := result.([]interface{})
+	if !ok || len(values) != 2 {
+		return false, "", fmt.Errorf("unexpected selected requeue response %T", result)
+	}
+	moved, ok := values[0].(string)
+	if !ok || (moved != "0" && moved != "1") {
+		return false, "", fmt.Errorf("unexpected selected requeue status %v", values[0])
+	}
+	snapshot, ok := values[1].(string)
+	if !ok || snapshot == "" {
+		return false, "", fmt.Errorf("unexpected selected requeue snapshot %T", values[1])
+	}
+	return moved == "1", snapshot, nil
 }
 
 // ClaimOrdered atomically leases the oldest ready key and moves its oldest job
