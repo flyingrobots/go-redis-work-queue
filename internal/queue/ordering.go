@@ -312,6 +312,9 @@ if problem then return redis.error_reply(problem) end
 if redis.call('HEXISTS', KEYS[5], KEYS[3]) == 1 then
   return redis.error_reply('processing list already has ordered claim metadata')
 end
+if redis.call('LLEN', KEYS[3]) ~= 0 then
+  return nil
+end
 
 local acquired = redis.call('SET', lease_key, ARGV[5], 'NX', 'PX', ARGV[6])
 if not acquired then
@@ -617,8 +620,8 @@ func parseSelectedRequeueResult(result interface{}) (bool, string, error) {
 }
 
 // ClaimOrdered atomically leases the oldest ready key and moves its oldest job
-// into the existing per-worker processing list. An empty ready ring returns
-// ok=false without error.
+// into the existing per-worker processing list. An empty ready ring or occupied
+// processing list returns ok=false without error.
 func ClaimOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLayout, processingList, heartbeatKey, owner string, ttl time.Duration) (delivery OrderedDelivery, ok bool, err error) {
 	if err := layout.Validate(); err != nil {
 		return delivery, false, err

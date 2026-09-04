@@ -155,6 +155,55 @@ func TestClaimOrderedStoresOwnerMarkerInsteadOfPayload(t *testing.T) {
 	}
 }
 
+func TestClaimOrderedDefersWhileProcessingListIsOccupied(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+	const processingKey = "test:processing"
+	const existingDelivery = "existing-unordered-delivery"
+
+	job := NewJob("ordered-waits-for-worker", "", 0, "low", "", "")
+	job.OrderingKey = "account:occupied-worker"
+	if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.LPush(ctx, processingKey, existingDelivery).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	digest := queuekeys.OrderingDigest(job.OrderingKey)
+	queueKey := queuekeys.Format(layout.QueuePattern, digest)
+	leaseKey := queuekeys.Format(layout.LeasePattern, digest)
+	wantPayload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, processingKey, "test:heartbeat", "worker-1", time.Second)
+	if err != nil || ok {
+		t.Fatalf("claim with occupied processing list = (%#v, %v, %v), want no delivery", delivery, ok, err)
+	}
+	if ready := rdb.LRange(ctx, layout.ReadyList, 0, -1).Val(); !slices.Equal(ready, []string{digest}) {
+		t.Fatalf("ready ring after deferred claim = %#v, want digest preserved", ready)
+	}
+	if !rdb.SIsMember(ctx, layout.ActiveSet, digest).Val() {
+		t.Fatal("deferred claim removed the active digest")
+	}
+	if queued := rdb.LRange(ctx, queueKey, 0, -1).Val(); !slices.Equal(queued, []string{wantPayload}) {
+		t.Fatalf("ordered queue after deferred claim = %#v, want payload preserved", queued)
+	}
+	if processing := rdb.LRange(ctx, processingKey, 0, -1).Val(); !slices.Equal(processing, []string{existingDelivery}) {
+		t.Fatalf("processing list after deferred claim = %#v, want existing delivery only", processing)
+	}
+	for _, key := range []string{leaseKey, "test:heartbeat", queuekeys.OrderedClaimsKey(layout.ActiveSet)} {
+		if rdb.Exists(ctx, key).Val() != 0 {
+			t.Errorf("deferred claim created key %q", key)
+		}
+	}
+}
+
 func TestOrderedEnqueueWrongTypeControlKeyIsAtomic(t *testing.T) {
 	for _, control := range []string{"ready", "active"} {
 		t.Run(control, func(t *testing.T) {
