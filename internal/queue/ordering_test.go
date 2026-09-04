@@ -4,6 +4,7 @@ package queue
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -116,6 +117,37 @@ func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
 		if mr.Exists(key) {
 			t.Errorf("completed transition left key %q", key)
 		}
+	}
+}
+
+func TestClaimOrderedStoresOwnerMarkerInsteadOfPayload(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+	const owner = "worker-owner"
+	const heartbeat = "test:heartbeat"
+
+	job := NewJob("large-ordered", "", 0, "low", "", "")
+	job.OrderingKey = "account:large-heartbeat"
+	job.Payload = []byte(strings.Repeat("x", DefaultMaxPayloadSize))
+	if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+		t.Fatal(err)
+	}
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", heartbeat, owner, time.Second)
+	if err != nil || !ok {
+		t.Fatalf("claim = (%#v, %v, %v)", delivery, ok, err)
+	}
+	value, err := rdb.Get(ctx, heartbeat).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value == delivery.Payload {
+		t.Fatalf("initial heartbeat duplicated the %d-byte encoded job", len(delivery.Payload))
+	}
+	if value != owner {
+		t.Fatalf("initial heartbeat length = %d, want owner marker %q", len(value), owner)
 	}
 }
 

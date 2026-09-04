@@ -317,7 +317,7 @@ if not payload then
 end
 
 redis.call('LPUSH', KEYS[3], payload)
-redis.call('PSETEX', KEYS[4], ARGV[7], payload)
+redis.call('PSETEX', KEYS[4], ARGV[7], ARGV[5])
 return {digest, payload}
 `)
 
