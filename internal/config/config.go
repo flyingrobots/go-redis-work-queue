@@ -282,6 +282,9 @@ func Validate(cfg *Config) error {
 			return fmt.Errorf("worker queue alias %q is reserved", alias)
 		}
 	}
+	if cfg.Worker.CompletedList == "" {
+		return fmt.Errorf("worker.completed_list must be non-empty")
+	}
 	if cfg.Worker.DeadLetterList == "" {
 		return fmt.Errorf("worker.dead_letter_list must be non-empty")
 	}

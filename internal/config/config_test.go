@@ -180,6 +180,19 @@ func TestValidateRejectsEmptyDeadLetterList(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsEmptyCompletedList(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.CompletedList = ""
+
+	err := Validate(cfg)
+	if err == nil {
+		t.Fatal("expected an empty worker.completed_list to fail validation")
+	}
+	if !strings.Contains(err.Error(), "worker.completed_list") {
+		t.Fatalf("expected error to identify worker.completed_list, got %q", err)
+	}
+}
+
 func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.Queue.OrderedActiveSet = cfg.Queue.OrderedReadyList
