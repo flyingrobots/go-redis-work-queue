@@ -80,6 +80,8 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 	res.OrderedPending = orderedPending
 	// Scan processing lists
 	var cursor uint64
+	processingPattern := processingKeyPattern(cfg)
+	processingKeys := map[string]struct{}{}
 	for {
 		keys, cur, err := rdb.Scan(ctx, cursor, processingScanPattern(cfg), 200).Result()
 		if err != nil {
@@ -87,7 +89,18 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 		}
 		cursor = cur
 		for _, k := range keys {
-			n, _ := rdb.LLen(ctx, k).Result()
+			workerID, ok := queuekeys.Extract(processingPattern, k)
+			if !ok || !queuekeys.IsWorkerID(workerID) {
+				continue
+			}
+			if _, ok := processingKeys[k]; ok {
+				continue
+			}
+			n, err := rdb.LLen(ctx, k).Result()
+			if err != nil {
+				return res, err
+			}
+			processingKeys[k] = struct{}{}
 			res.ProcessingLists[k] = n
 		}
 		if cursor == 0 {
@@ -95,7 +108,8 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 		}
 	}
 	// Heartbeats
-	var hbc int64
+	heartbeatPattern := heartbeatKeyPattern(cfg)
+	heartbeatKeys := map[string]struct{}{}
 	cursor = 0
 	for {
 		keys, cur, err := rdb.Scan(ctx, cursor, heartbeatScanPattern(cfg), 500).Result()
@@ -103,12 +117,17 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 			return res, err
 		}
 		cursor = cur
-		hbc += int64(len(keys))
+		for _, key := range keys {
+			workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+			if ok && queuekeys.IsWorkerID(workerID) {
+				heartbeatKeys[key] = struct{}{}
+			}
+		}
 		if cursor == 0 {
 			break
 		}
 	}
-	res.Heartbeats = hbc
+	res.Heartbeats = int64(len(heartbeatKeys))
 	return res, nil
 }
 
@@ -300,15 +319,28 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 	}
 	// Processing lists
 	var cursor uint64
+	processingPattern := processingKeyPattern(cfg)
+	processingKeys := map[string]struct{}{}
 	for {
 		keys, cur, err := rdb.Scan(ctx, cursor, processingScanPattern(cfg), 500).Result()
 		if err != nil {
 			return out, err
 		}
 		cursor = cur
-		out.ProcessingLists += int64(len(keys))
 		for _, k := range keys {
-			n, _ := rdb.LLen(ctx, k).Result()
+			workerID, ok := queuekeys.Extract(processingPattern, k)
+			if !ok || !queuekeys.IsWorkerID(workerID) {
+				continue
+			}
+			if _, ok := processingKeys[k]; ok {
+				continue
+			}
+			n, err := rdb.LLen(ctx, k).Result()
+			if err != nil {
+				return out, err
+			}
+			processingKeys[k] = struct{}{}
+			out.ProcessingLists++
 			out.ProcessingItems += n
 		}
 		if cursor == 0 {
@@ -316,6 +348,8 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 		}
 	}
 	// Heartbeats
+	heartbeatPattern := heartbeatKeyPattern(cfg)
+	heartbeatKeys := map[string]struct{}{}
 	cursor = 0
 	for {
 		keys, cur, err := rdb.Scan(ctx, cursor, heartbeatScanPattern(cfg), 1000).Result()
@@ -323,11 +357,17 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 			return out, err
 		}
 		cursor = cur
-		out.Heartbeats += int64(len(keys))
+		for _, key := range keys {
+			workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+			if ok && queuekeys.IsWorkerID(workerID) {
+				heartbeatKeys[key] = struct{}{}
+			}
+		}
 		if cursor == 0 {
 			break
 		}
 	}
+	out.Heartbeats = int64(len(heartbeatKeys))
 	// Rate limiter
 	if cfg.Producer.RateLimitKey != "" {
 		out.RateLimitKey = cfg.Producer.RateLimitKey

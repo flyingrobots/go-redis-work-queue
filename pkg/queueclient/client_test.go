@@ -21,6 +21,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const testWorkerID = "queueclient-test-host-123-456-abcd-0"
+
 func testClientConfig() queueclient.Config {
 	return queueclient.Config{
 		Queues: map[string]string{
@@ -52,6 +54,7 @@ func newTestClient(t *testing.T, mr *miniredis.Miniredis, cfg queueclient.Config
 
 type duplicateHeartbeatScanHook struct {
 	pattern string
+	key     string
 	page    int
 }
 
@@ -67,9 +70,9 @@ func (h *duplicateHeartbeatScanHook) ProcessHook(next redis.ProcessHook) redis.P
 		}
 		h.page++
 		if h.page == 1 {
-			scan.SetVal([]string{"jobqueue:test:heartbeat:duplicate"}, 1)
+			scan.SetVal([]string{h.key}, 1)
 		} else {
-			scan.SetVal([]string{"jobqueue:test:heartbeat:duplicate"}, 0)
+			scan.SetVal([]string{h.key}, 0)
 		}
 		return nil
 	}
@@ -711,8 +714,8 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mr.Set(fmt.Sprintf(cfg.HeartbeatKeyPattern, "worker-a"), "1")
-	mr.Lpush(fmt.Sprintf(cfg.ProcessingListPattern, "worker-a"), "in-flight")
+	mr.Set(fmt.Sprintf(cfg.HeartbeatKeyPattern, testWorkerID), "1")
+	mr.Lpush(fmt.Sprintf(cfg.ProcessingListPattern, testWorkerID), "in-flight")
 
 	stats, err := client.Stats(context.Background())
 	if err != nil {
@@ -724,7 +727,7 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 	if stats.OrderedPending != 3 {
 		t.Fatalf("ordered pending count = %d, want 3", stats.OrderedPending)
 	}
-	if stats.Heartbeats != 1 || stats.ProcessingLists[fmt.Sprintf(cfg.ProcessingListPattern, "worker-a")] != 1 {
+	if stats.Heartbeats != 1 || stats.ProcessingLists[fmt.Sprintf(cfg.ProcessingListPattern, testWorkerID)] != 1 {
 		t.Fatalf("unexpected worker stats: %#v", stats)
 	}
 
@@ -737,6 +740,33 @@ func TestStatsAndPeekMirrorCoreQueueLayout(t *testing.T) {
 	}
 }
 
+func TestStatsIgnoresUnprovenWorkerPatternMatches(t *testing.T) {
+	mr := miniredis.RunT(t)
+	cfg := testClientConfig()
+	cfg.ProcessingListPattern = "tenant:%s"
+	cfg.HeartbeatKeyPattern = "heartbeat:%s"
+	client := newTestClient(t, mr, cfg)
+
+	processing := fmt.Sprintf(cfg.ProcessingListPattern, testWorkerID)
+	heartbeat := fmt.Sprintf(cfg.HeartbeatKeyPattern, testWorkerID)
+	mr.Lpush(processing, `{"id":"in-flight"}`)
+	mr.Set(heartbeat, testWorkerID)
+	mr.Lpush("tenant:cache", "application-data")
+	mr.Set("tenant:settings", "application-data")
+	mr.Set("heartbeat:settings", "application-data")
+
+	stats, err := client.Stats(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stats.ProcessingLists) != 1 || stats.ProcessingLists[processing] != 1 {
+		t.Fatalf("processing lists = %#v, want only %q", stats.ProcessingLists, processing)
+	}
+	if stats.Heartbeats != 1 {
+		t.Fatalf("heartbeats = %d, want only the proven worker heartbeat", stats.Heartbeats)
+	}
+}
+
 func TestStatsDeduplicatesHeartbeatKeysAcrossScanPages(t *testing.T) {
 	mr := miniredis.RunT(t)
 	cfg := testClientConfig()
@@ -744,6 +774,7 @@ func TestStatsDeduplicatesHeartbeatKeysAcrossScanPages(t *testing.T) {
 	t.Cleanup(func() { _ = rdb.Close() })
 	rdb.AddHook(&duplicateHeartbeatScanHook{
 		pattern: queuekeys.ScanPattern(cfg.HeartbeatKeyPattern),
+		key:     fmt.Sprintf(cfg.HeartbeatKeyPattern, testWorkerID),
 	})
 	client, err := queueclient.NewWithClient(rdb, cfg)
 	if err != nil {

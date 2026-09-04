@@ -237,13 +237,18 @@ func (c *Client) Stats(ctx context.Context) (StatsResult, error) {
 	result.OrderedPending = orderedPending
 
 	var cursor uint64
-	processingPattern := queuekeys.ScanPattern(c.cfg.ProcessingListPattern)
+	processingKeyPattern := c.cfg.ProcessingListPattern
+	processingPattern := queuekeys.ScanPattern(processingKeyPattern)
 	for {
 		keys, next, err := c.rdb.Scan(ctx, cursor, processingPattern, 200).Result()
 		if err != nil {
 			return result, connectionError("scan processing lists", err)
 		}
 		for _, key := range keys {
+			workerID, ok := queuekeys.Extract(processingKeyPattern, key)
+			if !ok || !queuekeys.IsWorkerID(workerID) {
+				continue
+			}
 			count, err := c.rdb.LLen(ctx, key).Result()
 			if err != nil {
 				return result, connectionError("read processing list", err)
@@ -257,7 +262,8 @@ func (c *Client) Stats(ctx context.Context) (StatsResult, error) {
 	}
 
 	cursor = 0
-	heartbeatPattern := queuekeys.ScanPattern(c.cfg.HeartbeatKeyPattern)
+	heartbeatKeyPattern := c.cfg.HeartbeatKeyPattern
+	heartbeatPattern := queuekeys.ScanPattern(heartbeatKeyPattern)
 	heartbeatKeys := map[string]struct{}{}
 	for {
 		keys, next, err := c.rdb.Scan(ctx, cursor, heartbeatPattern, 500).Result()
@@ -265,7 +271,10 @@ func (c *Client) Stats(ctx context.Context) (StatsResult, error) {
 			return result, connectionError("scan heartbeats", err)
 		}
 		for _, key := range keys {
-			heartbeatKeys[key] = struct{}{}
+			workerID, ok := queuekeys.Extract(heartbeatKeyPattern, key)
+			if ok && queuekeys.IsWorkerID(workerID) {
+				heartbeatKeys[key] = struct{}{}
+			}
 		}
 		cursor = next
 		if cursor == 0 {

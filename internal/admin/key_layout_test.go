@@ -165,6 +165,52 @@ func TestPurgeAllPreservesUnprovenWorkerPatternMatches(t *testing.T) {
 	}
 }
 
+func TestStatsIgnoresUnprovenWorkerPatternMatches(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "heartbeat:%s"
+	if err := config.Validate(cfg); err != nil {
+		t.Fatalf("broad worker-pattern fixture is invalid: %v", err)
+	}
+
+	const workerID = "stats-test-host-123-456-abcd-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+	const unrelatedProcessingList = "tenant:cache"
+	const unrelatedProcessingString = "tenant:settings"
+	const unrelatedHeartbeat = "heartbeat:settings"
+	mr.Lpush(processing, `{"id":"in-flight"}`)
+	mr.Set(heartbeat, workerID)
+	mr.Lpush(unrelatedProcessingList, "application-data")
+	mr.Set(unrelatedProcessingString, "application-data")
+	mr.Set(unrelatedHeartbeat, "application-data")
+
+	stats, err := Stats(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stats.ProcessingLists) != 1 || stats.ProcessingLists[processing] != 1 {
+		t.Fatalf("processing lists = %#v, want only %q", stats.ProcessingLists, processing)
+	}
+	if stats.Heartbeats != 1 {
+		t.Fatalf("heartbeats = %d, want only the proven worker heartbeat", stats.Heartbeats)
+	}
+
+	keys, err := StatsKeys(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keys.ProcessingLists != 1 || keys.ProcessingItems != 1 {
+		t.Fatalf("processing key stats = (%d lists, %d items), want (1, 1)", keys.ProcessingLists, keys.ProcessingItems)
+	}
+	if keys.Heartbeats != 1 {
+		t.Fatalf("heartbeat key count = %d, want 1", keys.Heartbeats)
+	}
+}
+
 func TestPurgeAllWithoutConfiguredDLQDoesNotCreateMetadata(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
