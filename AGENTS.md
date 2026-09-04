@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Fifteen exact-head
-  review passes produced 59 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Sixteen exact-head
+  review passes produced 61 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -38,7 +38,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   a durable processing-list-to-digest marker, so malformed envelopes remain
   recoverable if their immediate discard fails. Handler payload bytes are
   isolated from the durable envelope, so application mutation cannot alter
-  retries or completion records.
+  retries or completion records. Rejected completion, retry, or dead-letter
+  destination writes leave the original processing envelope and expiring
+  heartbeat in place for reaper handoff.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -74,7 +76,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   malformed ordered claims retain their digest through failed discard and are
   settled by the reaper after ownership expires. Broad ordered cleanup patterns
   delete only keys containing canonical SHA-256 ordering digests. Broad worker
-  cleanup patterns delete only keys containing canonical worker identities.
+  cleanup and reaper scans accept only keys containing canonical worker
+  identities.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
@@ -236,6 +239,8 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 fourteenth review: compact claims, preserve poison recovery, and reject pattern overlap
 - [x] Queue core PR #6 fifteenth review: restrict purge scans, cancel uncertain handlers, and isolate payloads
 - [x] Queue core hardening: defer ordered claims while a worker processing list is occupied
+- [x] Queue core PR #6 sixteenth review: filter reaper scans and retain failed DLQ transfers
+- [x] Queue core hardening: retain processing jobs on failed retry and completion writes
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -746,6 +751,45 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Sixteenth Review Remediated
+>
+> Closed both exact-head P1 findings and extended the same durability rule to
+> every unordered worker destination write.
+>
+> Changes
+>
+> - Required canonical generated worker IDs before the reaper inspects a broad
+>   processing-pattern match, preserving unrelated shared-Redis lists.
+> - Kept terminal jobs in processing when the DLQ append or generation update
+>   fails, with the heartbeat left to expire for reaper recovery.
+> - Audited sibling paths and applied the same fail-safe boundary when retry
+>   enqueue or completed-list append fails.
+> - Moved successful completion tracing, metrics, and logging after the durable
+>   completed-list append.
+>
+> Validation
+>
+> - RED proved the reaper drained a shared `tenant:settings` list under a valid
+>   broad pattern and routed its job-shaped value into a managed queue.
+> - RED proved rejected DLQ, retry, and completion destination writes each
+>   removed the only processing copy; failed completion also returned success.
+> - Focused transition tests passed ten times; affected reaper, worker,
+>   queuekeys, and public-worker packages passed five race-enabled repetitions
+>   with `go vet` clean.
+>
+> Publication
+>
+> - Review fixes `6b33285b` and `bbf3a902` are published with verified replies.
+> - Sibling hardening commits `4b1deaba` and `8fa58c2b` are published.
+> - All 61 review threads are resolved.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request a seventeenth review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
