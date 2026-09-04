@@ -113,6 +113,19 @@ func TestValidateRejectsReservedWorkerQueueAliases(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsEmptyDeadLetterList(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.DeadLetterList = ""
+
+	err := Validate(cfg)
+	if err == nil {
+		t.Fatal("expected an empty worker.dead_letter_list to fail validation")
+	}
+	if !strings.Contains(err.Error(), "worker.dead_letter_list") {
+		t.Fatalf("expected error to identify worker.dead_letter_list, got %q", err)
+	}
+}
+
 func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.Queue.OrderedActiveSet = cfg.Queue.OrderedReadyList

@@ -276,6 +276,9 @@ func Validate(cfg *Config) error {
 			return fmt.Errorf("worker queue alias %q is reserved", alias)
 		}
 	}
+	if cfg.Worker.DeadLetterList == "" {
+		return fmt.Errorf("worker.dead_letter_list must be non-empty")
+	}
 	if strings.Count(cfg.Worker.ProcessingListPattern, "%s") != 1 {
 		return fmt.Errorf("worker.processing_list_pattern must contain exactly one %%s placeholder")
 	}
