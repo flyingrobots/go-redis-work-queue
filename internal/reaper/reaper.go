@@ -86,7 +86,7 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 		cursor = cur
 		for _, plist := range keys {
 			workerID, ok := queuekeys.Extract(processingPattern, plist)
-			if !ok || workerID == "" {
+			if !ok || !queuekeys.IsWorkerID(workerID) {
 				continue
 			}
 			hbPattern := r.cfg.Worker.HeartbeatKeyPattern

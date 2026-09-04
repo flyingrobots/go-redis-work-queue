@@ -32,6 +32,8 @@ type failOrderedDiscardOnceHook struct {
 	failed chan struct{}
 }
 
+const canonicalReaperWorkerID = "reaper-test-host-100-1000000000-abcd-0"
+
 func (*failOrderedDiscardOnceHook) DialHook(next redis.DialHook) redis.DialHook {
 	return next
 }
@@ -96,7 +98,7 @@ func TestReaperRequeuesWithoutHeartbeat(t *testing.T) {
 	rep := New(cfg, rdb, log)
 
 	ctx := context.Background()
-	workerID := "w1"
+	workerID := canonicalReaperWorkerID
 	plist := fmt.Sprintf(cfg.Worker.ProcessingListPattern, workerID)
 	hbKey := fmt.Sprintf(cfg.Worker.HeartbeatKeyPattern, workerID)
 	// Simulate dead worker: no heartbeat key
@@ -129,13 +131,14 @@ func TestReaperUsesConfiguredProcessingPattern(t *testing.T) {
 	cfg.Worker.ProcessingListPattern = "custom:{worker:%s}:active"
 	cfg.Worker.HeartbeatKeyPattern = "custom:{heartbeat:%s}"
 	cfg.Worker.Queues["low"] = "custom:low"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, canonicalReaperWorkerID)
 
 	job := queue.NewJob("custom-key-job", "", 0, "low", "", "")
 	payload, err := job.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := rdb.LPush(context.Background(), "custom:{worker:alpha:one}:active", payload).Err(); err != nil {
+	if err := rdb.LPush(context.Background(), processing, payload).Err(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,8 +147,38 @@ func TestReaperUsesConfiguredProcessingPattern(t *testing.T) {
 	if got, err := rdb.LLen(context.Background(), "custom:low").Result(); err != nil || got != 1 {
 		t.Fatalf("custom queue length = %d, want 1 (err=%v)", got, err)
 	}
-	if mr.Exists("custom:{worker:alpha:one}:active") {
+	if mr.Exists(processing) {
 		t.Fatal("custom processing list was not drained")
+	}
+}
+
+func TestReaperPreservesUnrelatedBroadPatternMatches(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "heartbeat:%s"
+	cfg.Worker.Queues["low"] = "managed:low"
+	ctx := context.Background()
+
+	job := queue.NewJob("unrelated-job-shaped-value", "", 0, "low", "", "")
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{payload, "unrelated-malformed-value"}
+	if err := rdb.RPush(ctx, "tenant:settings", want).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	New(cfg, rdb, zap.NewNop()).scanOnce(ctx)
+
+	if got := rdb.LRange(ctx, "tenant:settings", 0, -1).Val(); !slices.Equal(got, want) {
+		t.Fatalf("unrelated broad-pattern list = %#v, want preserved %#v", got, want)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.Queues["low"], 0, -1).Val(); len(got) != 0 {
+		t.Fatalf("managed queue received unrelated data: %#v", got)
 	}
 }
 
@@ -288,7 +321,7 @@ func TestReaperDoesNotMisrouteOrderedTailExposedByConcurrentUnorderedRecovery(t 
 	})
 	cfg := config.Default()
 	ctx := context.Background()
-	workerID := "concurrent-reapers"
+	workerID := canonicalReaperWorkerID
 	processing := fmt.Sprintf(cfg.Worker.ProcessingListPattern, workerID)
 
 	unordered := queue.NewJob("unordered-tail", "", 0, "low", "", "")
