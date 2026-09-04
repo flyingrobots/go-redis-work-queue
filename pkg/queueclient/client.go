@@ -436,6 +436,27 @@ func NormalizeConfig(cfg Config) (Config, error) {
 	if cfg.OrderedQueuePattern == cfg.OrderedLeasePattern {
 		return Config{}, errors.New("ordered queue and lease patterns must differ")
 	}
+	workerPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "processing list", value: cfg.ProcessingListPattern},
+		{name: "heartbeat key", value: cfg.HeartbeatKeyPattern},
+	}
+	orderedPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "ordered queue", value: cfg.OrderedQueuePattern},
+		{name: "ordered lease", value: cfg.OrderedLeasePattern},
+	}
+	for _, workerPattern := range workerPatterns {
+		for _, orderedPattern := range orderedPatterns {
+			if queuekeys.PatternsOverlap(workerPattern.value, orderedPattern.value) {
+				return Config{}, fmt.Errorf("%s and %s pattern keyspaces must not overlap", workerPattern.name, orderedPattern.name)
+			}
+		}
+	}
 	if err := validateStaticQueueKeys(cfg); err != nil {
 		return Config{}, err
 	}

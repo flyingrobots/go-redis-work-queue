@@ -138,6 +138,52 @@ func TestValidateRejectsOverlappingProcessingAndHeartbeatPatterns(t *testing.T) 
 	}
 }
 
+func TestValidateRejectsWorkerPatternsOverlappingOrderedKeyspaces(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*Config)
+	}{
+		{
+			name: "processing/queue",
+			configure: func(cfg *Config) {
+				cfg.Worker.ProcessingListPattern = "tenant:%s"
+				cfg.Queue.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "processing/lease",
+			configure: func(cfg *Config) {
+				cfg.Worker.ProcessingListPattern = "tenant:%s"
+				cfg.Queue.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+		{
+			name: "heartbeat/queue",
+			configure: func(cfg *Config) {
+				cfg.Worker.HeartbeatKeyPattern = "tenant:%s"
+				cfg.Queue.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "heartbeat/lease",
+			configure: func(cfg *Config) {
+				cfg.Worker.HeartbeatKeyPattern = "tenant:%s"
+				cfg.Queue.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			tt.configure(cfg)
+			if err := Validate(cfg); err == nil {
+				t.Fatal("expected overlapping generated keyspaces to fail")
+			}
+		})
+	}
+}
+
 func TestValidateRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
 	tests := []struct {
 		name string

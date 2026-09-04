@@ -123,6 +123,58 @@ func TestNormalizeConfigRejectsOverlappingProcessingAndHeartbeatPatterns(t *test
 	}
 }
 
+func TestNormalizeConfigRejectsWorkerPatternsOverlappingOrderedKeyspaces(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*queueclient.Config)
+	}{
+		{
+			name: "processing/queue",
+			configure: func(cfg *queueclient.Config) {
+				cfg.ProcessingListPattern = "tenant:%s"
+				cfg.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "processing/lease",
+			configure: func(cfg *queueclient.Config) {
+				cfg.ProcessingListPattern = "tenant:%s"
+				cfg.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+		{
+			name: "heartbeat/queue",
+			configure: func(cfg *queueclient.Config) {
+				cfg.HeartbeatKeyPattern = "tenant:%s"
+				cfg.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "heartbeat/lease",
+			configure: func(cfg *queueclient.Config) {
+				cfg.HeartbeatKeyPattern = "tenant:%s"
+				cfg.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+		{
+			name: "processing/default lease",
+			configure: func(cfg *queueclient.Config) {
+				cfg.ProcessingListPattern = queuekeys.DefaultOrderedLeasePattern
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testClientConfig()
+			tt.configure(&cfg)
+			if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+				t.Fatal("expected overlapping generated keyspaces to fail")
+			}
+		})
+	}
+}
+
 func TestNormalizeConfigRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
 	tests := []struct {
 		name string

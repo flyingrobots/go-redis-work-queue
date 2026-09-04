@@ -312,6 +312,27 @@ func Validate(cfg *Config) error {
 	if cfg.Queue.OrderedQueuePattern == cfg.Queue.OrderedLeasePattern {
 		return fmt.Errorf("queue.ordered_queue_pattern and queue.ordered_lease_pattern must differ")
 	}
+	workerPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "worker.processing_list_pattern", value: cfg.Worker.ProcessingListPattern},
+		{name: "worker.heartbeat_key_pattern", value: cfg.Worker.HeartbeatKeyPattern},
+	}
+	orderedPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "queue.ordered_queue_pattern", value: cfg.Queue.OrderedQueuePattern},
+		{name: "queue.ordered_lease_pattern", value: cfg.Queue.OrderedLeasePattern},
+	}
+	for _, workerPattern := range workerPatterns {
+		for _, orderedPattern := range orderedPatterns {
+			if queuekeys.PatternsOverlap(workerPattern.value, orderedPattern.value) {
+				return fmt.Errorf("%s and %s keyspaces must not overlap", workerPattern.name, orderedPattern.name)
+			}
+		}
+	}
 	if err := validateStaticQueueKeys(cfg); err != nil {
 		return err
 	}
