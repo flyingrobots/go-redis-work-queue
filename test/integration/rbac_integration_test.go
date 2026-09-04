@@ -1,6 +1,8 @@
 //go:build integration_tests
 // +build integration_tests
 
+// Gated because this cross-package integration suite is opt-in; un-gate when it is hermetic and safe for default CI.
+
 // Copyright 2025 James Ross
 package integration_test
 

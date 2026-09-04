@@ -62,6 +62,7 @@ Health endpoint remains authenticated (no anonymous access) to avoid leaking sta
 ## Error Envelope Decision
 
 - Adopt a shared helper that emits:
+
   ```json
   {
     "error": "human readable message",
@@ -72,6 +73,7 @@ Health endpoint remains authenticated (no anonymous access) to avoid leaking sta
     "request_id": "uuid"
   }
   ```
+
 - Validation failures return HTTP 422 with `validation_errors` array (field/message pairs).
 
 ## Pagination Decision

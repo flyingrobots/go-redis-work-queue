@@ -1,6 +1,3 @@
-//go:build worker_tests
-// +build worker_tests
-
 // Copyright 2025 James Ross
 package worker
 
@@ -27,7 +24,7 @@ func setupWorkerTest(t *testing.T) (*Worker, *config.Config, *redis.Client, func
 	cfg.Worker.Backoff.Max = 2 * time.Millisecond
 	cfg.Worker.MaxRetries = 1
 	log, _ := zap.NewDevelopment()
-	w := New(cfg, rdb, log)
+	w := New(cfg, rdb, log).Handle(BenchHandler)
 	cleanup := func() { mr.Close() }
 	return w, cfg, rdb, cleanup
 }
@@ -41,11 +38,40 @@ func TestProcessJobSuccess(t *testing.T) {
 	job := queue.NewJob("id1", "/tmp/ok.txt", 10, "low", "", "")
 	payload, _ := job.Marshal()
 	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
 	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
 	if !ok {
 		t.Fatalf("expected success")
 	}
 	if n, _ := rdb.LLen(ctx, cfg.Worker.CompletedList).Result(); n != 1 {
+		t.Fatalf("expected completed 1, got %d", n)
+	}
+}
+
+func TestProcessJobPayloadContainingFailStillSucceeds(t *testing.T) {
+	w, cfg, rdb, cleanup := setupWorkerTest(t)
+	defer cleanup()
+	workerID := "w1"
+	procList := fmt.Sprintf(cfg.Worker.ProcessingListPattern, workerID)
+	hbKey := fmt.Sprintf(cfg.Worker.HeartbeatKeyPattern, workerID)
+	job := queue.NewJob("payload-fail", "/tmp/ok.txt", 0, "low", "", "")
+	job.Payload = []byte(`{"instruction":"fail"}`)
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
+	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
+	if !ok {
+		t.Fatal("payload text must not trigger the legacy filepath failure oracle")
+	}
+	if n, _ := rdb.LLen(context.Background(), cfg.Worker.CompletedList).Result(); n != 1 {
 		t.Fatalf("expected completed 1, got %d", n)
 	}
 }
@@ -60,6 +86,9 @@ func TestProcessJobRetryThenDLQ(t *testing.T) {
 	job := queue.NewJob("id1", "/tmp/fail.txt", 10, "low", "", "")
 	payload, _ := job.Marshal()
 	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
 	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
 	if ok {
 		t.Fatalf("expected failure")

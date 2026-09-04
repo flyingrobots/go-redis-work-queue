@@ -5,6 +5,7 @@ The Multi-Tenant Isolation feature provides secure tenant boundaries with namesp
 ## Overview
 
 This module enables safe multi-tenant deployments by:
+
 - Providing strict tenant isolation through key namespacing
 - Enforcing quotas and rate limits per tenant
 - Optional payload encryption with key rotation
@@ -14,13 +15,16 @@ This module enables safe multi-tenant deployments by:
 ## Key Concepts
 
 ### Tenant ID Format
+
 - Length: 3-32 characters
 - Format: Lowercase alphanumeric characters and hyphens only
 - Cannot start or end with hyphens
 - Examples: `tenant-1`, `acme-corp`, `dev-environment`
 
 ### Key Namespacing
+
 All tenant data is namespaced using the pattern `t:{tenant}:{resource}`:
+
 - Queue: `t:tenant-1:queue-name`
 - Jobs: `t:tenant-1:queue-name:jobs`
 - Workers: `t:tenant-1:queue-name:workers`
@@ -30,6 +34,7 @@ All tenant data is namespaced using the pattern `t:{tenant}:{resource}`:
 ## API Endpoints
 
 ### Create Tenant
+
 ```http
 POST /tenants
 Content-Type: application/json
@@ -66,6 +71,7 @@ X-User-ID: {user_id}
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "id": "tenant-1",
@@ -82,12 +88,14 @@ X-User-ID: {user_id}
 ```
 
 ### Get Tenant
+
 ```http
 GET /tenants/{tenant_id}
 X-User-ID: {user_id}
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "id": "tenant-1",
@@ -102,6 +110,7 @@ X-User-ID: {user_id}
 ```
 
 ### Update Tenant
+
 ```http
 PUT /tenants/{tenant_id}
 Content-Type: application/json
@@ -116,6 +125,7 @@ X-User-ID: {user_id}
 ```
 
 ### Delete Tenant
+
 ```http
 DELETE /tenants/{tenant_id}
 X-User-ID: {user_id}
@@ -126,12 +136,14 @@ X-User-ID: {user_id}
 Note: This marks the tenant as deleted and cleans up all tenant data.
 
 ### List Tenants
+
 ```http
 GET /tenants
 X-User-ID: {user_id}
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "tenants": [
@@ -149,12 +161,14 @@ X-User-ID: {user_id}
 ```
 
 ### Get Quota Usage
+
 ```http
 GET /tenants/{tenant_id}/quota-usage
 X-User-ID: {user_id}
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "tenant_id": "tenant-1",
@@ -169,6 +183,7 @@ X-User-ID: {user_id}
 ```
 
 ### Check Quota
+
 ```http
 POST /tenants/{tenant_id}/check-quota
 Content-Type: application/json
@@ -181,6 +196,7 @@ X-User-ID: {user_id}
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "allowed": true
@@ -188,6 +204,7 @@ X-User-ID: {user_id}
 ```
 
 **Response when quota exceeded:**
+
 ```json
 {
   "allowed": false,
@@ -218,12 +235,14 @@ X-User-ID: {user_id}
 ## Encryption Configuration
 
 ### KEK Providers
+
 - `local`: Local encryption (development only)
 - `aws-kms`: AWS Key Management Service
 - `gcp-kms`: Google Cloud Key Management Service
 - `azure-kv`: Azure Key Vault
 
 ### Encryption Process
+
 1. Generate random Data Encryption Key (DEK) for each payload
 2. Encrypt payload with AES-256-GCM using DEK
 3. Encrypt DEK with Key Encryption Key (KEK) from KMS
@@ -232,6 +251,7 @@ X-User-ID: {user_id}
 ## Rate Limiting
 
 Rate limiting uses a sliding window algorithm with Redis sorted sets:
+
 - Window duration configurable per tenant
 - Burst capacity for handling traffic spikes
 - Custom limits per operation type
@@ -242,6 +262,7 @@ Rate limiting uses a sliding window algorithm with Redis sorted sets:
 All responses include an `X-Request-ID` header matching the `request_id` field. Clients should log it for support investigations.
 
 ### 400 Bad Request
+
 ```json
 {
   "code": "VALIDATION_ERROR",
@@ -254,6 +275,7 @@ All responses include an `X-Request-ID` header matching the `request_id` field. 
 ```
 
 ### 403 Forbidden
+
 ```json
 {
   "code": "ACCESS_DENIED",
@@ -266,6 +288,7 @@ All responses include an `X-Request-ID` header matching the `request_id` field. 
 ```
 
 ### 404 Not Found
+
 ```json
 {
   "code": "TENANT_NOT_FOUND",
@@ -278,6 +301,7 @@ All responses include an `X-Request-ID` header matching the `request_id` field. 
 ```
 
 ### 409 Conflict
+
 ```json
 {
   "code": "TENANT_EXISTS",
@@ -290,6 +314,7 @@ All responses include an `X-Request-ID` header matching the `request_id` field. 
 ```
 
 ### 429 Too Many Requests
+
 ```json
 {
   "code": "RATE_LIMIT",
@@ -305,6 +330,7 @@ All responses include an `X-Request-ID` header matching the `request_id` field. 
 ## Audit Events
 
 All tenant operations are logged with the following structure:
+
 ```json
 {
   "event_id": "1642248600123456789",
@@ -326,6 +352,7 @@ All tenant operations are logged with the following structure:
 ## Integration Examples
 
 ### Go Client
+
 ```go
 import "internal/multi-tenant-isolation"
 
@@ -358,6 +385,7 @@ queueKey := ns.QueueKey("my-queue") // "t:my-tenant:my-queue"
 ```
 
 ### HTTP Client
+
 ```bash
 # Create tenant
 curl -X POST http://localhost:8080/tenants \
@@ -398,6 +426,7 @@ curl -X POST http://localhost:8080/tenants/test-tenant/check-quota \
 ## Configuration
 
 Default configuration in `config.yaml`:
+
 ```yaml
 multi_tenant_isolation:
   enabled: true

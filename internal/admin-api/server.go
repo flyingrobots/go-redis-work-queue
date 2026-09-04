@@ -94,23 +94,23 @@ func (s *Server) SetupRoutes() http.Handler {
 	})
 
 	// API v1 endpoints
-    mux.HandleFunc("/api/v1/stats", methodHandler("GET", h.GetStats))
-    mux.HandleFunc("/api/v1/stats/keys", methodHandler("GET", h.GetStatsKeys))
-    // DLQ endpoints
-    mux.HandleFunc("/api/v1/dlq", methodHandler("GET", h.ListDLQ))
-    mux.HandleFunc("/api/v1/dlq/requeue", methodHandler("POST", h.RequeueDLQ))
-    mux.HandleFunc("/api/v1/dlq/purge", methodHandler("POST", h.PurgeDLQItems))
-    // Workers
-    mux.HandleFunc("/api/v1/workers", methodHandler("GET", h.GetWorkers))
+	mux.HandleFunc("/api/v1/stats", methodHandler("GET", h.GetStats))
+	mux.HandleFunc("/api/v1/stats/keys", methodHandler("GET", h.GetStatsKeys))
+	mux.HandleFunc("/api/v1/enqueue", methodHandler("POST", h.EnqueueJob))
+	// DLQ endpoints
+	mux.HandleFunc("/api/v1/dlq", methodHandler("GET", h.ListDLQ))
+	mux.HandleFunc("/api/v1/dlq/requeue", methodHandler("POST", h.RequeueDLQ))
+	mux.HandleFunc("/api/v1/dlq/purge", methodHandler("POST", h.PurgeDLQItems))
+	// Workers
+	mux.HandleFunc("/api/v1/workers", methodHandler("GET", h.GetWorkers))
 	mux.HandleFunc("/api/v1/queues/", func(w http.ResponseWriter, r *http.Request) {
-		// Route based on path suffix
 		path := r.URL.Path
 		switch {
-		case r.Method == "GET" && contains(path, "/peek"):
+		case r.Method == "GET" && isQueuePeekPath(path):
 			h.PeekQueue(w, r)
-		case r.Method == "DELETE" && contains(path, "/dlq"):
+		case r.Method == "DELETE" && path == "/api/v1/queues/dlq":
 			h.PurgeDLQ(w, r)
-		case r.Method == "DELETE" && contains(path, "/all"):
+		case r.Method == "DELETE" && path == "/api/v1/queues/all":
 			h.PurgeAll(w, r)
 		default:
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "Endpoint not found")
@@ -119,10 +119,10 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/v1/bench", methodHandler("POST", h.RunBenchmark))
 
 	// OpenAPI spec endpoint
-    mux.HandleFunc("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/x-yaml")
-        w.Write([]byte(openAPISpec))
-    })
+	mux.HandleFunc("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-yaml")
+		w.Write([]byte(openAPISpec))
+	})
 
 	return mux
 }
@@ -154,6 +154,9 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 
 	// Auth middleware
 	if s.cfg.RequireAuth {
+		if s.cfg.DenyByDefault {
+			handler = AuthorizationMiddleware(s.logger)(handler)
+		}
 		handler = AuthMiddleware(s.cfg.JWTSecret, s.cfg.DenyByDefault, s.logger)(handler)
 	}
 
@@ -171,6 +174,13 @@ func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
+func isQueuePeekPath(requestPath string) bool {
+	parts := strings.Split(requestPath, "/")
+	return len(parts) == 6 &&
+		parts[0] == "" &&
+		parts[1] == "api" &&
+		parts[2] == "v1" &&
+		parts[3] == "queues" &&
+		parts[4] != "" &&
+		parts[5] == "peek"
 }

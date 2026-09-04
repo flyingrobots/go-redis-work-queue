@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/obs"
 	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -24,20 +24,75 @@ type Worker struct {
 	log    *zap.Logger
 	cb     *breaker.CircuitBreaker
 	baseID string
+
+	handlerMu sync.RWMutex
+	handler   Handler
+	handlerCh chan struct{}
 }
 
+type delivery struct {
+	payload     string
+	sourceQueue string
+	ordered     *queue.OrderedDelivery
+	handler     Handler
+}
+
+var restoreUnorderedDeliveryScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('processing and source lists must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'list')
+if problem then return redis.error_reply(problem) end
+if redis.call('LREM', KEYS[1], 1, ARGV[1]) ~= 1 then
+  return 0
+end
+redis.call('RPUSH', KEYS[2], ARGV[1])
+return 1
+`)
+
+// ErrUnsettledDelivery reports that a consumer stopped because it could not
+// prove a claimed delivery was safely settled or restored.
+var ErrUnsettledDelivery = errors.New("claimed delivery remains unsettled")
+
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	cb := breaker.New(cfg.CircuitBreaker.Window, cfg.CircuitBreaker.CooldownPeriod, cfg.CircuitBreaker.FailureThreshold, cfg.CircuitBreaker.MinSamples)
 	host, _ := os.Hostname()
 	pid := os.Getpid()
 	now := time.Now().UnixNano()
 	randSfx := fmt.Sprintf("%04x", time.Now().UnixNano()&0xffff)
 	base := fmt.Sprintf("%s-%d-%d-%s", host, pid, now, randSfx)
-	return &Worker{cfg: cfg, rdb: rdb, log: log, cb: cb, baseID: base}
+	return &Worker{
+		cfg:       cfg,
+		rdb:       rdb,
+		log:       log,
+		cb:        cb,
+		baseID:    base,
+		handlerCh: make(chan struct{}),
+	}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
+	if w.selectedHandler() == nil {
+		return ErrHandlerRequired
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	var wg sync.WaitGroup
+	workerErr := make(chan error, 1)
 	for i := 0; i < w.cfg.Worker.Count; i++ {
 		wg.Add(1)
 		id := fmt.Sprintf("%s-%d", w.baseID, i)
@@ -45,7 +100,13 @@ func (w *Worker) Run(ctx context.Context) error {
 			defer wg.Done()
 			obs.WorkerActive.Inc()
 			defer obs.WorkerActive.Dec()
-			w.runOne(ctx, workerID)
+			if err := w.runOne(runCtx, workerID); err != nil {
+				select {
+				case workerErr <- err:
+				default:
+				}
+				cancel()
+			}
 		}(id)
 	}
 
@@ -55,7 +116,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-runCtx.Done():
 				return
 			case <-ticker.C:
 				switch w.cb.State() {
@@ -71,68 +132,111 @@ func (w *Worker) Run(ctx context.Context) error {
 	}()
 
 	wg.Wait()
-	return nil
+	select {
+	case err := <-workerErr:
+		return err
+	default:
+		return nil
+	}
 }
 
-func (w *Worker) runOne(ctx context.Context, workerID string) {
-	procList := fmt.Sprintf(w.cfg.Worker.ProcessingListPattern, workerID)
-	hbKey := fmt.Sprintf(w.cfg.Worker.HeartbeatKeyPattern, workerID)
+func (w *Worker) runOne(ctx context.Context, workerID string) error {
+	procList := queuekeys.Format(w.cfg.Worker.ProcessingListPattern, workerID)
+	hbKey := queuekeys.Format(w.cfg.Worker.HeartbeatKeyPattern, workerID)
+	preferUnordered := false
+	unorderedBurst := 0
 
 	for ctx.Err() == nil {
+		if _, err := w.waitForHandler(ctx); err != nil {
+			return nil
+		}
 		if !w.cb.Allow() {
 			time.Sleep(w.cfg.Worker.BreakerPause)
 			continue
 		}
 
-		// fetch by priority using BRPOPLPUSH with short timeout
-		var payload string
-		var srcQueue string
-		for _, p := range w.cfg.Worker.Priorities {
-			key := w.cfg.Worker.Queues[p]
-			if key == "" {
-				continue
-			}
-
-			// Start dequeue span
-			deqCtx, deqSpan := obs.StartDequeueSpan(ctx, key)
-
-			v, err := w.rdb.BRPopLPush(deqCtx, key, procList, w.cfg.Worker.BRPopLPushTimeout).Result()
-			if err == redis.Nil {
-				deqSpan.End()
-				continue
-			}
+		var next delivery
+		found := false
+		if preferUnordered && unorderedBurst < 32 {
+			var err error
+			next, found, err = w.dequeueUnordered(ctx, workerID, procList, hbKey, false)
 			if err != nil {
-				obs.RecordError(deqCtx, err)
-				deqSpan.End()
 				if ctx.Err() != nil {
-					return
+					return nil
+				}
+				if errors.Is(err, ErrUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
+					return err
+				}
+				w.log.Warn("RPOPLPUSH error", obs.Err(err))
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+			if found {
+				unorderedBurst++
+			}
+		}
+
+		if !found {
+			claimed, ok, err := w.claimOrdered(ctx, workerID, procList, hbKey)
+			unorderedBurst = 0
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				if errors.Is(err, ErrUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
+					return err
+				}
+				w.log.Warn("ordered claim error", obs.Err(err))
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+			if ok {
+				next = claimed
+				found = true
+				preferUnordered = true
+				unorderedBurst = 31
+			}
+		}
+
+		if !found {
+			var err error
+			next, found, err = w.dequeueUnordered(ctx, workerID, procList, hbKey, true)
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				if errors.Is(err, ErrUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
+					return err
 				}
 				w.log.Warn("BRPOPLPUSH error", obs.Err(err))
 				time.Sleep(50 * time.Millisecond)
 				continue
 			}
-
-			// Successfully dequeued
-			obs.SetSpanSuccess(deqCtx)
-			obs.AddEvent(deqCtx, "job_dequeued", obs.KeyValue("queue", key))
-			deqSpan.End()
-
-			payload = v
-			srcQueue = key
-			break
+			if found {
+				preferUnordered = true
+				if next.ordered != nil {
+					unorderedBurst = 31
+				} else {
+					unorderedBurst = 1
+				}
+			}
 		}
-		if payload == "" {
-			continue // timeout across all priorities
+		if !found {
+			continue
 		}
 
 		obs.JobsConsumed.Inc()
-		// heartbeat set
-		_ = w.rdb.Set(ctx, hbKey, payload, w.cfg.Worker.HeartbeatTTL).Err()
 
 		// measure state transition around Record() to count trips
 		start := time.Now()
 		// process job
-		ok := w.processJob(ctx, workerID, srcQueue, procList, hbKey, payload)
+		ok := w.processDelivery(ctx, workerID, procList, hbKey, next)
 		obs.JobProcessingDuration.Observe(time.Since(start).Seconds())
 		prev := w.cb.State()
 		w.cb.Record(ok)
@@ -140,16 +244,164 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 		if prev != curr && curr == breaker.Open {
 			obs.CircuitBreakerTrips.Inc()
 		}
+		if !ok {
+			processingCount, err := w.rdb.LLen(ctx, procList).Result()
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				w.log.Error("inspect processing list after failed transition", obs.Err(err))
+				return fmt.Errorf("%w: inspect processing list after failed transition: %w", ErrUnsettledDelivery, err)
+			}
+			if processingCount != 0 {
+				w.log.Warn("processing list remains occupied; stopping worker for reaper",
+					obs.String("worker_id", workerID),
+				)
+				return fmt.Errorf("%w: worker %s processing list remains occupied", ErrUnsettledDelivery, workerID)
+			}
+		}
 	}
+	return nil
+}
+
+func (w *Worker) claimOrdered(ctx context.Context, workerID, procList, hbKey string) (delivery, bool, error) {
+	claimed, ok, err := queue.ClaimOrdered(
+		ctx,
+		w.rdb,
+		w.cfg.OrderingLayout(),
+		procList,
+		hbKey,
+		workerID,
+		w.cfg.Worker.HeartbeatTTL,
+	)
+	if err != nil || !ok {
+		return delivery{}, false, err
+	}
+	handler := w.selectedHandler()
+	if handler == nil {
+		restored, restoreErr := queue.TransitionOrdered(
+			ctx,
+			w.rdb,
+			w.cfg.OrderingLayout(),
+			claimed,
+			procList,
+			hbKey,
+			workerID,
+			"",
+			claimed.Payload,
+			queue.OrderedRetry,
+		)
+		if restoreErr != nil {
+			return delivery{}, false, fmt.Errorf("%w: restore ordered job after handler removal: %w", ErrUnsettledDelivery, restoreErr)
+		}
+		if !restored {
+			return delivery{}, false, fmt.Errorf("%w: restore ordered job after handler removal: lease ownership changed", ErrUnsettledDelivery)
+		}
+		return delivery{}, false, nil
+	}
+	return delivery{payload: claimed.Payload, sourceQueue: claimed.QueueKey, ordered: &claimed, handler: handler}, true, nil
+}
+
+func (w *Worker) dequeueUnordered(ctx context.Context, workerID, procList, hbKey string, block bool) (delivery, bool, error) {
+	for _, priority := range w.cfg.Worker.Priorities {
+		key := w.cfg.Worker.Queues[priority]
+		if key == "" {
+			continue
+		}
+
+		deqCtx, deqSpan := obs.StartDequeueSpan(ctx, key)
+		var (
+			payload string
+			err     error
+		)
+		if block {
+			payload, err = w.rdb.BRPopLPush(deqCtx, key, procList, w.cfg.Worker.BRPopLPushTimeout).Result()
+		} else {
+			payload, err = w.rdb.RPopLPush(deqCtx, key, procList).Result()
+		}
+		if err == redis.Nil {
+			deqSpan.End()
+			if block {
+				claimed, ok, claimErr := w.claimOrdered(ctx, workerID, procList, hbKey)
+				if claimErr != nil || ok {
+					return claimed, ok, claimErr
+				}
+			}
+			continue
+		}
+		if err != nil {
+			obs.RecordError(deqCtx, err)
+			deqSpan.End()
+			return delivery{}, false, err
+		}
+		handler := w.selectedHandler()
+		if handler == nil {
+			restored, restoreErr := w.restoreUnorderedDelivery(deqCtx, procList, key, payload)
+			if restoreErr != nil {
+				obs.RecordError(deqCtx, restoreErr)
+				deqSpan.End()
+				return delivery{}, false, fmt.Errorf("%w: %w", ErrUnsettledDelivery, restoreErr)
+			}
+			deqSpan.End()
+			if !restored {
+				return delivery{}, false, fmt.Errorf("%w: restore job after handler removal changed ownership", ErrUnsettledDelivery)
+			}
+			return delivery{}, false, nil
+		}
+
+		obs.SetSpanSuccess(deqCtx)
+		obs.AddEvent(deqCtx, "job_dequeued", obs.KeyValue("queue", key))
+		deqSpan.End()
+		return delivery{payload: payload, sourceQueue: key, handler: handler}, true, nil
+	}
+	return delivery{}, false, nil
+}
+
+func (w *Worker) restoreUnorderedDelivery(ctx context.Context, processing, source, payload string) (bool, error) {
+	restored, err := restoreUnorderedDeliveryScript.Run(
+		ctx,
+		w.rdb,
+		[]string{processing, source},
+		payload,
+	).Int64()
+	if err != nil {
+		return false, fmt.Errorf("restore job after handler removal: %w", err)
+	}
+	return restored == 1, nil
 }
 
 func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, hbKey, payload string) bool {
+	return w.processDelivery(ctx, workerID, procList, hbKey, delivery{
+		payload:     payload,
+		sourceQueue: srcQueue,
+		handler:     w.selectedHandler(),
+	})
+}
+
+func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey string, next delivery) bool {
+	payload := next.payload
+	srcQueue := next.sourceQueue
 	job, err := queue.UnmarshalJob(payload)
 	if err != nil {
 		w.log.Error("invalid job payload", obs.Err(err))
-		// remove from processing to avoid poison pill loop
-		_ = w.rdb.LRem(ctx, procList, 1, payload).Err()
-		_ = w.rdb.Del(ctx, hbKey).Err()
+		if next.ordered != nil {
+			transitioned, transitionErr := queue.TransitionOrdered(ctx, w.rdb, w.cfg.OrderingLayout(), *next.ordered, procList, hbKey, workerID, "", "", queue.OrderedDiscard)
+			if transitionErr != nil {
+				w.log.Error("ordered malformed-job discard failed; leaving claim for reaper",
+					obs.String("ordering_digest", next.ordered.Digest),
+					obs.Err(transitionErr),
+				)
+				obs.RecordError(ctx, transitionErr)
+			} else if !transitioned {
+				w.log.Warn("ordered malformed-job discard lost lease; leaving claim for reaper",
+					obs.String("ordering_digest", next.ordered.Digest),
+				)
+			}
+		} else {
+			// remove from processing to avoid poison pill loop
+			_ = w.rdb.LRem(ctx, procList, 1, payload).Err()
+			_ = w.rdb.Del(ctx, hbKey).Err()
+		}
 		return false
 	}
 	// Start span with job's TraceID/SpanID when available
@@ -169,57 +421,102 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 		obs.KeyValue("worker.id", workerID),
 	)
 
-	// Simulated processing: sleep based on filesize with cancellable timer
-	dur := time.Duration(min64(job.FileSize/1024, 1000)) * time.Millisecond
-	canceled := false
-
-	processingStart := time.Now()
-
-	if dur > 0 {
-		timer := time.NewTimer(dur)
-		defer func() {
-			if !timer.Stop() {
-				<-timer.C
-			}
-		}()
-		select {
-		case <-ctx.Done():
-			canceled = true
-		case <-timer.C:
-		}
-	} else {
-		select {
-		case <-ctx.Done():
-			canceled = true
-		default:
-		}
+	if ctx.Err() != nil {
+		w.log.Info("job interrupted before handler; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
 	}
 
+	leaseKey := ""
+	if next.ordered != nil {
+		leaseKey = next.ordered.LeaseKey
+	}
+	handlerCtx, stopHeartbeat := w.maintainHeartbeat(ctx, hbKey, leaseKey, workerID)
+	defer stopHeartbeat()
+	if handlerCtx.Err() != nil {
+		w.log.Info("job interrupted before handler; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	}
+	processingStart := time.Now()
+	handlerErr := w.invokeHandler(handlerCtx, job, next.handler)
 	processingDuration := time.Since(processingStart)
 	obs.AddSpanAttributes(ctx, obs.KeyValue("processing.duration_ms", processingDuration.Milliseconds()))
 
-	// For demonstration, consider processing success unless canceled or filename contains "fail"
-	success := !canceled && !strings.Contains(strings.ToLower(job.FilePath), "fail")
+	if handlerCtx.Err() != nil {
+		obs.AddEvent(ctx, "job.processing.interrupted",
+			obs.KeyValue("job.id", job.ID),
+			obs.KeyValue("reason", handlerCtx.Err().Error()),
+		)
+		w.log.Info("job interrupted; leaving in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	}
 
-	if success {
-		// Mark span as successful
+	if handlerErr == nil {
+		stopHeartbeat()
+		if next.ordered != nil {
+			transitioned, transitionErr := queue.TransitionOrdered(
+				ctx,
+				w.rdb,
+				w.cfg.OrderingLayout(),
+				*next.ordered,
+				procList,
+				hbKey,
+				workerID,
+				w.cfg.Worker.CompletedList,
+				payload,
+				queue.OrderedComplete,
+			)
+			if transitionErr != nil {
+				w.log.Error("ordered completion failed", obs.Err(transitionErr))
+				obs.RecordError(ctx, transitionErr)
+				return false
+			}
+			if !transitioned {
+				w.log.Warn("ordered completion lost lease; leaving job for reaper",
+					obs.String("id", job.ID),
+					obs.String("worker_id", workerID),
+				)
+				return false
+			}
+		}
+		if next.ordered == nil {
+			// complete
+			if err := w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err(); err != nil {
+				w.log.Error("LPUSH completed failed", obs.Err(err))
+				obs.RecordError(ctx, err)
+				return false
+			}
+			removed, err := w.rdb.LRem(ctx, procList, 1, payload).Result()
+			if err != nil {
+				w.log.Error("LREM processing failed", obs.Err(err))
+				obs.RecordError(ctx, err)
+				return false
+			}
+			if removed != 1 {
+				w.log.Warn("completed job was not removed from processing",
+					obs.String("id", job.ID),
+					obs.String("worker_id", workerID),
+				)
+				return false
+			}
+			if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
+				w.log.Error("DEL heartbeat failed", obs.Err(err))
+			}
+		}
+		// Mark span as successful only after the durable completion transition.
 		obs.SetSpanSuccess(ctx)
 		obs.AddEvent(ctx, "job.processing.completed",
 			obs.KeyValue("job.id", job.ID),
 			obs.KeyValue("duration_ms", processingDuration.Milliseconds()),
 		)
-
-		// complete
-		if err := w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err(); err != nil {
-			w.log.Error("LPUSH completed failed", obs.Err(err))
-			obs.RecordError(ctx, err)
-		}
-		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
-			w.log.Error("LREM processing failed", obs.Err(err))
-		}
-		if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
-			w.log.Error("DEL heartbeat failed", obs.Err(err))
-		}
 		obs.JobsCompleted.Inc()
 		w.log.Info("job completed", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
 		return true
@@ -229,11 +526,8 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	obs.JobsFailed.Inc()
 
 	// Record failure in span
-	failureReason := "processing_failed"
-	if canceled {
-		failureReason = "canceled"
-	}
-	obs.RecordError(ctx, errors.New(failureReason))
+	failureReason := handlerErr.Error()
+	obs.RecordError(ctx, handlerErr)
 	obs.AddEvent(ctx, "job.processing.failed",
 		obs.KeyValue("job.id", job.ID),
 		obs.KeyValue("reason", failureReason),
@@ -243,23 +537,116 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 	job.Retries++
 	// backoff
 	bo := backoff(job.Retries, w.cfg.Worker.Backoff.Base, w.cfg.Worker.Backoff.Max)
+	timer := time.NewTimer(bo)
+	defer timer.Stop()
 	select {
-	case <-ctx.Done():
-	case <-time.After(bo):
+	case <-handlerCtx.Done():
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		w.log.Info("retry interrupted; leaving job in processing for reaper",
+			obs.String("id", job.ID),
+			obs.String("worker_id", workerID),
+		)
+		return false
+	case <-timer.C:
 	}
 
 	if job.Retries <= w.cfg.Worker.MaxRetries {
+		stopHeartbeat()
+		payload2, marshalErr := job.Marshal()
+		if marshalErr != nil {
+			w.log.Error("marshal retry failed", obs.Err(marshalErr))
+			return false
+		}
+		if next.ordered != nil {
+			transitioned, transitionErr := queue.TransitionOrdered(
+				ctx,
+				w.rdb,
+				w.cfg.OrderingLayout(),
+				*next.ordered,
+				procList,
+				hbKey,
+				workerID,
+				"",
+				payload2,
+				queue.OrderedRetry,
+			)
+			if transitionErr != nil {
+				w.log.Error("ordered retry failed", obs.Err(transitionErr))
+				obs.RecordError(ctx, transitionErr)
+				return false
+			}
+			if !transitioned {
+				w.log.Warn("ordered retry lost lease; leaving job for reaper",
+					obs.String("id", job.ID),
+					obs.String("worker_id", workerID),
+				)
+				return false
+			}
+		} else {
+			if err := w.rdb.LPush(ctx, srcQueue, payload2).Err(); err != nil {
+				w.log.Error("LPUSH retry failed", obs.Err(err))
+				obs.RecordError(ctx, err)
+				return false
+			}
+			if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
+				w.log.Error("LREM processing failed", obs.Err(err))
+			}
+			if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
+				w.log.Error("DEL heartbeat failed", obs.Err(err))
+			}
+		}
 		obs.JobsRetried.Inc()
 		obs.AddEvent(ctx, "job.retrying",
 			obs.KeyValue("job.id", job.ID),
 			obs.KeyValue("retry_count", job.Retries),
 			obs.KeyValue("backoff_ms", bo.Milliseconds()),
 		)
+		w.log.Warn("job retried", obs.String("id", job.ID), obs.Int("retries", job.Retries), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
+		return false
+	}
 
-		payload2, _ := job.Marshal()
-		if err := w.rdb.LPush(ctx, srcQueue, payload2).Err(); err != nil {
-			w.log.Error("LPUSH retry failed", obs.Err(err))
+	// dead letter
+	stopHeartbeat()
+	obs.AddEvent(ctx, "job.dead_lettered",
+		obs.KeyValue("job.id", job.ID),
+		obs.KeyValue("max_retries_exceeded", true),
+	)
+
+	if next.ordered != nil {
+		transitioned, transitionErr := queue.TransitionOrdered(
+			ctx,
+			w.rdb,
+			w.cfg.OrderingLayout(),
+			*next.ordered,
+			procList,
+			hbKey,
+			workerID,
+			w.cfg.Worker.DeadLetterList,
+			payload,
+			queue.OrderedDeadLetter,
+		)
+		if transitionErr != nil {
+			w.log.Error("ordered dead-letter failed", obs.Err(transitionErr))
+			obs.RecordError(ctx, transitionErr)
+			return false
+		}
+		if !transitioned {
+			w.log.Warn("ordered dead-letter lost lease; leaving job for reaper",
+				obs.String("id", job.ID),
+				obs.String("worker_id", workerID),
+			)
+			return false
+		}
+	} else {
+		if err := queue.AppendDeadLetter(ctx, w.rdb, w.cfg.Worker.DeadLetterList, payload); err != nil {
+			w.log.Error("append DLQ failed", obs.Err(err))
 			obs.RecordError(ctx, err)
+			return false
 		}
 		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 			w.log.Error("LREM processing failed", obs.Err(err))
@@ -267,25 +654,6 @@ func (w *Worker) processJob(ctx context.Context, workerID, srcQueue, procList, h
 		if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
 			w.log.Error("DEL heartbeat failed", obs.Err(err))
 		}
-		w.log.Warn("job retried", obs.String("id", job.ID), obs.Int("retries", job.Retries), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
-		return false
-	}
-
-	// dead letter
-	obs.AddEvent(ctx, "job.dead_lettered",
-		obs.KeyValue("job.id", job.ID),
-		obs.KeyValue("max_retries_exceeded", true),
-	)
-
-	if err := w.rdb.LPush(ctx, w.cfg.Worker.DeadLetterList, payload).Err(); err != nil {
-		w.log.Error("LPUSH DLQ failed", obs.Err(err))
-		obs.RecordError(ctx, err)
-	}
-	if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
-		w.log.Error("LREM processing failed", obs.Err(err))
-	}
-	if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
-		w.log.Error("DEL heartbeat failed", obs.Err(err))
 	}
 	obs.JobsDeadLetter.Inc()
 	w.log.Error("job dead-lettered", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))

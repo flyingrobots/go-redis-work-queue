@@ -13,14 +13,49 @@ import (
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/distributed-tracing-integration"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 )
 
 type StatsResult struct {
 	Queues          map[string]int64 `json:"queues"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists map[string]int64 `json:"processing_lists"`
 	Heartbeats      int64            `json:"heartbeats"`
 }
+
+var purgeDLQScript = redis.NewScript(`
+local function require_type(key, expected)
+  local type_reply = redis.call('TYPE', key)
+  local actual = type(type_reply) == 'table' and type_reply['ok'] or type_reply
+  if actual ~= 'none' and actual ~= expected then
+    return 'WRONGTYPE key ' .. key .. ' has type ' .. actual .. ', expected ' .. expected
+  end
+end
+
+if KEYS[1] == KEYS[2] then
+  return redis.error_reply('dead-letter list and generation key must differ')
+end
+local problem = require_type(KEYS[1], 'list')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[2], 'string')
+if problem then return redis.error_reply(problem) end
+local generation = redis.call('GET', KEYS[2])
+if not generation then generation = '0' end
+if not string.match(generation, '^%d+$') then
+  return redis.error_reply('invalid dead-letter generation')
+end
+if string.len(generation) > 1 and string.sub(generation, 1, 1) == '0' then
+  return redis.error_reply('invalid dead-letter generation')
+end
+if string.len(generation) > 19 or
+    (string.len(generation) == 19 and generation >= '9223372036854775807') then
+  return redis.error_reply('dead-letter generation exhausted')
+end
+redis.call('INCR', KEYS[2])
+return redis.call('DEL', KEYS[1])
+`)
 
 func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsResult, error) {
 	res := StatsResult{Queues: map[string]int64{}, ProcessingLists: map[string]int64{}}
@@ -38,16 +73,34 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 		}
 		res.Queues[name+"("+key+")"] = n
 	}
+	_, orderedPending, err := queue.OrderedQueueLengths(ctx, rdb, orderedQueuePattern(cfg))
+	if err != nil {
+		return res, err
+	}
+	res.OrderedPending = orderedPending
 	// Scan processing lists
 	var cursor uint64
+	processingPattern := processingKeyPattern(cfg)
+	processingKeys := map[string]struct{}{}
 	for {
-		keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:worker:*:processing", 200).Result()
+		keys, cur, err := rdb.Scan(ctx, cursor, processingScanPattern(cfg), 200).Result()
 		if err != nil {
 			return res, err
 		}
 		cursor = cur
 		for _, k := range keys {
-			n, _ := rdb.LLen(ctx, k).Result()
+			workerID, ok := queuekeys.Extract(processingPattern, k)
+			if !ok || !queuekeys.IsWorkerID(workerID) {
+				continue
+			}
+			if _, ok := processingKeys[k]; ok {
+				continue
+			}
+			n, err := rdb.LLen(ctx, k).Result()
+			if err != nil {
+				return res, err
+			}
+			processingKeys[k] = struct{}{}
 			res.ProcessingLists[k] = n
 		}
 		if cursor == 0 {
@@ -55,20 +108,26 @@ func Stats(ctx context.Context, cfg *config.Config, rdb *redis.Client) (StatsRes
 		}
 	}
 	// Heartbeats
-	var hbc int64
+	heartbeatPattern := heartbeatKeyPattern(cfg)
+	heartbeatKeys := map[string]struct{}{}
 	cursor = 0
 	for {
-		keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:processing:worker:*", 500).Result()
+		keys, cur, err := rdb.Scan(ctx, cursor, heartbeatScanPattern(cfg), 500).Result()
 		if err != nil {
 			return res, err
 		}
 		cursor = cur
-		hbc += int64(len(keys))
+		for _, key := range keys {
+			workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+			if ok && queuekeys.IsWorkerID(workerID) {
+				heartbeatKeys[key] = struct{}{}
+			}
+		}
 		if cursor == 0 {
 			break
 		}
 	}
-	res.Heartbeats = hbc
+	res.Heartbeats = int64(len(heartbeatKeys))
 	return res, nil
 }
 
@@ -97,7 +156,20 @@ func PurgeDLQ(ctx context.Context, cfg *config.Config, rdb *redis.Client) error 
 	if cfg.Worker.DeadLetterList == "" {
 		return errors.New("dead letter list not configured")
 	}
-	return rdb.Del(ctx, cfg.Worker.DeadLetterList).Err()
+	_, err := purgeDLQ(ctx, rdb, cfg.Worker.DeadLetterList)
+	return err
+}
+
+func purgeDLQ(ctx context.Context, rdb *redis.Client, deadLetterList string) (int64, error) {
+	deleted, err := purgeDLQScript.Run(
+		ctx,
+		rdb,
+		[]string{deadLetterList, queuekeys.DLQGenerationKey(deadLetterList)},
+	).Int64()
+	if err != nil {
+		return 0, fmt.Errorf("purge dead-letter list: %w", err)
+	}
+	return deleted, nil
 }
 
 func resolveQueue(cfg *config.Config, alias string) (string, error) {
@@ -112,7 +184,7 @@ func resolveQueue(cfg *config.Config, alias string) (string, error) {
 		return q, nil
 	}
 	// Otherwise, assume full key
-	if strings.HasPrefix(alias, "jobqueue:") {
+	if strings.HasPrefix(alias, queuekeys.Namespace) {
 		return alias, nil
 	}
 	// Suggest options
@@ -122,7 +194,7 @@ func resolveQueue(cfg *config.Config, alias string) (string, error) {
 	}
 	sort.Strings(keys)
 	b, _ := json.Marshal(keys)
-	return "", fmt.Errorf("unknown queue alias %q; known: %s, completed, dead_letter or full key starting with jobqueue:", alias, string(b))
+	return "", fmt.Errorf("unknown queue alias %q; known: %s, completed, dead_letter or full key starting with %s", alias, string(b), queuekeys.Namespace)
 }
 
 type BenchResult struct {
@@ -164,9 +236,8 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 			return res, ctx.Err()
 		case <-ticker.C:
 		}
-		payload := fmt.Sprintf(`{"id":"bench-%d","filepath":"/bench/%d","filesize":%d,"priority":"%s","retries":0,"creation_time":"%s","trace_id":"","span_id":""}`,
-			i, i, payloadSize, priority, time.Now().UTC().Format(time.RFC3339Nano))
-		if err := rdb.LPush(ctx, qkey, payload).Err(); err != nil {
+		job := queue.NewJob(fmt.Sprintf("bench-%d", i), fmt.Sprintf("/bench/%d", i), int64(payloadSize), priority, "", "")
+		if err := queue.EnqueueWithOrdering(ctx, rdb, qkey, job, cfg.Queue.MaxPayloadSize, cfg.OrderingLayout()); err != nil {
 			return res, err
 		}
 	}
@@ -210,6 +281,7 @@ func Bench(ctx context.Context, cfg *config.Config, rdb *redis.Client, priority 
 // KeysStats summarizes managed Redis keys and queue lengths.
 type KeysStats struct {
 	QueueLengths    map[string]int64 `json:"queue_lengths"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists int64            `json:"processing_lists"`
 	ProcessingItems int64            `json:"processing_items"`
 	Heartbeats      int64            `json:"heartbeats"`
@@ -221,12 +293,12 @@ type KeysStats struct {
 func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (KeysStats, error) {
 	out := KeysStats{QueueLengths: map[string]int64{}}
 	// Known queues
-	qset := map[string]string{
-		"high":        cfg.Worker.Queues["high"],
-		"low":         cfg.Worker.Queues["low"],
-		"completed":   cfg.Worker.CompletedList,
-		"dead_letter": cfg.Worker.DeadLetterList,
+	qset := make(map[string]string, len(cfg.Worker.Queues)+2)
+	for priority, key := range cfg.Worker.Queues {
+		qset[priority] = key
 	}
+	qset["completed"] = cfg.Worker.CompletedList
+	qset["dead_letter"] = cfg.Worker.DeadLetterList
 	for name, key := range qset {
 		if key == "" {
 			continue
@@ -237,17 +309,38 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 		}
 		out.QueueLengths[name+"("+key+")"] = n
 	}
+	orderedQueues, orderedPending, err := queue.OrderedQueueLengths(ctx, rdb, orderedQueuePattern(cfg))
+	if err != nil {
+		return out, err
+	}
+	out.OrderedPending = orderedPending
+	for key, length := range orderedQueues {
+		out.QueueLengths["ordered("+key+")"] = length
+	}
 	// Processing lists
 	var cursor uint64
+	processingPattern := processingKeyPattern(cfg)
+	processingKeys := map[string]struct{}{}
 	for {
-		keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:worker:*:processing", 500).Result()
+		keys, cur, err := rdb.Scan(ctx, cursor, processingScanPattern(cfg), 500).Result()
 		if err != nil {
 			return out, err
 		}
 		cursor = cur
-		out.ProcessingLists += int64(len(keys))
 		for _, k := range keys {
-			n, _ := rdb.LLen(ctx, k).Result()
+			workerID, ok := queuekeys.Extract(processingPattern, k)
+			if !ok || !queuekeys.IsWorkerID(workerID) {
+				continue
+			}
+			if _, ok := processingKeys[k]; ok {
+				continue
+			}
+			n, err := rdb.LLen(ctx, k).Result()
+			if err != nil {
+				return out, err
+			}
+			processingKeys[k] = struct{}{}
+			out.ProcessingLists++
 			out.ProcessingItems += n
 		}
 		if cursor == 0 {
@@ -255,18 +348,26 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 		}
 	}
 	// Heartbeats
+	heartbeatPattern := heartbeatKeyPattern(cfg)
+	heartbeatKeys := map[string]struct{}{}
 	cursor = 0
 	for {
-		keys, cur, err := rdb.Scan(ctx, cursor, "jobqueue:processing:worker:*", 1000).Result()
+		keys, cur, err := rdb.Scan(ctx, cursor, heartbeatScanPattern(cfg), 1000).Result()
 		if err != nil {
 			return out, err
 		}
 		cursor = cur
-		out.Heartbeats += int64(len(keys))
+		for _, key := range keys {
+			workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+			if ok && queuekeys.IsWorkerID(workerID) {
+				heartbeatKeys[key] = struct{}{}
+			}
+		}
 		if cursor == 0 {
 			break
 		}
 	}
+	out.Heartbeats = int64(len(heartbeatKeys))
 	// Rate limiter
 	if cfg.Producer.RateLimitKey != "" {
 		out.RateLimitKey = cfg.Producer.RateLimitKey
@@ -278,14 +379,29 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 }
 
 // PurgeAll deletes common test keys used by this system, including
-// priority queues, completed/dead_letter, rate limiter key, and
-// per-worker processing lists and heartbeats. Returns number of keys deleted.
+// priority queues, ordered queues/leases/claims, completed/dead_letter, rate
+// limiter key, and per-worker processing lists and heartbeats. Returns number
+// of keys deleted.
 func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
 	var deleted int64
+	dlqGenerationKey := ""
+	if cfg.Worker.DeadLetterList != "" {
+		dlqGenerationKey = queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+		dlqDeleted, err := purgeDLQ(ctx, rdb, cfg.Worker.DeadLetterList)
+		if err != nil {
+			return deleted, err
+		}
+		deleted += dlqDeleted
+	}
 	// Explicit keys
-	keys := []string{
-		cfg.Worker.Queues["high"], cfg.Worker.Queues["low"],
-		cfg.Worker.CompletedList, cfg.Worker.DeadLetterList,
+	keys := make([]string, 0, len(cfg.Worker.Queues)+6)
+	for _, key := range cfg.Worker.Queues {
+		keys = append(keys, key)
+	}
+	keys = append(keys, cfg.Worker.CompletedList)
+	keys = append(keys, cfg.Queue.OrderedReadyList, cfg.Queue.OrderedActiveSet)
+	if cfg.Queue.OrderedActiveSet != "" {
+		keys = append(keys, queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet))
 	}
 	if cfg.Producer.RateLimitKey != "" {
 		keys = append(keys, cfg.Producer.RateLimitKey)
@@ -294,7 +410,7 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 	uniq := map[string]struct{}{}
 	ek := make([]string, 0, len(keys))
 	for _, k := range keys {
-		if k == "" {
+		if k == "" || k == dlqGenerationKey {
 			continue
 		}
 		if _, ok := uniq[k]; ok {
@@ -310,19 +426,64 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 		}
 		deleted += n
 	}
-	// Patterns: processing lists and heartbeats
-	patterns := []string{
-		"jobqueue:worker:*:processing",
-		"jobqueue:processing:worker:*",
+	// Patterns: processing lists, heartbeats, and digest-shaped ordered state.
+	type purgePattern struct {
+		scan    string
+		include func(string) bool
 	}
-	for _, pat := range patterns {
+	processingPattern := processingKeyPattern(cfg)
+	heartbeatPattern := heartbeatKeyPattern(cfg)
+	patterns := []purgePattern{
+		{
+			scan: processingScanPattern(cfg),
+			include: func(key string) bool {
+				workerID, ok := queuekeys.Extract(processingPattern, key)
+				return ok && queuekeys.IsWorkerID(workerID)
+			},
+		},
+		{
+			scan: heartbeatScanPattern(cfg),
+			include: func(key string) bool {
+				workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+				return ok && queuekeys.IsWorkerID(workerID)
+			},
+		},
+	}
+	if cfg.Queue.OrderedQueuePattern != "" {
+		patterns = append(patterns, purgePattern{
+			scan: queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern),
+			include: func(key string) bool {
+				return queuekeys.MatchesOrderingDigest(cfg.Queue.OrderedQueuePattern, key)
+			},
+		})
+	}
+	if cfg.Queue.OrderedLeasePattern != "" {
+		patterns = append(patterns, purgePattern{
+			scan: queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern),
+			include: func(key string) bool {
+				return queuekeys.MatchesOrderingDigest(cfg.Queue.OrderedLeasePattern, key)
+			},
+		})
+	}
+	for _, pattern := range patterns {
 		var cursor uint64
 		for {
-			keys, cur, err := rdb.Scan(ctx, cursor, pat, 500).Result()
+			keys, cur, err := rdb.Scan(ctx, cursor, pattern.scan, 500).Result()
 			if err != nil {
 				return deleted, err
 			}
 			cursor = cur
+			matched := keys[:0]
+			for _, key := range keys {
+				if key == dlqGenerationKey {
+					continue
+				}
+				if !pattern.include(key) {
+					continue
+				}
+				matched = append(matched, key)
+			}
+			keys = matched
 			if len(keys) > 0 {
 				n, err := rdb.Del(ctx, keys...).Result()
 				if err != nil {
@@ -336,6 +497,35 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 		}
 	}
 	return deleted, nil
+}
+
+func processingKeyPattern(cfg *config.Config) string {
+	if cfg.Worker.ProcessingListPattern == "" {
+		return queuekeys.DefaultProcessingListPattern
+	}
+	return cfg.Worker.ProcessingListPattern
+}
+
+func heartbeatKeyPattern(cfg *config.Config) string {
+	if cfg.Worker.HeartbeatKeyPattern == "" {
+		return queuekeys.DefaultHeartbeatKeyPattern
+	}
+	return cfg.Worker.HeartbeatKeyPattern
+}
+
+func orderedQueuePattern(cfg *config.Config) string {
+	if cfg.Queue.OrderedQueuePattern == "" {
+		return queuekeys.DefaultOrderedQueuePattern
+	}
+	return cfg.Queue.OrderedQueuePattern
+}
+
+func processingScanPattern(cfg *config.Config) string {
+	return queuekeys.ScanPattern(processingKeyPattern(cfg))
+}
+
+func heartbeatScanPattern(cfg *config.Config) string {
+	return queuekeys.ScanPattern(heartbeatKeyPattern(cfg))
 }
 
 // PeekWithTracing enhances the standard Peek function with tracing information

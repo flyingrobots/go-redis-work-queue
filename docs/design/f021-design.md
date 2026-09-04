@@ -12,6 +12,7 @@
 The Producer Backpressure system transforms reactive failure handling into proactive flow control. Instead of systems failing catastrophically when overwhelmed, producers intelligently throttle themselves based on real-time queue health signals. This creates a self-regulating ecosystem where high-priority work flows smoothly while lower-priority tasks gracefully yield resources.
 
 The system provides:
+
 - **Real-time backpressure signals** through intelligent polling of queue metrics
 - **Priority-aware circuit breakers** that protect critical workflows while shedding non-essential work
 - **SDK helpers** that make adoption effortless for producers
@@ -218,6 +219,7 @@ type BackpressureController struct {
 ```
 
 **Key Responsibilities:**
+
 - Poll Admin API for queue health metrics with jittered intervals
 - Calculate throttle recommendations based on priority and queue state
 - Manage circuit breaker states per queue
@@ -342,15 +344,18 @@ type BackpressureMetrics struct {
 The Admin API provides backpressure-specific endpoints for queue health monitoring:
 
 **GET /api/v1/backpressure/stats**
+
 - Returns real-time queue health metrics
 - Includes backlog sizes, processing rates, and threshold states
 - Supports filtering by queue and priority
 
 **GET /api/v1/backpressure/thresholds**
+
 - Returns current threshold configuration
 - Allows per-queue and per-priority customization
 
 **POST /api/v1/backpressure/thresholds**
+
 - Updates threshold configuration
 - Validates threshold ordering and sanity checks
 - Triggers immediate threshold recalculation
@@ -358,6 +363,7 @@ The Admin API provides backpressure-specific endpoints for queue health monitori
 ### SDK Integration API
 
 **Core Interface:**
+
 ```go
 type BackpressureController interface {
     // Execute work with backpressure awareness
@@ -456,6 +462,7 @@ type CircuitBreakerState struct {
 ### Comprehensive Threat Analysis
 
 #### T1: Backpressure Signal Manipulation
+
 - **Risk Level**: Medium
 - **Description**: Malicious actors could manipulate queue metrics to cause inappropriate throttling, potentially creating denial of service conditions or allowing resource exhaustion
 - **Attack Vectors**:
@@ -471,6 +478,7 @@ type CircuitBreakerState struct {
   - Network-level protections (VPC, security groups)
 
 #### T2: Denial of Service via Circuit Breaking
+
 - **Risk Level**: High
 - **Description**: Attackers could trigger circuit breakers maliciously to deny legitimate traffic
 - **Attack Vectors**:
@@ -486,6 +494,7 @@ type CircuitBreakerState struct {
   - Graduated response system preventing immediate circuit opening
 
 #### T3: Information Disclosure
+
 - **Risk Level**: Medium
 - **Description**: Queue health metrics could reveal sensitive information about system capacity, usage patterns, and business operations
 - **Attack Vectors**:
@@ -501,6 +510,7 @@ type CircuitBreakerState struct {
   - Network segmentation for metrics infrastructure
 
 #### T4: Configuration Tampering
+
 - **Risk Level**: High
 - **Description**: Unauthorized changes to threshold configurations could disable protection mechanisms or create operational disruptions
 - **Attack Vectors**:
@@ -516,6 +526,7 @@ type CircuitBreakerState struct {
   - Automated validation of configuration changes
 
 #### T5: Timing Attacks
+
 - **Risk Level**: Low
 - **Description**: Attackers could use response timing to infer queue states and system load
 - **Attack Vectors**:
@@ -528,6 +539,7 @@ type CircuitBreakerState struct {
   - Rate limiting to prevent statistical analysis
 
 #### T6: Supply Chain Attacks
+
 - **Risk Level**: Medium
 - **Description**: Compromise of SDK or dependencies could inject malicious backpressure behavior
 - **Attack Vectors**:
@@ -597,6 +609,7 @@ type AuditConfig struct {
 ### Security Implementation Details
 
 #### Authentication & Authorization
+
 - **JWT Tokens**: Short-lived tokens (15-minute expiry) with refresh mechanism
 - **mTLS**: Mutual TLS for service-to-service communication
 - **API Keys**: For automated systems with proper rotation and scoping
@@ -604,18 +617,21 @@ type AuditConfig struct {
 - **Multi-Factor Authentication**: Required for administrative operations
 
 #### Data Protection
+
 - **TLS 1.3**: All communications encrypted with modern cipher suites
 - **Response Signing**: HMAC-SHA256 signatures prevent tampering
 - **Data Masking**: Sensitive metrics masked for non-privileged users
 - **Field-Level Encryption**: Critical configuration data encrypted at rest
 
 #### Audit and Monitoring
+
 - **Comprehensive Logging**: All API calls, configuration changes, and security events
 - **Tamper-Proof Logs**: Cryptographic integrity protection for audit trails
 - **Real-Time Alerting**: Immediate notification of security violations
 - **Anomaly Detection**: ML-based detection of unusual access patterns
 
 #### Incident Response
+
 - **Emergency Circuits**: Immediate circuit breaker controls for security incidents
 - **Killswitch**: Complete backpressure system shutdown capability
 - **Forensic Logging**: Enhanced logging during security incidents
@@ -624,12 +640,14 @@ type AuditConfig struct {
 ### Security Testing Strategy
 
 #### Penetration Testing
+
 - **API Security Testing**: Comprehensive testing of all endpoints
 - **Authentication Bypass**: Attempts to circumvent authentication
 - **Authorization Testing**: Privilege escalation and access control validation
 - **Input Validation**: Testing for injection attacks and malformed data
 
 #### Security Automation
+
 ```yaml
 security_tests:
   - name: "API Authentication Test"
@@ -656,12 +674,14 @@ security_tests:
 ### Compliance and Governance
 
 #### Regulatory Compliance
+
 - **SOC 2 Type II**: Security controls documentation and testing
 - **ISO 27001**: Information security management system compliance
 - **GDPR**: Data protection for EU-related queue metrics
 - **SOX**: Financial controls for payment-related queues
 
 #### Security Governance
+
 - **Security Review Board**: Regular review of security posture
 - **Threat Modeling Updates**: Quarterly threat model updates
 - **Security Metrics**: KPIs for security effectiveness
@@ -670,6 +690,7 @@ security_tests:
 ### Credential Management
 
 #### Credential Lifecycle
+
 - **Generation**: Cryptographically secure credential generation
 - **Distribution**: Secure, out-of-band credential distribution
 - **Rotation**: Automated 90-day rotation cycle with overlap period
@@ -677,6 +698,7 @@ security_tests:
 - **Monitoring**: Real-time monitoring of credential usage
 
 #### Storage and Protection
+
 - **Hardware Security Modules**: Critical keys stored in HSMs
 - **Vault Integration**: HashiCorp Vault for credential management
 - **Encryption at Rest**: All stored credentials encrypted
@@ -686,12 +708,14 @@ security_tests:
 ### Network Security
 
 #### Network Architecture
+
 - **Network Segmentation**: Isolated network segments for backpressure infrastructure
 - **VPC Security**: AWS VPC with security groups and NACLs
 - **DMZ Deployment**: Public-facing components in DMZ
 - **Internal Communication**: Private networks for internal component communication
 
 #### Traffic Protection
+
 - **DDoS Protection**: CloudFlare/AWS Shield for DDoS mitigation
 - **WAF Rules**: Web Application Firewall for API protection
 - **Rate Limiting**: Multiple layers of rate limiting
@@ -738,6 +762,7 @@ security_tests:
 ### Unit Testing
 
 **Throttle Calculation Testing:**
+
 ```go
 func TestThrottleCalculation(t *testing.T) {
     tests := []struct {
@@ -762,6 +787,7 @@ func TestThrottleCalculation(t *testing.T) {
 ```
 
 **Circuit Breaker State Machine Testing:**
+
 ```go
 func TestCircuitBreakerTransitions(t *testing.T) {
     cb := NewCircuitBreaker(defaultConfig)
@@ -782,6 +808,7 @@ func TestCircuitBreakerTransitions(t *testing.T) {
 ### Integration Testing
 
 **End-to-End Flow Testing:**
+
 ```go
 func TestBackpressureIntegration(t *testing.T) {
     // Setup test environment
@@ -806,6 +833,7 @@ func TestBackpressureIntegration(t *testing.T) {
 ### Load Testing
 
 **Performance Benchmarks:**
+
 ```go
 func BenchmarkThrottleDecision(b *testing.B) {
     bp := NewBackpressureController(mockAPI, defaultConfig)
@@ -827,6 +855,7 @@ func BenchmarkCircuitBreakerCheck(b *testing.B) {
 ```
 
 **Stress Testing Scenarios:**
+
 1. **API Unavailability**: Test behavior when Admin API is unreachable
 2. **High Failure Rates**: Validate circuit breaker protection
 3. **Rapid Configuration Changes**: Ensure thread safety
@@ -835,6 +864,7 @@ func BenchmarkCircuitBreakerCheck(b *testing.B) {
 ### Chaos Engineering
 
 **Failure Injection Tests:**
+
 - Random Admin API failures during polling
 - Network partitions between producer and queue system
 - Clock skew simulation for timing-dependent logic
@@ -845,21 +875,25 @@ func BenchmarkCircuitBreakerCheck(b *testing.B) {
 ### Phased Rollout Strategy
 
 **Phase 1: Core Infrastructure (Week 1-2)**
+
 - Deploy Admin API extensions for backpressure metrics
 - Implement basic threshold configuration
 - Set up monitoring and alerting infrastructure
 
 **Phase 2: SDK Development (Week 3-4)**
+
 - Implement Go SDK with basic throttling
 - Add circuit breaker functionality
 - Create comprehensive test suite
 
 **Phase 3: Pilot Deployment (Week 5-6)**
+
 - Deploy to staging environment
 - Enable for low-risk producer applications
 - Collect performance and reliability metrics
 
 **Phase 4: Production Rollout (Week 7-8)**
+
 - Gradual rollout to production producers
 - Monitor system behavior and tune thresholds
 - Full documentation and training materials
@@ -867,6 +901,7 @@ func BenchmarkCircuitBreakerCheck(b *testing.B) {
 ### Configuration Management
 
 **Default Configurations:**
+
 ```yaml
 backpressure:
   poll_interval: 5s
@@ -899,12 +934,14 @@ backpressure:
 ### Monitoring Setup
 
 **Essential Dashboards:**
+
 1. **System Health**: Circuit breaker states, queue backlogs, throttle rates
 2. **Producer Compliance**: Throttle compliance by application
 3. **Performance Impact**: Latency distributions, error rates
 4. **Capacity Planning**: Resource utilization, scaling recommendations
 
 **Critical Alerts:**
+
 1. Circuit breaker trips requiring immediate attention
 2. High job shed rates indicating capacity issues
 3. Admin API failures affecting backpressure decisions
@@ -913,12 +950,14 @@ backpressure:
 ### Rollback Procedures
 
 **Emergency Rollback Triggers:**
+
 - Cascade failures despite backpressure activation
 - Unacceptable latency impact on critical services
 - Producer compliance below acceptable thresholds
 - System instability or unexpected behavior
 
 **Rollback Process:**
+
 1. Disable backpressure system via feature flag
 2. Reset all circuit breakers to closed state
 3. Clear throttling queues and resume normal operation
@@ -932,16 +971,19 @@ backpressure:
 #### Latency Requirements
 
 **Throttle Decision Latency:**
+
 - Target: <1ms for throttle decision calculation
 - Maximum: <5ms under high load (99th percentile)
 - Caching: 30-second cache for recent decisions
 
 **API Response Times:**
+
 - Admin API polling: <100ms (95th percentile)
 - Health check endpoints: <10ms (99th percentile)
 - Configuration updates: <50ms (95th percentile)
 
 **End-to-End Producer Impact:**
+
 - Additional latency from backpressure: <10ms (median)
 - Maximum throttle delay: 5 seconds (configurable)
 - Circuit breaker decision: <1ms
@@ -949,16 +991,19 @@ backpressure:
 #### Throughput Requirements
 
 **API Capacity:**
+
 - Admin API: 1,000 requests/second per instance
 - Health checks: 10,000 requests/second per instance
 - Configuration reads: 5,000 requests/second per instance
 
 **Producer Support:**
+
 - Concurrent producers: 10,000+ per controller instance
 - Throttle decisions: 100,000+ per second per instance
 - Queue monitoring: 1,000+ queues per controller
 
 **Resource Efficiency:**
+
 - Memory usage: <100MB per 1,000 producers
 - CPU overhead: <2% of total system resources
 - Network bandwidth: <1MB/s for typical deployments
@@ -966,16 +1011,19 @@ backpressure:
 #### Scalability Targets
 
 **Horizontal Scaling:**
+
 - Multiple controller instances with consistent decisions
 - Load distribution across controller fleet
 - Graceful degradation with instance failures
 
 **Queue Scale:**
+
 - Support for 10,000+ queues per deployment
 - Independent threshold management per queue
 - Efficient polling strategies to minimize API load
 
 **Producer Scale:**
+
 - Linear scaling with producer count
 - Constant-time throttle decision complexity
 - Minimal memory growth with producer addition
@@ -985,6 +1033,7 @@ backpressure:
 #### Unit Testing
 
 **Core Algorithm Testing:**
+
 ```go
 func TestThrottleDecisionLogic(t *testing.T) {
     tests := []struct {
@@ -1031,6 +1080,7 @@ func TestCircuitBreakerStates(t *testing.T) {
 ```
 
 **Performance Unit Tests:**
+
 ```go
 func BenchmarkThrottleDecision(b *testing.B) {
     controller := NewBackpressureController(defaultConfig)
@@ -1063,6 +1113,7 @@ func TestMemoryUsage(t *testing.T) {
 #### Integration Testing
 
 **End-to-End Flow Testing:**
+
 ```go
 func TestBackpressureIntegration(t *testing.T) {
     // Set up test environment
@@ -1114,6 +1165,7 @@ func TestMultiProducerCoordination(t *testing.T) {
 #### Load Testing
 
 **High-Throughput Scenarios:**
+
 ```go
 func TestHighThroughputThrottling(t *testing.T) {
     controller := NewBackpressureController(testConfig)
@@ -1147,6 +1199,7 @@ func TestStressConditions(t *testing.T) {
 #### Chaos Testing
 
 **Failure Scenario Testing:**
+
 ```go
 func TestAdminAPIFailures(t *testing.T) {
     controller := NewBackpressureController(testConfig)
@@ -1192,6 +1245,7 @@ func TestNetworkPartitions(t *testing.T) {
 #### Performance Benchmarks
 
 **Latency Benchmarks:**
+
 ```bash
 # Throttle decision latency
 go test -bench=BenchmarkThrottleDecision -benchtime=10s
@@ -1204,6 +1258,7 @@ go test -bench=BenchmarkConcurrentAccess -cpu=1,2,4,8
 ```
 
 **Load Testing Scripts:**
+
 ```bash
 #!/bin/bash
 # Load test with varying producer counts
@@ -1224,16 +1279,19 @@ done
 #### Key Performance Indicators
 
 **Latency Metrics:**
+
 - `backpressure_throttle_decision_duration_seconds` - Time to calculate throttle
 - `backpressure_api_poll_duration_seconds` - Admin API polling latency
 - `backpressure_producer_overhead_duration_seconds` - Added latency per enqueue
 
 **Throughput Metrics:**
+
 - `backpressure_decisions_total` - Total throttle decisions per second
 - `backpressure_api_requests_total` - Admin API request rate
 - `backpressure_producer_requests_total` - Producer request handling rate
 
 **Resource Metrics:**
+
 - `backpressure_memory_usage_bytes` - Memory consumption
 - `backpressure_cpu_usage_percent` - CPU utilization
 - `backpressure_goroutines_count` - Active goroutine count
@@ -1274,6 +1332,7 @@ groups:
 The Producer Backpressure system represents a fundamental shift from reactive failure handling to proactive flow control. By providing real-time queue health signals, intelligent throttling, and priority-aware circuit breakers, this system transforms how applications handle load spikes and prevent cascade failures.
 
 The design emphasizes:
+
 - **Simplicity**: SDK helpers make adoption effortless
 - **Intelligence**: Priority-aware decisions protect critical workflows
 - **Reliability**: Circuit breakers prevent cascade failures

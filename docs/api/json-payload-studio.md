@@ -20,9 +20,11 @@ The JSON Payload Studio is a comprehensive in-TUI JSON editor for authoring, val
 ### Validation
 
 #### POST /api/json-studio/validate
+
 Validates JSON content with optional schema validation.
 
 **Request:**
+
 ```json
 {
   "content": "{ \"name\": \"test\" }",
@@ -32,6 +34,7 @@ Validates JSON content with optional schema validation.
 ```
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -52,9 +55,11 @@ Validates JSON content with optional schema validation.
 ### Formatting
 
 #### POST /api/json-studio/format
+
 Formats JSON content with proper indentation.
 
 **Request:**
+
 ```json
 {
   "content": "{\"name\":\"test\",\"value\":123}",
@@ -63,6 +68,7 @@ Formats JSON content with proper indentation.
 ```
 
 **Response:**
+
 ```json
 {
   "formatted": "{\n  \"name\": \"test\",\n  \"value\": 123\n}"
@@ -72,14 +78,17 @@ Formats JSON content with proper indentation.
 ### Templates
 
 #### GET /api/json-studio/templates
+
 Lists all available templates or searches with filters.
 
 **Query Parameters:**
+
 - `search`: Search query string
 - `categories`: Comma-separated category list
 - `tags`: Comma-separated tag list
 
 **Response:**
+
 ```json
 [
   {
@@ -97,9 +106,11 @@ Lists all available templates or searches with filters.
 ```
 
 #### POST /api/json-studio/templates
+
 Saves a new template or updates an existing one.
 
 **Request:**
+
 ```json
 {
   "id": "custom-template",
@@ -123,12 +134,15 @@ Saves a new template or updates an existing one.
 ```
 
 #### DELETE /api/json-studio/templates?id={template_id}
+
 Deletes a template by ID.
 
 #### POST /api/json-studio/templates/apply
+
 Applies a template with variable substitution.
 
 **Request:**
+
 ```json
 {
   "template_id": "job-template-1",
@@ -140,6 +154,7 @@ Applies a template with variable substitution.
 ```
 
 **Response:**
+
 ```json
 {
   "result": {
@@ -154,9 +169,11 @@ Applies a template with variable substitution.
 ### Sessions
 
 #### POST /api/json-studio/sessions
+
 Creates a new editing session.
 
 **Response:**
+
 ```json
 {
   "id": "session-123",
@@ -174,12 +191,15 @@ Creates a new editing session.
 ```
 
 #### GET /api/json-studio/sessions?id={session_id}
+
 Gets session information.
 
 #### PUT /api/json-studio/sessions?id={session_id}
+
 Updates session editor state.
 
 **Request:**
+
 ```json
 {
   "content": "{ \"updated\": true }",
@@ -190,14 +210,17 @@ Updates session editor state.
 ```
 
 #### DELETE /api/json-studio/sessions?id={session_id}
+
 Deletes a session.
 
 ### Job Enqueueing
 
 #### POST /api/json-studio/enqueue
+
 Enqueues a job with the current session's payload.
 
 **Request:**
+
 ```json
 {
   "session_id": "session-123",
@@ -218,6 +241,7 @@ Enqueues a job with the current session's payload.
 ```
 
 **Response:**
+
 ```json
 {
   "job_ids": ["job-456"],
@@ -233,9 +257,11 @@ Enqueues a job with the current session's payload.
 ### Auto-Completion
 
 #### POST /api/json-studio/completions
+
 Gets auto-completion suggestions for the current context.
 
 **Request:**
+
 ```json
 {
   "context": "{ \"na",
@@ -248,6 +274,7 @@ Gets auto-completion suggestions for the current context.
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -263,9 +290,11 @@ Gets auto-completion suggestions for the current context.
 ### Diff Comparison
 
 #### POST /api/json-studio/diff
+
 Compares two JSON payloads and returns differences.
 
 **Request:**
+
 ```json
 {
   "old": {
@@ -281,6 +310,7 @@ Compares two JSON payloads and returns differences.
 ```
 
 **Response:**
+
 ```json
 {
   "has_changes": true,
@@ -307,9 +337,11 @@ Compares two JSON payloads and returns differences.
 ### Snippets
 
 #### GET /api/json-studio/snippets
+
 Lists all available snippets.
 
 **Response:**
+
 ```json
 [
   {
@@ -324,9 +356,11 @@ Lists all available snippets.
 ```
 
 #### POST /api/json-studio/snippets
+
 Expands a snippet with variable substitution.
 
 **Request:**
+
 ```json
 {
   "trigger": "timestamp",
@@ -337,6 +371,7 @@ Expands a snippet with variable substitution.
 ```
 
 **Response:**
+
 ```json
 {
   "expanded": "2025-01-14T12:00:00Z"
@@ -346,9 +381,11 @@ Expands a snippet with variable substitution.
 ### History Management
 
 #### POST /api/json-studio/history
+
 Performs undo or redo operations.
 
 **Request:**
+
 ```json
 {
   "session_id": "session-123",
@@ -359,9 +396,11 @@ Performs undo or redo operations.
 ### Preview
 
 #### POST /api/json-studio/preview
+
 Generates a preview of JSON content.
 
 **Request:**
+
 ```json
 {
   "content": { ... },
@@ -371,6 +410,7 @@ Generates a preview of JSON content.
 ```
 
 **Response:**
+
 ```json
 {
   "content": { ... },
@@ -480,6 +520,7 @@ The studio automatically detects and strips sensitive information from payloads 
 ### Confirmation Prompts
 
 In non-test environments, the studio requires confirmation before:
+
 - Enqueuing jobs to production queues
 - Applying templates with sensitive variables
 - Bulk operations

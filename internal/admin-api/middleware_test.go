@@ -2,6 +2,7 @@
 package adminapi
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -12,8 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	anomalyradarslobudget "github.com/flyingrobots/go-redis-work-queue/internal/anomaly-radar-slo-budget"
+	"github.com/flyingrobots/go-redis-work-queue/internal/config"
 	"github.com/flyingrobots/go-redis-work-queue/internal/rbac-and-tokens"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -130,12 +134,142 @@ func TestAuthMiddlewareInjectsScopesForDownstreamHandlers(t *testing.T) {
 	}
 }
 
+func TestServerMiddlewareEnforcesEnqueuePermission(t *testing.T) {
+	const secret = "test-secret"
+	server := &Server{
+		cfg: &Config{
+			JWTSecret:     secret,
+			RequireAuth:   true,
+			DenyByDefault: true,
+		},
+		logger: zap.NewNop(),
+	}
+
+	requestsHandled := 0
+	handler := server.applyMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestsHandled++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	tests := []struct {
+		name       string
+		role       string
+		wantStatus int
+		wantCalled bool
+	}{
+		{
+			name:       "viewer cannot enqueue",
+			role:       string(rbacandtokens.RoleViewer),
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "operator can enqueue",
+			role:       string(rbacandtokens.RoleOperator),
+			wantStatus: http.StatusNoContent,
+			wantCalled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := requestsHandled
+			token := mustMakeToken(t, secret, []string{tt.role}, nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d: %s", w.Code, tt.wantStatus, w.Body.String())
+			}
+			called := requestsHandled != before
+			if called != tt.wantCalled {
+				t.Fatalf("downstream handler called = %v, want %v", called, tt.wantCalled)
+			}
+			if !tt.wantCalled {
+				var response ErrorResponse
+				if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+					t.Fatalf("decode denial response: %v", err)
+				}
+				if response.Code != "ACCESS_DENIED" {
+					t.Fatalf("error code = %q, want ACCESS_DENIED", response.Code)
+				}
+			}
+		})
+	}
+}
+
+func TestServerRejectsDeceptiveDestructiveQueuePaths(t *testing.T) {
+	const secret = "test-secret"
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	appCfg := config.Default()
+	apiCfg := DefaultConfig()
+	apiCfg.JWTSecret = secret
+	apiCfg.RateLimitEnabled = false
+	apiCfg.AuditEnabled = false
+	server := &Server{cfg: apiCfg, appCfg: appCfg, rdb: rdb, logger: zap.NewNop()}
+	handler := server.applyMiddleware(server.SetupRoutes())
+	viewerToken := mustMakeToken(t, secret, []string{string(rbacandtokens.RoleViewer)}, nil)
+
+	tests := []struct {
+		name string
+		path string
+		body PurgeRequest
+	}{
+		{
+			name: "embedded dlq suffix",
+			path: "/api/v1/queues/x/dlq",
+			body: PurgeRequest{Confirmation: apiCfg.DLQPhrase(), Reason: "test purge"},
+		},
+		{
+			name: "embedded all suffix",
+			path: "/api/v1/queues/x/all",
+			body: PurgeRequest{Confirmation: apiCfg.PurgeAllPhrase(), Reason: "test purge all queues"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := rdb.RPush(t.Context(), appCfg.Worker.DeadLetterList, "dead").Err(); err != nil {
+				t.Fatal(err)
+			}
+			if err := rdb.RPush(t.Context(), appCfg.Worker.Queues["low"], "queued").Err(); err != nil {
+				t.Fatal(err)
+			}
+			body, err := json.Marshal(tt.body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodDelete, tt.path, bytes.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+viewerToken)
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("status = %d, want 404 for unregistered path: %s", w.Code, w.Body.String())
+			}
+			if !mr.Exists(appCfg.Worker.DeadLetterList) || !mr.Exists(appCfg.Worker.Queues["low"]) {
+				t.Fatal("unregistered path reached a destructive queue handler")
+			}
+			mr.FlushAll()
+		})
+	}
+}
+
 func mustMakeScopedToken(t *testing.T, secret string, scopes []string) string {
+	return mustMakeToken(t, secret, []string{string(rbacandtokens.RoleAdmin)}, scopes)
+}
+
+func mustMakeToken(t *testing.T, secret string, roles, scopes []string) string {
 	t.Helper()
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
 	claims := map[string]interface{}{
 		"sub":    "test@example.com",
-		"roles":  []string{"admin"},
+		"roles":  roles,
 		"scopes": scopes,
 		"exp":    time.Now().Add(time.Hour).Unix(),
 		"iat":    time.Now().Unix(),
@@ -229,6 +363,7 @@ func TestIsDestructiveOperation(t *testing.T) {
 		destructive bool
 	}{
 		{"GET", "/api/v1/stats", false},
+		{"POST", "/api/v1/enqueue", true},
 		{"DELETE", "/api/v1/queues/dlq", true},
 		{"DELETE", "/api/v1/queues/all", true},
 		{"POST", "/api/v1/bench", true},
@@ -458,23 +593,21 @@ func TestMethodHandler(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
-	tests := []struct {
-		s        string
-		substr   string
-		expected bool
+func TestIsQueuePeekPath(t *testing.T) {
+	for _, tt := range []struct {
+		path string
+		want bool
 	}{
-		{"/api/v1/queues/dlq", "/dlq", true},
-		{"/api/v1/queues/all", "/all", true},
-		{"/api/v1/queues/high/peek", "/peek", true},
-		{"/api/v1/stats", "/dlq", false},
-		{"", "/test", false},
-	}
-
-	for _, tt := range tests {
-		result := contains(tt.s, tt.substr)
-		if result != tt.expected {
-			t.Errorf("contains(%q, %q) = %v, expected %v", tt.s, tt.substr, result, tt.expected)
+		{path: "/api/v1/queues/high/peek", want: true},
+		{path: "/api/v1/queues/dlq/peek", want: true},
+		{path: "/api/v1/queues//peek"},
+		{path: "/api/v1/queues/high/peek/extra"},
+		{path: "/api/v1/queues/x/dlq"},
+		{path: "/api/v1/stats"},
+		{path: ""},
+	} {
+		if got := isQueuePeekPath(tt.path); got != tt.want {
+			t.Errorf("isQueuePeekPath(%q) = %v, want %v", tt.path, got, tt.want)
 		}
 	}
 }

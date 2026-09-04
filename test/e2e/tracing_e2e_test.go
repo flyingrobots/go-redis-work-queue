@@ -1,6 +1,8 @@
 //go:build e2e_tests && integration
 // +build e2e_tests,integration
 
+// Gated because end-to-end scenarios require explicit services; un-gate individual files when default CI provisions their dependencies.
+
 // Copyright 2025 James Ross
 
 package e2e

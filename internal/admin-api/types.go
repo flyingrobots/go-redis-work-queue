@@ -11,6 +11,16 @@ type PeekRequest struct {
 	Count int `json:"count" validate:"min=1,max=100"`
 }
 
+// EnqueueRequest accepts arbitrary payload bytes as JSON base64. Priority may
+// be omitted to use the configured producer default.
+type EnqueueRequest struct {
+	ID            string `json:"id,omitempty"`
+	Payload       []byte `json:"payload,omitempty"`
+	PayloadSchema string `json:"payload_schema,omitempty"`
+	Priority      string `json:"priority,omitempty"`
+	OrderingKey   string `json:"ordering_key,omitempty"`
+}
+
 type BenchRequest struct {
 	Count       int    `json:"count" validate:"required,min=1,max=10000"`
 	Priority    string `json:"priority" validate:"required,oneof=high low"`
@@ -42,6 +52,7 @@ type SuccessResponse struct {
 
 type StatsResponse struct {
 	Queues          map[string]int64 `json:"queues"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists map[string]int64 `json:"processing_lists"`
 	Heartbeats      int64            `json:"heartbeats"`
 	Timestamp       time.Time        `json:"timestamp"`
@@ -49,6 +60,7 @@ type StatsResponse struct {
 
 type StatsKeysResponse struct {
 	QueueLengths    map[string]int64 `json:"queue_lengths"`
+	OrderedPending  int64            `json:"ordered_pending"`
 	ProcessingLists int64            `json:"processing_lists"`
 	ProcessingItems int64            `json:"processing_items"`
 	Heartbeats      int64            `json:"heartbeats"`
@@ -61,6 +73,11 @@ type PeekResponse struct {
 	Queue     string    `json:"queue"`
 	Items     []string  `json:"items"`
 	Count     int       `json:"count"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type EnqueueResponse struct {
+	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
@@ -82,6 +99,7 @@ type PurgeResponse struct {
 
 // DLQ types
 type DLQItem struct {
+	Handle    string    `json:"handle"`
 	ID        string    `json:"id"`
 	Queue     string    `json:"queue,omitempty"`
 	Payload   string    `json:"payload"`
@@ -100,7 +118,7 @@ type DLQListResponse struct {
 
 type DLQRequeueRequest struct {
 	Namespace string   `json:"ns"`
-	IDs       []string `json:"ids"`
+	Handles   []string `json:"handles"`
 	DestQueue string   `json:"dest_queue,omitempty"`
 }
 
@@ -111,7 +129,7 @@ type DLQRequeueResponse struct {
 
 type DLQPurgeSelectionRequest struct {
 	Namespace string   `json:"ns"`
-	IDs       []string `json:"ids"`
+	Handles   []string `json:"handles"`
 }
 
 type DLQPurgeSelectionResponse struct {

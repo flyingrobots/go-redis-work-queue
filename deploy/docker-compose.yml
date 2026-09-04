@@ -15,7 +15,7 @@ services:
     build: ..
     depends_on:
       - redis
-    command: ["/job-queue-system", "--role=all", "--config=/config/config.yaml"]
+    command: ["/job-queue-system", "--role=all", "--bench-worker", "--config=/config/config.yaml"]
     volumes:
       - ../config:/config:ro
       - ./deploy/data:/data
@@ -26,7 +26,7 @@ services:
     build: ..
     depends_on:
       - redis
-    command: ["/job-queue-system", "--role=worker", "--config=/config/config.yaml"]
+    command: ["/job-queue-system", "--role=worker", "--bench-worker", "--config=/config/config.yaml"]
     volumes:
       - ../config:/config:ro
 

@@ -1,4 +1,5 @@
 # Visual DAG Builder Design
+
 ## Feature ID: F003
 
 ## Executive Summary
@@ -6,6 +7,7 @@
 This document outlines the design for a terminal-native visual DAG (Directed Acyclic Graph) builder integrated into the go-redis-work-queue system. The feature enables users to visually design, validate, and execute complex multi-step workflows with dependencies, retries, and compensation strategies through an intuitive TUI interface. This transforms the work queue from a simple job processor into a sophisticated workflow orchestration platform.
 
 ### Key Benefits
+
 - Visual workflow design without leaving the terminal
 - Real-time workflow validation and execution monitoring
 - Built-in retry, backoff, and compensation mechanisms
@@ -717,7 +719,7 @@ transaction_mode: compensate_on_failure
 
 ### B. TUI Mockups
 
-```
+```text
 ┌─ Workflow Designer ─────────────────────────────────────────┐
 │ ┌─ Canvas ─────────────────────────┐ ┌─ Properties ────────┐│
 │ │                                   │ │ Node: transform     ││

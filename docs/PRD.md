@@ -26,7 +26,8 @@ A single, multi-role Go binary that implements a robust file-processing job queu
 
 ## User Stories
 
-- As an operator, I can run the same binary in producer, worker, or all-in-one mode using a flag.
+- As an operator, I can run producers and explicit benchmark workers from the binary.
+- As an application developer, I can register a required handler through the public Go worker package.
 - As a developer, I can configure the system via a YAML file and environment overrides.
 - As an SRE, I can observe queue depth, processing latency, throughput, failures, retries, and circuit breaker state via Prometheus.
 - As a platform engineer, I can deploy the service with Docker/Kubernetes easily.
@@ -34,8 +35,9 @@ A single, multi-role Go binary that implements a robust file-processing job queu
 ## Roles and Execution Modes
 
 - `role=producer`: scans a directory and enqueues jobs with priority, rate-limited via Redis.
-- `role=worker`: runs N worker goroutines consuming jobs by priority, with processing lists and heartbeats.
-- `role=all`: runs both producer and worker in one process for development or small deployments.
+- `role=worker --bench-worker`: explicitly runs N legacy benchmark handlers with processing lists and heartbeats.
+- `role=all --bench-worker`: explicitly runs the producer and legacy benchmark handler together for development measurements.
+- `pkg/queueworker`: runs application handlers; construction rejects nil handlers before queue consumption.
 - `role=admin`: provides operational commands: `stats` (print queue/processing/heartbeat counts), `peek` (inspect queue tail items), and `purge-dlq` (clear dead-letter queue with `--yes`).
 
 ## Configuration
@@ -141,7 +143,7 @@ Job payload JSON:
 ### Processing
 
 - Create a span (if tracing enabled) using job trace/span IDs when present; log with IDs.
-- Execute user-defined processing (stub initially: simulate processing with duration proportional to filesize; placeholder to plug real logic).
+- Execute the required user-defined handler. The duration-by-filesize simulator is available only through explicit benchmark opt-in.
 - On success: `LPUSH completed_list job JSON; LREM processing_list 1 job; DEL heartbeat key`.
 - On failure: increment Retries in payload; exponential backoff; `if retries <= max_retries LPUSH` back to original priority queue; else `LPUSH dead_letter_list`; in both cases `LREM` from `processing_list` and `DEL heartbeat`.
 
@@ -167,6 +169,7 @@ Job payload JSON:
   - Histogram: `job_processing_duration_seconds`
   - Gauges: queue depth reporting honours `metrics.allowed_queues` configuration. Only queues listed there are exported verbatim; all others are hashed into stable buckets (`queue_hash` labels) or aggregated under `queue="other"` to cap cardinality. Additional gauges: `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`).
   - Default configuration:
+
     ```yaml
     metrics:
       allowed_queues:
@@ -176,13 +179,14 @@ Job payload JSON:
       fallback_strategy: hash  # hash|bucket|other
       fallback_bucket_count: 8
     ```
+
     Operators may expand `allowed_queues` as needed; remaining queues follow the selected fallback strategy to maintain bounded label sets.
 - Logging (zap): structured, includes `trace_id`/`span_id` when present
 - Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process. Job `trace_id`/`span_id` are propagated as remote parent when present.
 
 ## CLI
 
-- `--role=producer|worker|all`
+- `--role=producer|worker|all` (`worker` and `all` require explicit `--bench-worker` in the repository binary)
 - `--config=path/to/config.yaml`
 - `--version`
 

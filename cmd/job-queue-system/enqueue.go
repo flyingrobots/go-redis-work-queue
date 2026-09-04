@@ -1,0 +1,124 @@
+// Copyright 2026 James Ross
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/internal/redisclient"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queueclient"
+)
+
+func runEnqueue(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("enqueue", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var configPath string
+	var payloadFile string
+	var schema string
+	var priority string
+	var orderingKey string
+	var id string
+	fs.StringVar(&configPath, "config", "config/config.yaml", "path to YAML config")
+	fs.StringVar(&payloadFile, "payload-file", "-", "payload file, or - for stdin")
+	fs.StringVar(&schema, "schema", "", "caller-owned payload schema or version")
+	fs.StringVar(&priority, "priority", "", "configured queue priority (defaults from config)")
+	fs.StringVar(&orderingKey, "ordering-key", "", "per-key FIFO identity (empty keeps ordinary priority behavior)")
+	fs.StringVar(&id, "id", "", "caller-owned job ID (duplicates are separate deliveries)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("unexpected positional arguments: %v", fs.Args())
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+	payload, err := readPayload(payloadFile, stdin, cfg.Queue.MaxPayloadSize)
+	if err != nil {
+		return err
+	}
+
+	client, err := queueclient.New(redisclient.Options(cfg), publicClientConfig(cfg))
+	if err != nil {
+		return fmt.Errorf("create queue client: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	jobID, err := client.Enqueue(context.Background(), queueclient.Job{
+		ID:            id,
+		Payload:       payload,
+		PayloadSchema: schema,
+		OrderingKey:   orderingKey,
+		Priority:      priority,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(stdout, jobID); err != nil {
+		return fmt.Errorf("print job ID: %w", err)
+	}
+	return nil
+}
+
+func readPayload(path string, stdin io.Reader, maxPayloadSize int) ([]byte, error) {
+	if path == "" || path == "-" {
+		payload, err := readPayloadAtMost(stdin, maxPayloadSize)
+		if err != nil {
+			return nil, fmt.Errorf("read payload from stdin: %w", err)
+		}
+		return payload, nil
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("read payload file %q: %w", path, err)
+	}
+	defer func() { _ = file.Close() }()
+	payload, err := readPayloadAtMost(file, maxPayloadSize)
+	if err != nil {
+		return nil, fmt.Errorf("read payload file %q: %w", path, err)
+	}
+	return payload, nil
+}
+
+func readPayloadAtMost(reader io.Reader, maxPayloadSize int) ([]byte, error) {
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = queueclient.DefaultMaxPayloadSize
+	}
+	readLimit := int64(maxPayloadSize)
+	if maxPayloadSize < int(^uint(0)>>1) {
+		readLimit++
+	}
+	payload, err := io.ReadAll(io.LimitReader(reader, readLimit))
+	if err != nil {
+		return nil, err
+	}
+	if len(payload) > maxPayloadSize {
+		return nil, &queueclient.PayloadTooLargeError{
+			Size:  len(payload),
+			Limit: maxPayloadSize,
+		}
+	}
+	return payload, nil
+}
+
+func publicClientConfig(cfg *config.Config) queueclient.Config {
+	return queueclient.Config{
+		Queues:                cfg.Worker.Queues,
+		DefaultPriority:       cfg.Producer.DefaultPriority,
+		ProcessingListPattern: cfg.Worker.ProcessingListPattern,
+		HeartbeatKeyPattern:   cfg.Worker.HeartbeatKeyPattern,
+		CompletedList:         cfg.Worker.CompletedList,
+		DeadLetterList:        cfg.Worker.DeadLetterList,
+		MaxPayloadSize:        cfg.Queue.MaxPayloadSize,
+		OrderedReadyList:      cfg.Queue.OrderedReadyList,
+		OrderedActiveSet:      cfg.Queue.OrderedActiveSet,
+		OrderedQueuePattern:   cfg.Queue.OrderedQueuePattern,
+		OrderedLeasePattern:   cfg.Queue.OrderedLeasePattern,
+	}
+}

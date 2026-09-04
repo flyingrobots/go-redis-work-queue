@@ -468,6 +468,7 @@ generator.StartPattern(chaosPattern, &guardrails)
 ### Rate Limiting
 
 The generator uses a token bucket algorithm for precise rate limiting:
+
 - Tokens refill at the specified rate
 - Burst capacity equals rate × window
 - Smooth traffic generation without spikes

@@ -5,6 +5,7 @@
 The Anomaly Radar + SLO Budget feature transforms the job queue system into a comprehensive SRE platform by providing real-time Service Level Objective (SLO) monitoring, error budget tracking, and intelligent burn rate alerts. This compact yet powerful widget displays critical operational metrics including backlog growth, error rates, and percentile latencies with intelligent threshold-based colorization and proactive alerting.
 
 ### Key Benefits
+
 - **SRE-Grade Monitoring**: Google SRE practices integrated into terminal UI
 - **Proactive Alerting**: Burn rate acceleration detection prevents budget exhaustion
 - **Cost-Effective**: Enterprise SLO monitoring without DataDog/PagerDuty costs
@@ -12,7 +13,9 @@ The Anomaly Radar + SLO Budget feature transforms the job queue system into a co
 - **Production Ready**: Battle-tested algorithms for reliable threshold management
 
 ### Scope
+
 This design covers the complete SLO monitoring and anomaly detection system including:
+
 - Rolling window metrics calculation with configurable sampling
 - SLO target configuration and error budget management
 - Burn rate calculation and acceleration alerts
@@ -180,7 +183,7 @@ graph TD
 
 The SLO widget integrates seamlessly into the main TUI dashboard as a compact status panel:
 
-```
+```text
 ┌─ SLO Budget & Anomaly Radar ────────────────────────────────────────────────────┐
 │                                                                                  │
 │ 🎯 Reliability SLO          📊 Current Period (24h)         ⚡ Burn Rate       │
@@ -199,6 +202,7 @@ The SLO widget integrates seamlessly into the main TUI dashboard as a compact st
 ```
 
 **Color Coding:**
+
 - ✅ **Green**: Within SLO targets, healthy burn rate
 - ⚠️ **Yellow**: Approaching thresholds, moderate burn rate
 - ❌ **Red**: SLO violation or critical burn rate
@@ -208,7 +212,7 @@ The SLO widget integrates seamlessly into the main TUI dashboard as a compact st
 
 For narrow terminals (≤80 columns), the widget adapts to a condensed layout:
 
-```
+```text
 ┌─ SLO Monitor ──────────────────────────────────────────┐
 │ 🎯 99.9% SLO  📊 99.87% ⚠️   ⚡ 2.3x ⚠️   ⏰ 3.7d     │
 │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 87%        │
@@ -572,6 +576,7 @@ graph LR
 ### Unit Testing
 
 #### 1. Rolling Window Tests
+
 ```go
 func TestRollingWindow_AccuracyUnderLoad(t *testing.T) {
     window := NewRollingWindow(time.Minute, time.Second)
@@ -604,6 +609,7 @@ func TestSLOCalculation_BurnRateAccuracy(t *testing.T) {
 ```
 
 #### 2. Threshold Logic Tests
+
 ```go
 func TestThresholdColorization(t *testing.T) {
     tests := []struct {
@@ -628,6 +634,7 @@ func TestThresholdColorization(t *testing.T) {
 ### Integration Testing
 
 #### 1. End-to-End Workflow
+
 ```go
 func TestSLOMonitor_FullWorkflow(t *testing.T) {
     // Setup test environment
@@ -657,6 +664,7 @@ func TestSLOMonitor_FullWorkflow(t *testing.T) {
 ```
 
 #### 2. Performance Testing
+
 ```go
 func TestSLOMonitor_PerformanceUnderLoad(t *testing.T) {
     monitor := NewSLOMonitor(testConfig, setupTestRedis(t))
@@ -683,12 +691,14 @@ func TestSLOMonitor_PerformanceUnderLoad(t *testing.T) {
 ### Manual Testing Scenarios
 
 #### 1. Alert Validation
+
 - **Normal Operations**: Verify green status during healthy periods
 - **Degraded Performance**: Confirm yellow warnings during elevated error rates
 - **SLO Breach**: Test red alerts when SLO targets are missed
 - **Burn Rate Spikes**: Validate immediate alerts on accelerated budget consumption
 
 #### 2. TUI Interaction Testing
+
 - **Color Transitions**: Manual verification of threshold-based colorization
 - **Real-time Updates**: Confirm 1-second refresh cycles
 - **Keyboard Commands**: Test reset, tune, and acknowledge functions
@@ -697,30 +707,35 @@ func TestSLOMonitor_PerformanceUnderLoad(t *testing.T) {
 ## Implementation Roadmap
 
 ### Phase 1: Core Metrics Collection (Week 1)
+
 - [ ] Implement rolling window data structures
 - [ ] Create statistical sampling system
 - [ ] Build basic SLO calculation engine
 - [ ] Add unit tests for mathematical accuracy
 
 ### Phase 2: SLO Configuration and Budget Tracking (Week 1-2)
+
 - [ ] Design SLO configuration schema
 - [ ] Implement error budget calculations
 - [ ] Create burn rate monitoring
 - [ ] Add configuration validation and defaults
 
 ### Phase 3: TUI Widget Integration (Week 2)
+
 - [ ] Build SLO display widget
 - [ ] Implement threshold-based colorization
 - [ ] Add real-time update system
 - [ ] Create responsive layout for different screen sizes
 
 ### Phase 4: Alerting and Notifications (Week 2-3)
+
 - [ ] Implement burn rate alert engine
 - [ ] Add threshold crossing detection
 - [ ] Create alert acknowledgment system
 - [ ] Integrate with external notification systems
 
 ### Phase 5: Testing and Optimization (Week 3)
+
 - [ ] Performance testing under high load
 - [ ] Memory usage optimization
 - [ ] TUI interaction validation
@@ -1119,18 +1134,21 @@ alerting_rules:
 ## Future Enhancements
 
 ### Advanced Analytics
+
 - **Anomaly Detection**: Machine learning models for pattern recognition using seasonal decomposition and outlier detection
 - **Predictive Alerting**: Forecast SLO violations before they occur using ARIMA time series analysis
 - **Capacity Planning**: Trend analysis for infrastructure scaling with growth projections
 - **Root Cause Analysis**: Automated correlation with deployment events, traffic patterns, and external dependencies
 
 ### Integration Expansions
+
 - **Multi-Service SLOs**: Cross-service dependency tracking with cascade failure detection
 - **Custom SLI Definitions**: User-defined service level indicators beyond latency and availability
 - **External Data Sources**: Metrics from APM tools (DataDog, New Relic), cloud providers (AWS CloudWatch), and custom endpoints
 - **Incident Response**: Integration with PagerDuty, Slack, ITSM tools, and automated runbook execution
 
 ### Enterprise Features
+
 - **Multi-Tenancy**: SLO isolation for different teams/services with hierarchical budget allocation
 - **Advanced RBAC**: Fine-grained permissions with attribute-based access control and audit trails
 - **Historical Analysis**: Long-term trend analysis and reporting with data warehouse integration
@@ -1149,14 +1167,16 @@ dependencies:
     - monitoring_system
     - alerting_infrastructure
 enables:
-  - sre_operations
-  - incident_detection
-  - slo_management
-  - proactive_monitoring
+
+- sre_operations
+- incident_detection
+- slo_management
+- proactive_monitoring
 provides:
-  - anomaly_detection
-  - slo_tracking
-  - burn_rate_alerts
-  - threshold_monitoring
-  - real_time_dashboard
+- anomaly_detection
+- slo_tracking
+- burn_rate_alerts
+- threshold_monitoring
+- real_time_dashboard
+
 ---

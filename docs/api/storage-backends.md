@@ -62,6 +62,7 @@ type BackendCapabilities struct {
 The default backend using Redis Lists for backward compatibility.
 
 **Capabilities:**
+
 - ✅ Transactions (via Lua scripts)
 - ✅ Persistence
 - ✅ Clustering (with key tagging)
@@ -71,6 +72,7 @@ The default backend using Redis Lists for backward compatibility.
 - ❌ Replay
 
 **Configuration:**
+
 ```go
 config := RedisListsConfig{
     URL:              "redis://localhost:6379/0",
@@ -91,6 +93,7 @@ config := RedisListsConfig{
 ```
 
 **Use Cases:**
+
 - Simple job queues
 - Backward compatibility
 - Environments requiring minimal Redis features
@@ -100,6 +103,7 @@ config := RedisListsConfig{
 Advanced backend using Redis Streams for consumer groups and replay capabilities.
 
 **Capabilities:**
+
 - ✅ Atomic acknowledgment (XACK)
 - ✅ Consumer groups (XGROUP)
 - ✅ Replay (historical XREAD)
@@ -112,6 +116,7 @@ Advanced backend using Redis Streams for consumer groups and replay capabilities
 - ❌ Prioritization
 
 **Configuration:**
+
 ```go
 config := RedisStreamsConfig{
     URL:              "redis://localhost:6379/0",
@@ -138,6 +143,7 @@ config := RedisStreamsConfig{
 ```
 
 **Use Cases:**
+
 - Analytics and audit queues requiring replay
 - Multi-consumer scenarios
 - High-reliability job processing

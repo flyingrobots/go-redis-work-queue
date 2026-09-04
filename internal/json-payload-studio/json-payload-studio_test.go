@@ -1,6 +1,8 @@
 //go:build json_payload_studio_tests
 // +build json_payload_studio_tests
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 package jsonpayloadstudio
 
 import (

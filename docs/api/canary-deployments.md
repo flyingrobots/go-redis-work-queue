@@ -6,7 +6,7 @@ The Canary Deployments API provides comprehensive functionality for safely rolli
 
 ## Base URL
 
-```
+```text
 https://api.example.com/api/v1/canary
 ```
 
@@ -63,6 +63,7 @@ GET /deployments
 Retrieves all canary deployments with their current status.
 
 **Response:**
+
 ```json
 {
   "deployments": [
@@ -100,6 +101,7 @@ POST /deployments
 Creates a new canary deployment with specified configuration.
 
 **Request Body:**
+
 ```json
 {
   "queue_name": "payment-processing",
@@ -118,6 +120,7 @@ Creates a new canary deployment with specified configuration.
 ```
 
 **Parameters:**
+
 - `queue_name` (string, required): Target queue for canary deployment
 - `tenant_id` (string, optional): Tenant identifier for multi-tenant setups
 - `stable_version` (string, required): Current stable version identifier
@@ -141,6 +144,7 @@ GET /deployments/{id}
 Retrieves detailed information about a specific deployment.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:** Returns the deployment object with current metrics and status.
@@ -154,9 +158,11 @@ PUT /deployments/{id}/percentage
 Updates the traffic split percentage for a canary deployment.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Request Body:**
+
 ```json
 {
   "percentage": 50
@@ -164,6 +170,7 @@ Updates the traffic split percentage for a canary deployment.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -181,9 +188,11 @@ POST /deployments/{id}/promote
 Promotes the canary to 100% traffic and marks deployment as completed.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -201,9 +210,11 @@ POST /deployments/{id}/rollback
 Rolls back the canary to 0% traffic and marks deployment as failed.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Request Body:**
+
 ```json
 {
   "reason": "High error rate detected in canary version"
@@ -211,6 +222,7 @@ Rolls back the canary to 0% traffic and marks deployment as failed.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -229,6 +241,7 @@ DELETE /deployments/{id}
 Deletes a completed or failed deployment. Active deployments cannot be deleted.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:** 204 No Content on success.
@@ -244,9 +257,11 @@ GET /deployments/{id}/health
 Retrieves the current health status of a canary deployment based on SLO thresholds.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:**
+
 ```json
 {
   "overall_status": "healthy",
@@ -285,6 +300,7 @@ Retrieves the current health status of a canary deployment based on SLO threshol
 ```
 
 **Health Status Values:**
+
 - `healthy`: All checks passing, deployment proceeding normally
 - `warning`: Some degradation detected, monitoring closely
 - `failing`: Critical issues detected, rollback recommended
@@ -299,9 +315,11 @@ GET /deployments/{id}/metrics
 Retrieves current performance metrics for both stable and canary versions.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:**
+
 ```json
 {
   "stable": {
@@ -358,9 +376,11 @@ GET /deployments/{id}/events
 Retrieves the event history for a deployment, showing all significant actions and state changes.
 
 **Parameters:**
+
 - `id` (path, required): Deployment ID
 
 **Response:**
+
 ```json
 {
   "events": [
@@ -384,6 +404,7 @@ Retrieves the event history for a deployment, showing all significant actions an
 ```
 
 **Event Types:**
+
 - `deployment_created`: New canary deployment started
 - `percentage_updated`: Traffic split percentage changed
 - `deployment_promoted`: Canary promoted to 100%
@@ -402,9 +423,11 @@ GET /workers?lane={lane}
 Retrieves information about registered workers, optionally filtered by lane.
 
 **Query Parameters:**
+
 - `lane` (string, optional): Filter by worker lane (`stable` or `canary`)
 
 **Response:**
+
 ```json
 {
   "workers": [
@@ -439,6 +462,7 @@ POST /workers
 Registers a new worker with the canary deployment system.
 
 **Request Body:**
+
 ```json
 {
   "id": "worker-003-canary",
@@ -454,6 +478,7 @@ Registers a new worker with the canary deployment system.
 ```
 
 **Parameters:**
+
 - `id` (string, required): Unique worker identifier
 - `version` (string, required): Worker version
 - `lane` (string, optional): Worker lane (`stable` or `canary`), defaults to `stable`
@@ -471,9 +496,11 @@ PUT /workers/{id}/status
 Updates the health status of a worker.
 
 **Parameters:**
+
 - `id` (path, required): Worker ID
 
 **Request Body:**
+
 ```json
 {
   "status": "degraded"
@@ -481,12 +508,14 @@ Updates the health status of a worker.
 ```
 
 **Status Values:**
+
 - `healthy`: Worker operating normally
 - `degraded`: Worker experiencing some issues but still functional
 - `unhealthy`: Worker has significant problems
 - `unreachable`: Worker is not responding
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -506,6 +535,7 @@ GET /config/profiles
 Retrieves available canary deployment configuration profiles.
 
 **Response:**
+
 ```json
 {
   "default": {
@@ -653,6 +683,7 @@ Percentage values are expressed on a 0–100 scale.
 ### Basic Canary Deployment
 
 1. **Create a canary deployment:**
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/canary/deployments \
   -H "Content-Type: application/json" \
@@ -666,6 +697,7 @@ curl -X POST http://localhost:8080/api/v1/canary/deployments \
 ```
 
 2. **Gradually increase traffic:**
+
 ```bash
 curl -X PUT http://localhost:8080/api/v1/canary/deployments/{id}/percentage \
   -H "Content-Type: application/json" \
@@ -674,12 +706,14 @@ curl -X PUT http://localhost:8080/api/v1/canary/deployments/{id}/percentage \
 ```
 
 3. **Monitor health:**
+
 ```bash
 curl -X GET http://localhost:8080/api/v1/canary/deployments/{id}/health \
   -H "Authorization: Bearer <token>"
 ```
 
 4. **Promote or rollback:**
+
 ```bash
 # Promote to 100%
 curl -X POST http://localhost:8080/api/v1/canary/deployments/{id}/promote \
@@ -730,6 +764,7 @@ curl -X POST http://localhost:8080/api/v1/canary/deployments \
 ## Rate Limiting
 
 The API implements rate limiting with the following defaults:
+
 - 100 requests per minute per API key
 - Burst size of 20 requests
 - Rate limit headers are included in responses:
@@ -740,10 +775,12 @@ The API implements rate limiting with the following defaults:
 ## Pagination
 
 List endpoints support pagination using query parameters:
+
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 10, max: 100)
 
 Paginated responses include metadata:
+
 ```json
 {
   "data": [...],
@@ -762,13 +799,14 @@ Paginated responses include metadata:
 
 Real-time updates are available via WebSocket connections:
 
-```
+```text
 wss://api.example.com/api/v1/canary/deployments/{id}/events
 ```
 
 > For local development use `ws://localhost:8080/api/v1/canary/deployments/{id}/events` after enabling TLS termination in your dev stack.
 
 **Event Types:**
+
 - `deployment_status_changed`
 - `percentage_updated`
 - `health_status_changed`
@@ -777,6 +815,7 @@ wss://api.example.com/api/v1/canary/deployments/{id}/events
 - `rollback_triggered`
 
 **Event Format:**
+
 ```json
 {
   "type": "percentage_updated",

@@ -698,7 +698,7 @@ func (m *ManagerImpl) executeActionOnCluster(ctx context.Context, action *MultiA
 
 	switch action.Type {
 	case ActionTypePurgeDLQ:
-		return conn.Client.Del(ctx, "jobqueue:dead_letter").Err()
+		return admin.PurgeDLQ(ctx, config.Default(), conn.Client)
 
 	case ActionTypePauseQueue:
 		queueName, _ := action.Parameters["queue"].(string)

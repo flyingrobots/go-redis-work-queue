@@ -5,6 +5,7 @@
 The Advanced Rate Limiting system implements enterprise-grade token bucket rate limiting with priority fairness, per-tenant isolation, and global capacity controls. This system provides predictable throughput guarantees for premium tenants while protecting shared infrastructure from abuse and overload.
 
 Key features include:
+
 - **Token Bucket Algorithm**: Industry-standard rate limiting with burst capacity
 - **Priority Fairness**: Weighted fair queuing prevents starvation while prioritizing critical work
 - **Per-Tenant Isolation**: Independent rate limits prevent tenant interference
@@ -394,7 +395,7 @@ graph TB
 
 ### Key Patterns
 
-```
+```text
 # Token bucket state
 rl:bucket:{scope}              # Hash containing bucket state
 rl:config:{scope}              # Hash containing bucket configuration
@@ -505,6 +506,7 @@ Content-Type: application/json
 ```
 
 **Response (Allowed):**
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -522,6 +524,7 @@ Content-Type: application/json
 ```
 
 **Response (Denied):**
+
 ```http
 HTTP/1.1 429 Too Many Requests
 Content-Type: application/json
@@ -564,54 +567,66 @@ GET /api/v1/rate-limit/debug/{scope}
 ### Threat Analysis
 
 #### 1. Rate Limit Bypass
+
 **Description**: Attackers attempt to circumvent rate limits through scope manipulation or Redis direct access.
 **Impact**: High - System overload and unfair resource allocation
 **Mitigation**:
+
 - Scope validation and sanitization
 - Redis access control with authentication
 - Audit logging of all rate limit decisions
 - Secondary validation layers
 
 #### 2. Token Bucket Exhaustion Attack
+
 **Description**: Malicious actors rapidly consume all tokens to deny service to legitimate users.
 **Impact**: High - Denial of service for affected tenants
 **Mitigation**:
+
 - Priority-based token allocation
 - Separate buckets for different priorities
 - Global rate limiting as circuit breaker
 - Anomaly detection and alerting
 
 #### 3. Configuration Tampering
+
 **Description**: Unauthorized modification of rate limit configurations.
 **Impact**: Medium - Service degradation or unfair resource allocation
 **Mitigation**:
+
 - Role-based access control for Admin API
 - Configuration change audit logs
 - Dry-run mode for configuration validation
 - Configuration rollback capabilities
 
 #### 4. Redis Performance Degradation
+
 **Description**: Excessive rate limit checks overwhelm Redis cluster.
 **Impact**: Medium - System-wide performance impact
 **Mitigation**:
+
 - Local caching of rate limit decisions
 - Lua script optimization
 - Redis connection pooling
 - Circuit breakers for Redis operations
 
 #### 5. Time-Based Attacks
+
 **Description**: Clock skew or time manipulation affects token bucket calculations.
 **Impact**: Low - Temporary rate limit bypass or over-restriction
 **Mitigation**:
+
 - Monotonic clock usage where possible
 - Time drift detection and correction
 - Maximum time window validation
 - Graceful handling of clock jumps
 
 #### 6. Memory Exhaustion
+
 **Description**: Excessive bucket creation leads to Redis memory exhaustion.
 **Impact**: Medium - System instability
 **Mitigation**:
+
 - Automatic TTL on all buckets
 - Maximum bucket count limits
 - Memory usage monitoring
@@ -649,11 +664,13 @@ security:
 ### Latency Requirements
 
 **Rate Limit Decision Latency:**
+
 - Target: <2ms for cached decisions
 - Maximum: <10ms for new bucket creation (99th percentile)
 - Redis round-trip: <1ms within data center
 
 **API Response Times:**
+
 - Rate limit check: <5ms (95th percentile)
 - Configuration read: <10ms (95th percentile)
 - Configuration update: <50ms (95th percentile)
@@ -661,11 +678,13 @@ security:
 ### Throughput Requirements
 
 **Rate Limit Checks:**
+
 - Target: 50,000 checks/second per instance
 - Peak: 100,000 checks/second per instance
 - Lua script execution: 10,000 ops/second per Redis instance
 
 **Configuration Operations:**
+
 - Config reads: 1,000 ops/second
 - Config updates: 100 ops/second
 - Metrics collection: 10,000 data points/second
@@ -673,16 +692,19 @@ security:
 ### Scalability Targets
 
 **Horizontal Scaling:**
+
 - Linear scaling with Redis cluster size
 - Stateless rate limit service instances
 - Load balancing across multiple instances
 
 **Data Scale:**
+
 - Support for 1,000,000+ unique scopes
 - 10,000+ tenants with independent limits
 - 100+ priority levels per tenant
 
 **Resource Efficiency:**
+
 - Memory usage: <1MB per 1,000 active buckets
 - CPU overhead: <5% for typical workloads
 - Network bandwidth: <10MB/s for metrics
@@ -692,6 +714,7 @@ security:
 ### Unit Testing
 
 **Token Bucket Logic:**
+
 ```go
 func TestTokenBucketRefill(t *testing.T) {
     tests := []struct {
@@ -724,6 +747,7 @@ func TestTokenBucketRefill(t *testing.T) {
 ```
 
 **Priority Fairness Testing:**
+
 ```go
 func TestPriorityFairness(t *testing.T) {
     scheduler := NewPriorityScheduler(map[Priority]int{
@@ -757,6 +781,7 @@ func TestPriorityFairness(t *testing.T) {
 ### Integration Testing
 
 **End-to-End Rate Limiting:**
+
 ```go
 func TestEndToEndRateLimiting(t *testing.T) {
     // Set up test environment
@@ -803,6 +828,7 @@ func TestEndToEndRateLimiting(t *testing.T) {
 ### Load Testing
 
 **High-Throughput Scenarios:**
+
 ```bash
 #!/bin/bash
 # Rate limiting load test
@@ -873,6 +899,7 @@ func BenchmarkLuaScriptExecution(b *testing.B) {
 ### Configuration Management
 
 **Default Configuration:**
+
 ```yaml
 rate_limiting:
   redis:
@@ -919,6 +946,7 @@ rate_limiting:
 ### Monitoring and Alerting
 
 **Key Metrics:**
+
 ```yaml
 metrics:
   counters:
@@ -938,6 +966,7 @@ metrics:
 ```
 
 **Critical Alerts:**
+
 ```yaml
 alerts:
   - name: HighDenialRate
@@ -956,12 +985,14 @@ alerts:
 ### Operational Procedures
 
 **Capacity Planning:**
+
 1. Monitor token bucket utilization rates
 2. Analyze request patterns and burst requirements
 3. Adjust rate limits based on infrastructure capacity
 4. Plan Redis cluster scaling based on scope count
 
 **Incident Response:**
+
 1. **High Denial Rate**: Check for traffic spikes, adjust global limits
 2. **High Latency**: Investigate Redis performance, scale if needed
 3. **Config Corruption**: Rollback to last known good configuration
@@ -970,12 +1001,14 @@ alerts:
 ## Future Enhancements
 
 ### Advanced Features
+
 - **Machine Learning Rate Adjustment**: Automatic rate limit tuning based on traffic patterns
 - **Geographic Rate Limiting**: Different limits based on request origin
 - **Cost-Based Rate Limiting**: Integration with billing systems for usage-based pricing
 - **Predictive Throttling**: Proactive rate limiting based on forecasted demand
 
 ### Integration Opportunities
+
 - **Service Mesh Integration**: Envoy/Istio rate limiting plugin
 - **API Gateway Integration**: Kong/Ambassador rate limiting backend
 - **Observability Integration**: OpenTelemetry tracing and metrics
@@ -986,6 +1019,7 @@ alerts:
 The Advanced Rate Limiting system provides enterprise-grade traffic management with priority fairness, multi-tenant isolation, and comprehensive observability. The token bucket algorithm with Lua-based atomic operations ensures accurate rate limiting at scale, while the priority scheduling system prevents starvation and maintains service level agreements.
 
 Key benefits include:
+
 - **Predictable Performance**: Token buckets provide smooth traffic shaping
 - **Fair Resource Allocation**: Priority weights ensure critical work gets resources
 - **Operational Excellence**: Real-time monitoring and dynamic configuration

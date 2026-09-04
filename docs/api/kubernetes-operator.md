@@ -355,6 +355,7 @@ The operator exposes comprehensive metrics:
 ### Logging
 
 Structured logging with configurable levels:
+
 - Error: Critical failures
 - Warn: Recoverable issues
 - Info: Normal operations

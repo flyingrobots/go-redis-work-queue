@@ -2,6 +2,8 @@
 //go:build security
 // +build security
 
+// Gated because these extended API scenarios are not hermetic; un-gate when they pass in the default CI environment.
+
 package adminapi_test
 
 import (

@@ -2,19 +2,27 @@
 package adminapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queueclient"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+const enqueueRequestMetadataAllowance int64 = 64 << 10
 
 // Handler holds the API handler dependencies
 type Handler struct {
@@ -50,6 +58,7 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	response := StatsResponse{
 		Queues:          stats.Queues,
+		OrderedPending:  stats.OrderedPending,
 		ProcessingLists: stats.ProcessingLists,
 		Heartbeats:      stats.Heartbeats,
 		Timestamp:       time.Now(),
@@ -72,6 +81,7 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 
 	response := StatsKeysResponse{
 		QueueLengths:    stats.QueueLengths,
+		OrderedPending:  stats.OrderedPending,
 		ProcessingLists: stats.ProcessingLists,
 		ProcessingItems: stats.ProcessingItems,
 		Heartbeats:      stats.Heartbeats,
@@ -81,6 +91,172 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// EnqueueJob handles POST /api/v1/enqueue.
+func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
+	bodyLimit := enqueueRequestBodyLimit(h.cfg.Queue.MaxPayloadSize)
+	r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+	if err := validateEnqueueRequestUnicode(body); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+
+	var req EnqueueRequest
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		if err == nil {
+			writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body: multiple JSON values")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+
+	client, err := queueclient.NewWithClient(h.rdb, queueclient.Config{
+		Queues:                h.cfg.Worker.Queues,
+		DefaultPriority:       h.cfg.Producer.DefaultPriority,
+		ProcessingListPattern: h.cfg.Worker.ProcessingListPattern,
+		HeartbeatKeyPattern:   h.cfg.Worker.HeartbeatKeyPattern,
+		CompletedList:         h.cfg.Worker.CompletedList,
+		DeadLetterList:        h.cfg.Worker.DeadLetterList,
+		MaxPayloadSize:        h.cfg.Queue.MaxPayloadSize,
+		OrderedReadyList:      h.cfg.Queue.OrderedReadyList,
+		OrderedActiveSet:      h.cfg.Queue.OrderedActiveSet,
+		OrderedQueuePattern:   h.cfg.Queue.OrderedQueuePattern,
+		OrderedLeasePattern:   h.cfg.Queue.OrderedLeasePattern,
+	})
+	if err != nil {
+		h.logger.Error("Invalid queue client configuration", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "QUEUE_CONFIG_ERROR", err.Error())
+		return
+	}
+
+	id, err := client.Enqueue(r.Context(), queueclient.Job{
+		ID:            req.ID,
+		Payload:       req.Payload,
+		PayloadSchema: req.PayloadSchema,
+		Priority:      req.Priority,
+		OrderingKey:   req.OrderingKey,
+	})
+	if err != nil {
+		var sizeErr *queueclient.PayloadTooLargeError
+		var priorityErr *queueclient.UnknownPriorityError
+		var connectionErr *queueclient.ConnectionError
+		switch {
+		case errors.As(err, &sizeErr):
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", sizeErr.Error())
+		case errors.As(err, &priorityErr):
+			writeError(w, http.StatusBadRequest, "INVALID_PRIORITY", priorityErr.Error())
+		case errors.As(err, &connectionErr):
+			h.logger.Error("Failed to enqueue job", zap.Error(err))
+			writeError(w, http.StatusServiceUnavailable, "REDIS_UNAVAILABLE", connectionErr.Error())
+		default:
+			h.logger.Error("Failed to enqueue job", zap.Error(err))
+			writeError(w, http.StatusInternalServerError, "ENQUEUE_ERROR", err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, EnqueueResponse{ID: id, Timestamp: time.Now().UTC()})
+}
+
+func validateEnqueueRequestUnicode(body []byte) error {
+	if !utf8.Valid(body) {
+		return errors.New("request body must be valid UTF-8")
+	}
+
+	var raw struct {
+		OrderingKey json.RawMessage `json:"ordering_key"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		// The authoritative decoder reports JSON syntax and type errors.
+		return nil
+	}
+	return validateJSONStringSurrogates(raw.OrderingKey)
+}
+
+func validateJSONStringSurrogates(raw []byte) error {
+	if len(raw) < 2 || raw[0] != '"' || raw[len(raw)-1] != '"' {
+		return nil
+	}
+	for index := 1; index < len(raw)-1; index++ {
+		if raw[index] != '\\' {
+			continue
+		}
+		index++
+		if index >= len(raw)-1 || raw[index] != 'u' {
+			continue
+		}
+		if index+4 >= len(raw) {
+			return nil
+		}
+		value, err := strconv.ParseUint(string(raw[index+1:index+5]), 16, 16)
+		if err != nil {
+			return nil
+		}
+		index += 4
+
+		switch {
+		case value >= 0xdc00 && value <= 0xdfff:
+			return errors.New("ordering_key contains an unpaired low surrogate")
+		case value >= 0xd800 && value <= 0xdbff:
+			pairStart := index + 1
+			if pairStart+5 >= len(raw) || raw[pairStart] != '\\' || raw[pairStart+1] != 'u' {
+				return errors.New("ordering_key contains an unpaired high surrogate")
+			}
+			pair, pairErr := strconv.ParseUint(string(raw[pairStart+2:pairStart+6]), 16, 16)
+			if pairErr != nil || pair < 0xdc00 || pair > 0xdfff {
+				return errors.New("ordering_key contains an unpaired high surrogate")
+			}
+			index = pairStart + 5
+		}
+	}
+	return nil
+}
+
+func enqueueRequestBodyLimit(maxPayloadSize int) int64 {
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = queueclient.DefaultMaxPayloadSize
+	}
+
+	payloadSize := int64(maxPayloadSize)
+	maxPayloadWithoutOverflow := ((math.MaxInt64 - enqueueRequestMetadataAllowance) / 4) * 3
+	if payloadSize > maxPayloadWithoutOverflow {
+		return math.MaxInt64
+	}
+
+	encodedPayloadSize := ((payloadSize + 2) / 3) * 4
+	return encodedPayloadSize + enqueueRequestMetadataAllowance
 }
 
 // PeekQueue handles GET /api/v1/queues/{queue}/peek
@@ -355,6 +531,14 @@ func (h *Handler) ListDLQ(w http.ResponseWriter, r *http.Request) {
 
 	items, next, err := admin.DLQList(ctx, h.cfg, h.rdb, ns, cursor, limit)
 	if err != nil {
+		if errors.Is(err, admin.ErrInvalidDLQCursor) {
+			writeError(w, http.StatusBadRequest, "INVALID_CURSOR", "Invalid DLQ pagination cursor")
+			return
+		}
+		if errors.Is(err, admin.ErrStaleDLQCursor) {
+			writeError(w, http.StatusConflict, "STALE_CURSOR", "DLQ changed; restart pagination")
+			return
+		}
 		h.logger.Error("Failed to list DLQ", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_ERROR", "Failed to list DLQ")
 		return
@@ -362,6 +546,7 @@ func (h *Handler) ListDLQ(w http.ResponseWriter, r *http.Request) {
 	out := DLQListResponse{Items: make([]DLQItem, 0, len(items)), NextCursor: next, Count: len(items), Timestamp: time.Now()}
 	for _, it := range items {
 		out.Items = append(out.Items, DLQItem{
+			Handle:    it.Handle,
 			ID:        it.ID,
 			Queue:     it.Queue,
 			Payload:   string(it.Payload),
@@ -381,13 +566,13 @@ func (h *Handler) RequeueDLQ(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	if len(req.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+	if len(req.Handles) == 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "handles required")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	n, err := admin.DLQRequeue(ctx, h.cfg, h.rdb, req.Namespace, req.IDs, req.DestQueue)
+	n, err := admin.DLQRequeue(ctx, h.cfg, h.rdb, req.Namespace, req.Handles, req.DestQueue)
 	if err != nil {
 		h.logger.Error("Failed to requeue DLQ", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_REQUEUE_ERROR", "Failed to requeue DLQ items")
@@ -422,13 +607,13 @@ func (h *Handler) PurgeDLQItems(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
-	if len(req.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "ids required")
+	if len(req.Handles) == 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "handles required")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	n, err := admin.DLQPurge(ctx, h.cfg, h.rdb, req.Namespace, req.IDs)
+	n, err := admin.DLQPurge(ctx, h.cfg, h.rdb, req.Namespace, req.Handles)
 	if err != nil {
 		h.logger.Error("Failed to purge DLQ items", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "DLQ_PURGE_ERROR", "Failed to purge DLQ items")

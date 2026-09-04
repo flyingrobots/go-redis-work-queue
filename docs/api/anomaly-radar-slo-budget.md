@@ -59,7 +59,7 @@ The Anomaly Radar + SLO Budget system provides real-time monitoring of queue hea
 
 ## Architecture
 
-```
+```text
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │  Metrics        │    │  Anomaly Radar   │    │  Alert System  │
 │  Collector      │────│  Engine          │────│  & Callbacks   │
@@ -163,6 +163,7 @@ type AnomalyThresholds struct {
 ### Recommended Configurations
 
 #### High-Criticality Systems
+
 ```go
 config := ars.GetRecommendedConfig(
     5000.0,              // expectedQPS
@@ -172,6 +173,7 @@ config := ars.GetRecommendedConfig(
 ```
 
 #### Medium-Criticality Systems
+
 ```go
 config := ars.GetRecommendedConfig(
     1000.0,              // expectedQPS
@@ -195,12 +197,14 @@ Returns current anomaly detection status and SLO budget information.
 **Errors:** `401`, `403`, `429`, `500` (standard error envelope).
 
 **Query Parameters:**
+
 - `include_metrics` (boolean): Include recent metrics in response
 - `metric_window` (duration): Time window for included metrics (default: 1h)
 
 Durations use Go's `time.ParseDuration` syntax (e.g., `30m`, `1h`, `7h30m`).
 
 **Response:**
+
 ```json
 {
   "anomaly_status": {
@@ -262,6 +266,7 @@ Durations are encoded using Go’s `time.Duration` format (e.g., `72h`, `720h0m0
 Returns current configuration.
 
 **Response:**
+
 ```json
 {
   "config": {
@@ -311,6 +316,7 @@ Updates the configuration.
 **Errors:** `400` (invalid payload), `401`, `403`, `422` (schema validation), `500`.
 
 **Request Body:**
+
 ```json
 {
   "slo": {
@@ -341,6 +347,7 @@ Returns historical metric snapshots.
 **Errors:** `400` (invalid parameters), `401`, `403`, `429`, `500`.
 
 **Query Parameters:**
+
 - `window` (duration): Time window for metrics (default: 24h)
 - `max_samples` (integer): Maximum number of samples to return (default 1000, maximum 5000)
 - `next_cursor` (string): Cursor token returned by the previous response to continue pagination
@@ -348,6 +355,7 @@ Returns historical metric snapshots.
 Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`). When `next_cursor` is non-null, pass it on the subsequent request to fetch the next page.
 
 **Response:**
+
 ```json
 {
   "metrics": [
@@ -386,6 +394,7 @@ Returns currently active alerts.
 **Errors:** `401`, `403`, `500`.
 
 **Response:**
+
 ```json
 {
   "alerts": [
@@ -420,6 +429,7 @@ Returns detailed SLO budget information with insights.
 **Errors:** `401`, `403`, `500`.
 
 **Response:**
+
 ```json
 {
   "slo_budget": {
@@ -459,11 +469,13 @@ Returns latency percentiles for a given time window.
 **Errors:** `400` (invalid window), `401`, `403`, `500`.
 
 **Query Parameters:**
+
 - `window` (duration): Time window for calculation (default: 1h)
 
 Durations use Go's `time.ParseDuration` format (e.g., `30m`, `6h`, `7h30m`).
 
 **Response:**
+
 ```json
 {
   "percentiles": {
@@ -492,6 +504,7 @@ Returns health status of the anomaly radar system.
 **Errors:** `401`, `403`, `429`, `500`.
 
 **Response:**
+
 ```json
 {
   "is_running": true,
@@ -507,6 +520,7 @@ Returns health status of the anomaly radar system.
 All timestamps are RFC3339 in UTC (trailing `Z`).
 
 **HTTP Status Codes:**
+
 - `200 OK`: System is healthy or has warnings
 - `206 Partial Content`: Health data available but degraded (e.g., metrics backend unreachable)
 - `503 Service Unavailable`: System is not running or has critical issues
@@ -570,15 +584,19 @@ Concurrent start/stop requests are handled safely; the service guarantees consis
 ## Alert Types
 
 ### Backlog Growth Alerts
+
 Triggered when queue backlog grows faster than configured thresholds.
 
 ### Error Rate Alerts
+
 Triggered when error rate exceeds warning or critical thresholds.
 
 ### Latency Alerts
+
 Triggered when P95 latency exceeds configured thresholds.
 
 ### Burn Rate Alerts
+
 Triggered when SLO budget consumption rate indicates budget exhaustion risk.
 
 ## Metrics and Monitoring

@@ -102,6 +102,7 @@ Generate a new authentication token for a user.
 ```
 
 **Response:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -118,11 +119,13 @@ Validate a token and return its claims.
 **POST** `/auth/validate`
 
 **Headers:**
-```
+
+```text
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -143,7 +146,8 @@ Get information about the current token.
 **GET** `/auth/token/info`
 
 **Headers:**
-```
+
+```text
 Authorization: Bearer <token>
 ```
 
@@ -163,6 +167,7 @@ Revoke a specific token by its ID.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -177,11 +182,13 @@ Check if the current token has permission for a specific action.
 **POST** `/auth/check?action=queue:delete&resource=/api/v1/queues/dlq`
 
 **Headers:**
-```
+
+```text
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "allowed": true,
@@ -200,6 +207,7 @@ Query the audit log for security events.
 **GET** `/audit/query?subject=user@example.com&limit=10&start_time=2025-09-14T00:00:00Z`
 
 **Response:**
+
 ```json
 {
   "entries": [
@@ -249,6 +257,7 @@ The RBAC system integrates with the existing Admin API through middleware:
 ### Bypassed Endpoints
 
 These endpoints bypass authentication:
+
 - `GET /health` - Health checks
 - `POST /auth/token` - Token generation
 
@@ -382,6 +391,7 @@ The implementation includes comprehensive tests covering:
 - Audit logging
 
 Run tests with:
+
 ```bash
 go test ./internal/rbac-and-tokens/ -v
 ```

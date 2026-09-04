@@ -1,6 +1,8 @@
 //go:build multi_cluster_control_tests
 // +build multi_cluster_control_tests
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 // Copyright 2025 James Ross
 package multicluster
 

@@ -33,14 +33,17 @@ type CapacityPlanner interface {
 Generates a capacity plan based on current metrics, SLO targets, and forecasting models.
 
 **Parameters:**
+
 - `ctx`: Context for cancellation and timeouts
 - `req`: Plan request containing metrics, SLO, and configuration
 
 **Returns:**
+
 - `*PlanResponse`: Complete capacity plan with forecasts and recommendations
 - `error`: Any validation or computation errors
 
 **Example:**
+
 ```go
 planner := capacityplanning.NewCapacityPlanner(config)
 
@@ -89,12 +92,14 @@ type Forecaster interface {
 Generates arrival rate forecasts using various time-series models.
 
 **Supported Models:**
+
 - `ewma`: Exponential Weighted Moving Average
 - `holt_winters`: Triple exponential smoothing with trend and seasonality
 - `linear`: Linear regression with trend analysis
 - `seasonal`: Seasonal decomposition with pattern recognition
 
 **Example:**
+
 ```go
 forecaster := capacityplanning.NewForecaster(config)
 
@@ -134,12 +139,14 @@ type QueueingCalculator interface {
 Performs queueing theory analysis using M/M/c, M/M/1, or M/G/c models.
 
 **Parameters:**
+
 - `lambda`: Arrival rate (jobs/second)
 - `mu`: Service rate per server (jobs/second)
 - `servers`: Number of worker servers
 - `metrics`: Current system metrics for confidence estimation
 
 **Example:**
+
 ```go
 calc := capacityplanning.NewQueueingCalculator(config)
 
@@ -185,6 +192,7 @@ type Simulator interface {
 Runs discrete event simulation to validate capacity plans under different scenarios.
 
 **Example:**
+
 ```go
 simulator := capacityplanning.NewSimulator(config)
 

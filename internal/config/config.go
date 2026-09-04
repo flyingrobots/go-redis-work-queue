@@ -4,11 +4,13 @@ package config
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/spf13/viper"
-	// exactlyonce "github.com/flyingrobots/go-redis-work-queue/internal/exactly-once-patterns"
 )
 
 type Redis struct {
@@ -54,6 +56,14 @@ type Producer struct {
 	RateLimitKey     string   `mapstructure:"rate_limit_key"`
 }
 
+type QueueConfig struct {
+	MaxPayloadSize      int    `mapstructure:"max_payload_size"`
+	OrderedReadyList    string `mapstructure:"ordered_ready_list"`
+	OrderedActiveSet    string `mapstructure:"ordered_active_set"`
+	OrderedQueuePattern string `mapstructure:"ordered_queue_pattern"`
+	OrderedLeasePattern string `mapstructure:"ordered_lease_pattern"`
+}
+
 type CircuitBreaker struct {
 	FailureThreshold float64       `mapstructure:"failure_threshold"`
 	Window           time.Duration `mapstructure:"window"`
@@ -62,19 +72,19 @@ type CircuitBreaker struct {
 }
 
 type TracingConfig struct {
-	Enabled             bool              `mapstructure:"enabled"`
-	Endpoint            string            `mapstructure:"endpoint"`
-	Environment         string            `mapstructure:"environment"`
-	SamplingStrategy    string            `mapstructure:"sampling_strategy"`
-	SamplingRate        float64           `mapstructure:"sampling_rate"`
-	BatchTimeout        time.Duration     `mapstructure:"batch_timeout"`
-	MaxExportBatchSize  int               `mapstructure:"max_export_batch_size"`
-	Headers             map[string]string `mapstructure:"headers"`
-	Insecure            bool              `mapstructure:"insecure"`
-	PropagationFormat   string            `mapstructure:"propagation_format"`
-	AttributeAllowlist  []string          `mapstructure:"attribute_allowlist"`
-	RedactSensitive     bool              `mapstructure:"redact_sensitive"`
-	EnableMetricExemplars bool            `mapstructure:"enable_metric_exemplars"`
+	Enabled               bool              `mapstructure:"enabled"`
+	Endpoint              string            `mapstructure:"endpoint"`
+	Environment           string            `mapstructure:"environment"`
+	SamplingStrategy      string            `mapstructure:"sampling_strategy"`
+	SamplingRate          float64           `mapstructure:"sampling_rate"`
+	BatchTimeout          time.Duration     `mapstructure:"batch_timeout"`
+	MaxExportBatchSize    int               `mapstructure:"max_export_batch_size"`
+	Headers               map[string]string `mapstructure:"headers"`
+	Insecure              bool              `mapstructure:"insecure"`
+	PropagationFormat     string            `mapstructure:"propagation_format"`
+	AttributeAllowlist    []string          `mapstructure:"attribute_allowlist"`
+	RedactSensitive       bool              `mapstructure:"redact_sensitive"`
+	EnableMetricExemplars bool              `mapstructure:"enable_metric_exemplars"`
 }
 
 // Tracing is a backwards-compatible alias
@@ -91,12 +101,23 @@ type ObservabilityConfig struct {
 type Observability = ObservabilityConfig
 
 type Config struct {
-	Redis          Redis               `mapstructure:"redis"`
-	Worker         Worker              `mapstructure:"worker"`
-	Producer       Producer            `mapstructure:"producer"`
-	CircuitBreaker CircuitBreaker      `mapstructure:"circuit_breaker"`
-	Observability  Observability       `mapstructure:"observability"`
-	// ExactlyOnce    exactlyonce.Config  `mapstructure:"exactly_once"`
+	Redis          Redis          `mapstructure:"redis"`
+	Worker         Worker         `mapstructure:"worker"`
+	Producer       Producer       `mapstructure:"producer"`
+	Queue          QueueConfig    `mapstructure:"queue"`
+	CircuitBreaker CircuitBreaker `mapstructure:"circuit_breaker"`
+	Observability  Observability  `mapstructure:"observability"`
+}
+
+// OrderingLayout returns the Redis key layout shared by ordered producers,
+// workers, and the reaper.
+func (cfg *Config) OrderingLayout() queue.OrderingLayout {
+	return queue.OrderingLayout{
+		ReadyList:    cfg.Queue.OrderedReadyList,
+		ActiveSet:    cfg.Queue.OrderedActiveSet,
+		QueuePattern: cfg.Queue.OrderedQueuePattern,
+		LeasePattern: cfg.Queue.OrderedLeasePattern,
+	}
 }
 
 func defaultConfig() *Config {
@@ -111,16 +132,19 @@ func defaultConfig() *Config {
 			MaxRetries:         3,
 		},
 		Worker: Worker{
-			Count:                 16,
-			HeartbeatTTL:          30 * time.Second,
-			MaxRetries:            3,
-			Backoff:               Backoff{Base: 500 * time.Millisecond, Max: 10 * time.Second},
-			Priorities:            []string{"high", "low"},
-			Queues:                map[string]string{"high": "jobqueue:high_priority", "low": "jobqueue:low_priority"},
-			ProcessingListPattern: "jobqueue:worker:%s:processing",
-			HeartbeatKeyPattern:   "jobqueue:processing:worker:%s",
-			CompletedList:         "jobqueue:completed",
-			DeadLetterList:        "jobqueue:dead_letter",
+			Count:        16,
+			HeartbeatTTL: 30 * time.Second,
+			MaxRetries:   3,
+			Backoff:      Backoff{Base: 500 * time.Millisecond, Max: 10 * time.Second},
+			Priorities:   []string{"high", "low"},
+			Queues: map[string]string{
+				"high": queuekeys.DefaultHighPriorityQueue,
+				"low":  queuekeys.DefaultLowPriorityQueue,
+			},
+			ProcessingListPattern: queuekeys.DefaultProcessingListPattern,
+			HeartbeatKeyPattern:   queuekeys.DefaultHeartbeatKeyPattern,
+			CompletedList:         queuekeys.DefaultCompletedList,
+			DeadLetterList:        queuekeys.DefaultDeadLetterList,
 			BRPopLPushTimeout:     1 * time.Second,
 			BreakerPause:          100 * time.Millisecond,
 		},
@@ -131,7 +155,14 @@ func defaultConfig() *Config {
 			DefaultPriority:  "low",
 			HighPriorityExts: []string{".pdf", ".docx", ".xlsx", ".zip"},
 			RateLimitPerSec:  100,
-			RateLimitKey:     "jobqueue:rate_limit:producer",
+			RateLimitKey:     queuekeys.DefaultProducerRateLimitKey,
+		},
+		Queue: QueueConfig{
+			MaxPayloadSize:      queue.DefaultMaxPayloadSize,
+			OrderedReadyList:    queuekeys.DefaultOrderedReadyList,
+			OrderedActiveSet:    queuekeys.DefaultOrderedActiveSet,
+			OrderedQueuePattern: queuekeys.DefaultOrderedQueuePattern,
+			OrderedLeasePattern: queuekeys.DefaultOrderedLeasePattern,
 		},
 		CircuitBreaker: CircuitBreaker{
 			FailureThreshold: 0.5,
@@ -145,8 +176,13 @@ func defaultConfig() *Config {
 			Tracing:             Tracing{Enabled: false},
 			QueueSampleInterval: 2 * time.Second,
 		},
-		// ExactlyOnce: *exactlyonce.DefaultConfig(),
 	}
+}
+
+// Default returns an independent configuration populated with runtime-safe
+// defaults. It does not read files or environment variables.
+func Default() *Config {
+	return defaultConfig()
 }
 
 // Load reads configuration from YAML file and env overrides.
@@ -188,6 +224,11 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("producer.high_priority_exts", def.Producer.HighPriorityExts)
 	v.SetDefault("producer.rate_limit_per_sec", def.Producer.RateLimitPerSec)
 	v.SetDefault("producer.rate_limit_key", def.Producer.RateLimitKey)
+	v.SetDefault("queue.max_payload_size", def.Queue.MaxPayloadSize)
+	v.SetDefault("queue.ordered_ready_list", def.Queue.OrderedReadyList)
+	v.SetDefault("queue.ordered_active_set", def.Queue.OrderedActiveSet)
+	v.SetDefault("queue.ordered_queue_pattern", def.Queue.OrderedQueuePattern)
+	v.SetDefault("queue.ordered_lease_pattern", def.Queue.OrderedLeasePattern)
 
 	v.SetDefault("circuit_breaker.failure_threshold", def.CircuitBreaker.FailureThreshold)
 	v.SetDefault("circuit_breaker.window", def.CircuitBreaker.Window)
@@ -200,15 +241,6 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("observability.tracing.endpoint", def.Observability.Tracing.Endpoint)
 	v.SetDefault("observability.queue_sample_interval", def.Observability.QueueSampleInterval)
 
-	// Exactly-once patterns defaults (temporarily disabled)
-	// v.SetDefault("exactly_once.idempotency.enabled", def.ExactlyOnce.Idempotency.Enabled)
-	// v.SetDefault("exactly_once.idempotency.default_ttl", def.ExactlyOnce.Idempotency.DefaultTTL)
-	// v.SetDefault("exactly_once.idempotency.key_prefix", def.ExactlyOnce.Idempotency.KeyPrefix)
-	// v.SetDefault("exactly_once.idempotency.storage.type", def.ExactlyOnce.Idempotency.Storage.Type)
-	// v.SetDefault("exactly_once.outbox.enabled", def.ExactlyOnce.Outbox.Enabled)
-	// v.SetDefault("exactly_once.metrics.enabled", def.ExactlyOnce.Metrics.Enabled)
-
-
 	// Optional file read
 	if _, err := os.Stat(path); err == nil {
 		if err := v.ReadInConfig(); err != nil {
@@ -217,7 +249,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 	if err := Validate(&cfg); err != nil {
@@ -239,6 +271,32 @@ func Validate(cfg *Config) error {
 			return fmt.Errorf("worker.queues missing entry for priority %q", p)
 		}
 	}
+	for alias, key := range cfg.Worker.Queues {
+		if alias == "" || alias != strings.TrimSpace(alias) {
+			return fmt.Errorf("worker queue alias %q must be non-empty without surrounding whitespace", alias)
+		}
+		if key == "" || key != strings.TrimSpace(key) {
+			return fmt.Errorf("worker queue %q Redis key must be non-empty without surrounding whitespace", alias)
+		}
+		if queuekeys.IsReservedQueueAlias(alias) {
+			return fmt.Errorf("worker queue alias %q is reserved", alias)
+		}
+	}
+	if cfg.Worker.CompletedList == "" {
+		return fmt.Errorf("worker.completed_list must be non-empty")
+	}
+	if cfg.Worker.DeadLetterList == "" {
+		return fmt.Errorf("worker.dead_letter_list must be non-empty")
+	}
+	if strings.Count(cfg.Worker.ProcessingListPattern, "%s") != 1 {
+		return fmt.Errorf("worker.processing_list_pattern must contain exactly one %%s placeholder")
+	}
+	if strings.Count(cfg.Worker.HeartbeatKeyPattern, "%s") != 1 {
+		return fmt.Errorf("worker.heartbeat_key_pattern must contain exactly one %%s placeholder")
+	}
+	if queuekeys.PatternsOverlap(cfg.Worker.ProcessingListPattern, cfg.Worker.HeartbeatKeyPattern) {
+		return fmt.Errorf("worker.processing_list_pattern and worker.heartbeat_key_pattern keyspaces must not overlap")
+	}
 	if cfg.Worker.HeartbeatTTL < 5*time.Second {
 		return fmt.Errorf("worker.heartbeat_ttl must be >= 5s")
 	}
@@ -248,8 +306,102 @@ func Validate(cfg *Config) error {
 	if cfg.Producer.RateLimitPerSec < 0 {
 		return fmt.Errorf("producer.rate_limit_per_sec must be >= 0")
 	}
+	if cfg.Queue.MaxPayloadSize <= 0 {
+		return fmt.Errorf("queue.max_payload_size must be > 0")
+	}
+	if cfg.Queue.OrderedReadyList == "" {
+		return fmt.Errorf("queue.ordered_ready_list must be non-empty")
+	}
+	if cfg.Queue.OrderedActiveSet == "" {
+		return fmt.Errorf("queue.ordered_active_set must be non-empty")
+	}
+	if strings.Count(cfg.Queue.OrderedQueuePattern, "%s") != 1 {
+		return fmt.Errorf("queue.ordered_queue_pattern must contain exactly one %%s placeholder")
+	}
+	if strings.Count(cfg.Queue.OrderedLeasePattern, "%s") != 1 {
+		return fmt.Errorf("queue.ordered_lease_pattern must contain exactly one %%s placeholder")
+	}
+	if cfg.Queue.OrderedQueuePattern == cfg.Queue.OrderedLeasePattern {
+		return fmt.Errorf("queue.ordered_queue_pattern and queue.ordered_lease_pattern must differ")
+	}
+	workerPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "worker.processing_list_pattern", value: cfg.Worker.ProcessingListPattern},
+		{name: "worker.heartbeat_key_pattern", value: cfg.Worker.HeartbeatKeyPattern},
+	}
+	orderedPatterns := []struct {
+		name  string
+		value string
+	}{
+		{name: "queue.ordered_queue_pattern", value: cfg.Queue.OrderedQueuePattern},
+		{name: "queue.ordered_lease_pattern", value: cfg.Queue.OrderedLeasePattern},
+	}
+	for _, workerPattern := range workerPatterns {
+		for _, orderedPattern := range orderedPatterns {
+			if queuekeys.PatternsOverlap(workerPattern.value, orderedPattern.value) {
+				return fmt.Errorf("%s and %s keyspaces must not overlap", workerPattern.name, orderedPattern.name)
+			}
+		}
+	}
+	if err := validateStaticQueueKeys(cfg); err != nil {
+		return err
+	}
 	if cfg.Observability.MetricsPort <= 0 || cfg.Observability.MetricsPort > 65535 {
 		return fmt.Errorf("observability.metrics_port must be 1..65535")
+	}
+	return nil
+}
+
+func validateStaticQueueKeys(cfg *Config) error {
+	type keyRole struct {
+		name string
+		key  string
+	}
+	aliases := make([]string, 0, len(cfg.Worker.Queues))
+	for alias := range cfg.Worker.Queues {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
+
+	roles := make([]keyRole, 0, len(aliases)+7)
+	for _, alias := range aliases {
+		roles = append(roles, keyRole{name: fmt.Sprintf("worker queue %q", alias), key: cfg.Worker.Queues[alias]})
+	}
+	roles = append(roles,
+		keyRole{name: "worker completed list", key: cfg.Worker.CompletedList},
+		keyRole{name: "worker dead-letter list", key: cfg.Worker.DeadLetterList},
+		keyRole{name: "worker dead-letter generation", key: queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)},
+		keyRole{name: "ordered ready list", key: cfg.Queue.OrderedReadyList},
+		keyRole{name: "ordered active set", key: cfg.Queue.OrderedActiveSet},
+		keyRole{name: "ordered claim registry", key: queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet)},
+		keyRole{name: "producer rate limiter", key: cfg.Producer.RateLimitKey},
+	)
+
+	seen := make(map[string]string, len(roles))
+	for _, role := range roles {
+		if workerID, ok := queuekeys.Extract(cfg.Worker.ProcessingListPattern, role.key); ok && workerID != "" {
+			return fmt.Errorf("%s Redis key %q matches the worker processing list pattern", role.name, role.key)
+		}
+		if workerID, ok := queuekeys.Extract(cfg.Worker.HeartbeatKeyPattern, role.key); ok && workerID != "" {
+			return fmt.Errorf("%s Redis key %q matches the worker heartbeat key pattern", role.name, role.key)
+		}
+		if previous, ok := seen[role.key]; ok {
+			return fmt.Errorf("%s and %s must use different Redis keys (%q)", previous, role.name, role.key)
+		}
+		seen[role.key] = role.name
+		for _, pattern := range []struct {
+			name  string
+			value string
+		}{
+			{name: "ordered queue", value: cfg.Queue.OrderedQueuePattern},
+			{name: "ordered lease", value: cfg.Queue.OrderedLeasePattern},
+		} {
+			if queuekeys.MatchesOrderingDigest(pattern.value, role.key) {
+				return fmt.Errorf("%s Redis key %q aliases the %s pattern", role.name, role.key, pattern.name)
+			}
+		}
 	}
 	return nil
 }

@@ -48,6 +48,7 @@ Retrieve a paginated list of DLQ entries with optional filtering and pattern ana
 | `include_patterns` | boolean | Include error pattern analysis | false |
 
 **Example Request:**
+
 ```bash
 GET /api/dlq/entries?page=1&page_size=20&queue=payment-processing&include_patterns=true
 ```
@@ -55,6 +56,7 @@ GET /api/dlq/entries?page=1&page_size=20&queue=payment-processing&include_patter
 Requests that exceed the maximum `page_size` or violate rate limits return `400 Bad Request` or `429 Too Many Requests` with field-level details.
 
 **Response:**
+
 ```json
 {
   "entries": [
@@ -137,11 +139,13 @@ Retrieve detailed information about a specific DLQ entry.
 | `id` | string | DLQ entry ID |
 
 **Example Request:**
+
 ```bash
 GET /api/dlq/entries/dlq_entry_12345
 ```
 
 **Response:**
+
 ```json
 {
   "id": "dlq_entry_12345",
@@ -189,6 +193,7 @@ Requeue selected DLQ entries back to their original queues for retry.
 **Endpoint:** `POST /api/dlq/entries/requeue`
 
 **Request Body:**
+
 ```json
 {
   "ids": ["dlq_entry_12345", "dlq_entry_12346"]
@@ -196,6 +201,7 @@ Requeue selected DLQ entries back to their original queues for retry.
 ```
 
 **Response:**
+
 ```json
 {
   "total_requested": 2,
@@ -214,6 +220,7 @@ Permanently delete selected DLQ entries.
 **Endpoint:** `POST /api/dlq/entries/purge`
 
 **Request Body:**
+
 ```json
 {
   "ids": ["dlq_entry_12345", "dlq_entry_12346"]
@@ -221,6 +228,7 @@ Permanently delete selected DLQ entries.
 ```
 
 **Response:**
+
 ```json
 {
   "total_requested": 2,
@@ -240,7 +248,7 @@ Permanently delete all DLQ entries matching the specified filter criteria.
 
 **Required Headers:**
 
-```
+```text
 Authorization: Bearer <token>
 Idempotency-Key: 34ff6f98-1d21-45c5-9f83-3f4d5b8e9c62
 Content-Type: application/json
@@ -273,6 +281,7 @@ Content-Type: application/json
 The server persists the `Idempotency-Key` and will return the stored response (HTTP `200`) for duplicate keys; conflicting payloads for the same key return `409 Conflict`.
 
 **Response:**
+
 ```json
 {
   "total_requested": 23,
@@ -293,6 +302,7 @@ Retrieve statistics about DLQ entries.
 **Endpoint:** `GET /api/dlq/stats`
 
 **Response:**
+
 ```json
 {
   "total_entries": 156,

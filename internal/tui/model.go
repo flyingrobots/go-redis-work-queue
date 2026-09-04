@@ -59,6 +59,11 @@ type (
 	animTick      struct{}
 )
 
+type queueRowData struct {
+	label string
+	count int
+}
+
 type model struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -108,10 +113,12 @@ type model struct {
 	confirmAction string
 
 	// Filter state for queues view
-	filter       textinput.Model
-	filterActive bool
-	allRows      []table.Row
-	allTargets   []string
+	filter          textinput.Model
+	filterActive    bool
+	allRows         []table.Row
+	allTargets      []string
+	allRowData      []queueRowData
+	filteredRowData []queueRowData
 
 	// Dashboard viewports
 	vpCharts viewport.Model

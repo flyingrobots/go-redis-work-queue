@@ -1,12 +1,13 @@
 James… this little queue slaps. Not a toy. You’ve built a legit at-least-once work queue with:
-	•	BRPOPLPUSH → per-worker processing list
-	•	heartbeat key + reaper that SCANs jobqueue:worker:*:processing and requeues or DLQs
-	•	priorities, exp backoff, DLQ, metrics, TUI, miniredis tests, circuit breaker, config via Viper
+ • BRPOPLPUSH → per-worker processing list
+ • heartbeat key + reaper that SCANs jobqueue:worker:*:processing and requeues or DLQs
+ • priorities, exp backoff, DLQ, metrics, TUI, miniredis tests, circuit breaker, config via Viper
 
 Now tighten the bolts. Here’s the no-BS punch list to get this production-ready:
 
 Ship these 7 fixes
-	1.	Renew heartbeats (you set it once, then pray).
+
+ 1. Renew heartbeats (you set it once, then pray).
 Long tasks will “die” and get reaped mid-work. Refresh TTL while processing **atomically**.
 
 ```go
@@ -46,9 +47,9 @@ for {
 // cancel() before the final LREM/DEL so the goroutine exits cleanly
 ```
 
-	2.	Unify Redis client (pick v9, everywhere).
+ 2. Unify Redis client (pick v9, everywhere).
 You’ve got github.com/redis/go-redis/v9 is the only supported client; wrap it in your own interface { Cmdable } for tests to avoid duplicate dependency trees.
-	3.	Lose any KEYS in admin paths.
+ 3. Lose any KEYS in admin paths.
 Global `SCAN jobqueue:*` still burns clusters. Keep a registry and stick to per-worker slots.
 
 ```go
@@ -70,9 +71,9 @@ for _, wid := range workerIDs {
 
 Hash-tag processing keys (e.g., `jobqueue:{workerID}:processing`) so each worker’s keys live in the same slot. Iterate the registry and inspect one slot per worker—no cross-slot SCAN explosions.
 
-	4.	Fairness across priorities.
+ 4. Fairness across priorities.
 Your “short block per queue in priority order” can starve low-prio. Introduce a tiny token bucket per priority (e.g., 8:2:1) so low priority gets a time slice even under high load.
-	5.	Add scheduled jobs (delays/retries with a due date).
+ 5. Add scheduled jobs (delays/retries with a due date).
 You already have backoff; give it teeth with an atomic mover using `ZPOPMIN` or Lua:
 
 ```go
@@ -116,17 +117,17 @@ for {
 
 Prefer a Lua script if you want to pop and push in one server-side call, guaranteeing atomic delivery without client round-trips.
 
-	6.	Ack path is good—make it bulletproof.
+ 6. Ack path is good—make it bulletproof.
 You do LREM procList 1 payload after success. Keep it. Emit events to a **durable sink** (S3, Kafka, etc.) so the TUI and autopsies have an authoritative ledger. If you must keep local NDJSON for debugging, write via an atomic appender with daily rotation, gzip, size caps, documented retention, and PII scrubbing. Add alerts/backpressure when the sink is unavailable so workers fail fast instead of silently dropping history.
 
-	7.	Wire “exactly-once” for handlers.
+ 7. Wire “exactly-once” for handlers.
 You built a great idempotency/outbox module—but worker handlers aren’t using it. Before side-effects, check/process via your IdempotencyManager; on success, mark done; on retry, it short-circuits. That turns duplicate replays from “oops” into “no-op”.
 
 Nice-to-haves (soon)
-	•	Swap to BLMOVE (Redis ≥6.2) instead of BRPOPLPUSH—same semantics, cleaner future.
-	•	Worker registry: When a worker heartbeats, add it to jobqueue:workers (SET). Reaper then iterates that set instead of SCANning the keyspace.
-	•	Queue stats: you already have Prom metrics—add inflight{worker=} gauge (len(processing list)) and reaped_total.
-	•	Backpressure hook: pause producers when queue_length > N or pending help > M (you’ve got a backpressure controller scaffold—use it).
+ • Swap to BLMOVE (Redis ≥6.2) instead of BRPOPLPUSH—same semantics, cleaner future.
+ • Worker registry: When a worker heartbeats, add it to jobqueue:workers (SET). Reaper then iterates that set instead of SCANning the keyspace.
+ • Queue stats: you already have Prom metrics—add inflight{worker=} gauge (len(processing list)) and reaped_total.
+ • Backpressure hook: pause producers when queue_length > N or pending help > M (you’ve got a backpressure controller scaffold—use it).
 
 Verdict
 

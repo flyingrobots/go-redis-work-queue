@@ -18,6 +18,7 @@ Worker Fleet Controls transforms worker management from ad-hoc scripts and manua
 This design addresses the critical operational challenge of managing distributed worker fleets during deployments, incident response, and routine maintenance. By implementing battle-tested patterns from container orchestration (like Kubernetes drain semantics), the system enables zero-downtime deployments and safe worker lifecycle management.
 
 ### Key Benefits
+
 - **Zero-Downtime Operations**: Safe worker lifecycle management during deployments
 - **Real-Time Visibility**: Live worker status, heartbeats, and active job tracking
 - **Operational Safety**: Multiple confirmation layers and safety checks prevent accidents
@@ -196,6 +197,7 @@ Complete data model definitions are available in [F036 JSON Schema](../schemas/f
 ### Core Entities
 
 #### Worker Instance
+
 ```go
 type Worker struct {
     ID           string                 `json:"id" db:"id"`
@@ -226,6 +228,7 @@ const (
 ```
 
 #### Fleet Command
+
 ```go
 type FleetCommand struct {
     ID          string                 `json:"id" db:"id"`
@@ -255,6 +258,7 @@ const (
 ```
 
 #### Worker Metadata
+
 ```go
 type WorkerMetadata struct {
     Hostname        string            `json:"hostname"`
@@ -284,6 +288,7 @@ type HealthStatus struct {
 ```
 
 #### Rolling Restart Configuration
+
 ```go
 type RollingRestartConfig struct {
     MaxUnavailable int                    `json:"max_unavailable"`
@@ -308,6 +313,7 @@ const (
 ### Database Schema
 
 #### Workers Table
+
 ```sql
 CREATE TABLE workers (
     id              VARCHAR(255) PRIMARY KEY,
@@ -335,6 +341,7 @@ CREATE INDEX idx_workers_updated ON workers(updated_at DESC);
 ```
 
 #### Fleet Commands Table
+
 ```sql
 CREATE TABLE fleet_commands (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -365,6 +372,7 @@ CREATE INDEX idx_commands_targets ON fleet_commands USING GIN(target_ids);
 ```
 
 #### Worker Audit Log Table
+
 ```sql
 CREATE TABLE worker_audit_log (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -395,18 +403,21 @@ CREATE INDEX idx_audit_action ON worker_audit_log(action_type, performed_at DESC
 ### Threat Model
 
 #### Assets Protected
+
 1. **Worker Fleet**: Distributed worker instances processing production jobs
 2. **Control Commands**: Fleet management operations affecting system availability
 3. **Worker Metadata**: Configuration and state information for workers
 4. **Audit Logs**: Historical record of all fleet control actions
 
 #### Threat Actors
+
 - **External Attackers**: Seeking to disrupt production by stopping workers
 - **Malicious Insiders**: Attempting to cause service outages or data access
 - **Compromised Services**: Internal services with elevated fleet access
 - **Accidental Operations**: Unintended commands causing fleet-wide outages
 
 #### Attack Vectors
+
 - **Unauthorized Control**: Gaining access to pause/drain/stop commands
 - **Fleet Disruption**: Mass worker shutdown causing service outage
 - **State Manipulation**: Corrupting worker state to cause inconsistencies
@@ -415,6 +426,7 @@ CREATE INDEX idx_audit_action ON worker_audit_log(action_type, performed_at DESC
 ### Security Controls
 
 #### Authentication & Authorization
+
 ```go
 type FleetPermission string
 
@@ -442,12 +454,14 @@ type SecurityContext struct {
 ```
 
 #### Multi-Factor Authorization
+
 - **Destructive Operations**: Require MFA verification for drain/stop commands
 - **Production Environment**: Enhanced authorization for production fleet operations
 - **Confirmation Codes**: Typed confirmation for batch operations affecting multiple workers
 - **Time-Limited Tokens**: Short-lived authorization tokens for sensitive operations
 
 #### Safety Mechanisms
+
 ```go
 type SafetyCheck struct {
     Name        string    `json:"name"`
@@ -477,12 +491,14 @@ type SafetyConfig struct {
 ### Compliance & Audit
 
 #### Audit Requirements
+
 - **Complete Trail**: Every fleet control action logged with full context
 - **Immutable Logs**: Audit entries protected from modification or deletion
 - **User Attribution**: All actions traced to specific users and sessions
 - **Compliance Export**: Audit logs exportable for compliance reporting
 
 #### Data Protection
+
 - **Encryption at Rest**: Worker metadata and audit logs encrypted
 - **Encryption in Transit**: All API communication over TLS 1.3
 - **Field-Level Encryption**: Sensitive worker configuration encrypted
@@ -511,11 +527,13 @@ type SafetyConfig struct {
 ### Scalability Targets
 
 #### Fleet Size
+
 - **Current**: Support for 1,000 concurrent workers
 - **Near-term**: Scale to 10,000 concurrent workers
 - **Long-term**: Horizontal scaling to 100,000+ workers across regions
 
 #### Geographic Distribution
+
 - **Multi-Region**: Workers distributed across multiple AWS regions
 - **Edge Deployments**: Support for edge and hybrid cloud deployments
 - **Latency Optimization**: Regional control planes for reduced latency
@@ -525,6 +543,7 @@ type SafetyConfig struct {
 ### Safety Mechanisms
 
 #### Fleet Health Protection
+
 ```go
 type FleetHealthChecker struct {
     MinHealthyRatio     float64 `json:"min_healthy_ratio"`
@@ -542,12 +561,14 @@ type FleetProtection struct {
 ```
 
 #### Circuit Breakers
+
 - **Command Rate Limiting**: Prevent command flooding that could destabilize fleet
 - **Health-Based Blocking**: Block operations when fleet health drops below threshold
 - **Automatic Recovery**: Self-healing mechanisms to restore fleet stability
 - **Emergency Procedures**: Manual override capabilities for emergency situations
 
 #### Confirmation Requirements
+
 ```go
 type ConfirmationRule struct {
     Operation          CommandType `json:"operation"`
@@ -563,6 +584,7 @@ type ConfirmationRule struct {
 ### Monitoring & Alerting
 
 #### Key Metrics
+
 ```go
 type FleetMetrics struct {
     // Fleet Health
@@ -591,6 +613,7 @@ type FleetMetrics struct {
 ```
 
 #### Alert Conditions
+
 - **Fleet Health Critical**: Less than 50% of workers healthy
 - **Mass Worker Loss**: More than 10% of workers lost in 5 minutes
 - **Command Failures**: Command failure rate exceeds 5%
@@ -602,6 +625,7 @@ type FleetMetrics struct {
 ### Unit Testing
 
 #### State Machine Testing
+
 ```go
 func TestWorkerStateMachine(t *testing.T) {
     // Test all valid state transitions
@@ -623,6 +647,7 @@ func TestSafetyChecks(t *testing.T) {
 ```
 
 #### Coverage Targets
+
 - **Core Logic**: 95% line coverage for state management and command processing
 - **Safety Systems**: 100% coverage for safety checks and validation
 - **API Endpoints**: 90% coverage for all REST endpoints
@@ -631,6 +656,7 @@ func TestSafetyChecks(t *testing.T) {
 ### Integration Testing
 
 #### End-to-End Scenarios
+
 1. **Worker Lifecycle**: Complete worker registration, heartbeat, and state transitions
 2. **Fleet Operations**: Batch pause/resume/drain operations with multiple workers
 3. **Rolling Restart**: Full rolling restart cycle with health checking
@@ -638,6 +664,7 @@ func TestSafetyChecks(t *testing.T) {
 5. **Audit Integration**: Complete audit trail generation and retrieval
 
 #### Test Environment
+
 ```yaml
 integration_environment:
   workers:
@@ -664,12 +691,14 @@ integration_environment:
 ### Load Testing
 
 #### Fleet Scale Testing
+
 - **1,000 Workers**: Standard deployment load testing
 - **10,000 Workers**: Large-scale deployment simulation
 - **Heartbeat Load**: 10,000 heartbeats per minute sustained load
 - **Command Throughput**: 100 simultaneous fleet commands
 
 #### Stress Testing
+
 - **Database Stress**: Heavy concurrent database operations
 - **Network Partitions**: Worker connectivity issues simulation
 - **Memory Pressure**: High memory usage scenarios
@@ -678,12 +707,14 @@ integration_environment:
 ### Security Testing
 
 #### Penetration Testing
+
 - **Authentication Bypass**: Attempt to access fleet controls without authorization
 - **Privilege Escalation**: Test role-based access control enforcement
 - **Command Injection**: Validate input sanitization for fleet commands
 - **Audit Evasion**: Attempt to perform actions without audit logging
 
 #### Safety Testing
+
 - **Mass Shutdown Prevention**: Verify protection against accidental fleet shutdown
 - **Confirmation Bypass**: Test confirmation requirement enforcement
 - **Rate Limit Testing**: Validate command rate limiting effectiveness
@@ -694,6 +725,7 @@ integration_environment:
 ### Infrastructure Requirements
 
 #### Production Environment
+
 ```yaml
 infrastructure:
   compute:
@@ -725,6 +757,7 @@ infrastructure:
 ```
 
 #### Monitoring Stack
+
 ```yaml
 monitoring:
   metrics:
@@ -754,6 +787,7 @@ monitoring:
 ### Deployment Strategy
 
 #### Blue-Green Deployment
+
 1. **Pre-Deployment**: Validate new version in staging with full fleet simulation
 2. **Green Environment**: Deploy new version to standby environment
 3. **Health Validation**: Comprehensive health checks on green environment
@@ -761,6 +795,7 @@ monitoring:
 5. **Blue Retirement**: Decommission old version after successful migration
 
 #### Feature Rollout
+
 ```go
 type FeatureFlags struct {
     EnableFleetControls     bool `json:"enable_fleet_controls"`
@@ -775,6 +810,7 @@ type FeatureFlags struct {
 ### Migration Strategy
 
 #### Phased Rollout
+
 1. **Phase 1**: Read-only fleet visibility with worker listing
 2. **Phase 2**: Single worker operations (pause/resume individual workers)
 3. **Phase 3**: Batch operations with safety limits
@@ -782,6 +818,7 @@ type FeatureFlags struct {
 5. **Phase 5**: Advanced features and automation
 
 #### Legacy Compatibility
+
 - **Script Migration**: Migration tools for existing deployment scripts
 - **API Compatibility**: Backward compatibility for existing automation
 - **Gradual Transition**: Parallel operation during migration period
@@ -819,18 +856,21 @@ type FeatureFlags struct {
 ## Success Metrics
 
 ### Operational Metrics
+
 - **Deployment Frequency**: Increase safe deployments by 50%
 - **MTTR Reduction**: Decrease incident response time by 40%
 - **Operator Efficiency**: Reduce manual fleet management time by 60%
 - **Safety Record**: Zero accidental fleet outages
 
 ### Technical Metrics
+
 - **Fleet Visibility**: 100% real-time worker status accuracy
 - **Command Success Rate**: 99.9% successful fleet operations
 - **Performance**: Sub-second response times for fleet operations
 - **Availability**: 99.99% uptime for fleet control systems
 
 ### User Experience Metrics
+
 - **User Satisfaction**: Fleet operator satisfaction scores >4.5/5
 - **Training Time**: Reduce operator onboarding time by 30%
 - **Error Reduction**: 80% reduction in deployment-related incidents

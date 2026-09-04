@@ -1,5 +1,8 @@
 # Terminal Voice Commands API Reference
 
+> [!WARNING]
+> **Archived Feature** — The `internal/terminal-voice-commands` package was removed from the repository on 2025-09-20 during repository cleanup. This document is retained for historical reference only.
+
 ## Overview
 
 The Terminal Voice Commands feature provides hands-free queue management through natural language voice commands. This API documentation covers the Go package interfaces, configuration options, and integration patterns for implementing voice control in the terminal user interface.
@@ -42,14 +45,17 @@ func NewVoiceManager(ctx context.Context, config *VoiceConfig) (*VoiceManager, e
 Creates a new voice manager with the specified configuration. Initializes all components including speech recognition, command processing, audio feedback, and privacy management.
 
 **Parameters:**
+
 - `ctx`: Context for lifecycle management
 - `config`: Voice configuration settings (nil uses defaults)
 
 **Returns:**
+
 - `*VoiceManager`: Configured voice manager instance
 - `error`: Any initialization errors
 
 **Example:**
+
 ```go
 config := DefaultVoiceConfig()
 config.LocalOnly = true
@@ -64,6 +70,7 @@ if err != nil {
 #### Methods
 
 ##### Start
+
 ```go
 func (v *VoiceManager) Start() error
 ```
@@ -71,6 +78,7 @@ func (v *VoiceManager) Start() error
 Starts voice command processing, including audio capture and command handling goroutines.
 
 ##### Stop
+
 ```go
 func (v *VoiceManager) Stop() error
 ```
@@ -78,6 +86,7 @@ func (v *VoiceManager) Stop() error
 Stops voice command processing and releases all resources.
 
 ##### ProcessCommand
+
 ```go
 func (v *VoiceManager) ProcessCommand(command string, tui TUIController) (*CommandResponse, error)
 ```
@@ -85,14 +94,17 @@ func (v *VoiceManager) ProcessCommand(command string, tui TUIController) (*Comma
 Processes a text command (for testing or direct input).
 
 **Parameters:**
+
 - `command`: Raw command text
 - `tui`: TUI controller for executing commands
 
 **Returns:**
+
 - `*CommandResponse`: Execution result with success status and response data
 - `error`: Processing error
 
 ##### ToggleListening
+
 ```go
 func (v *VoiceManager) ToggleListening() error
 ```
@@ -100,6 +112,7 @@ func (v *VoiceManager) ToggleListening() error
 Toggles voice listening mode on/off.
 
 ##### GetState
+
 ```go
 func (v *VoiceManager) GetState() VoiceState
 ```
@@ -107,6 +120,7 @@ func (v *VoiceManager) GetState() VoiceState
 Returns current voice manager state (idle, listening, processing, error).
 
 ##### GetMetrics
+
 ```go
 func (v *VoiceManager) GetMetrics() *VoiceMetrics
 ```
@@ -116,6 +130,7 @@ Returns performance and usage metrics.
 ### Configuration
 
 #### VoiceConfig
+
 ```go
 type VoiceConfig struct {
     WakeWord            string        `yaml:"wake_word" json:"wake_word"`
@@ -131,11 +146,13 @@ type VoiceConfig struct {
 ```
 
 #### Default Configuration
+
 ```go
 func DefaultVoiceConfig() *VoiceConfig
 ```
 
 Returns default voice configuration:
+
 - Wake word: "hey queue"
 - Recognition backend: "whisper" (local)
 - Local only: true
@@ -147,6 +164,7 @@ Returns default voice configuration:
 - Sanitize logs: true
 
 #### Configuration Management
+
 ```go
 type ConfigManager struct {
     configPath string
@@ -159,6 +177,7 @@ func NewConfigManager(configPath string) (*ConfigManager, error)
 Manages voice configuration persistence and validation.
 
 **Key Methods:**
+
 - `Load() error`: Load configuration from file
 - `Save() error`: Save configuration to file
 - `ApplyPreset(name string) error`: Apply predefined configuration preset
@@ -168,6 +187,7 @@ Manages voice configuration persistence and validation.
 ### Speech Recognition
 
 #### SpeechRecognizer Interface
+
 ```go
 type SpeechRecognizer interface {
     StartListening() error
@@ -179,6 +199,7 @@ type SpeechRecognizer interface {
 ```
 
 #### Whisper Recognition (Local)
+
 ```go
 func NewWhisperRecognizer(language string) (*WhisperRecognizer, error)
 ```
@@ -186,15 +207,18 @@ func NewWhisperRecognizer(language string) (*WhisperRecognizer, error)
 Creates a local Whisper-based speech recognizer for privacy-conscious environments.
 
 #### Cloud Recognition
+
 ```go
 func NewCloudRecognizer(provider, language string) (*CloudRecognizer, error)
 ```
 
 Creates a cloud-based speech recognizer. Supported providers:
+
 - "google": Google Speech-to-Text
 - "azure": Azure Speech Services
 
 #### Recognition Result
+
 ```go
 type Recognition struct {
     Text        string    `json:"text"`
@@ -209,6 +233,7 @@ type Recognition struct {
 ### Command Processing
 
 #### CommandProcessor
+
 ```go
 type CommandProcessor struct {
     patterns  []CommandPattern
@@ -222,6 +247,7 @@ func NewCommandProcessor() (*CommandProcessor, error)
 Handles natural language command parsing and intent recognition.
 
 #### Intent Types
+
 ```go
 type Intent int
 
@@ -238,6 +264,7 @@ const (
 ```
 
 #### Command Structure
+
 ```go
 type Command struct {
     Intent      Intent            `json:"intent"`
@@ -251,6 +278,7 @@ type Command struct {
 ```
 
 #### Entity Types
+
 ```go
 type EntityType int
 
@@ -269,6 +297,7 @@ const (
 ### TUI Integration
 
 #### TUIController Interface
+
 ```go
 type TUIController interface {
     GetQueueStatus() *QueueStatus
@@ -287,6 +316,7 @@ type TUIController interface {
 Implement this interface in your TUI to enable voice command integration.
 
 #### Status Structures
+
 ```go
 type QueueStatus struct {
     High   int `json:"high"`
@@ -306,6 +336,7 @@ type WorkerStatus struct {
 ### Audio Feedback
 
 #### AudioFeedback
+
 ```go
 type AudioFeedback struct {
     enabled   bool
@@ -320,6 +351,7 @@ func NewAudioFeedback(enabled bool) (*AudioFeedback, error)
 Provides text-to-speech responses and audio cues.
 
 #### Methods
+
 - `SpeakResponse(text string) error`: Convert text to speech
 - `PlayConfirmationSound() error`: Play confirmation beep
 - `PlayErrorSound() error`: Play error sound
@@ -327,6 +359,7 @@ Provides text-to-speech responses and audio cues.
 - `SetVoice(voice Voice) error`: Configure TTS voice
 
 #### Voice Configuration
+
 ```go
 type Voice struct {
     Name     string  `json:"name"`
@@ -340,6 +373,7 @@ type Voice struct {
 ### Wake Word Detection
 
 #### WakeWordDetector
+
 ```go
 type WakeWordDetector struct {
     model      WakeWordModel
@@ -355,6 +389,7 @@ func NewWakeWordDetector(wakeWord string) (*WakeWordDetector, error)
 Detects configurable wake words in audio streams.
 
 #### Methods
+
 - `DetectWakeWord(audio []byte) (bool, string, error)`: Analyze audio for wake words
 - `SetThreshold(threshold float64)`: Set detection sensitivity
 - `SetEnabled(enabled bool)`: Enable/disable detection
@@ -362,6 +397,7 @@ Detects configurable wake words in audio streams.
 ### Privacy and Security
 
 #### PrivacyManager
+
 ```go
 type PrivacyManager struct {
     localOnly     bool
@@ -375,6 +411,7 @@ type PrivacyManager struct {
 Manages privacy settings and data protection.
 
 #### DataSanitizer
+
 ```go
 type DataSanitizer struct {
     sensitivePatterns []SensitivePattern
@@ -386,6 +423,7 @@ func NewDataSanitizer() (*DataSanitizer, error)
 Removes sensitive information from voice commands before logging.
 
 **Built-in Patterns:**
+
 - Email addresses → [EMAIL]
 - IP addresses → [IP]
 - Credit card numbers → [CARD]
@@ -397,32 +435,38 @@ Removes sensitive information from voice commands before logging.
 ### Supported Commands
 
 #### Status Queries
+
 - "show queue status"
 - "what are the workers doing"
 - "how many jobs in high priority"
 - "show me the DLQ"
 
 #### Worker Control
+
 - "drain worker 3"
 - "pause worker 1"
 - "resume all workers"
 - "stop the third worker"
 
 #### Queue Management
+
 - "requeue failed jobs"
 - "clear completed jobs"
 - "pause the queue"
 
 #### Navigation
+
 - "go to workers"
 - "show charts"
 - "navigate to settings"
 
 #### Confirmations
+
 - "yes" / "confirm" / "proceed"
 - "no" / "cancel" / "abort"
 
 #### Help
+
 - "help"
 - "what can you do"
 - "show commands"
@@ -547,11 +591,13 @@ if !result.Valid {
 ## Performance Considerations
 
 ### Recognition Latency
+
 - **Local (Whisper)**: 200-500ms
 - **Cloud**: 100-300ms + network latency
 - **Wake word detection**: <50ms
 
 ### Memory Usage
+
 - **Whisper base model**: ~150MB
 - **Audio buffers**: 2-4MB
 - **Command history**: ~10KB per command
@@ -603,6 +649,7 @@ func handleVoiceError(err error) {
 ## Metrics and Monitoring
 
 ### VoiceMetrics
+
 ```go
 type VoiceMetrics struct {
     CommandsProcessed   int64                 `json:"commands_processed"`
@@ -635,17 +682,20 @@ func (v *VoiceManager) recordMetrics() {
 ## Security Considerations
 
 ### Privacy Protection
+
 - **Local processing**: Whisper.cpp runs entirely offline
 - **Data sanitization**: Automatic removal of sensitive information
 - **No recording**: Audio is processed in real-time, not stored
 - **Explicit consent**: Cloud services require user opt-in
 
 ### Access Control
+
 - **Command validation**: Prevent dangerous operations
 - **Context awareness**: Limit commands based on current view
 - **Confirmation prompts**: Require explicit confirmation for destructive actions
 
 ### Audit Logging
+
 ```go
 // Sanitized command logging
 log.Printf("Voice command executed: intent=%s, success=%v, user=%s",

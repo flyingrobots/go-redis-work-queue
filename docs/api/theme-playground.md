@@ -92,6 +92,7 @@ func NewThemeManager(configDir string) *ThemeManager
 ```
 
 Creates a new theme manager with the specified configuration directory. The manager automatically:
+
 - Loads built-in themes
 - Loads user preferences from disk
 - Loads custom themes from the themes directory
@@ -100,54 +101,71 @@ Creates a new theme manager with the specified configuration directory. The mana
 ### Core Methods
 
 #### GetActiveTheme
+
 ```go
 func (tm *ThemeManager) GetActiveTheme() *Theme
 ```
+
 Returns the currently active theme. Thread-safe.
 
 #### SetActiveTheme
+
 ```go
 func (tm *ThemeManager) SetActiveTheme(name string) error
 ```
+
 Sets the active theme by name. Updates preferences and notifies callbacks.
 
 #### GetTheme
+
 ```go
 func (tm *ThemeManager) GetTheme(name string) (*Theme, error)
 ```
+
 Retrieves a specific theme by name.
 
 #### ListThemes
+
 ```go
 func (tm *ThemeManager) ListThemes() []Theme
 ```
+
 Returns all available themes, sorted by name.
 
 #### RegisterTheme
+
 ```go
 func (tm *ThemeManager) RegisterTheme(theme *Theme) error
 ```
+
 Registers a new theme in the registry. Validates the theme before registration.
 
 #### ValidateTheme
+
 ```go
 func (tm *ThemeManager) ValidateTheme(theme *Theme) error
 ```
+
 Validates a theme for correctness and accessibility compliance.
 
 #### SaveTheme
+
 ```go
 func (tm *ThemeManager) SaveTheme(theme *Theme) error
 ```
+
 Saves a theme to disk as a JSON file in the themes directory.
 
 #### GetStyleFor
+
 ```go
 func (tm *ThemeManager) GetStyleFor(component, variant string) lipgloss.Style
 ```
+
 Returns a Lip Gloss style for a specific component and variant.
 
 **Supported Components:**
+
 - `button` (variants: primary, secondary, danger, success, ghost)
 - `table` (variants: header, row, row_alt, selected)
 - `modal`
@@ -158,9 +176,11 @@ Returns a Lip Gloss style for a specific component and variant.
 - `notification`
 
 #### OnThemeChange
+
 ```go
 func (tm *ThemeManager) OnThemeChange(callback func(*Theme))
 ```
+
 Registers a callback function that is called when the active theme changes.
 
 ## Built-in Themes
@@ -183,6 +203,7 @@ func NewThemeIntegration(configDir string) (*ThemeIntegration, error)
 ```
 
 Creates a new theme integration instance that:
+
 - Sets up a theme manager
 - Detects terminal capabilities
 - Provides style caching
@@ -197,26 +218,31 @@ func NewStyleHelper(integration *ThemeIntegration) *StyleHelper
 ```
 
 #### Button Styling
+
 ```go
 func (sh *StyleHelper) Button(text, variant string) string
 ```
 
 #### Table Styling
+
 ```go
 func (sh *StyleHelper) Table() *TableStyleHelper
 ```
 
 Table helper methods:
+
 - `Header(text string) string`
 - `Row(text string, isAlternate bool) string`
 - `SelectedRow(text string) string`
 
 #### Status Styling
+
 ```go
 func (sh *StyleHelper) Status() *StatusStyleHelper
 ```
 
 Status helper methods:
+
 - `StatusBadge(status string) string`
 - `ProgressBar(current, total int, width int) string`
 
@@ -225,9 +251,11 @@ Status helper methods:
 The PlaygroundHandler provides REST API endpoints for theme operations:
 
 ### GET /api/themes
+
 Returns all available themes with active theme information.
 
 **Response:**
+
 ```json
 {
   "themes": [
@@ -243,12 +271,15 @@ Returns all available themes with active theme information.
 ```
 
 ### GET /api/themes/{name}
+
 Returns a specific theme by name.
 
 ### POST /api/themes/active
+
 Sets the active theme.
 
 **Request Body:**
+
 ```json
 {
   "theme": "tokyo-night"
@@ -256,9 +287,11 @@ Sets the active theme.
 ```
 
 ### GET /api/themes/{name}/preview
+
 Returns theme preview information.
 
 **Response:**
+
 ```json
 {
   "name": "tokyo-night",
@@ -277,9 +310,11 @@ Returns theme preview information.
 ```
 
 ### POST /api/themes/validate
+
 Validates a theme configuration.
 
 **Request Body:**
+
 ```json
 {
   "name": "custom-theme",
@@ -291,21 +326,27 @@ Validates a theme configuration.
 ```
 
 ### POST /api/themes/save
+
 Saves a custom theme.
 
 ### GET /api/themes/{name}/export
+
 Exports a theme as a downloadable JSON file.
 
 ### POST /api/themes/import
+
 Imports a theme from an uploaded JSON file.
 
 ### GET /api/preferences
+
 Returns user theme preferences.
 
 ### POST /api/preferences
+
 Updates user theme preferences.
 
 ### GET /api/config-path
+
 Returns configuration directory paths.
 
 ## Color Utilities API
@@ -319,6 +360,7 @@ func NewColorUtilities() *ColorUtilities
 ```
 
 #### Color Conversion
+
 ```go
 func (cu *ColorUtilities) HexToRGB(hex string) (*RGB, error)
 func (cu *ColorUtilities) RGBToHex(rgb RGB) string
@@ -326,6 +368,7 @@ func (cu *ColorUtilities) RGBToHSL(rgb RGB) (*HSL, error)
 ```
 
 #### Contrast Calculation
+
 ```go
 func (cu *ColorUtilities) ContrastRatio(color1, color2 Color) (float64, error)
 ```
@@ -343,6 +386,7 @@ func NewAccessibilityChecker() *AccessibilityChecker
 ```
 
 #### CheckAccessibility
+
 ```go
 func (ac *AccessibilityChecker) CheckAccessibility(theme *Theme) (*AccessibilityInfo, error)
 ```
@@ -367,7 +411,7 @@ type AccessibilityInfo struct {
 
 ### Configuration Directory Structure
 
-```
+```text
 $XDG_CONFIG_HOME/go-redis-wq/
 ├── theme_preferences.json      # User preferences
 └── themes/                     # Custom themes directory
@@ -413,6 +457,7 @@ The theme system respects the following environment variables:
 The theme system uses custom error types for better error handling:
 
 ### ThemeError
+
 ```go
 type ThemeError struct {
     Code    string `json:"code"`
@@ -554,6 +599,7 @@ if len(info.Warnings) > 0 {
 ## Thread Safety
 
 All public APIs are thread-safe:
+
 - ThemeManager uses read-write mutexes for safe concurrent access
 - Integration layer handles concurrent style requests
 - Callback notifications are executed safely

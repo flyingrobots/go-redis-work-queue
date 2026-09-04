@@ -16,6 +16,7 @@ The RBAC Token Service provides role-based access control and JWT/PASETO token m
 ## Architecture
 
 ### Network Topology
+
 - **Namespace:** `work-queue`; all control-plane workloads run in this namespace.
 - **Ingress → Admin API:** HTTPS ingress terminates TLS and forwards to the `admin-api` service (`ClusterIP`, port 8080).
 - **Admin API ↔ RBAC Token Service:** Admin API calls the token service over the cluster network (`ClusterIP`, port 8081) for policy decisions and token minting.
@@ -44,18 +45,21 @@ flowchart LR
 ```
 
 ### Security Boundaries
+
 - **Network Policies:** Token service accepts traffic only from the admin API and Prometheus scrape jobs; outbound access limited to Redis and metrics endpoints.
 - **Secrets:** JWT signing keys, Redis credentials, and encryption keys are stored in `rbac-secrets` (Kubernetes `Secret`) or Docker secrets; mounted read-only in pods.
 - **Service Accounts & RBAC:** Dedicated service account `rbac-token-service` with least-privilege RBAC (configmap/secret read, metrics write).
 - **TLS:** External ingress terminates TLS; internal service-to-service communication uses cluster certificates or mTLS depending on environment.
 
 ### Data Flow
+
 1. Client request hits the ingress and reaches the admin API.
 2. Admin API validates existing tokens with the RBAC token service.
 3. Token service looks up roles/resources in ConfigMaps, checks Redis for revocation lists, and emits audit logs.
 4. Responses return to the client; metrics and audit events flow to Prometheus and persistent storage respectively.
 
 ### Port Reference
+
 | Component            | Service Port | Protocol | Notes                              |
 |--------------------- |-------------:|----------|------------------------------------|
 | Admin API            | 8080         | HTTP/TLS | Exposed via ingress                |
@@ -66,6 +70,7 @@ flowchart LR
 | Alertmanager         | 9093         | HTTP/TLS | Optional ingress for alerts        |
 
 ### Service Dependencies & Startup Order
+
 1. **Redis** with required ACLs and secrets in place.
 2. **RBAC Token Service** (requires Redis and secrets/config maps).
 3. **Admin API** (requires token service healthy).
@@ -74,11 +79,13 @@ flowchart LR
 ## Components
 
 ### Docker Components
+
 - **Dockerfile.rbac-token-service**: Multi-stage build with security hardening
 - **docker-compose.yaml**: Updated with RBAC service and environment variables
 - **Configuration files**: roles.yaml, resources.yaml, token-service.yaml
 
 ### Kubernetes Components
+
 - **Namespace**: work-queue
 - **Deployment**: rbac-token-service with 2+ replicas
 - **Service**: ClusterIP service for internal communication
@@ -91,6 +98,7 @@ flowchart LR
 - **PDB**: Pod disruption budget for availability
 
 ### Monitoring Components
+
 - **ServiceMonitor**: Prometheus scraping configuration
 - **PrometheusRule**: Alert rules for security and performance
 - **Grafana Dashboard**: Real-time metrics visualization
@@ -98,9 +106,11 @@ flowchart LR
 ## Deployment Scripts
 
 ### 1. deploy-rbac-staging.sh
+
 Primary deployment script for staging environment.
 
 **Features:**
+
 - Prerequisites checking (kubectl, docker, cluster connectivity)
 - Secure secret generation (256-bit keys, random passwords)
 - Docker image building and tagging
@@ -109,14 +119,17 @@ Primary deployment script for staging environment.
 - Deployment status reporting
 
 **Usage:**
+
 ```bash
 ./deployments/scripts/deploy-rbac-staging.sh
 ```
 
 ### 2. health-check-rbac.sh
+
 Comprehensive health checking script.
 
 **Features:**
+
 - Deployment and pod status verification
 - HTTP endpoint testing (health, metrics)
 - Configuration validation
@@ -125,19 +138,23 @@ Comprehensive health checking script.
 - Detailed reporting
 
 **Usage:**
+
 ```bash
 ./deployments/scripts/health-check-rbac.sh
 ```
 
 **Options:**
+
 - `-n, --namespace`: Target namespace (default: work-queue)
 - `-s, --service`: Service name (default: rbac-token-service)
 - `-t, --timeout`: HTTP timeout (default: 30s)
 
 ### 3. setup-monitoring.sh
+
 Monitoring and alerting setup script.
 
 **Features:**
+
 - ServiceMonitor deployment
 - Prometheus rules deployment
 - Grafana dashboard creation
@@ -145,14 +162,17 @@ Monitoring and alerting setup script.
 - Monitoring validation
 
 **Usage:**
+
 ```bash
 ./deployments/scripts/setup-monitoring.sh
 ```
 
 ### 4. test-staging-deployment.sh
+
 Comprehensive staging deployment testing.
 
 **Features:**
+
 - End-to-end testing suite
 - HTTP endpoint validation
 - RBAC functionality testing
@@ -161,6 +181,7 @@ Comprehensive staging deployment testing.
 - Detailed test reporting
 
 **Usage:**
+
 ```bash
 ./deployments/scripts/test-staging-deployment.sh
 ```
@@ -185,21 +206,27 @@ The RBAC Token Service uses the following environment variables:
 ### Configuration Files
 
 #### roles.yaml
+
 Defines user roles and their permissions:
+
 - **viewer**: Read-only access
 - **operator**: Basic operations + job enqueuing
 - **maintainer**: Advanced operations + DLQ management
 - **admin**: Full administrative access
 
 #### resources.yaml
+
 Defines resources and actions:
+
 - Resource patterns (queues, environments, schedules)
 - Action definitions with risk levels
 - Rate limits and constraints
 - API endpoint mappings
 
 #### token-service.yaml
+
 Service configuration:
+
 - Server settings (timeouts, limits)
 - Token configuration (format, TTL, issuer)
 - Key management settings
@@ -208,18 +235,21 @@ Service configuration:
 ## Security Features
 
 ### Token Security
+
 - **Multiple formats**: JWT and PASETO support
 - **Key rotation**: Automatic rotation with grace periods
 - **Secure algorithms**: HS256, ES256, EdDSA support
 - **TTL management**: Configurable token lifetimes
 
 ### Access Control
+
 - **Role inheritance**: Hierarchical permission model
 - **Resource constraints**: Fine-grained resource access
 - **Rate limiting**: Protection against abuse
 - **Audit logging**: Comprehensive security events
 
 ### Infrastructure Security
+
 - **Non-root containers**: Security hardened containers
 - **Secret management**: Kubernetes secrets for sensitive data
 - **Network policies**: Optional network isolation
@@ -228,7 +258,9 @@ Service configuration:
 ## Monitoring and Alerts
 
 ### Metrics
+
 The service exposes Prometheus metrics including:
+
 - HTTP request rates and latencies
 - Token validation metrics
 - Security event counters
@@ -236,13 +268,17 @@ The service exposes Prometheus metrics including:
 - Business logic metrics
 
 ### Alert Rules
+
 Configured alerts for:
+
 - **Critical**: Service down, high error rates, security breaches
 - **Warning**: High latency, resource usage, maintenance needs
 - **Info**: Admin activity spikes, system events
 
 ### Grafana Dashboard
+
 Real-time dashboard showing:
+
 - Service availability and health
 - Request rates and response times
 - Token operations and errors
@@ -254,6 +290,7 @@ Real-time dashboard showing:
 ### Staging Deployment
 
 1. **Preparation**
+
    ```bash
    # Verify cluster access
    kubectl cluster-info
@@ -263,6 +300,7 @@ Real-time dashboard showing:
    ```
 
 2. **Deploy to Staging**
+
    ```bash
    # Run main deployment script
    ./deployments/scripts/deploy-rbac-staging.sh
@@ -272,6 +310,7 @@ Real-time dashboard showing:
    ```
 
 3. **Validate Deployment**
+
    ```bash
    # Run health checks
    ./deployments/scripts/health-check-rbac.sh
@@ -281,6 +320,7 @@ Real-time dashboard showing:
    ```
 
 4. **Access Service**
+
    ```bash
    # Port forward for testing
    kubectl port-forward service/rbac-token-service 8081:80 -n work-queue
@@ -293,36 +333,43 @@ Real-time dashboard showing:
 ### Production Deployment
 
 #### 1. Pre-Deployment Gate
+
 - Confirm CAB/Change ticket approval and on-call coverage.
 - Ensure staging is green: last deploy, health checks, and integration tests reported success in the previous 24 hours.
 - Verify secrets (JWT signing/encryption keys, Redis credentials) are rotated or still within policy.
 
 #### 2. Blue-Green (or Canary) Rollout
+
 - Create a parallel `rbac-token-service-prod-blue` Deployment referencing the new image tag/digest.
 - Apply the new ConfigMaps/Secrets; use immutable naming (`config-2025-09-16`) to support fast rollback.
 - Shift ingress/Service selector to the new deployment gradually (10% → 50% → 100%) or, for blue-green, flip the Service/Ingress once validation passes.
 
 #### 3. Migration & Data Safeguards
+
 - Run any Redis migrations/ACL updates via `deployments/scripts/rbac-migrate.sh` (or documented manual steps) before cutting over traffic.
 - Take a Redis snapshot (RDB) or trigger managed backup prior to rollout.
 - Capture audit log checkpoint in object storage for incident reconstruction.
 
 #### 4. Validation During Cutover
+
 - Execute smoke tests (`health-check-rbac.sh` with `--timeout 5s`) and targeted token issuance/validation flows.
 - Watch Prometheus dashboards (latency, error rate, Redis round-trips) for 10–15 minutes after each traffic increment.
 - Check Alertmanager for new alerts; ensure none fire unexpectedly.
 
 #### 5. Rollback Procedure
+
 - If KPIs regress, shift traffic back to the previous deployment or re-point Service selectors to the green deployment.
 - Restore prior ConfigMaps/Secrets by reapplying the previous immutable versions.
 - Rehydrate Redis from snapshot if schema or ACL changes caused issues (documented in the runbook).
 
 #### 6. Post-Deployment Tasks
+
 - Remove the idle (blue) deployment once confidence window passes.
 - Update the deployment log (change ticket, dashboards, evidence links) and notify stakeholders.
 - Review audit logs for anomalies during the rollout window.
 
 #### 7. Disaster Recovery & Backups
+
 - Confirm nightly backups succeeded post-release and update recovery point objective (RPO) tracker.
 - Run the quarterly DR drill playbook if the release introduced new components or data paths.
 
@@ -333,24 +380,28 @@ Maintain this checklist in sync with the change-management process and include i
 ### Common Issues
 
 1. **Pod Not Starting**
+
    ```bash
    kubectl describe pod <pod-name> -n work-queue
    kubectl logs <pod-name> -n work-queue
    ```
 
 2. **Service Not Accessible**
+
    ```bash
    kubectl get svc rbac-token-service -n work-queue
    kubectl get endpoints rbac-token-service -n work-queue
    ```
 
 3. **Configuration Issues**
+
    ```bash
    kubectl get configmap rbac-config -n work-queue -o yaml
    kubectl get secret rbac-secrets -n work-queue
    ```
 
 4. **Storage Issues**
+
    ```bash
    kubectl get pvc -n work-queue
    kubectl describe pvc rbac-keys-pvc -n work-queue
@@ -377,18 +428,21 @@ Monitor these metrics for performance optimization:
 ## Security Best Practices
 
 ### Key Management
+
 - Rotate signing keys every 30 days
 - Use strong random keys (256-bit minimum)
 - Store keys securely in Kubernetes secrets
 - Implement key versioning for zero-downtime rotation
 
 ### Access Control
+
 - Follow principle of least privilege
 - Regularly review and audit user permissions
 - Monitor for unusual access patterns
 - Implement IP whitelisting where appropriate
 
 ### Monitoring
+
 - Set up alerts for security events
 - Monitor for brute force attacks
 - Track privilege escalations
@@ -397,12 +451,14 @@ Monitor these metrics for performance optimization:
 ## Maintenance
 
 ### Regular Tasks
+
 - **Weekly**: Review audit logs and security alerts
 - **Monthly**: Rotate signing keys and review permissions
 - **Quarterly**: Security assessment and penetration testing
 - **Annually**: Complete architecture and configuration review
 
 ### Updates
+
 - Monitor for security patches and updates
 - Test updates in staging before production
 - Maintain rollback procedures
@@ -411,6 +467,7 @@ Monitor these metrics for performance optimization:
 ## Support and Documentation
 
 For additional support:
+
 - Review application logs for error details
 - Check Kubernetes events for cluster issues
 - Use health check script for system status

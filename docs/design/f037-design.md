@@ -13,6 +13,7 @@ This design specification outlines the implementation of right-click context men
 ### Overview
 
 The context menu system is built around three core components:
+
 1. **Hitbox Detection** - Uses `bubblezone` to register interactive zones
 2. **Action Registry** - Maps contexts to available actions with capability checks
 3. **Menu Overlay** - Lightweight UI component for displaying and handling menu interactions
@@ -393,6 +394,7 @@ type ConfirmationConfig struct {
 ### Unit Testing
 
 #### Component Tests
+
 ```go
 func TestContextMenuManager_RegisterZone(t *testing.T)
 func TestContextMenuManager_HandleRightClick(t *testing.T)
@@ -402,6 +404,7 @@ func TestPermissionChecking(t *testing.T)
 ```
 
 #### Mock Interfaces
+
 - Mock BubbleZone for hitbox testing
 - Mock ActionRegistry for action resolution testing
 - Mock PermissionChecker for security testing
@@ -409,12 +412,14 @@ func TestPermissionChecking(t *testing.T)
 ### Integration Testing
 
 #### End-to-End Scenarios
+
 1. **Right-click Queue Row → Show Menu → Execute Safe Action**
 2. **Right-click DLQ Item → Show Menu → Execute Destructive Action → Confirm**
 3. **Keyboard Shortcut → Show Menu → Navigate → Execute**
 4. **Edge Cases**: Click near viewport edges, overlapping zones
 
 #### TUI Integration
+
 ```go
 func TestContextMenu_QueueRowIntegration(t *testing.T)
 func TestContextMenu_DLQItemIntegration(t *testing.T)
@@ -425,6 +430,7 @@ func TestContextMenu_ConfirmationFlow(t *testing.T)
 ### Performance Testing
 
 #### Benchmarks
+
 ```go
 func BenchmarkMenuShow(b *testing.B)
 func BenchmarkZoneDetection(b *testing.B)
@@ -432,6 +438,7 @@ func BenchmarkActionResolution(b *testing.B)
 ```
 
 #### Load Testing
+
 - Test with maximum number of registered zones
 - Rapid menu show/hide cycles
 - Concurrent menu operations
@@ -439,12 +446,14 @@ func BenchmarkActionResolution(b *testing.B)
 ### Manual Testing
 
 #### Usability Testing
+
 1. **Mouse Accuracy**: Verify precise hitbox detection
 2. **Menu Positioning**: Test at viewport edges and corners
 3. **Visual Feedback**: Confirm hover states and animations
 4. **Accessibility**: Test keyboard-only navigation
 
 #### Cross-Platform Testing
+
 - Different terminal emulators
 - Various screen resolutions
 - Different mouse sensitivity settings
@@ -454,21 +463,25 @@ func BenchmarkActionResolution(b *testing.B)
 ### Rollout Strategy
 
 #### Phase 1: Core Infrastructure (Week 1)
+
 - Implement BubbleZone integration
 - Basic ContextMenuManager
 - Simple MenuOverlay component
 
 #### Phase 2: Action System (Week 2)
+
 - ActionRegistry implementation
 - Permission checking
 - Basic action handlers
 
 #### Phase 3: UI Polish (Week 3)
+
 - Menu theming and animations
 - Confirmation modals
 - Keyboard navigation
 
 #### Phase 4: Integration (Week 4)
+
 - Wire into existing TUI components
 - Add context-specific actions
 - Documentation and help updates
@@ -476,6 +489,7 @@ func BenchmarkActionResolution(b *testing.B)
 ### Configuration Management
 
 #### Default Configuration
+
 ```json
 {
   "enabled": true,
@@ -505,6 +519,7 @@ func BenchmarkActionResolution(b *testing.B)
 ```
 
 #### Environment-Specific Overrides
+
 - Development: All actions enabled, no confirmations
 - Staging: Reduced confirmations for testing
 - Production: Full security controls enabled
@@ -512,6 +527,7 @@ func BenchmarkActionResolution(b *testing.B)
 ### Monitoring and Observability
 
 #### Metrics
+
 ```json
 {
   "context_menu_shows_total": "counter",
@@ -525,6 +541,7 @@ func BenchmarkActionResolution(b *testing.B)
 ```
 
 #### Logging
+
 ```json
 {
   "timestamp": "2025-09-14T10:30:00Z",
@@ -561,6 +578,7 @@ func BenchmarkActionResolution(b *testing.B)
 ### A. Action Catalog
 
 #### Queue Context Actions
+
 | Action | Description | Permission | Destructive |
 |--------|-------------|------------|-------------|
 | Peek | View queue contents | queues.view | No |
@@ -570,6 +588,7 @@ func BenchmarkActionResolution(b *testing.B)
 | Purge | Clear all jobs | queues.purge | Yes |
 
 #### DLQ Context Actions
+
 | Action | Description | Permission | Destructive |
 |--------|-------------|------------|-------------|
 | View Details | Show job details | dlq.view | No |
@@ -580,6 +599,7 @@ func BenchmarkActionResolution(b *testing.B)
 | Export | Download as JSON | data.export | No |
 
 #### Worker Context Actions
+
 | Action | Description | Permission | Destructive |
 |--------|-------------|------------|-------------|
 | View Details | Show worker info | workers.view | No |
@@ -601,7 +621,8 @@ func BenchmarkActionResolution(b *testing.B)
 ### C. Visual Design Mockups
 
 #### Queue Row Context Menu
-```
+
+```text
 ┌─────────────────────────┐
 │ 👁 Peek Queue      (p) │
 │ ➕ Enqueue Job     (a) │
@@ -612,7 +633,8 @@ func BenchmarkActionResolution(b *testing.B)
 ```
 
 #### DLQ Item Context Menu
-```
+
+```text
 ┌─────────────────────────┐
 │ 👁 View Details    (v) │
 │ ↩️ Requeue Item     (r) │
@@ -624,7 +646,8 @@ func BenchmarkActionResolution(b *testing.B)
 ```
 
 #### Confirmation Modal
-```
+
+```text
 ┌─────────────────────────────────────┐
 │ ⚠️  Confirm Destructive Action       │
 ├─────────────────────────────────────┤

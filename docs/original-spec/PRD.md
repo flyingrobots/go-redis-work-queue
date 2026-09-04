@@ -126,7 +126,7 @@ Job payload JSON:
 
 - Scan directory recursively using include/exclude globs.
 - Determine priority by extension list.
-- Rate limiting: default implementation uses a 1-second fixed window (`INCR` + `EX=1`). When the counter exceeds the per-second budget, the producer sleeps for the remaining TTL (plus jitter) before retrying. This permits short bursts at window boundaries; deployments needing smoother control can switch to the Lua token-bucket implementation described in [Rate Limiting - Token Bucket](#rate-limiting---token-bucket).
+- Rate limiting: default implementation uses a 1-second fixed window (`INCR` + `EX=1`). When the counter exceeds the per-second budget, the producer sleeps for the remaining TTL (plus jitter) before retrying. This permits short bursts at window boundaries; deployments needing smoother control can switch to the Lua token-bucket implementation described in [Rate Limiting - Token Bucket](../api/advanced-rate-limiting-api.md#from-fixed-window-to-token-bucket).
 - `LPUSH` job JSON to priority queue.
 
 ### Worker Fetch
@@ -164,6 +164,7 @@ Job payload JSON:
 
 - HTTP server exposes `/metrics`, `/healthz`, and `/readyz`.
   - `/readyz` executes a Redis `PING`, verifies worker goroutines are running (heartbeat tickers) and ensures the circuit breaker is `Closed`. Returns `200` with `{status:"ok", checks:{redis:"ok", workers:"ok", circuit_breaker:"closed"}}` on success and `500` with failing checks otherwise. Readiness probe example:
+
     ```yaml
     readinessProbe:
       httpGet:
@@ -173,11 +174,13 @@ Job payload JSON:
       periodSeconds: 10
       failureThreshold: 3
     ```
+
   - Key metrics:
   - Counter: `jobs_produced_total`, `jobs_consumed_total`, `jobs_completed_total`, `jobs_failed_total`, `jobs_retried_total`, `jobs_dead_letter_total`
   - Histogram: `job_processing_duration_seconds`
   - Gauges: queue depth reporting honours `metrics.allowed_queues` configuration. Only queues listed there are exported verbatim; all others are hashed into stable buckets (`queue_hash` labels) or aggregated under `queue="other"` to cap cardinality. Additional gauges: `worker_active`, `circuit_breaker_state` (0=`Closed`,1=`HalfOpen`,2=`Open`).
   - Default configuration:
+
     ```yaml
     metrics:
       allowed_queues:
@@ -187,6 +190,7 @@ Job payload JSON:
       fallback_strategy: hash  # hash|bucket|other
       fallback_bucket_count: 8
     ```
+
     Operators may expand `allowed_queues` as needed; remaining queues follow the selected fallback strategy to maintain bounded label sets.
 - Logging (zap): structured, includes `trace_id`/`span_id` when present
 - Tracing (OpenTelemetry): optional OTLP exporter, spans for produce/consume/process. Job `trace_id`/`span_id` are propagated as remote parent when present.

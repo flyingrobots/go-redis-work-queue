@@ -1,12 +1,13 @@
 //go:build e2e_tests
 // +build e2e_tests
 
+// Gated because end-to-end scenarios require explicit services; un-gate individual files when default CI provisions their dependencies.
+
 // Copyright 2025 James Ross
 package e2e_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"

@@ -5,6 +5,7 @@
 Terminal Voice Commands transforms queue management into a natural conversation, enabling hands-free operation through advanced speech recognition and intelligent command parsing. This system serves dual purposes: providing critical accessibility support for users with mobility impairments, and offering power users a faster way to execute complex operations during high-pressure situations like production incidents.
 
 ### Key Features
+
 - **Local Speech Recognition**: Whisper.cpp for privacy-conscious environments
 - **Natural Language Processing**: Intent recognition with fuzzy matching
 - **Wake Word Detection**: "Hey Queue" activation with customizable phrases
@@ -150,6 +151,7 @@ graph LR
 ### Core Voice Structures
 
 #### Voice Command
+
 ```json
 {
   "id": "cmd-2025-09-14-001",
@@ -173,6 +175,7 @@ graph LR
 ```
 
 #### Recognition Result
+
 ```json
 {
   "text": "show me the high priority queue",
@@ -196,6 +199,7 @@ graph LR
 ```
 
 #### Entity Definition
+
 ```json
 {
   "worker_id": {
@@ -224,6 +228,7 @@ graph LR
 ### Command Grammar Definitions
 
 #### Intent Patterns
+
 ```json
 {
   "status_query": {
@@ -273,6 +278,7 @@ graph LR
 ### Configuration Schema
 
 #### Voice Configuration
+
 ```json
 {
   "voice": {
@@ -317,26 +323,31 @@ graph LR
 ### Voice Control Endpoints
 
 #### Start Voice Session
+
 - `POST /api/v1/voice/session/start`
 - Start voice recognition session
 - Returns session ID and status
 
 #### Stop Voice Session
+
 - `POST /api/v1/voice/session/stop`
 - Stop current voice session
 - Returns final session statistics
 
 #### Voice Command
+
 - `POST /api/v1/voice/command`
 - Process single voice command
 - Supports both streaming and batch processing
 
 #### Voice Configuration
+
 - `GET /api/v1/voice/config`
 - Get current voice configuration
 - `PUT /api/v1/voice/config` - Update voice settings
 
 #### Voice Status
+
 - `GET /api/v1/voice/status`
 - Get voice system status and health
 
@@ -386,6 +397,7 @@ CommandResult:
 ### Privacy Protection
 
 #### Local-First Architecture
+
 All voice processing happens locally by default to protect user privacy:
 
 ```go
@@ -411,6 +423,7 @@ func (p *PrivacyManager) ProcessVoiceInput(audio []byte) (*Recognition, error) {
 ```
 
 #### Data Sanitization
+
 ```go
 type DataSanitizer struct {
     sensitivePatterns []SensitivePattern
@@ -431,12 +444,14 @@ func (s *DataSanitizer) SanitizeCommand(text string) string {
 ### Authentication and Authorization
 
 #### Voice Session Security
+
 - **Session Validation**: Voice sessions require valid user authentication
 - **Command Authorization**: Each voice command checked against user permissions
 - **Rate Limiting**: Maximum 100 commands per minute per user
 - **Audit Logging**: All voice commands logged for security review
 
 #### Permission Model
+
 ```yaml
 voice_permissions:
   voice_user:
@@ -458,6 +473,7 @@ voice_permissions:
 ### Threat Model
 
 #### Identified Threats
+
 1. **Audio Eavesdropping**: Malicious capture of voice commands
    - Mitigation: Local processing, no persistent audio storage
 2. **Command Injection**: Crafted audio to execute unauthorized commands
@@ -468,6 +484,7 @@ voice_permissions:
    - Mitigation: Rate limiting, session timeouts
 
 #### Security Controls
+
 ```go
 type SecurityManager struct {
     rateLimiter     RateLimiter
@@ -497,6 +514,7 @@ func (s *SecurityManager) ValidateVoiceCommand(cmd *VoiceCommand, user *User) er
 ## Performance Requirements
 
 ### Recognition Performance
+
 - **Local Recognition Latency**: < 500ms for Whisper-base model
 - **Cloud Recognition Latency**: < 300ms plus network round-trip
 - **Wake Word Detection**: < 50ms real-time processing
@@ -504,6 +522,7 @@ func (s *SecurityManager) ValidateVoiceCommand(cmd *VoiceCommand, user *User) er
 - **End-to-End Response**: < 1 second from speech to action
 
 ### Resource Requirements
+
 ```yaml
 whisper_local:
   cpu: 2 cores (during recognition)
@@ -522,12 +541,14 @@ audio_processing:
 ```
 
 ### Scalability Targets
+
 - **Concurrent Sessions**: 50 simultaneous voice sessions
 - **Command Throughput**: 1000 commands per minute system-wide
 - **Recognition Accuracy**: >90% for common commands in quiet environment
 - **Audio Quality**: Support 8kHz to 48kHz sample rates
 
 ### Performance Monitoring
+
 ```go
 type VoiceMetrics struct {
     RecognitionLatency    histogram
@@ -550,6 +571,7 @@ func (v *VoiceManager) RecordMetrics() {
 ### Unit Testing
 
 #### Recognition Testing
+
 ```go
 func TestWhisperRecognition(t *testing.T) {
     recognizer := NewWhisperRecognizer("models/whisper-base.bin")
@@ -576,6 +598,7 @@ func TestWhisperRecognition(t *testing.T) {
 ```
 
 #### Intent Recognition Testing
+
 ```go
 func TestIntentRecognition(t *testing.T) {
     processor := NewCommandProcessor()
@@ -601,6 +624,7 @@ func TestIntentRecognition(t *testing.T) {
 ### Integration Testing
 
 #### End-to-End Voice Flow
+
 ```go
 func TestVoiceCommandFlow(t *testing.T) {
     // Setup test environment
@@ -629,11 +653,13 @@ func TestVoiceCommandFlow(t *testing.T) {
 ### Accessibility Testing
 
 #### Screen Reader Compatibility
+
 - Test with NVDA, JAWS, and VoiceOver
 - Verify audio feedback doesn't interfere with screen readers
 - Validate keyboard alternatives for all voice commands
 
 #### Voice Quality Testing
+
 ```go
 func TestAudioQualityHandling(t *testing.T) {
     testConditions := []struct {
@@ -659,6 +685,7 @@ func TestAudioQualityHandling(t *testing.T) {
 ### Performance Testing
 
 #### Recognition Latency
+
 ```go
 func BenchmarkRecognitionLatency(b *testing.B) {
     recognizer := NewWhisperRecognizer("models/whisper-base.bin")
@@ -675,6 +702,7 @@ func BenchmarkRecognitionLatency(b *testing.B) {
 ```
 
 #### Concurrent Session Testing
+
 ```go
 func TestConcurrentVoiceSessions(t *testing.T) {
     const numSessions = 50
@@ -706,6 +734,7 @@ func TestConcurrentVoiceSessions(t *testing.T) {
 ### System Requirements
 
 #### Hardware Requirements
+
 ```yaml
 minimum_requirements:
   cpu: 2 cores
@@ -721,6 +750,7 @@ recommended_requirements:
 ```
 
 #### Software Dependencies
+
 ```yaml
 dependencies:
   whisper_cpp: ">=1.0.0"
@@ -737,6 +767,7 @@ optional_dependencies:
 ### Installation Process
 
 #### Binary Distribution
+
 ```bash
 # Download pre-built binary with models
 curl -L https://releases.queue.io/voice-v1.0.0.tar.gz | tar xz
@@ -753,6 +784,7 @@ queue config voice.wake_word="hey queue"
 ```
 
 #### Container Deployment
+
 ```dockerfile
 FROM ubuntu:22.04
 
@@ -777,6 +809,7 @@ CMD ["queue-voice", "--config=/etc/queue/voice.yaml"]
 ### Configuration Management
 
 #### Voice Configuration File
+
 ```yaml
 # /etc/queue/voice.yaml
 voice:
@@ -814,24 +847,28 @@ voice:
 ### Rollout Strategy
 
 #### Phase 1: Core Recognition (Week 1)
+
 - Deploy Whisper.cpp integration
 - Basic command recognition for status queries
 - Local-only processing
 - Limited user testing with accessibility team
 
 #### Phase 2: Full Command Set (Week 2-3)
+
 - Complete command grammar implementation
 - Worker control and queue management
 - Audio feedback system
 - Expanded user testing
 
 #### Phase 3: Advanced Features (Week 4-5)
+
 - Wake word detection
 - Cloud backend integration
 - Performance optimization
 - Production readiness testing
 
 #### Phase 4: General Availability (Week 6+)
+
 - Full feature deployment
 - Documentation and training
 - Monitoring and alerting
@@ -840,6 +877,7 @@ voice:
 ### Monitoring and Observability
 
 #### Key Metrics
+
 ```yaml
 voice_metrics:
   - name: voice_recognition_latency_seconds
@@ -867,6 +905,7 @@ voice_metrics:
 ```
 
 #### Health Checks
+
 ```go
 func (v *VoiceManager) HealthCheck() *HealthStatus {
     status := &HealthStatus{

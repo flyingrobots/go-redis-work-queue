@@ -5,10 +5,11 @@ PKG := github.com/flyingrobots/go-redis-work-queue
 VERSION ?= dev
 LDFLAGS := -X main.version=$(VERSION)
 GOFLAGS ?=
+MARKDOWNLINT_CLI2_VERSION ?= 0.14.0
 
 BIN_DIR := bin
 
-.PHONY: all build test run lint tidy version clean
+.PHONY: all build test run tidy version clean
 
 all: build
 
@@ -24,23 +25,26 @@ run-tui tui: build-tui
 	./bin/tui --config=config/config.yaml
 
 run:
-	./bin/$(APP) --role=all --config=config/config.yaml
+	./bin/$(APP) --role=all --bench-worker --config=config/config.yaml
 
 test:
 	go test ./... -race -count=1
 
+.PHONY: lint
+lint:
+	go run $(GOFLAGS) ./tools/requestidlint/cmd/requestidlint ./internal/admin-api
+
 tidy:
 	go mod tidy
-
-lint:
-	./scripts/check_yaml_newlines.py
-	go run ./tools/requestidlint/cmd/requestidlint ./internal/admin-api
 
 version:
 	@echo $(VERSION)
 
 .PHONY: clean
 clean:
+	@if [ -d .gocache ]; then \
+		chmod -R u+w .gocache 2>/dev/null || true; \
+	fi
 	rm -rf bin dist build out coverage *.coverprofile *.out .gocache
 
 $(BIN_DIR):
@@ -58,7 +62,7 @@ mdlint:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "**/*.md" "!**/node_modules/**"
 
 .PHONY: mdlint-docs
 mdlint-docs:
@@ -66,7 +70,7 @@ mdlint-docs:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 "docs/**/*.md"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "docs/**/*.md"
 
 .PHONY: mdlint-fix
 mdlint-fix:
@@ -74,9 +78,9 @@ mdlint-fix:
 		echo "npx not found. Please install Node.js to run markdownlint."; \
 		exit 1; \
 	fi
-	@npx -y markdownlint-cli2 --fix "docs/**/*.md"
+	@npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) --fix "docs/**/*.md"
 
 .PHONY: mdlint-docker
 mdlint-docker:
 	@docker run --rm -v "$(PWD)":/work -w /work node:20 \
-	  npx -y markdownlint-cli2 "**/*.md" "!**/node_modules/**"
+	  npx -y markdownlint-cli2@$(MARKDOWNLINT_CLI2_VERSION) "**/*.md" "!**/node_modules/**"

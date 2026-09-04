@@ -72,7 +72,7 @@ Validation rules:
 
 ## CLI and Process Contracts
 
-- `--role={producer|worker|all}` selects the operational role.
+- `--role={producer|worker|all}` selects the operational role; the repository binary requires `--bench-worker` before `worker` or `all` can use the legacy simulator.
 - `--config=PATH` points to YAML. Missing file is allowed (defaults), invalid values are not.
 - Process exits non-zero on fatal config errors or unrecoverable subsystem init.
 

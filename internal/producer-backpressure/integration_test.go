@@ -1,6 +1,8 @@
 // Copyright 2025 James Ross
 //go:build integration
 
+// Gated because the feature is not wired into the core queue runtime; un-gate when runtime integration is complete and the suite passes by default.
+
 package backpressure
 
 import (

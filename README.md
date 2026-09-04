@@ -1,6 +1,6 @@
 # Go Redis Work Queue
 
-> Redis job queue system in Go. 
+> Redis job queue system in Go.
 
 Provides producer, worker, and all-in-one modes with robust resilience, observability, and configurable behavior via YAML.
 
@@ -12,8 +12,12 @@ Provides producer, worker, and all-in-one modes with robust resilience, observab
 See the [Feature Matrix](docs/features-ledger.md) for the latest capability status (stable, experimental, deprecated).
 
 See `docs/` to learn more. A sample configuration is provided in `config/config.example.yaml`.
+Configuration loading rejects unknown YAML keys so unsupported settings cannot
+silently appear enabled. The two exactly-once packages are prototypes and are
+not wired into runtime configuration or job intake.
 
 Developer tools and automation: see `docs/tools/README.md` for:
+
 - Progress automation for the Features Ledger and README
 - Local pre-commit hook and CI auto-update
 - Script to extract CodeRabbit PR comments and “Prompt for AI Agents” sections
@@ -26,7 +30,7 @@ For full details, see the Features Ledger at [docs/features-ledger.md](docs/feat
 
 <!-- progress:begin -->
 ```text
-██████████████████████▓░░░░░░░░░░░░░░░░░ 56%
+██████████████████████▓░░░░░░░░░░░░░░░░░ 55%
 ---------|---------|---------|---------|
         MVP      Alpha     Beta  v1.0.0 
 ```
@@ -56,10 +60,10 @@ make build
 
 3. Run in one of the following modes:
 
-Run all-in-one
+Run the legacy all-in-one benchmark/demo
 
 ```bash
-./bin/job-queue-system --role=all --config=config/config.yaml
+./bin/job-queue-system --role=all --bench-worker --config=config/config.yaml
 ```
 
 Run producer only
@@ -68,11 +72,160 @@ Run producer only
 ./bin/job-queue-system --role=producer --config=config/config.yaml
 ```
 
-Run worker only
+Run the legacy benchmark worker only
 
 ```bash
-./bin/job-queue-system --role=worker --config=config/config.yaml
+./bin/job-queue-system --role=worker --bench-worker --config=config/config.yaml
 ```
+
+The shipped binary has no application plugin loader, so worker-bearing roles
+refuse to start without the explicit `--bench-worker` opt-in. Production
+applications register their handler through `pkg/queueworker`, shown below.
+
+### Job payloads and size limits
+
+The core job envelope carries opaque application bytes in `Payload` and an
+optional caller-owned type or version discriminator in `PayloadSchema`. Job
+JSON encodes payload bytes as base64, so arbitrary input round-trips exactly;
+the configured size limit counts the original decoded bytes. An empty payload
+or schema is valid, and priority names are defined by configuration rather than
+limited to `high` and `low`.
+
+Payloads default to a 1 MiB maximum:
+
+```yaml
+queue:
+  max_payload_size: 1048576
+```
+
+Redis lists are not blob storage. For larger content, store the object in an
+appropriate blob or document store and enqueue a small identifier or URI that
+the worker can resolve. Oversized jobs are rejected before Redis is modified.
+
+`FilePath` and `FileSize` remain in the envelope for compatibility with the
+legacy producer and benchmark flow; they are metadata, not the application
+payload. A non-empty `OrderingKey` gives jobs sharing that exact key FIFO
+handler execution with at most one in flight across all workers. An empty key
+retains the ordinary priority-list behavior.
+
+### Enqueue jobs
+
+Applications outside this repository should use `pkg/queueclient`. Its `Job`
+alias has the exact durable representation consumed by the worker, and its
+default configuration uses the same Redis keys as the binary:
+
+```go
+cfg := queueclient.DefaultConfig()
+client, err := queueclient.New(&redis.Options{Addr: "localhost:6379"}, cfg)
+if err != nil {
+    return err
+}
+defer client.Close()
+
+id, err := client.Enqueue(ctx, queueclient.Job{
+    Payload:       []byte(`{"x":1}`),
+    PayloadSchema: "demo.v1",
+    Priority:      "high",
+    OrderingKey:   "repo/path/to/shared-file.go",
+})
+```
+
+`Enqueue` generates an ID and UTC creation time when they are omitted. An empty
+priority selects `Config.DefaultPriority`; any other priority must name an
+entry in `Config.Queues`. `Stats` and `Peek` expose the corresponding read-only
+admin views. Redis command failures use `*queueclient.ConnectionError` and can
+also be matched with `errors.Is(err, queueclient.ErrConnection)`.
+
+`EnqueueBatch` validates and encodes the entire slice before issuing one Redis
+script. A bad priority, oversized payload, or wrong-type destination rejects the
+whole batch with no writes. An accepted batch is applied atomically, and
+generated IDs and timestamps are copied into the supplied slice.
+Caller-supplied duplicate IDs are intentionally not deduplicated: each entry
+remains a separate at-least-once delivery, so handlers should remain
+idempotent. Within one non-empty ordering
+key, FIFO wins over priority: a later high-priority job cannot pass an earlier
+low-priority job with the same key. Different keys remain parallel.
+
+The binary has a matching `enqueue` subcommand. It reads stdin by default and
+prints only the accepted job ID to stdout:
+
+```bash
+echo '{"x":1}' | ./bin/job-queue-system enqueue \
+  --config config/config.yaml \
+  --schema demo.v1 \
+  --priority high
+```
+
+Use `--payload-file path/to/payload.bin` for a file, or
+`--payload-file -` for stdin. `--ordering-key` enables per-key FIFO, and `--id`
+supplies a caller-owned ID. Empty stdin is a valid zero-byte payload.
+
+The Admin API exposes the same guard at `POST /api/v1/enqueue`. Because job
+payloads are opaque bytes, JSON represents `payload` as base64 (`format: byte`):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/enqueue \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "payload": "eyJ4IjoxfQ==",
+    "payload_schema": "demo.v1",
+    "priority": "high"
+  }'
+```
+
+Success returns HTTP `201` with `{"id":"...","timestamp":"..."}`. Invalid
+priorities return `400`, oversized decoded payloads return `413` with the typed
+size error message, and Redis connection failures return `503`. The live
+OpenAPI document is served at `/api/v1/openapi.yaml`.
+
+### Worker handlers
+
+Applications import `pkg/queueworker` and pass a non-nil callback at
+construction. The public config embeds the same `queueclient.Config` key layout
+used by enqueue clients:
+
+```go
+workerCfg := queueworker.DefaultConfig()
+wrk, err := queueworker.New(
+    &redis.Options{Addr: "localhost:6379"},
+    workerCfg,
+    func(ctx context.Context, job queueclient.Job) error {
+        return process(ctx, job.ID, job.Payload, job.PayloadSchema)
+    },
+    logger,
+)
+if err != nil {
+    return err
+}
+defer wrk.Close()
+
+return wrk.Run(ctx)
+```
+
+Handlers may run concurrently when `Count` is greater than one, so application
+state must be synchronized. A nil handler is rejected before Redis consumption
+starts. `queueworker.BenchHandler` preserves the legacy `FileSize` delay and
+`"fail"`-in-filepath demo rule, but it must always be selected explicitly.
+
+Handler outcomes drive the durable queue protocol:
+
+- `nil` moves the job from its per-worker processing list to the completed list.
+- An error uses the configured backoff and retry path, then the dead-letter list.
+  `worker.max_retries: N` means one initial attempt plus N retries.
+- A panic is recovered and logged with a stack, then follows the error path.
+- Shutdown cancellation leaves the job in its processing list. Its heartbeat
+  expires naturally so the reaper can redeliver it.
+
+The runtime renews the worker heartbeat throughout long handler calls and retry
+backoff. Ordered jobs renew a compare-owned lease for the same interval. If an
+ordered worker dies, the reaper restores the interrupted envelope ahead of
+later same-key work after the heartbeat and lease expire. Delivery remains at
+least once: a process can apply an external side effect and die before its
+Redis completion transition. Make handlers idempotent by job ID;
+completed-list entries count executions, not globally deduplicated IDs. The
+full protocol and crash/fairness argument are in
+[`design/per-key-fifo.md`](design/per-key-fifo.md).
 
 ### TUI (Bubble Tea)
 
@@ -86,13 +239,13 @@ go mod download
 
 Run it:
 
-```
+```text
 go run ./cmd/tui --config config/config.yaml
 ```
 
 Or build it:
 
-```
+```text
 go build -o bin/tui ./cmd/tui
 ./bin/tui --config config/config.yaml
 ```
@@ -125,13 +278,14 @@ Notes:
 - The TUI calls internal admin APIs, so it reflects the same Redis keys as the CLI admin mode.
 - When a confirmation modal is open, the background dims and a full-screen scrim appears for focus.
 
-Screenshots (examples):
+Design mockups (current and planned states):
 
-![Queues View](docs/images/tui-queues.png)
+![Balanced Job Queue View](docs/TUI/images/job-balanced.svg)
 
-![Peek Modal](docs/images/tui-peek.png)
+![Expanded Charts View](docs/TUI/images/job-expanded.svg)
 
-![Charts View](docs/images/tui-charts.png)
+See the [TUI design and layout guide](docs/TUI/README.md) for the complete
+tracked mockup set and implementation notes.
 
 ### Admin Commands
 
@@ -191,7 +345,7 @@ docker run --rm \
   -p 9091:9091 \
   -v $(pwd)/config/config.yaml:/app/config/config.yaml:ro \
   --env-file env.list \
-  job-queue-system:latest --role=all --config=/app/config/config.yaml
+  job-queue-system:latest --role=all --bench-worker --config=/app/config/config.yaml
 ```
 
 Ensure `config/config.yaml` exists locally and `env.list` provides credentials (see `config/config.example.yaml` for keys).
@@ -216,20 +370,37 @@ Promotion gates and confidence summary (details in `docs/15_promotion_checklists
 - **Beta → RC**: overall confidence `~0.70` (needs controlled perf run, chaos tests, soak)
 - **RC → GA**: overall confidence `~0.70` (release flow ready; soak and rollback rehearsal pending)
 
-### Evidence artifacts (`docs/evidence/`):
+### Reproducing release confidence
 
-- `ci_run.json` (CI URL), 
-- `bench.json` (throughput/latency), 
-- `metrics_before.txt`/`metrics_after.txt`, 
-- `config.alpha.yaml`
+- Follow the tracked [promotion checklists](docs/15_promotion_checklists.md) for
+  stage-specific acceptance and rollback gates.
+- Use the [performance baseline](docs/12_performance_baseline.md) for the
+  reproducible throughput and latency protocol.
+- Run the package and race-detector commands in the
+  [testing guide](docs/testing-guide.md).
 
-To reproduce evidence locally, see `docs/evidence/README.md`.
+Exact candidate-commit CI receipts remain attached to GitHub pull-request
+checks; they are not represented by committed snapshots that can drift from
+the tested head.
 
 ----
 
 ## Testing
 
 See `docs/testing-guide.md` for a package-by-package overview and copy/paste commands to run individual tests or the full suite with the race detector.
+
+The default suite includes the core worker, queue, producer, reaper, and
+breaker tests:
+
+```bash
+go test ./... -race -count=1
+./scripts/check_test_package_count.sh
+```
+
+The package-count check enforces a minimum of 25 default test-bearing packages
+so a build tag cannot silently remove core coverage. CI also runs the
+Redis-backed worker smoke test with `-tags e2e_tests` and verifies its verbose
+`--- PASS` record.
 
 ## Module Status Map
 
@@ -241,7 +412,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/distributed-tracing-integration](internal/distributed-tracing-integration/README.md) | BUILDS | Compiles; tests still expect legacy OpenTelemetry helpers. |
 | [internal/dlq-remediation-pipeline](internal/dlq-remediation-pipeline/README.md) | BUILDS | Compiles; remediation actions still need implementation. |
 | [internal/event-hooks](internal/event-hooks/README.md) | BUILDS | Compiles; handlers remain TODO for replay/test flows. |
-| [internal/exactly_once](internal/exactly_once/README.md) | BROKEN | Outbox manager tests panic due to retry bookkeeping regressions. |
+| [internal/exactly_once](internal/exactly_once/README.md) | UNWIRED | Prototype code exists in two internal packages; neither is connected to worker intake or configuration. |
 | [internal/forecasting](internal/forecasting/README.md) | BROKEN | Holt-Winters and recommendation tests fail with new defaults. |
 | [internal/job-budgeting](internal/job-budgeting/README.md) | BUILDS | Compiles; budgeting enforcement still TODO. |
 | [internal/json-payload-studio](internal/json-payload-studio/README.md) | BUILDS | Compiles; handlers still rely on in-memory stubs. |
@@ -252,7 +423,7 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 | [internal/tui](internal/tui/README.md) | BUILDS | Legacy view builds cleanly; enhanced view remains behind `tui_experimental`. |
 | [internal/trace-drilldown-log-tail](internal/trace-drilldown-log-tail/README.md) | BUILDS | Compiles; log streaming endpoints still placeholders. |
 | [internal/worker-fleet-controls](internal/worker-fleet-controls/README.md) | BUILDS | Compiles; action execution remains scaffolded for now. |
-| [internal/worker](internal/worker/README.md) | BUILDS | Runtime compiles; lacks dedicated unit tests. |
+| [internal/worker](internal/worker/README.md) | TESTED | Backoff, processing, retry/DLQ, and breaker behavior run in the default race-enabled suite. |
 
 ----
 
@@ -260,8 +431,8 @@ See `docs/testing-guide.md` for a package-by-package overview and copy/paste com
 
 Want to help? Here's how:
 
-1. Please report issues that you discover. 
-2. If you solve any problems, PRs are welcome. 
+1. Please report issues that you discover.
+2. If you solve any problems, PRs are welcome.
 
 ### DX Tools
 

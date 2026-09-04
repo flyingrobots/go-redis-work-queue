@@ -35,6 +35,7 @@ type CalendarManager struct {
 ### Data Structures
 
 #### CalendarView
+
 ```go
 type CalendarView struct {
     ViewType    ViewType      `json:"view_type"`    // month, week, day
@@ -45,6 +46,7 @@ type CalendarView struct {
 ```
 
 #### CalendarEvent
+
 ```go
 type CalendarEvent struct {
     ID          string            `json:"id"`
@@ -59,6 +61,7 @@ type CalendarEvent struct {
 ```
 
 #### RecurringRule
+
 ```go
 type RecurringRule struct {
     ID          string            `json:"id"`
@@ -86,6 +89,7 @@ type RecurringRule struct {
 Retrieves calendar data for the specified view configuration.
 
 **Query Parameters:**
+
 - `view` (string): View type - "month", "week", "day" (default: "month")
 - `date` (string): Current date in YYYY-MM-DD format (default: today)
 - `timezone` (string): Timezone identifier (default: "UTC")
@@ -96,11 +100,13 @@ Retrieves calendar data for the specified view configuration.
 - `search` (string): Search text for filtering events
 
 **Example Request:**
+
 ```http
 GET /calendar/data?view=month&date=2023-06-15&timezone=UTC&queues=high-priority,normal
 ```
 
 **Response:**
+
 ```json
 {
   "cells": [
@@ -153,17 +159,20 @@ GET /calendar/data?view=month&date=2023-06-15&timezone=UTC&queues=high-priority,
 Retrieves events for a specific time window.
 
 **Query Parameters:**
+
 - `from` (string, required): Start time in RFC3339 format
 - `till` (string, required): End time in RFC3339 format
 - `queue` (string): Filter by specific queue name
 - `limit` (int): Maximum number of events to return
 
 **Example Request:**
+
 ```http
 GET /calendar/events?from=2023-06-01T00:00:00Z&till=2023-06-30T23:59:59Z&queue=high-priority&limit=100
 ```
 
 **Response:**
+
 ```json
 {
   "events": [
@@ -196,6 +205,7 @@ GET /calendar/events?from=2023-06-01T00:00:00Z&till=2023-06-30T23:59:59Z&queue=h
 Reschedules a single event to a new time.
 
 **Request Body:**
+
 ```json
 {
   "event_id": "event123",
@@ -207,6 +217,7 @@ Reschedules a single event to a new time.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -223,6 +234,7 @@ Reschedules a single event to a new time.
 Reschedules multiple events in a single operation.
 
 **Request Body:**
+
 ```json
 [
   {
@@ -241,6 +253,7 @@ Reschedules multiple events in a single operation.
 ```
 
 **Response:**
+
 ```json
 {
   "transaction_id": "resched-2023-06-01T14:30:00Z",
@@ -276,6 +289,7 @@ Reschedules multiple events in a single operation.
 Creates a new recurring rule.
 
 **Request Body:**
+
 ```json
 {
   "name": "Daily Report Generation",
@@ -293,6 +307,7 @@ Creates a new recurring rule.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "rule789",
@@ -320,17 +335,20 @@ Creates a new recurring rule.
 Lists recurring rules with optional filtering.
 
 **Query Parameters:**
+
 - `queues` (string): Comma-separated queue names
 - `job_types` (string): Comma-separated job types
 - `active` (bool): Filter by active status
 - `paused` (bool): Filter by paused status
 
 **Example Request:**
+
 ```http
 GET /calendar/rules?queues=reports&active=true&paused=false
 ```
 
 **Response:**
+
 ```json
 {
   "rules": [
@@ -359,6 +377,7 @@ GET /calendar/rules?queues=reports&active=true&paused=false
 Retrieves a specific recurring rule.
 
 **Response:**
+
 ```json
 {
   "id": "rule789",
@@ -386,6 +405,7 @@ Retrieves a specific recurring rule.
 Updates an existing recurring rule.
 
 **Request Body:**
+
 ```json
 {
   "name": "Updated Daily Report",
@@ -401,6 +421,7 @@ Updates an existing recurring rule.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "rule789",
@@ -428,6 +449,7 @@ Updates an existing recurring rule.
 Deletes a recurring rule.
 
 **Response:**
+
 ```http
 204 No Content
 ```
@@ -437,6 +459,7 @@ Deletes a recurring rule.
 Pauses a recurring rule.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -449,6 +472,7 @@ Pauses a recurring rule.
 Resumes a paused recurring rule.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -463,6 +487,7 @@ Resumes a paused recurring rule.
 Returns the current calendar configuration.
 
 **Response:**
+
 ```json
 {
   "default_view": 0,
@@ -496,6 +521,7 @@ Returns the current calendar configuration.
 Returns the list of supported timezones.
 
 **Response:**
+
 ```json
 {
   "timezones": [

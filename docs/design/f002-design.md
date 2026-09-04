@@ -5,6 +5,7 @@
 The Multi-Cluster Control feature enables management of multiple Redis clusters from a single Terminal User Interface (TUI), providing unified monitoring, comparison views, and coordinated administrative actions across distributed Redis deployments. This design addresses the operational complexity of managing multiple Redis instances in production environments where teams need to monitor, compare, and maintain consistency across clusters.
 
 ### Key Capabilities
+
 - **Unified Management**: Single interface for multiple Redis endpoints with instant switching
 - **Comparative Analysis**: Side-by-side views for identifying discrepancies and patterns
 - **Coordinated Actions**: Safe, confirmed propagation of administrative operations

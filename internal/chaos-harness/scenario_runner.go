@@ -150,8 +150,9 @@ func (sr *ScenarioRunner) executeScenario(ctx context.Context, rs *runningScenar
 			zap.Duration("duration", stage.Duration))
 
 		// Apply injectors for this stage
-		for _, injector := range stage.Injectors {
-			if err := sr.injectorManager.AddInjector(&injector); err != nil {
+		for injectorIndex := range stage.Injectors {
+			injector := &stage.Injectors[injectorIndex]
+			if err := sr.injectorManager.AddInjector(injector); err != nil {
 				sr.logger.Error("Failed to add injector",
 					zap.String("injector_id", injector.ID),
 					zap.Error(err))
@@ -174,8 +175,8 @@ func (sr *ScenarioRunner) executeScenario(ctx context.Context, rs *runningScenar
 		}
 
 		// Remove stage-specific injectors
-		for _, injector := range stage.Injectors {
-			sr.injectorManager.RemoveInjector(injector.ID)
+		for injectorIndex := range stage.Injectors {
+			sr.injectorManager.RemoveInjector(stage.Injectors[injectorIndex].ID)
 		}
 	}
 

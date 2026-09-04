@@ -106,7 +106,6 @@ func (p *Producer) Run(ctx context.Context) error {
 			obs.KeyValue("job.priority", prio),
 		)
 
-		payload, _ := j.Marshal()
 		key := p.cfg.Worker.Queues[prio]
 		if key == "" {
 			key = p.cfg.Worker.Queues[p.cfg.Producer.DefaultPriority]
@@ -118,7 +117,7 @@ func (p *Producer) Run(ctx context.Context) error {
 			obs.KeyValue("job_id", j.ID),
 		)
 
-		if err := p.rdb.LPush(enqCtx, key, payload).Err(); err != nil {
+		if err := queue.EnqueueWithOrdering(enqCtx, p.rdb, key, j, p.cfg.Queue.MaxPayloadSize, p.cfg.OrderingLayout()); err != nil {
 			obs.RecordError(enqCtx, err)
 			enqSpan.End()
 			return err

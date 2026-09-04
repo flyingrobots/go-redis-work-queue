@@ -125,6 +125,7 @@ func TestAuthzMiddleware(t *testing.T) {
 
 	// Generate tokens with different roles
 	viewerToken, _ := manager.GenerateToken("viewer@example.com", []Role{RoleViewer}, nil, 1*time.Hour)
+	operatorToken, _ := manager.GenerateToken("operator@example.com", []Role{RoleOperator}, nil, 1*time.Hour)
 	adminToken, _ := manager.GenerateToken("admin@example.com", []Role{RoleAdmin}, nil, 1*time.Hour)
 
 	// Test handler
@@ -162,6 +163,20 @@ func TestAuthzMiddleware(t *testing.T) {
 			path:           "/api/v1/queues/dlq",
 			authHeader:     "Bearer " + viewerToken,
 			expectedStatus: http.StatusForbidden,
+		},
+		{
+			name:           "Viewer cannot enqueue jobs",
+			method:         "POST",
+			path:           "/api/v1/enqueue",
+			authHeader:     "Bearer " + viewerToken,
+			expectedStatus: http.StatusForbidden,
+		},
+		{
+			name:           "Operator can enqueue jobs",
+			method:         "POST",
+			path:           "/api/v1/enqueue",
+			authHeader:     "Bearer " + operatorToken,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Unknown endpoint allows through",
@@ -293,6 +308,7 @@ func TestGetRequiredPermission(t *testing.T) {
 	}{
 		{"GET", "/api/v1/stats", PermStatsRead},
 		{"GET", "/api/v1/stats/keys", PermStatsRead},
+		{"POST", "/api/v1/enqueue", PermQueueWrite},
 		{"DELETE", "/api/v1/queues/dlq", PermQueueDelete},
 		{"POST", "/api/v1/bench", PermBenchRun},
 		{"GET", "/api/v1/unknown", ""},

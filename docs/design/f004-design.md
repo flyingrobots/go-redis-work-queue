@@ -1,4 +1,5 @@
 # Distributed Tracing Integration Design
+
 ## Feature ID: F004
 
 ## Executive Summary
@@ -6,6 +7,7 @@
 This document outlines the design for integrating distributed tracing capabilities into the go-redis-work-queue system using OpenTelemetry. The implementation will provide comprehensive observability across all queue operations, enabling developers to track job execution flows, diagnose performance bottlenecks, and understand system behavior in distributed environments.
 
 ### Key Benefits
+
 - End-to-end visibility of job lifecycle from enqueue to completion
 - Correlation of jobs with upstream/downstream services
 - Performance profiling with queue-specific metrics
@@ -201,6 +203,7 @@ type TracedAdmin interface {
 ### Span Attributes
 
 Standard attributes for all spans:
+
 - `queue.system`: "redis"
 - `queue.name`: Queue identifier
 - `service.name`: Service identifier
@@ -209,6 +212,7 @@ Standard attributes for all spans:
 Operation-specific attributes:
 
 **queue.enqueue**
+
 - `queue.message.id`: Job ID
 - `queue.message.priority`: Job priority
 - `queue.message.tenant`: Tenant identifier
@@ -216,12 +220,14 @@ Operation-specific attributes:
 - `queue.operation.type`: "enqueue"
 
 **queue.dequeue**
+
 - `queue.message.id`: Job ID
 - `queue.wait_time_ms`: Time spent waiting
 - `queue.depth`: Queue depth at dequeue
 - `queue.operation.type`: "dequeue"
 
 **job.process**
+
 - `job.id`: Job identifier
 - `job.type`: Job type/handler
 - `job.retry_count`: Retry attempt number
@@ -479,6 +485,7 @@ tracing:
 ### Monitoring & Alerts
 
 Key metrics to monitor:
+
 - Span export success rate
 - Average span export latency
 - Dropped span count
@@ -486,6 +493,7 @@ Key metrics to monitor:
 - Sampling effectiveness
 
 Alert thresholds:
+
 - Export failure rate > 5%
 - Export latency > 1s
 - Dropped spans > 100/minute
@@ -502,7 +510,7 @@ Alert thresholds:
 
 ### B. Example Trace Visualization
 
-```
+```text
 [Frontend] HTTP Request (trace_id: abc123)
     └── [API Gateway] Forward Request
         └── [Producer] queue.enqueue (queue: orders, job_id: job-456)

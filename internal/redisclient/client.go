@@ -9,13 +9,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// New returns a configured go-redis v8 client with pooling and retries.
-func New(cfg *config.Config) *redis.Client {
+// Options translates application configuration into go-redis options.
+func Options(cfg *config.Config) *redis.Options {
 	poolSize := cfg.Redis.PoolSizeMultiplier * runtime.NumCPU()
 	if poolSize <= 0 {
 		poolSize = 10 * runtime.NumCPU()
 	}
-	return redis.NewClient(&redis.Options{
+	return &redis.Options{
 		Addr:            cfg.Redis.Addr,
 		Username:        cfg.Redis.Username,
 		Password:        cfg.Redis.Password,
@@ -27,5 +27,10 @@ func New(cfg *config.Config) *redis.Client {
 		WriteTimeout:    cfg.Redis.WriteTimeout,
 		MaxRetries:      cfg.Redis.MaxRetries,
 		ConnMaxIdleTime: 5 * time.Minute,
-	})
+	}
+}
+
+// New returns a configured go-redis v9 client with pooling and retries.
+func New(cfg *config.Config) *redis.Client {
+	return redis.NewClient(Options(cfg))
 }

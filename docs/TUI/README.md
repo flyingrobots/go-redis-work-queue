@@ -114,6 +114,7 @@ Clicking in the right (Charts) region animates the top row split via a spring ea
 
 > [!note]- **CLAUDE'S THOUGHTS**
 > Great future thinking! Additional ideas to consider:
+>
 > - **Split view**: Show two tabs side-by-side for comparison (e.g., Jobs and Workers simultaneously)
 > - **Detachable panels**: Pop out a panel into a separate terminal window
 > - **Recording mode**: Capture TUI interactions for demos/debugging (output as GIF or asciicast)
@@ -135,6 +136,7 @@ Add a tiny trend line per queue row (last N intervals) to convey backlog directi
 ![Sparklines in Rows](images/job-table-sparklines.svg)
 
 Behavior
+
 - Use adaptive color by threshold (green/amber/red) based on current growth and error rate.
 - Collapse on narrow terminals; tooltip-like detail on hover/right-click.
 
@@ -227,5 +229,6 @@ A zoomed-out overview of the queue system showing relative backlogs, throughput,
 ![Mini‑map](images/mini-map.svg)
 
 Design Notes
+
 - Aggregates per-queue metrics into a grid heatmap; colors indicate backlog growth and error rates.
 - Keyboard toggle `m` opens/closes; arrow keys pan focus; Enter to drill in.

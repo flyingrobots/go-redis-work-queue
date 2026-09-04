@@ -5,6 +5,7 @@
 Long Term Archives transforms the job queue system from a transient processing platform into a comprehensive data platform by streaming completed job metadata to long-term storage. This feature enables historical analysis, compliance reporting, and incident forensics while maintaining optimal Redis performance through intelligent retention management.
 
 ### Key Benefits
+
 - **Data Platform Evolution**: Transform job queue into analytical data source
 - **Cost Optimization**: Multi-tier storage strategy (hot/warm/cold)
 - **Compliance Ready**: GDPR-compliant retention and deletion capabilities
@@ -12,7 +13,9 @@ Long Term Archives transforms the job queue system from a transient processing p
 - **Scalable Architecture**: Handle petabyte-scale job archives
 
 ### Scope
+
 This design covers the complete long-term archival system including:
+
 - Stream-based data export pipeline from Redis to ClickHouse/S3
 - Schema evolution and backward compatibility
 - Multi-tier retention policies with automated lifecycle management
@@ -206,7 +209,7 @@ stateDiagram-v2
 
 The desktop interface provides a comprehensive three-panel layout optimized for data analysis and system monitoring. This view is designed for large terminal windows (≥120 columns) commonly used by SREs and data analysts.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Long-Term Archives Dashboard                                                                                        [CTRL+Q] Exit │
 ├─────────────────────────────────────────┬───────────────────────────────────────────────────────────┬─────────────────────────────┤
@@ -240,6 +243,7 @@ The desktop interface provides a comprehensive three-panel layout optimized for 
 ```
 
 **Key Features:**
+
 - **Left Panel**: Real-time archive status, export metrics, and storage usage
 - **Center Panel**: Full SQL query interface with syntax highlighting and result visualization
 - **Right Panel**: Schema information and query templates for rapid analysis
@@ -249,7 +253,7 @@ The desktop interface provides a comprehensive three-panel layout optimized for 
 
 The mobile interface uses a tab-based layout optimized for touch navigation on narrow terminals (≤80 columns).
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │ Long-Term Archives                                                [📊] [⚙️] [❓] │
 ├────────────────────────────────────────────────────────────────────────────────┤
@@ -286,6 +290,7 @@ The mobile interface uses a tab-based layout optimized for touch navigation on n
 ```
 
 **Key Features:**
+
 - **Tab Navigation**: Swipe between Status, Query, Config, Schema, and GDPR tabs
 - **Card Layout**: Compact information cards with visual indicators
 - **Touch Optimized**: Large touch targets and gesture navigation
@@ -294,6 +299,7 @@ The mobile interface uses a tab-based layout optimized for touch navigation on n
 ### Interactive Features
 
 #### Query Builder Interface
+
 - **Syntax Highlighting**: Real-time SQL syntax highlighting for ClickHouse dialect
 - **Auto-completion**: Smart completion for table names, columns, and functions
 - **Query History**: Access to previous queries with favorites and sharing
@@ -301,12 +307,14 @@ The mobile interface uses a tab-based layout optimized for touch navigation on n
 - **Performance Profiling**: Query execution plans and performance metrics
 
 #### Archive Management
+
 - **Real-time Monitoring**: Live metrics for export lag, error rates, and throughput
 - **Configuration Management**: Visual editors for retention policies and sampling rates
 - **Schema Evolution**: Interactive schema migration and version management
 - **GDPR Tools**: Data subject search, deletion workflows, and audit trails
 
 #### Keyboard Shortcuts
+
 - **Navigation**: Tab/Shift+Tab for panel navigation, Ctrl+1-5 for tab switching
 - **Query Operations**: F5 (Execute), F6 (Explain), F7 (Save), F8 (Format)
 - **Quick Actions**: Ctrl+R (Refresh), Ctrl+E (Export), Ctrl+H (Help)
@@ -477,6 +485,7 @@ GROUP BY error_hash, queue, error_type, error_msg;
 ### Multi-Tier Retention Strategy
 
 #### Tier 1: Hot Data (Redis)
+
 - **Duration**: 1-90 days (configurable)
 - **Storage**: Redis with TTL
 - **Content**: Full job data including payloads
@@ -484,6 +493,7 @@ GROUP BY error_hash, queue, error_type, error_msg;
 - **Cleanup**: Automatic via Redis TTL
 
 #### Tier 2: Warm Data (ClickHouse)
+
 - **Duration**: 90 days - 5 years
 - **Storage**: ClickHouse with date partitioning
 - **Content**: Structured metadata + sampled payloads
@@ -491,6 +501,7 @@ GROUP BY error_hash, queue, error_type, error_msg;
 - **Cleanup**: Partition-level TTL
 
 #### Tier 3: Cold Data (S3/Parquet)
+
 - **Duration**: 5+ years
 - **Storage**: S3 with lifecycle policies
 - **Content**: Compressed columnar data
@@ -1275,6 +1286,7 @@ func TestArchiveQuery_Performance(t *testing.T) {
 ### Threat Analysis
 
 #### 1. Data Exfiltration
+
 - **Threat**: Unauthorized access to archived job data
 - **Risk Level**: High
 - **Mitigations**:
@@ -1284,6 +1296,7 @@ func TestArchiveQuery_Performance(t *testing.T) {
   - Audit logging of all data access
 
 #### 2. Schema Poisoning
+
 - **Threat**: Malicious schema changes affecting data integrity
 - **Risk Level**: Medium
 - **Mitigations**:
@@ -1293,6 +1306,7 @@ func TestArchiveQuery_Performance(t *testing.T) {
   - Separate privileges for schema management
 
 #### 3. PII Exposure
+
 - **Threat**: Personal information leaked through archived payloads
 - **Risk Level**: High
 - **Mitigations**:
@@ -1302,6 +1316,7 @@ func TestArchiveQuery_Performance(t *testing.T) {
   - Encryption of sensitive fields
 
 #### 4. Storage Cost Attack
+
 - **Threat**: Malicious actors inflating storage costs
 - **Risk Level**: Medium
 - **Mitigations**:
@@ -1359,30 +1374,35 @@ graph TB
 ## Implementation Phases
 
 ### Phase 1: Core Export Pipeline (Weeks 1-2)
+
 - Basic stream reading from Redis
 - ClickHouse integration with simple schema
 - Batch processing with configurable sizes
 - Basic error handling and retries
 
 ### Phase 2: Schema Evolution (Weeks 3-4)
+
 - Schema registry implementation
 - Backward compatibility checking
 - Migration system for schema changes
 - Validation framework
 
 ### Phase 3: Multi-Tier Storage (Weeks 5-6)
+
 - S3/Parquet integration
 - Lifecycle management
 - Compression optimization
 - Query federation between tiers
 
 ### Phase 4: GDPR and Privacy (Weeks 7-8)
+
 - PII detection and redaction
 - GDPR deletion system
 - Data retention policies
 - Privacy audit capabilities
 
 ### Phase 5: Production Readiness (Weeks 9-10)
+
 - Performance optimization
 - Comprehensive monitoring
 - Security hardening
@@ -1411,18 +1431,21 @@ graph TB
 ## Success Metrics
 
 ### Technical Metrics
+
 - **Export Throughput**: >100K records/second sustained
 - **Query Performance**: <100ms P95 for analytical queries
 - **Storage Efficiency**: >90% compression ratio vs. raw JSON
 - **System Availability**: >99.9% uptime for export pipeline
 
 ### Business Metrics
+
 - **Data Retention Compliance**: 100% adherence to policies
 - **Query Adoption**: >80% of analytical queries use archive data
 - **Cost Optimization**: <50% storage cost vs. keeping all data in Redis
 - **GDPR Response Time**: <24 hours for deletion requests
 
 ### User Experience Metrics
+
 - **Query Interface Usage**: >50 queries/day by analysts
 - **Error Investigation Speed**: <5 minutes to identify patterns
 - **Historical Analysis Capability**: Query 1+ years of data
@@ -1433,6 +1456,7 @@ graph TB
 The Long Term Archives system transforms the job queue from a transient processing platform into a comprehensive data platform capable of supporting analytics, compliance, and operational intelligence at enterprise scale. The multi-tier storage architecture optimizes costs while maintaining query performance, and the schema evolution system ensures long-term data compatibility.
 
 Key design decisions prioritize:
+
 - **Scalability**: Handle petabyte-scale archives with optimal performance
 - **Cost Efficiency**: Intelligent tier management minimizes storage costs
 - **Compliance**: GDPR-ready with comprehensive privacy controls

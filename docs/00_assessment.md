@@ -37,7 +37,7 @@ The project has a working foundation: a single Go binary with producer, worker, 
 - [ ] Migrate hook setup to the revised v9 hooks API, including `DialHook` signatures.
 - [ ] Validate RESP3 responses where feature flags depend on RESP2 behavior.
 
-**Upgrade plan:** bump the module dependency to go-redis v9 in `go.mod`, run the full test suite, audit pipeline usages and option names, adjust hooks/types, and execute performance plus RESP3 smoke tests. 
+**Upgrade plan:** bump the module dependency to go-redis v9 in `go.mod`, run the full test suite, audit pipeline usages and option names, adjust hooks/types, and execute performance plus RESP3 smoke tests.
 
 **Rollback plan:** if regressions surface, revert the dependency pin to v8 in `go.mod` (and go.sum) and redeploy while issues are triaged.
 

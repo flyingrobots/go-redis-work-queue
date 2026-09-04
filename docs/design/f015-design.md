@@ -71,45 +71,55 @@ graph TB
 ### Core Components
 
 #### 1. Chunking Engine
+
 The Chunking Engine uses content-based splitting to break payloads into variable-sized chunks that align with data boundaries. This approach maximizes deduplication effectiveness by ensuring common content appears in the same chunks across different payloads.
 
 **Algorithm**: Rabin fingerprinting with rolling hash
+
 - **Window Size**: 64 bytes for hash calculation
 - **Average Chunk Size**: 8KB (configurable)
 - **Chunk Size Range**: 2KB - 32KB
 - **Boundary Detection**: Hash modulo for statistical uniformity
 
 #### 2. Content Store
+
 Content-addressable storage where chunks are identified by their SHA-256 hash. This ensures data integrity while enabling global deduplication across all jobs and queues.
 
 **Features**:
+
 - SHA-256 content addressing for data integrity
 - Atomic chunk storage with existence checks
 - Collision detection and alternate key handling
 - Configurable TTL for automatic cleanup
 
 #### 3. Reference Manager
+
 Maintains atomic reference counts for each chunk to enable safe garbage collection. Uses Redis hash operations for atomicity and includes self-healing mechanisms for reference count auditing.
 
 **Operations**:
+
 - Atomic increment/decrement of chunk references
 - Orphaned chunk detection and cleanup
 - Reference count auditing and repair
 - Bulk operations for performance optimization
 
 #### 4. Similarity Detector
+
 Advanced near-duplicate detection using locality-sensitive hashing (LSH) to identify payloads that share significant content even when not identical.
 
 **Techniques**:
+
 - MinHash signatures for content fingerprinting
 - LSH banding for efficient similarity queries
 - Configurable similarity thresholds
 - Template detection for structured data
 
 #### 5. Compression Layer
+
 Intelligent compression using zstd with learned dictionaries optimized for the payload corpus. Provides additional space savings on top of deduplication.
 
 **Features**:
+
 - Dictionary learning from sample payloads
 - Streaming compression for large payloads
 - Configurable compression levels
@@ -163,14 +173,16 @@ sequenceDiagram
 ### Storage Schema
 
 #### Chunk Storage
-```
+
+```text
 Key: dedup:chunk:{sha256_hash}
 Value: Compressed chunk data
 TTL: Configurable (default: 7 days from last access)
 ```
 
 #### Reference Counting
-```
+
+```text
 Key: dedup:refs
 Type: Hash
 Fields: {chunk_hash}: {reference_count}
@@ -178,14 +190,16 @@ TTL: 24 hours (refreshed on access)
 ```
 
 #### Job References
-```
+
+```text
 Key: dedup:refs:{job_id}
 Value: JSON array of chunk hashes
 TTL: Matches job TTL
 ```
 
 #### Statistics
-```
+
+```text
 Key: dedup:stats:{date}
 Type: Hash
 Fields:
@@ -200,6 +214,7 @@ Fields:
 ### Integration Points
 
 #### Producer Integration
+
 ```go
 type Producer struct {
     deduplicationEngine *DeduplicationEngine
@@ -224,6 +239,7 @@ func (p *Producer) Enqueue(ctx context.Context, job *Job) error {
 ```
 
 #### Worker Integration
+
 ```go
 type Worker struct {
     deduplicationEngine *DeduplicationEngine
@@ -253,18 +269,21 @@ func (w *Worker) Dequeue(ctx context.Context) (*Job, error) {
 ### Performance Characteristics
 
 #### Memory Usage
+
 - **Chunk Overhead**: ~64 bytes per chunk (hash + metadata)
 - **Reference Overhead**: ~32 bytes per reference
 - **Index Overhead**: ~16 bytes per payload
 - **Net Savings**: 50-90% depending on payload similarity
 
 #### Latency Impact
+
 - **Deduplication**: 5-15ms for typical 100KB payloads
 - **Reconstruction**: 2-8ms for typical chunk counts
 - **Network Overhead**: Minimal due to local Redis operations
 - **Total Overhead**: <10ms end-to-end for most workloads
 
 #### Throughput Scaling
+
 - **Linear Scaling**: Performance scales with Redis capacity
 - **Chunk Reuse**: Higher reuse ratios improve performance
 - **Compression**: Reduces network and storage I/O
@@ -273,12 +292,14 @@ func (w *Worker) Dequeue(ctx context.Context) (*Job, error) {
 ### Security Model
 
 #### Data Integrity
+
 - **Content Addressing**: SHA-256 ensures data integrity
 - **Collision Detection**: Handle theoretical hash collisions
 - **Checksum Verification**: Validate chunks on reconstruction
 - **Atomic Operations**: Prevent partial updates
 
 #### Access Control
+
 - **Namespace Isolation**: Tenant-specific chunk prefixes
 - **Redis ACLs**: Restrict access to deduplication keys
 - **Audit Logging**: Track chunk access and modifications
@@ -297,6 +318,7 @@ func (w *Worker) Dequeue(ctx context.Context) (*Job, error) {
 ### Monitoring and Observability
 
 #### Key Metrics
+
 ```go
 type DeduplicationMetrics struct {
     // Performance Metrics
@@ -318,6 +340,7 @@ type DeduplicationMetrics struct {
 ```
 
 #### Dashboard Views
+
 1. **Executive Dashboard**: High-level savings and cost impact
 2. **Performance Dashboard**: Latency percentiles and throughput
 3. **System Health**: Error rates and resource utilization
@@ -326,6 +349,7 @@ type DeduplicationMetrics struct {
 ### Configuration Management
 
 #### Runtime Configuration
+
 ```yaml
 deduplication:
   enabled: true
@@ -365,6 +389,7 @@ deduplication:
 ```
 
 #### Feature Flags
+
 ```go
 type FeatureFlags struct {
     DeduplicationEnabled    bool
@@ -380,24 +405,28 @@ type FeatureFlags struct {
 ## Performance Requirements
 
 ### Latency Requirements
+
 - **P50 Deduplication Latency**: < 5ms for payloads up to 100KB
 - **P95 Deduplication Latency**: < 15ms for payloads up to 100KB
 - **P99 Reconstruction Latency**: < 10ms for typical chunk counts
 - **End-to-End Overhead**: < 10ms total added latency
 
 ### Throughput Requirements
+
 - **Minimum Throughput**: 10,000 jobs/second on standard Redis instance
 - **Peak Throughput**: 50,000 jobs/second with optimized configuration
 - **Scaling Factor**: Linear scaling with Redis cluster size
 - **Degradation Threshold**: < 5% throughput loss under 95% memory savings
 
 ### Memory Efficiency
+
 - **Minimum Savings**: 50% memory reduction for repetitive workloads
 - **Target Savings**: 70-90% memory reduction for typical enterprise workloads
 - **Overhead Limit**: < 5% metadata overhead relative to savings
 - **Garbage Collection**: < 1% storage growth per day from orphaned chunks
 
 ### Reliability Requirements
+
 - **Availability**: 99.9% uptime for deduplication service
 - **Data Integrity**: Zero data loss with checksum verification
 - **Recovery Time**: < 5 minutes for service restart scenarios
@@ -406,7 +435,8 @@ type FeatureFlags struct {
 ## Testing Strategy
 
 ### Unit Testing
-```
+
+```text
 Coverage Target: 90%+
 Focus Areas:
 - Chunking algorithm correctness
@@ -417,7 +447,8 @@ Focus Areas:
 ```
 
 ### Integration Testing
-```
+
+```text
 Scenarios:
 - End-to-end deduplication workflow
 - Multi-tenant chunk isolation
@@ -427,7 +458,8 @@ Scenarios:
 ```
 
 ### Performance Testing
-```
+
+```text
 Load Profiles:
 - Baseline: 10,000 jobs/sec with no deduplication
 - Standard: 10,000 jobs/sec with 70% deduplication
@@ -436,7 +468,8 @@ Load Profiles:
 ```
 
 ### Security Testing
-```
+
+```text
 Attack Simulations:
 - Hash collision injection attempts
 - Reference count manipulation
@@ -446,7 +479,8 @@ Attack Simulations:
 ```
 
 ### Chaos Testing
-```
+
+```text
 Failure Scenarios:
 - Redis instance failures during deduplication
 - Network partitions between components
@@ -460,30 +494,35 @@ Failure Scenarios:
 ### Migration Strategy
 
 #### Phase 1: Foundation (Weeks 1-2)
+
 - Deploy deduplication infrastructure
 - Configure monitoring and metrics
 - Implement safety mechanisms and fallbacks
 - Validate system health on staging
 
 #### Phase 2: Gradual Rollout (Weeks 3-4)
+
 - Enable deduplication for 5% of traffic
 - Monitor performance and error rates
 - Adjust configuration based on real-world data
 - Scale to 25% traffic if successful
 
 #### Phase 3: Production Scale (Weeks 5-6)
+
 - Scale to 50% traffic with close monitoring
 - Optimize chunk sizes based on payload analysis
 - Enable compression and similarity detection
 - Scale to 100% traffic for selected queues
 
 #### Phase 4: Full Deployment (Weeks 7-8)
+
 - Enable for all queues with appropriate configuration
 - Optimize garbage collection schedules
 - Implement cross-queue deduplication
 - Document operational procedures
 
 ### Rollback Plan
+
 1. **Immediate Rollback**: Disable deduplication via feature flag
 2. **Data Recovery**: Reconstruct all payloads to original format
 3. **Infrastructure Cleanup**: Remove deduplication keys and indices
@@ -492,18 +531,21 @@ Failure Scenarios:
 ### Operational Readiness
 
 #### Monitoring Setup
+
 - Prometheus metrics collection and alerting
 - Grafana dashboards for operational visibility
 - PagerDuty integration for critical errors
 - Log aggregation for troubleshooting
 
 #### Documentation
+
 - Runbook for common operational scenarios
 - Troubleshooting guide for performance issues
 - Configuration tuning recommendations
 - Disaster recovery procedures
 
 #### Training
+
 - Operations team training on new metrics and alerts
 - Development team training on debugging procedures
 - Architecture review with engineering leadership
@@ -516,7 +558,9 @@ Failure Scenarios:
 ### Threat Categories
 
 #### Data Integrity Threats
+
 **T1: Hash Collision Attacks**
+
 - **Risk**: Malicious payloads with crafted SHA-256 collisions
 - **Impact**: Data corruption or unauthorized access
 - **Mitigation**: Collision detection with content verification
@@ -524,6 +568,7 @@ Failure Scenarios:
 - **Severity**: High
 
 **T2: Chunk Corruption**
+
 - **Risk**: Storage corruption affecting reconstructed payloads
 - **Impact**: Job processing failures or data loss
 - **Mitigation**: Checksums and verification on reconstruction
@@ -531,7 +576,9 @@ Failure Scenarios:
 - **Severity**: Medium
 
 #### Availability Threats
+
 **T3: Memory Exhaustion**
+
 - **Risk**: Unbounded chunk growth due to failed garbage collection
 - **Impact**: Redis memory exhaustion and service degradation
 - **Mitigation**: TTLs, monitoring, and emergency cleanup procedures
@@ -539,6 +586,7 @@ Failure Scenarios:
 - **Severity**: High
 
 **T4: Reference Count Manipulation**
+
 - **Risk**: Malicious modification of reference counts
 - **Impact**: Premature chunk deletion or memory leaks
 - **Mitigation**: Redis ACLs and atomic operations
@@ -546,7 +594,9 @@ Failure Scenarios:
 - **Severity**: Medium
 
 #### Confidentiality Threats
+
 **T5: Cross-Tenant Data Leakage**
+
 - **Risk**: Shared chunks exposing data between tenants
 - **Impact**: Confidential data disclosure
 - **Mitigation**: Tenant-specific namespacing and access controls
@@ -554,6 +604,7 @@ Failure Scenarios:
 - **Severity**: High
 
 **T6: Chunk Enumeration**
+
 - **Risk**: Attackers discovering chunks through hash enumeration
 - **Impact**: Information disclosure about payload contents
 - **Mitigation**: Hash unpredictability and access logging
@@ -563,18 +614,21 @@ Failure Scenarios:
 ### Security Controls
 
 #### Preventive Controls
+
 - Redis ACLs restricting access to deduplication keys
 - Input validation on all chunk operations
 - Tenant isolation through namespaced keys
 - Rate limiting on chunk store operations
 
 #### Detective Controls
+
 - Audit logging for all chunk access operations
 - Anomaly detection for unusual access patterns
 - Reference count consistency monitoring
 - Regular security scanning of Redis instances
 
 #### Corrective Controls
+
 - Automated chunk integrity verification
 - Reference count auditing and repair procedures
 - Emergency chunk cleanup mechanisms

@@ -49,6 +49,7 @@ Scenarios orchestrate multiple fault injections over time:
 ### Injector Management
 
 #### List Injectors
+
 ```http
 GET /api/v1/chaos/injectors
 ```
@@ -56,6 +57,7 @@ GET /api/v1/chaos/injectors
 Returns all active fault injectors.
 
 **Response:**
+
 ```json
 {
   "injectors": [
@@ -78,6 +80,7 @@ Returns all active fault injectors.
 ```
 
 #### Create Injector
+
 ```http
 POST /api/v1/chaos/injectors
 ```
@@ -85,6 +88,7 @@ POST /api/v1/chaos/injectors
 Creates a new fault injector.
 
 **Request:**
+
 ```json
 {
   "type": "error",
@@ -100,6 +104,7 @@ Creates a new fault injector.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "error-worker-1234567890",
@@ -119,6 +124,7 @@ Creates a new fault injector.
 ```
 
 #### Delete Injector
+
 ```http
 DELETE /api/v1/chaos/injectors/{id}
 ```
@@ -126,6 +132,7 @@ DELETE /api/v1/chaos/injectors/{id}
 Removes a fault injector.
 
 #### Toggle Injector
+
 ```http
 POST /api/v1/chaos/injectors/{id}/toggle
 ```
@@ -133,6 +140,7 @@ POST /api/v1/chaos/injectors/{id}/toggle
 Enables or disables an injector.
 
 **Request:**
+
 ```json
 {
   "enabled": false
@@ -142,6 +150,7 @@ Enables or disables an injector.
 ### Scenario Management
 
 #### List Scenarios
+
 ```http
 GET /api/v1/chaos/scenarios
 ```
@@ -149,6 +158,7 @@ GET /api/v1/chaos/scenarios
 Returns available and running scenarios.
 
 **Response:**
+
 ```json
 {
   "scenarios": [
@@ -179,6 +189,7 @@ Returns available and running scenarios.
 ```
 
 #### Run Scenario
+
 ```http
 POST /api/v1/chaos/scenarios/{id}/run
 ```
@@ -186,6 +197,7 @@ POST /api/v1/chaos/scenarios/{id}/run
 Executes a chaos scenario.
 
 **Response:**
+
 ```json
 {
   "status": "started",
@@ -194,6 +206,7 @@ Executes a chaos scenario.
 ```
 
 #### Abort Scenario
+
 ```http
 POST /api/v1/chaos/scenarios/{id}/abort
 ```
@@ -201,6 +214,7 @@ POST /api/v1/chaos/scenarios/{id}/abort
 Aborts a running scenario.
 
 #### Get Scenario Report
+
 ```http
 GET /api/v1/chaos/scenarios/{id}/report
 ```
@@ -208,6 +222,7 @@ GET /api/v1/chaos/scenarios/{id}/report
 Returns execution report for a scenario.
 
 **Response:**
+
 ```json
 {
   "scenario_id": "latency-test",
@@ -245,6 +260,7 @@ Returns execution report for a scenario.
 ### Control Endpoints
 
 #### Get Status
+
 ```http
 GET /api/v1/chaos/status
 ```
@@ -252,6 +268,7 @@ GET /api/v1/chaos/status
 Returns chaos harness status.
 
 **Response:**
+
 ```json
 {
   "status": "active",
@@ -265,6 +282,7 @@ Returns chaos harness status.
 ```
 
 #### Clear All
+
 ```http
 POST /api/v1/chaos/clear
 ```
@@ -372,10 +390,12 @@ err := ch.RunScenario(ctx, scenario)
 **Type:** `latency`
 
 **Parameters:**
+
 - `latency_ms`: Base latency in milliseconds
 - `jitter_ms`: Random jitter range (optional)
 
 **Example:**
+
 ```json
 {
   "type": "latency",
@@ -391,9 +411,11 @@ err := ch.RunScenario(ctx, scenario)
 **Type:** `error`
 
 **Parameters:**
+
 - `error_message`: Error message to return
 
 **Example:**
+
 ```json
 {
   "type": "error",
@@ -408,9 +430,11 @@ err := ch.RunScenario(ctx, scenario)
 **Type:** `panic`
 
 **Parameters:**
+
 - `panic_message`: Panic message (optional)
 
 **Example:**
+
 ```json
 {
   "type": "panic",
@@ -425,9 +449,11 @@ err := ch.RunScenario(ctx, scenario)
 **Type:** `partial_fail`
 
 **Parameters:**
+
 - `fail_rate`: Percentage of items to fail (0.0-1.0)
 
 **Example:**
+
 ```json
 {
   "type": "partial_fail",

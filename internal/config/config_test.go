@@ -3,7 +3,11 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -17,6 +21,35 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Redis.Addr == "" {
 		t.Fatalf("expected default redis addr")
+	}
+	if cfg.Queue.MaxPayloadSize != 1<<20 {
+		t.Fatalf("expected default max payload size 1 MiB, got %d", cfg.Queue.MaxPayloadSize)
+	}
+	if err := cfg.OrderingLayout().Validate(); err != nil {
+		t.Fatalf("default ordering layout is invalid: %v", err)
+	}
+}
+
+func TestLoadRejectsUnsupportedExactlyOnceConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	contents := []byte("exactly_once:\n  idempotency:\n    enabled: false\n")
+	if err := os.WriteFile(path, contents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected unsupported exactly_once config to be rejected")
+	}
+	if !strings.Contains(err.Error(), "exactly_once") {
+		t.Fatalf("expected error to identify exactly_once, got %q", err)
+	}
+}
+
+func TestExampleConfigContainsOnlySupportedKeys(t *testing.T) {
+	path := filepath.Join("..", "..", "config", "config.example.yaml")
+	if _, err := Load(path); err != nil {
+		t.Fatalf("example config contains an unsupported key: %v", err)
 	}
 }
 
@@ -35,5 +68,353 @@ func TestValidateFails(t *testing.T) {
 	cfg.Worker.BRPopLPushTimeout = cfg.Worker.HeartbeatTTL
 	if err := Validate(cfg); err == nil {
 		t.Fatalf("expected error for brpoplpush_timeout > heartbeat_ttl/2")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.MaxPayloadSize = 0
+	if err := Validate(cfg); err == nil {
+		t.Fatalf("expected error for queue.max_payload_size <= 0")
+	}
+	cfg = defaultConfig()
+	cfg.Worker.ProcessingListPattern = "jobqueue:processing-without-placeholder"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected processing pattern without a placeholder to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = "jobqueue:%s:heartbeat:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected heartbeat pattern with two placeholders to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedQueuePattern = "jobqueue:ordered:without-placeholder"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered queue pattern without a placeholder to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedLeasePattern = "jobqueue:%s:ordered:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered lease pattern with two placeholders to fail")
+	}
+	cfg = defaultConfig()
+	cfg.Queue.OrderedLeasePattern = cfg.Queue.OrderedQueuePattern
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical ordered queue and lease patterns to fail")
+	}
+}
+
+func TestValidateRejectsReservedWorkerQueueAliases(t *testing.T) {
+	for _, alias := range []string{"completed", "Completed", "dead_letter", "DEAD_LETTER", "dlq", "DLQ"} {
+		t.Run(alias, func(t *testing.T) {
+			cfg := defaultConfig()
+			cfg.Worker.Queues[alias] = "jobqueue:test:reserved"
+			if err := Validate(cfg); err == nil {
+				t.Fatalf("expected reserved queue alias %q to fail", alias)
+			}
+		})
+	}
+}
+
+func TestValidateRejectsWhitespaceAlteredQueueMappings(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*Config)
+	}{
+		{
+			name: "alias with surrounding whitespace",
+			configure: func(cfg *Config) {
+				key := cfg.Worker.Queues["low"]
+				delete(cfg.Worker.Queues, "low")
+				cfg.Worker.Queues[" low "] = key
+				cfg.Worker.Priorities[1] = " low "
+			},
+		},
+		{
+			name: "blank alias",
+			configure: func(cfg *Config) {
+				key := cfg.Worker.Queues["low"]
+				delete(cfg.Worker.Queues, "low")
+				cfg.Worker.Queues[" "] = key
+				cfg.Worker.Priorities[1] = " "
+			},
+		},
+		{
+			name: "aliases collide after trimming",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues[" low"] = "jobqueue:low-shadow"
+			},
+		},
+		{
+			name: "key with surrounding whitespace",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues["low"] = " jobqueue:low "
+			},
+		},
+		{
+			name: "blank key",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues["low"] = " "
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			tt.configure(cfg)
+			if err := Validate(cfg); err == nil {
+				t.Fatal("expected non-canonical queue mapping to fail validation")
+			}
+		})
+	}
+}
+
+func TestValidateRejectsEmptyDeadLetterList(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.DeadLetterList = ""
+
+	err := Validate(cfg)
+	if err == nil {
+		t.Fatal("expected an empty worker.dead_letter_list to fail validation")
+	}
+	if !strings.Contains(err.Error(), "worker.dead_letter_list") {
+		t.Fatalf("expected error to identify worker.dead_letter_list, got %q", err)
+	}
+}
+
+func TestValidateRejectsEmptyCompletedList(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.CompletedList = ""
+
+	err := Validate(cfg)
+	if err == nil {
+		t.Fatal("expected an empty worker.completed_list to fail validation")
+	}
+	if !strings.Contains(err.Error(), "worker.completed_list") {
+		t.Fatalf("expected error to identify worker.completed_list, got %q", err)
+	}
+}
+
+func TestValidateRejectsIdenticalOrderedReadyAndActiveKeys(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Queue.OrderedActiveSet = cfg.Queue.OrderedReadyList
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical ordered ready and active keys to fail")
+	}
+}
+
+func TestValidateRejectsIdenticalProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = cfg.Worker.ProcessingListPattern
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected identical processing and heartbeat patterns to fail")
+	}
+}
+
+func TestValidateRejectsOverlappingProcessingAndHeartbeatPatterns(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "tenant:heartbeat:%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected overlapping processing and heartbeat keyspaces to fail")
+	}
+}
+
+func TestValidateRejectsWorkerPatternsOverlappingOrderedKeyspaces(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*Config)
+	}{
+		{
+			name: "processing/queue",
+			configure: func(cfg *Config) {
+				cfg.Worker.ProcessingListPattern = "tenant:%s"
+				cfg.Queue.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "processing/lease",
+			configure: func(cfg *Config) {
+				cfg.Worker.ProcessingListPattern = "tenant:%s"
+				cfg.Queue.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+		{
+			name: "heartbeat/queue",
+			configure: func(cfg *Config) {
+				cfg.Worker.HeartbeatKeyPattern = "tenant:%s"
+				cfg.Queue.OrderedQueuePattern = "tenant:ordered:%s"
+			},
+		},
+		{
+			name: "heartbeat/lease",
+			configure: func(cfg *Config) {
+				cfg.Worker.HeartbeatKeyPattern = "tenant:%s"
+				cfg.Queue.OrderedLeasePattern = "tenant:lease:%s"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			tt.configure(cfg)
+			if err := Validate(cfg); err == nil {
+				t.Fatal("expected overlapping generated keyspaces to fail")
+			}
+		})
+	}
+}
+
+func TestValidateRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func(*Config, string)
+	}{
+		{name: "high priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["high"] = key }},
+		{name: "low priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["low"] = key }},
+		{name: "completed", set: func(cfg *Config, key string) { cfg.Worker.CompletedList = key }},
+		{name: "dead letter", set: func(cfg *Config, key string) { cfg.Worker.DeadLetterList = key }},
+		{name: "ordered ready", set: func(cfg *Config, key string) { cfg.Queue.OrderedReadyList = key }},
+		{name: "ordered active", set: func(cfg *Config, key string) { cfg.Queue.OrderedActiveSet = key }},
+		{name: "producer rate limiter", set: func(cfg *Config, key string) { cfg.Producer.RateLimitKey = key }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			cfg.Worker.ProcessingListPattern = "tenant:%s"
+			tt.set(cfg, "tenant:managed")
+			if err := Validate(cfg); err == nil {
+				t.Fatalf("expected %s key matched by processing pattern to fail", tt.name)
+			}
+		})
+	}
+}
+
+func TestValidateRejectsOrderedClaimRegistryMatchedByProcessingPattern(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.ProcessingListPattern = cfg.Queue.OrderedActiveSet + ":%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered claim registry matched by processing pattern to fail")
+	}
+}
+
+func TestValidateRejectsStaticKeyAliasedToOrderedClaimRegistry(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.Queues["high"] = queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet)
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to ordered claim registry to fail")
+	}
+}
+
+func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
+	type keyRole struct {
+		name string
+		get  func(*Config) string
+		set  func(*Config, string)
+	}
+	roles := []keyRole{
+		{
+			name: "high priority",
+			get:  func(cfg *Config) string { return cfg.Worker.Queues["high"] },
+			set:  func(cfg *Config, key string) { cfg.Worker.Queues["high"] = key },
+		},
+		{
+			name: "low priority",
+			get:  func(cfg *Config) string { return cfg.Worker.Queues["low"] },
+			set:  func(cfg *Config, key string) { cfg.Worker.Queues["low"] = key },
+		},
+		{
+			name: "completed",
+			get:  func(cfg *Config) string { return cfg.Worker.CompletedList },
+			set:  func(cfg *Config, key string) { cfg.Worker.CompletedList = key },
+		},
+		{
+			name: "dead letter",
+			get:  func(cfg *Config) string { return cfg.Worker.DeadLetterList },
+			set:  func(cfg *Config, key string) { cfg.Worker.DeadLetterList = key },
+		},
+		{
+			name: "ordered ready",
+			get:  func(cfg *Config) string { return cfg.Queue.OrderedReadyList },
+			set:  func(cfg *Config, key string) { cfg.Queue.OrderedReadyList = key },
+		},
+		{
+			name: "ordered active",
+			get:  func(cfg *Config) string { return cfg.Queue.OrderedActiveSet },
+			set:  func(cfg *Config, key string) { cfg.Queue.OrderedActiveSet = key },
+		},
+		{
+			name: "producer rate limiter",
+			get:  func(cfg *Config) string { return cfg.Producer.RateLimitKey },
+			set:  func(cfg *Config, key string) { cfg.Producer.RateLimitKey = key },
+		},
+	}
+
+	for first := 0; first < len(roles); first++ {
+		for second := first + 1; second < len(roles); second++ {
+			firstRole := roles[first]
+			secondRole := roles[second]
+			t.Run(firstRole.name+"/"+secondRole.name, func(t *testing.T) {
+				cfg := defaultConfig()
+				secondRole.set(cfg, firstRole.get(cfg))
+				if err := Validate(cfg); err == nil {
+					t.Fatalf("expected %s and %s key alias to fail", firstRole.name, secondRole.name)
+				}
+			})
+		}
+	}
+}
+
+func TestValidateRejectsKeyAliasedToDLQGeneration(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.Queues["high"] = queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to DLQ generation metadata to fail")
+	}
+}
+
+func TestValidateRejectsDLQGenerationMatchedByHeartbeatPattern(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.HeartbeatKeyPattern = cfg.Worker.DeadLetterList + ":%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected DLQ generation metadata matched by heartbeat pattern to fail")
+	}
+}
+
+func TestValidateRejectsStaticKeysThatResolveToOrderedKeys(t *testing.T) {
+	type keyRole struct {
+		name string
+		set  func(*Config, string)
+	}
+	roles := []keyRole{
+		{name: "high priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["high"] = key }},
+		{name: "low priority", set: func(cfg *Config, key string) { cfg.Worker.Queues["low"] = key }},
+		{name: "completed", set: func(cfg *Config, key string) { cfg.Worker.CompletedList = key }},
+		{name: "dead letter", set: func(cfg *Config, key string) { cfg.Worker.DeadLetterList = key }},
+		{name: "ordered ready", set: func(cfg *Config, key string) { cfg.Queue.OrderedReadyList = key }},
+		{name: "ordered active", set: func(cfg *Config, key string) { cfg.Queue.OrderedActiveSet = key }},
+		{name: "producer rate limiter", set: func(cfg *Config, key string) { cfg.Producer.RateLimitKey = key }},
+	}
+	patterns := []struct {
+		name string
+		get  func(*Config) string
+	}{
+		{name: "ordered queue", get: func(cfg *Config) string { return cfg.Queue.OrderedQueuePattern }},
+		{name: "ordered lease", get: func(cfg *Config) string { return cfg.Queue.OrderedLeasePattern }},
+	}
+	digest := queuekeys.OrderingDigest("account:42")
+
+	for _, role := range roles {
+		for _, pattern := range patterns {
+			t.Run(role.name+"/"+pattern.name, func(t *testing.T) {
+				cfg := defaultConfig()
+				cfg.Queue.OrderedQueuePattern = "custom:ordered:queue:%s"
+				cfg.Queue.OrderedLeasePattern = "custom:ordered:lease:%s"
+				role.set(cfg, queuekeys.Format(pattern.get(cfg), digest))
+				if err := Validate(cfg); err == nil {
+					t.Fatalf("expected %s to reject a key generated by the %s pattern", role.name, pattern.name)
+				}
+			})
+		}
 	}
 }

@@ -54,6 +54,7 @@ exactly_once:
 ### Storage Types
 
 #### Redis Storage (Default)
+
 ```yaml
 idempotency:
   storage:
@@ -65,6 +66,7 @@ idempotency:
 ```
 
 #### Memory Storage (Testing/Development)
+
 ```yaml
 idempotency:
   storage:
@@ -75,6 +77,7 @@ idempotency:
 ```
 
 #### Database Storage
+
 ```yaml
 idempotency:
   storage:
@@ -115,6 +118,7 @@ func (m *Manager) ProcessWithIdempotency(
 ```
 
 **Example:**
+
 ```go
 // Generate or receive idempotency key
 key := manager.GenerateIdempotencyKey("file-processing", "", jobID)
@@ -135,6 +139,7 @@ func (m *Manager) GenerateIdempotencyKey(queueName, tenantID string, customSuffi
 ```
 
 **Example:**
+
 ```go
 // Basic key
 key := manager.GenerateIdempotencyKey("user-queue", "tenant-123")
@@ -257,15 +262,18 @@ handler.RegisterRoutes(mux)
 Get deduplication statistics:
 
 **Query Parameters:**
+
 - `queue` (required): Queue name
 - `tenant` (optional): Tenant ID
 
 **Example:**
+
 ```bash
 curl "http://localhost:8080/api/v1/exactly-once/stats?queue=file-processing&tenant=acme"
 ```
 
 **Response:**
+
 ```json
 {
   "queue_name": "file-processing",
@@ -283,11 +291,13 @@ curl "http://localhost:8080/api/v1/exactly-once/stats?queue=file-processing&tena
 Check if an idempotency key exists:
 
 **Query Parameters:**
+
 - `queue` (required): Queue name
 - `key` (required): Idempotency key
 - `tenant` (optional): Tenant ID
 
 **Example:**
+
 ```bash
 curl "http://localhost:8080/api/v1/exactly-once/idempotency?queue=orders&key=order-123"
 ```
@@ -297,6 +307,7 @@ curl "http://localhost:8080/api/v1/exactly-once/idempotency?queue=orders&key=ord
 Create an idempotency key:
 
 **Request Body:**
+
 ```json
 {
   "queue_name": "orders",
@@ -312,6 +323,7 @@ Create an idempotency key:
 Delete an idempotency key:
 
 **Query Parameters:**
+
 - `queue` (required): Queue name
 - `key` (required): Idempotency key
 - `tenant` (optional): Tenant ID
@@ -321,6 +333,7 @@ Delete an idempotency key:
 Trigger outbox event publishing:
 
 **Example:**
+
 ```bash
 curl -X POST "http://localhost:8080/api/v1/exactly-once/outbox"
 ```
@@ -330,9 +343,11 @@ curl -X POST "http://localhost:8080/api/v1/exactly-once/outbox"
 Trigger cleanup operations:
 
 **Query Parameters:**
+
 - `type` (optional): Cleanup type ("idempotency", "outbox", "all")
 
 **Example:**
+
 ```bash
 curl -X POST "http://localhost:8080/api/v1/exactly-once/cleanup?type=idempotency"
 ```
@@ -342,6 +357,7 @@ curl -X POST "http://localhost:8080/api/v1/exactly-once/cleanup?type=idempotency
 Health check endpoint:
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -430,18 +446,21 @@ outbox:
 ### Common Issues
 
 #### High Memory Usage
+
 - Check TTL settings
 - Enable hash-based storage
 - Verify cleanup is running
 - Monitor key cardinality
 
 #### High Latency
+
 - Check Redis connection
 - Monitor storage operations
 - Review batch sizes
 - Check for lock contention
 
 #### Duplicate Processing
+
 - Verify idempotency keys are unique
 - Check TTL configuration
 - Monitor storage errors
@@ -473,6 +492,7 @@ manager.RegisterHook(&DebuggingHook{})
 ### Example Migration
 
 **Before:**
+
 ```go
 func processJob(job Job) error {
     return doWork(job)
@@ -480,6 +500,7 @@ func processJob(job Job) error {
 ```
 
 **After:**
+
 ```go
 func processJob(job Job, manager *exactlyonce.Manager) error {
     key := manager.GenerateIdempotencyKey("job-queue", job.TenantID, job.ID)

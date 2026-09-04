@@ -852,6 +852,7 @@ gantt
 These architecture diagrams provide comprehensive visual documentation of the Automatic Capacity Planning system's design, covering all major aspects from high-level system architecture to detailed deployment and disaster recovery strategies.
 
 The diagrams support:
+
 - **System Understanding**: Clear visualization of component relationships
 - **Development Planning**: Detailed service interactions and data flows
 - **Deployment Strategy**: Container and infrastructure architecture
@@ -862,6 +863,7 @@ Regular updates to these diagrams will ensure they remain accurate as the system
 ---
 
 **Document Control**
+
 - Created: 2025-09-14
 - Version: 1.0.0
 - Next Review: 2025-12-14

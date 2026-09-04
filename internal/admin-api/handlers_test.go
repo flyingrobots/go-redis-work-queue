@@ -3,17 +3,34 @@ package adminapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
+	"github.com/flyingrobots/go-redis-work-queue/internal/queue"
+	"github.com/flyingrobots/go-redis-work-queue/pkg/queuekeys"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
+
+type countingReader struct {
+	reader io.Reader
+	read   int64
+}
+
+func (r *countingReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.read += int64(n)
+	return n, err
+}
 
 func setupHandlerTest(t *testing.T) (*Handler, *miniredis.Miniredis, func()) {
 	// Create mini redis
@@ -67,6 +84,10 @@ func TestHandlerGetStats(t *testing.T) {
 	mr.Lpush("jobqueue:high", "job2")
 	mr.Lpush("jobqueue:low", "job3")
 	mr.Lpush("jobqueue:completed", "job4")
+	handler.cfg.Queue.OrderedQueuePattern = queuekeys.DefaultOrderedQueuePattern
+	orderedQueue := queuekeys.Format(handler.cfg.Queue.OrderedQueuePattern, queuekeys.OrderingDigest("account:a"))
+	mr.Lpush(orderedQueue, "ordered-1")
+	mr.Lpush(orderedQueue, "ordered-2")
 
 	// Create request
 	req := httptest.NewRequest("GET", "/api/v1/stats", nil)
@@ -92,6 +113,400 @@ func TestHandlerGetStats(t *testing.T) {
 
 	if resp.Queues["low(jobqueue:low)"] != 1 {
 		t.Errorf("Expected low queue to have 1 item, got %d", resp.Queues["low(jobqueue:low)"])
+	}
+	if resp.OrderedPending != 2 {
+		t.Errorf("Expected 2 ordered jobs pending, got %d", resp.OrderedPending)
+	}
+}
+
+func TestEnqueueJobReturnsCreatedIDAndPreservesEnvelope(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 64
+
+	reqBody := EnqueueRequest{
+		ID:            "http-job",
+		Payload:       []byte(`{"x":1}`),
+		PayloadSchema: "demo.v1",
+		Priority:      "high",
+		OrderingKey:   "account:42",
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", w.Code, w.Body.String())
+	}
+	var response EnqueueResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.ID != "http-job" {
+		t.Fatalf("response ID = %q", response.ID)
+	}
+	orderedQueue := queuekeys.Format(queuekeys.DefaultOrderedQueuePattern, queuekeys.OrderingDigest(reqBody.OrderingKey))
+	items, err := mr.List(orderedQueue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("ordered queue length = %d, want 1", len(items))
+	}
+	ready, err := mr.List(queuekeys.DefaultOrderedReadyList)
+	if err != nil || len(ready) != 1 {
+		t.Fatalf("ready tokens = %v (err=%v), want one", ready, err)
+	}
+	job, err := queue.UnmarshalJob(items[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.ID != response.ID || !bytes.Equal(job.Payload, reqBody.Payload) || job.PayloadSchema != reqBody.PayloadSchema || job.OrderingKey != reqBody.OrderingKey {
+		t.Fatalf("queued envelope changed: %#v", job)
+	}
+}
+
+func TestEnqueueJobRejectsTrailingJSONWithoutQueueChange(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	body := `{"payload":"YQ==","priority":"low"}{"payload":"Yg==","priority":"low"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "INVALID_REQUEST" {
+		t.Fatalf("error code = %q, want INVALID_REQUEST", response.Code)
+	}
+	if mr.Exists("jobqueue:low") {
+		t.Fatal("request with trailing JSON enqueued the first document")
+	}
+}
+
+func TestEnqueueJobRejectsMalformedOrderingKeyUnicodeWithoutQueueChange(t *testing.T) {
+	invalidUTF8 := append(
+		[]byte(`{"payload":"YQ==","priority":"low","ordering_key":"bad`),
+		0xff,
+	)
+	invalidUTF8 = append(invalidUTF8, []byte(`"}`)...)
+
+	for _, tc := range []struct {
+		name string
+		body []byte
+	}{
+		{name: "invalid raw UTF-8", body: invalidUTF8},
+		{name: "lone high surrogate", body: []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\ud800"}`)},
+		{name: "lone low surrogate", body: []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\udc00"}`)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, mr, cleanup := setupHandlerTest(t)
+			defer cleanup()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(tc.body))
+			response := httptest.NewRecorder()
+
+			handler.EnqueueJob(response, req)
+
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", response.Code, response.Body.String())
+			}
+			var failure ErrorResponse
+			if err := json.NewDecoder(response.Body).Decode(&failure); err != nil {
+				t.Fatal(err)
+			}
+			if failure.Code != "INVALID_REQUEST" {
+				t.Fatalf("error code = %q, want INVALID_REQUEST", failure.Code)
+			}
+			if keys := mr.Keys(); len(keys) != 0 {
+				t.Fatalf("rejected ordering key mutated Redis keys: %v", keys)
+			}
+		})
+	}
+}
+
+func TestEnqueueJobAcceptsPairedOrderingKeySurrogates(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	body := []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\ud83d\ude80"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	response := httptest.NewRecorder()
+
+	handler.EnqueueJob(response, req)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", response.Code, response.Body.String())
+	}
+	orderedQueue := queuekeys.Format(queuekeys.DefaultOrderedQueuePattern, queuekeys.OrderingDigest("🚀"))
+	if items, err := mr.List(orderedQueue); err != nil || len(items) != 1 {
+		t.Fatalf("ordered queue = %v (err=%v), want one job", items, err)
+	}
+}
+
+func TestEnqueueJobOversizedPayloadReturnsTypedMessageWithoutQueueChange(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 4
+	reqBody := EnqueueRequest{Payload: []byte("12345"), Priority: "low"}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "PAYLOAD_TOO_LARGE" || response.Error != "payload is 5 bytes; maximum is 4 bytes" {
+		t.Fatalf("unexpected error response: %#v", response)
+	}
+	if mr.Exists("jobqueue:low") {
+		items, listErr := mr.List("jobqueue:low")
+		t.Fatalf("rejected enqueue changed queue: %v (err=%v)", items, listErr)
+	}
+}
+
+func TestEnqueueJobBoundsEncodedBodyBeforeDecoding(t *testing.T) {
+	handler, _, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	handler.cfg.Queue.MaxPayloadSize = 4
+
+	body := `{"payload":"` + strings.Repeat("A", 2<<20) + `"}`
+	reader := &countingReader{reader: strings.NewReader(body)}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", reader)
+	w := httptest.NewRecorder()
+
+	handler.EnqueueJob(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413: %s", w.Code, w.Body.String())
+	}
+	var response ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != "PAYLOAD_TOO_LARGE" {
+		t.Fatalf("error code = %q, want PAYLOAD_TOO_LARGE", response.Code)
+	}
+	if reader.read > 70<<10 {
+		t.Fatalf("handler read %d bytes before rejecting an oversized encoded body", reader.read)
+	}
+}
+
+func TestSetupRoutesExposesEnqueueEndpoint(t *testing.T) {
+	handler, _, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	server := &Server{
+		cfg:    handler.apiCfg,
+		appCfg: handler.cfg,
+		rdb:    handler.rdb,
+		logger: handler.logger,
+	}
+	body, err := json.Marshal(EnqueueRequest{Payload: []byte("route"), Priority: "low"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	server.SetupRoutes().ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDLQHandlersRoundTripSelectionHandles(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	first := `{"id":"shared-id","payload":"Zmlyc3Q="}`
+	second := `{"id":"shared-id","payload":"c2Vjb25k"}`
+	mr.RPush(handler.cfg.Worker.DeadLetterList, first, second)
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq", nil)
+	listResponse := httptest.NewRecorder()
+	handler.ListDLQ(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want 200: %s", listResponse.Code, listResponse.Body.String())
+	}
+	var listed DLQListResponse
+	if err := json.NewDecoder(listResponse.Body).Decode(&listed); err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Items) != 2 || listed.Items[0].Handle == "" || listed.Items[0].Handle == listed.Items[1].Handle {
+		t.Fatalf("listed items = %#v, want two distinct selection handles", listed.Items)
+	}
+
+	body, err := json.Marshal(DLQPurgeSelectionRequest{Handles: []string{listed.Items[1].Handle}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	purgeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/dlq/purge", bytes.NewReader(body))
+	purgeResponse := httptest.NewRecorder()
+	handler.PurgeDLQItems(purgeResponse, purgeRequest)
+	if purgeResponse.Code != http.StatusOK {
+		t.Fatalf("purge status = %d, want 200: %s", purgeResponse.Code, purgeResponse.Body.String())
+	}
+	var purged DLQPurgeSelectionResponse
+	if err := json.NewDecoder(purgeResponse.Body).Decode(&purged); err != nil {
+		t.Fatal(err)
+	}
+	if purged.Purged != 1 {
+		t.Fatalf("purged = %d, want 1", purged.Purged)
+	}
+	if got, err := mr.List(handler.cfg.Worker.DeadLetterList); err != nil || len(got) != 1 || got[0] != first {
+		t.Fatalf("dead-letter queue = %#v (err=%v), want only first delivery", got, err)
+	}
+}
+
+func TestListDLQClassifiesCursorErrors(t *testing.T) {
+	t.Run("malformed", func(t *testing.T) {
+		handler, _, cleanup := setupHandlerTest(t)
+		defer cleanup()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/dlq?cursor=1", nil)
+		response := httptest.NewRecorder()
+
+		handler.ListDLQ(response, req)
+
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, want 400: %s", response.Code, response.Body.String())
+		}
+		var apiError ErrorResponse
+		if err := json.NewDecoder(response.Body).Decode(&apiError); err != nil {
+			t.Fatal(err)
+		}
+		if apiError.Code != "INVALID_CURSOR" {
+			t.Fatalf("error code = %q, want INVALID_CURSOR", apiError.Code)
+		}
+	})
+
+	t.Run("stale", func(t *testing.T) {
+		handler, mr, cleanup := setupHandlerTest(t)
+		defer cleanup()
+		mr.RPush(handler.cfg.Worker.DeadLetterList, `{"id":"first"}`, `{"id":"second"}`)
+		firstRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq?limit=1", nil)
+		firstResponse := httptest.NewRecorder()
+		handler.ListDLQ(firstResponse, firstRequest)
+		if firstResponse.Code != http.StatusOK {
+			t.Fatalf("first page status = %d: %s", firstResponse.Code, firstResponse.Body.String())
+		}
+		var firstPage DLQListResponse
+		if err := json.NewDecoder(firstResponse.Body).Decode(&firstPage); err != nil {
+			t.Fatal(err)
+		}
+		if firstPage.NextCursor == "" {
+			t.Fatal("first page omitted continuation cursor")
+		}
+		if err := queue.AppendDeadLetter(
+			context.Background(),
+			handler.rdb,
+			handler.cfg.Worker.DeadLetterList,
+			`{"id":"new-head"}`,
+		); err != nil {
+			t.Fatal(err)
+		}
+		secondRequest := httptest.NewRequest(http.MethodGet, "/api/v1/dlq", nil)
+		query := secondRequest.URL.Query()
+		query.Set("limit", "1")
+		query.Set("cursor", firstPage.NextCursor)
+		secondRequest.URL.RawQuery = query.Encode()
+		secondResponse := httptest.NewRecorder()
+
+		handler.ListDLQ(secondResponse, secondRequest)
+
+		if secondResponse.Code != http.StatusConflict {
+			t.Fatalf("status = %d, want 409: %s", secondResponse.Code, secondResponse.Body.String())
+		}
+		var apiError ErrorResponse
+		if err := json.NewDecoder(secondResponse.Body).Decode(&apiError); err != nil {
+			t.Fatal(err)
+		}
+		if apiError.Code != "STALE_CURSOR" {
+			t.Fatalf("error code = %q, want STALE_CURSOR", apiError.Code)
+		}
+	})
+}
+
+func TestOpenAPISpecDocumentsEnqueueAsARealPath(t *testing.T) {
+	var document struct {
+		Paths      map[string]map[string]any `yaml:"paths"`
+		Components struct {
+			Schemas map[string]any `yaml:"schemas"`
+		} `yaml:"components"`
+	}
+	if err := yaml.Unmarshal([]byte(openAPISpec), &document); err != nil {
+		t.Fatalf("OpenAPI YAML is invalid: %v", err)
+	}
+	for path, method := range map[string]string{
+		"/enqueue":     "post",
+		"/dlq":         "get",
+		"/dlq/requeue": "post",
+		"/dlq/purge":   "post",
+		"/workers":     "get",
+	} {
+		if _, ok := document.Paths[path][method]; !ok {
+			t.Errorf("OpenAPI paths does not contain %s %s", strings.ToUpper(method), path)
+		}
+	}
+	if _, ok := document.Components.Schemas["EnqueueRequest"]; !ok {
+		t.Fatal("OpenAPI components does not contain EnqueueRequest")
+	}
+	if _, ok := document.Components.Schemas["EnqueueResponse"]; !ok {
+		t.Fatal("OpenAPI components does not contain EnqueueResponse")
+	}
+	for _, schemaName := range []string{"DLQRequeueRequest", "DLQPurgeSelectionRequest"} {
+		schema, ok := document.Components.Schemas[schemaName].(map[string]any)
+		if !ok {
+			t.Fatalf("OpenAPI schema %s is not an object", schemaName)
+		}
+		properties, ok := schema["properties"].(map[string]any)
+		if !ok {
+			t.Fatalf("OpenAPI schema %s properties are not an object", schemaName)
+		}
+		if _, ok := properties["handles"]; !ok {
+			t.Errorf("OpenAPI schema %s does not expose selection handles", schemaName)
+		}
+		if _, ok := properties["ids"]; ok {
+			t.Errorf("OpenAPI schema %s still exposes ambiguous job IDs", schemaName)
+		}
+	}
+	enqueueOperation, ok := document.Paths["/enqueue"]["post"].(map[string]any)
+	if !ok {
+		t.Fatal("OpenAPI enqueue operation is not an object")
+	}
+	enqueueDescription, ok := enqueueOperation["description"].(string)
+	if !ok {
+		t.Fatal("OpenAPI enqueue operation does not contain a string description")
+	}
+	for _, claim := range []string{"strict FIFO", "ordering wins over priority"} {
+		if !strings.Contains(enqueueDescription, claim) {
+			t.Errorf("OpenAPI enqueue description does not document %q: %q", claim, enqueueDescription)
+		}
+	}
+	if strings.Contains(enqueueDescription, "not enforced") {
+		t.Errorf("OpenAPI enqueue description still claims ordering is not enforced: %q", enqueueDescription)
+	}
+	for name := range document.Components.Schemas {
+		if strings.HasPrefix(name, "/") {
+			t.Errorf("OpenAPI path %q is incorrectly nested under component schemas", name)
+		}
 	}
 }
 

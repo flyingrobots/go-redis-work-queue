@@ -51,11 +51,13 @@ Retrieve a paginated list of workers with filtering and sorting capabilities.
 | `sort_order` | string | Sort order: `asc`, `desc` | `desc` |
 
 **Example Request:**
+
 ```bash
 GET /api/workers?page=1&page_size=20&states=running,paused&sort_by=last_heartbeat
 ```
 
 **Response:**
+
 ```json
 {
   "workers": [
@@ -162,11 +164,13 @@ Retrieve detailed information about a specific worker.
 | `id` | string | Worker ID |
 
 **Example Request:**
+
 ```bash
 GET /api/workers/worker-001
 ```
 
 **Response:**
+
 ```json
 {
   "id": "worker-001",
@@ -183,6 +187,7 @@ Register a new worker with the fleet.
 **Endpoint:** `POST /api/workers/register`
 
 **Request Body:**
+
 ```json
 {
   "id": "worker-005",
@@ -203,6 +208,7 @@ Register a new worker with the fleet.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -218,6 +224,7 @@ Update a worker's heartbeat timestamp and current job status.
 **Endpoint:** `POST /api/workers/{id}/heartbeat`
 
 **Request Body:**
+
 ```json
 {
   "timestamp": "2024-01-15T12:30:00Z",
@@ -236,6 +243,7 @@ Update a worker's heartbeat timestamp and current job status.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -250,6 +258,7 @@ Pause one or more workers. Paused workers stop accepting new jobs but may finish
 **Endpoint:** `POST /api/workers/actions/pause`
 
 **Request Body:**
+
 ```json
 {
   "worker_ids": ["worker-001", "worker-002"],
@@ -258,6 +267,7 @@ Pause one or more workers. Paused workers stop accepting new jobs but may finish
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12345",
@@ -279,6 +289,7 @@ Resume one or more paused workers.
 **Endpoint:** `POST /api/workers/actions/resume`
 
 **Request Body:**
+
 ```json
 {
   "worker_ids": ["worker-001", "worker-002"],
@@ -287,6 +298,7 @@ Resume one or more paused workers.
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12346",
@@ -308,6 +320,7 @@ Drain one or more workers. Drained workers finish their current job and then sto
 **Endpoint:** `POST /api/workers/actions/drain`
 
 **Request Body:**
+
 ```json
 {
   "worker_ids": ["worker-001", "worker-002"],
@@ -318,6 +331,7 @@ Drain one or more workers. Drained workers finish their current job and then sto
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12347",
@@ -346,6 +360,7 @@ Stop one or more workers immediately or gracefully.
 **Endpoint:** `POST /api/workers/actions/stop`
 
 **Request Body:**
+
 ```json
 {
   "worker_ids": ["worker-003"],
@@ -356,6 +371,7 @@ Stop one or more workers immediately or gracefully.
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12348",
@@ -377,6 +393,7 @@ Restart one or more workers.
 **Endpoint:** `POST /api/workers/actions/restart`
 
 **Request Body:**
+
 ```json
 {
   "worker_ids": ["worker-001", "worker-002"],
@@ -386,6 +403,7 @@ Restart one or more workers.
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12349",
@@ -406,6 +424,7 @@ Perform a rolling restart of workers matching filter criteria.
 **Endpoint:** `POST /api/workers/actions/rolling-restart`
 
 **Request Body:**
+
 ```json
 {
   "filter": {
@@ -424,6 +443,7 @@ Perform a rolling restart of workers matching filter criteria.
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12350",
@@ -467,11 +487,13 @@ Check the status of a running action.
 | `request_id` | string | Action request ID |
 
 **Example Request:**
+
 ```bash
 GET /api/workers/actions/req-12350
 ```
 
 **Response:**
+
 ```json
 {
   "request_id": "req-12350",
@@ -493,6 +515,7 @@ Cancel a running action.
 **Endpoint:** `POST /api/workers/actions/{request_id}/cancel`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -507,6 +530,7 @@ Get high-level fleet statistics.
 **Endpoint:** `GET /api/workers/summary`
 
 **Response:**
+
 ```json
 {
   "total_workers": 156,
@@ -545,11 +569,13 @@ Retrieve audit logs for worker actions.
 | `worker_ids` | string | Comma-separated worker IDs to filter by | - |
 
 **Example Request:**
+
 ```bash
 GET /api/workers/audit?limit=10&actions=pause,resume&start_time=2024-01-15T00:00:00Z
 ```
 
 **Response:**
+
 ```json
 {
   "audit_logs": [

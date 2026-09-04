@@ -1,4 +1,5 @@
 # Theme Playground Design Document
+
 **Feature ID:** F026
 **Version:** 1.0
 **Last Updated:** 2024-01-15
@@ -232,11 +233,13 @@ type ComponentStyles struct {
 The theme playground provides an immersive theme customization experience:
 
 **Layout Structure:**
+
 - **Left Panel (30%)**: Theme browser and customization controls
 - **Right Panel (70%)**: Live preview area with all component examples
 - **Bottom Bar**: Quick actions and accessibility status
 
 **Theme Browser Features:**
+
 - Category-based theme organization
 - Search and filter capabilities
 - Thumbnail previews
@@ -248,6 +251,7 @@ The theme playground provides an immersive theme customization experience:
 The preview system shows real component examples rather than abstract swatches:
 
 **Preview Components:**
+
 - **Queue Dashboard**: Job tables, metrics, filters
 - **Worker Status**: Worker cards, health indicators, performance charts
 - **Settings Interface**: Forms, buttons, modals, navigation
@@ -255,6 +259,7 @@ The preview system shows real component examples rather than abstract swatches:
 - **Admin Console**: User management, system settings, logs
 
 **Preview Features:**
+
 - **Real Data**: Uses actual queue data for realistic previews
 - **Interactive Elements**: Buttons, inputs, and controls are functional
 - **Responsive Layout**: Adapts to different terminal sizes
@@ -312,12 +317,14 @@ const (
 Theme preferences are stored in a structured, versioned format:
 
 **Storage Location:**
+
 - Linux/macOS: `$XDG_CONFIG_HOME/go-redis-wq/themes/`
 - Windows: `%APPDATA%/go-redis-wq/themes/`
 - Fallback: `~/.go-redis-wq/themes/`
 
 **File Structure:**
-```
+
+```text
 themes/
 ├── config.json          # Theme preferences and settings
 ├── custom/              # User-created themes
@@ -379,12 +386,14 @@ themes/
 #### 3. Synchronization Options
 
 **Git-based Synchronization:**
+
 - Integrate with existing dotfiles repositories
 - Automatic commit and push of theme changes
 - Conflict resolution for concurrent modifications
 - Branch-based environment themes (dev/staging/prod)
 
 **Cloud Synchronization:**
+
 - Integration with popular cloud storage services
 - Encrypted theme data transmission
 - Offline-first with sync when available
@@ -611,9 +620,11 @@ func (tm *ThemeManager) onThemeApplied(event ThemeEvent) {
 ### Core Theme Management Endpoints
 
 #### GET /api/v1/themes
+
 Get list of available themes with metadata.
 
 **Query Parameters:**
+
 - `category` (optional): Filter by theme category
 - `accessibility` (optional): Filter accessibility-compliant themes
 - `search` (optional): Search themes by name or tags
@@ -621,6 +632,7 @@ Get list of available themes with metadata.
 - `offset` (optional): Pagination offset
 
 **Response:**
+
 ```json
 {
   "themes": [
@@ -645,9 +657,11 @@ Get list of available themes with metadata.
 ```
 
 #### GET /api/v1/themes/{name}
+
 Get detailed theme definition.
 
 **Response:**
+
 ```json
 {
   "theme": {
@@ -660,9 +674,11 @@ Get detailed theme definition.
 ```
 
 #### POST /api/v1/themes
+
 Create a new custom theme.
 
 **Request Body:**
+
 ```json
 {
   "name": "my-custom-theme",
@@ -679,17 +695,21 @@ Create a new custom theme.
 ```
 
 #### PUT /api/v1/themes/{name}
+
 Update an existing custom theme.
 
 #### DELETE /api/v1/themes/{name}
+
 Delete a custom theme.
 
 ### Theme Application Endpoints
 
 #### POST /api/v1/themes/{name}/apply
+
 Apply a theme to the current session.
 
 **Request Body:**
+
 ```json
 {
   "persist": true,
@@ -698,6 +718,7 @@ Apply a theme to the current session.
 ```
 
 **Response:**
+
 ```json
 {
   "applied": true,
@@ -711,17 +732,21 @@ Apply a theme to the current session.
 ```
 
 #### GET /api/v1/themes/current
+
 Get currently applied theme information.
 
 #### POST /api/v1/themes/{name}/preview
+
 Temporarily preview a theme without applying.
 
 ### Accessibility Endpoints
 
 #### POST /api/v1/themes/{name}/validate
+
 Validate theme accessibility compliance.
 
 **Response:**
+
 ```json
 {
   "accessibility_report": {
@@ -748,14 +773,17 @@ Validate theme accessibility compliance.
 ```
 
 #### GET /api/v1/accessibility/requirements
+
 Get accessibility requirements and guidelines.
 
 ### Theme Import/Export Endpoints
 
 #### POST /api/v1/themes/import
+
 Import theme from external source.
 
 **Request Body:**
+
 ```json
 {
   "source": "url", // "url", "file", "json"
@@ -765,20 +793,25 @@ Import theme from external source.
 ```
 
 #### GET /api/v1/themes/{name}/export
+
 Export theme in various formats.
 
 **Query Parameters:**
+
 - `format`: "json", "yaml", "css", "lipgloss"
 
 ### User Preferences Endpoints
 
 #### GET /api/v1/user/theme-preferences
+
 Get user's theme preferences and settings.
 
 #### PUT /api/v1/user/theme-preferences
+
 Update user's theme preferences.
 
 **Request Body:**
+
 ```json
 {
   "active_theme": "tokyo-night",
@@ -1010,6 +1043,7 @@ Update user's theme preferences.
 
 **Threat**: Malicious themes containing harmful content or code
 **Mitigation**:
+
 - Comprehensive input validation and sanitization
 - Sandboxed theme execution environment
 - Digital signature verification for imported themes
@@ -1019,6 +1053,7 @@ Update user's theme preferences.
 
 **Threat**: Themes designed to consume excessive memory or CPU
 **Mitigation**:
+
 - Resource limits on theme compilation and rendering
 - Timeout mechanisms for theme operations
 - Memory usage monitoring and alerts
@@ -1028,6 +1063,7 @@ Update user's theme preferences.
 
 **Threat**: Themes attempting to access or transmit sensitive data
 **Mitigation**:
+
 - Isolated execution context for theme rendering
 - Network access restrictions for theme operations
 - Audit logging of all theme-related file system access
@@ -1037,6 +1073,7 @@ Update user's theme preferences.
 
 **Threat**: Unauthorized modification of theme preferences or system themes
 **Mitigation**:
+
 - File system permissions and access controls
 - Integrity checking for system themes
 - User authentication for preference modifications
@@ -1403,6 +1440,7 @@ func TestMemoryUsage(t *testing.T) {
 ### Manual Testing Checklist
 
 #### Theme Playground UI
+
 - [ ] Theme list displays correctly
 - [ ] Theme search and filtering works
 - [ ] Live preview updates immediately
@@ -1413,6 +1451,7 @@ func TestMemoryUsage(t *testing.T) {
 - [ ] Responsive layout at different sizes
 
 #### Accessibility Features
+
 - [ ] High contrast themes provide sufficient contrast
 - [ ] Color blind simulation works correctly
 - [ ] Keyboard navigation is fully functional
@@ -1421,6 +1460,7 @@ func TestMemoryUsage(t *testing.T) {
 - [ ] WCAG compliance validation accurate
 
 #### Performance and Reliability
+
 - [ ] Theme switching is smooth and fast
 - [ ] Large theme collections load efficiently
 - [ ] Memory usage remains stable
@@ -1433,12 +1473,14 @@ func TestMemoryUsage(t *testing.T) {
 ### Phase 1: Core Infrastructure (Week 1-2)
 
 **Deliverables:**
+
 - Basic theme structure and data models
 - Theme manager with registry
 - Simple theme application without UI
 - Unit tests for core components
 
 **Success Criteria:**
+
 - Themes can be loaded and applied programmatically
 - Basic persistence works
 - All unit tests pass
@@ -1446,12 +1488,14 @@ func TestMemoryUsage(t *testing.T) {
 ### Phase 2: Theme Playground UI (Week 3-4)
 
 **Deliverables:**
+
 - Interactive theme playground interface
 - Live preview system
 - Theme browser with search and filtering
 - Basic keyboard navigation
 
 **Success Criteria:**
+
 - Users can browse and preview themes
 - Live preview updates correctly
 - UI is responsive and intuitive
@@ -1459,12 +1503,14 @@ func TestMemoryUsage(t *testing.T) {
 ### Phase 3: Accessibility Features (Week 5-6)
 
 **Deliverables:**
+
 - WCAG compliance validation
 - Color blindness simulation
 - High-contrast theme variants
 - Accessibility reporting
 
 **Success Criteria:**
+
 - All built-in themes meet AA standards
 - Accessibility validation works correctly
 - High-contrast themes provide sufficient contrast
@@ -1472,12 +1518,14 @@ func TestMemoryUsage(t *testing.T) {
 ### Phase 4: Advanced Features (Week 7-8)
 
 **Deliverables:**
+
 - Custom theme creation
 - Theme import/export
 - Advanced customization options
 - Performance optimizations
 
 **Success Criteria:**
+
 - Users can create and share custom themes
 - Performance targets are met
 - Import/export works with external themes
@@ -1485,12 +1533,14 @@ func TestMemoryUsage(t *testing.T) {
 ### Phase 5: Integration and Polish (Week 9-10)
 
 **Deliverables:**
+
 - Complete integration with existing UI components
 - Documentation and user guides
 - Performance monitoring
 - Production deployment
 
 **Success Criteria:**
+
 - All UI components use theme system
 - Documentation is complete
 - System is production-ready
@@ -1498,18 +1548,21 @@ func TestMemoryUsage(t *testing.T) {
 ### Rollout Strategy
 
 #### Alpha Release (Internal Testing)
+
 - Limited to development team
 - Core functionality testing
 - Performance baseline establishment
 - Initial user feedback collection
 
 #### Beta Release (Opt-in)
+
 - Available to interested users via feature flag
 - Expanded theme collection
 - Accessibility testing with actual users
 - Performance monitoring in real environments
 
 #### General Availability
+
 - Full rollout to all users
 - Complete theme collection
 - Production monitoring and alerting
@@ -1518,24 +1571,28 @@ func TestMemoryUsage(t *testing.T) {
 ### Monitoring and Success Metrics
 
 #### Usage Metrics
+
 - Theme playground usage rate
 - Most popular themes
 - Custom theme creation rate
 - Theme switching frequency
 
 #### Performance Metrics
+
 - Theme application latency
 - Memory usage trends
 - Cache hit rates
 - Error rates
 
 #### Accessibility Metrics
+
 - High-contrast theme adoption
 - Accessibility mode usage
 - WCAG compliance scores
 - User feedback on accessibility
 
 #### Success Criteria
+
 - 80% of users interact with theme system within first month
 - 95% of theme applications complete under 200ms
 - 100% of built-in themes meet WCAG AA standards

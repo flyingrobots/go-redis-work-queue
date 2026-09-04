@@ -6,13 +6,14 @@ The Visual DAG Builder API provides endpoints for creating, managing, and execut
 
 ## Base URL
 
-```
+```text
 http://localhost:8080/api/v1
 ```
 
 ## Authentication
 
 Currently, authentication is optional and can be configured via the API configuration. When enabled, the API supports:
+
 - JWT Bearer tokens
 - Basic authentication
 - API key authentication
@@ -46,6 +47,7 @@ GET /workflows
 Returns a list of all workflows.
 
 **Response:**
+
 ```json
 {
   "workflows": [
@@ -74,6 +76,7 @@ POST /workflows
 Creates a new workflow.
 
 **Request Body:**
+
 ```json
 {
   "name": "My New Workflow",
@@ -93,6 +96,7 @@ GET /workflows/{id}
 Retrieves a specific workflow by ID.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Response:** Returns the workflow object.
@@ -106,6 +110,7 @@ PUT /workflows/{id}
 Updates an existing workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Request Body:** Complete workflow object.
@@ -121,6 +126,7 @@ DELETE /workflows/{id}
 Deletes a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Response:** 204 No Content on success.
@@ -134,9 +140,11 @@ POST /workflows/{id}/validate
 Validates a workflow definition.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -163,9 +171,11 @@ POST /workflows/{id}/nodes
 Adds a node to a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Request Body:**
+
 ```json
 {
   "id": "task_node_1",
@@ -207,6 +217,7 @@ PUT /workflows/{id}/nodes/{nodeId}
 Updates a node in a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 - `nodeId` (path) - Node ID
 
@@ -223,6 +234,7 @@ DELETE /workflows/{id}/nodes/{nodeId}
 Deletes a node from a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 - `nodeId` (path) - Node ID
 
@@ -239,9 +251,11 @@ POST /workflows/{id}/edges
 Adds an edge to a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Request Body:**
+
 ```json
 {
   "id": "edge_1_to_2",
@@ -266,6 +280,7 @@ DELETE /workflows/{id}/edges/{edgeId}
 Deletes an edge from a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 - `edgeId` (path) - Edge ID
 
@@ -282,9 +297,11 @@ POST /workflows/{id}/execute
 Starts a new execution of a workflow.
 
 **Parameters:**
+
 - `id` (path) - Workflow ID
 
 **Request Body:**
+
 ```json
 {
   "parameters": {
@@ -296,6 +313,7 @@ Starts a new execution of a workflow.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "exec_1234567890",
@@ -328,9 +346,11 @@ GET /executions?workflow_id={workflowId}
 Lists executions, optionally filtered by workflow ID.
 
 **Query Parameters:**
+
 - `workflow_id` (optional) - Filter by workflow ID
 
 **Response:**
+
 ```json
 {
   "executions": [
@@ -356,6 +376,7 @@ GET /executions/{id}
 Retrieves detailed information about an execution.
 
 **Parameters:**
+
 - `id` (path) - Execution ID
 
 **Response:** Returns the complete execution object with node states.
@@ -369,9 +390,11 @@ POST /executions/{id}/cancel
 Cancels a running execution.
 
 **Parameters:**
+
 - `id` (path) - Execution ID
 
 **Response:**
+
 ```json
 {
   "status": "cancelled"
@@ -387,9 +410,11 @@ GET /executions/{id}/events
 Retrieves events for an execution.
 
 **Parameters:**
+
 - `id` (path) - Execution ID
 
 **Response:**
+
 ```json
 {
   "events": [
@@ -418,6 +443,7 @@ GET /node-types
 Returns available node types and their configuration requirements.
 
 **Response:**
+
 ```json
 {
   "node_types": [
@@ -450,6 +476,7 @@ GET /templates
 Returns available workflow templates.
 
 **Response:**
+
 ```json
 {
   "templates": [
@@ -496,6 +523,7 @@ Returns available workflow templates.
 ### Node Types
 
 #### Task Node
+
 ```json
 {
   "id": "string",
@@ -522,6 +550,7 @@ Returns available workflow templates.
 ```
 
 #### Decision Node
+
 ```json
 {
   "id": "string",
@@ -539,6 +568,7 @@ Returns available workflow templates.
 ```
 
 #### Parallel Node
+
 ```json
 {
   "id": "string",
@@ -593,10 +623,12 @@ Returns available workflow templates.
 ## Rate Limiting
 
 The API implements rate limiting with the following defaults:
+
 - 100 requests per minute
 - Burst size of 50 requests
 
 Rate limit headers are included in responses:
+
 - `X-RateLimit-Limit`: Request limit per window
 - `X-RateLimit-Remaining`: Requests remaining in window
 - `X-RateLimit-Reset`: Time when the rate limit resets
@@ -604,10 +636,12 @@ Rate limit headers are included in responses:
 ## Pagination
 
 List endpoints support pagination using query parameters:
+
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 10, max: 100)
 
 Paginated responses include metadata:
+
 ```json
 {
   "data": [...],
@@ -626,11 +660,12 @@ Paginated responses include metadata:
 
 The API supports WebSocket connections for real-time updates:
 
-```
+```text
 ws://localhost:8080/api/v1/ws/executions/{execution_id}
 ```
 
 Event types:
+
 - `execution_started`
 - `execution_completed`
 - `execution_failed`
@@ -644,6 +679,7 @@ Event types:
 ### Create and Execute a Simple Workflow
 
 1. Create a workflow:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/workflows \
   -H "Content-Type: application/json" \
@@ -654,6 +690,7 @@ curl -X POST http://localhost:8080/api/v1/workflows \
 ```
 
 2. Add nodes:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/nodes \
   -H "Content-Type: application/json" \
@@ -669,6 +706,7 @@ curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/nodes \
 ```
 
 3. Add edge:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/edges \
   -H "Content-Type: application/json" \
@@ -681,6 +719,7 @@ curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/edges \
 ```
 
 4. Execute workflow:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/execute \
   -H "Content-Type: application/json" \
@@ -710,11 +749,13 @@ curl -X POST http://localhost:8080/api/v1/workflows/{workflow_id}/execute \
 ## OpenAPI Specification
 
 The complete OpenAPI 3.0 specification is available at:
-```
+
+```text
 http://localhost:8080/api/v1/openapi.json
 ```
 
 Interactive API documentation is available at:
-```
+
+```text
 http://localhost:8080/api/v1/docs
 ```

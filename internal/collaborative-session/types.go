@@ -82,7 +82,9 @@ type Cell struct {
 
 // Color represents terminal colors
 type Color struct {
-	R, G, B uint8 `json:"r,g,b"`
+	R         uint8 `json:"r"`
+	G         uint8 `json:"g"`
+	B         uint8 `json:"b"`
 	IsDefault bool `json:"is_default"`
 }
 

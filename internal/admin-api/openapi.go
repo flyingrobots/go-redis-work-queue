@@ -25,6 +25,8 @@ tags:
     description: Queue statistics and monitoring
   - name: queues
     description: Queue management operations
+  - name: enqueue
+    description: Durable job submission
   - name: dlq
     description: Dead Letter Queue listing and remediation
   - name: workers
@@ -33,6 +35,52 @@ tags:
     description: Performance testing
 
 paths:
+  /enqueue:
+    post:
+      tags:
+        - enqueue
+      summary: Enqueue one job
+      description: >-
+        Appends one job. Jobs without an ordering key use the configured
+        priority queue. A non-empty ordering key routes the job through strict
+        FIFO for that exact key, with at most one same-key job in flight;
+        ordering wins over priority within the key. Payload is base64 so
+        arbitrary bytes round-trip exactly, and its decoded size is checked
+        before Redis is modified. Duplicate caller-supplied IDs are accepted as
+        separate at-least-once deliveries.
+      operationId: enqueueJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnqueueRequest'
+      responses:
+        '201':
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Decoded payload exceeds the configured queue limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Redis is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /stats:
     get:
       tags:
@@ -198,6 +246,136 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /dlq:
+    get:
+      tags:
+        - dlq
+      summary: List DLQ items
+      description: Returns a page of DLQ items with an opaque next cursor
+      operationId: listDLQ
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Namespace/prefix
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor for pagination
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Page size
+      responses:
+        '200':
+          description: DLQ items page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/requeue:
+    post:
+      tags:
+        - dlq
+      summary: Requeue selected DLQ items
+      operationId: requeueDLQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQRequeueRequest'
+      responses:
+        '200':
+          description: Requeue summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQRequeueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dlq/purge:
+    post:
+      tags:
+        - dlq
+      summary: Purge selected DLQ items
+      operationId: purgeDLQSelection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DLQPurgeSelectionRequest'
+      responses:
+        '200':
+          description: Purge summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DLQPurgeSelectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workers:
+    get:
+      tags:
+        - workers
+      summary: List workers
+      description: Returns summary of worker fleet
+      operationId: listWorkers
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -216,6 +394,13 @@ components:
 
     Unauthorized:
       description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict:
+      description: Request conflicts with current resource state
       content:
         application/json:
           schema:
@@ -249,6 +434,39 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    EnqueueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Optional caller-owned ID; duplicates are separate deliveries
+        payload:
+          type: string
+          format: byte
+          description: Base64-encoded opaque application bytes
+        payload_schema:
+          type: string
+          description: Optional caller-owned payload type or version
+        priority:
+          type: string
+          description: Configured priority name; omitted uses the producer default
+        ordering_key:
+          type: string
+          description: Optional FIFO identity; non-empty values serialize same-key handlers and ordering wins over priority
+
+    EnqueueResponse:
+      type: object
+      required:
+        - id
+        - timestamp
+      properties:
+        id:
+          type: string
+          description: Durable job ID
+        timestamp:
+          type: string
+          format: date-time
+
     ErrorResponse:
       type: object
       required:
@@ -270,6 +488,7 @@ components:
       type: object
       required:
         - queues
+        - ordered_pending
         - processing_lists
         - heartbeats
         - timestamp
@@ -279,6 +498,9 @@ components:
           additionalProperties:
             type: integer
           description: Queue names and their lengths
+        ordered_pending:
+          type: integer
+          description: Total jobs waiting across strict per-key FIFO queues
         processing_lists:
           type: object
           additionalProperties:
@@ -296,6 +518,7 @@ components:
       type: object
       required:
         - queue_lengths
+        - ordered_pending
         - processing_lists
         - processing_items
         - heartbeats
@@ -306,6 +529,9 @@ components:
           additionalProperties:
             type: integer
           description: Queue names and their lengths
+        ordered_pending:
+          type: integer
+          description: Total jobs waiting across strict per-key FIFO queues
         processing_lists:
           type: integer
           description: Number of processing lists
@@ -444,135 +670,13 @@ components:
           type: string
           format: date-time
 
-  /dlq:
-    get:
-      tags:
-        - dlq
-      summary: List DLQ items
-      description: Returns a page of DLQ items with an opaque next cursor
-      operationId: listDLQ
-      parameters:
-        - name: ns
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Namespace/prefix
-        - name: cursor
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Opaque cursor for pagination
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 500
-            default: 100
-          description: Page size
-      responses:
-        '200':
-          description: DLQ items page
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /dlq/requeue:
-    post:
-      tags:
-        - dlq
-      summary: Requeue selected DLQ items
-      operationId: requeueDLQ
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DLQRequeueRequest'
-      responses:
-        '200':
-          description: Requeue summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQRequeueResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /dlq/purge:
-    post:
-      tags:
-        - dlq
-      summary: Purge selected DLQ items
-      operationId: purgeDLQSelection
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DLQPurgeSelectionRequest'
-      responses:
-        '200':
-          description: Purge summary
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DLQPurgeSelectionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /workers:
-    get:
-      tags:
-        - workers
-      summary: List workers
-      description: Returns summary of worker fleet
-      operationId: listWorkers
-      parameters:
-        - name: ns
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Workers list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkersResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/InternalError'
     DLQItem:
       type: object
-      required: [id, payload]
+      required: [handle, id, payload]
       properties:
+        handle:
+          type: string
+          description: Opaque per-entry selection handle; use promptly because list mutations make positional handles stale
         id:
           type: string
         queue:
@@ -609,12 +713,13 @@ components:
 
     DLQRequeueRequest:
       type: object
-      required: [ids]
+      required: [handles]
       properties:
         ns:
           type: string
-        ids:
+        handles:
           type: array
+          description: Opaque handles returned by GET /dlq; missing or stale handles are idempotent no-ops
           items:
             type: string
         dest_queue:
@@ -632,12 +737,13 @@ components:
 
     DLQPurgeSelectionRequest:
       type: object
-      required: [ids]
+      required: [handles]
       properties:
         ns:
           type: string
-        ids:
+        handles:
           type: array
+          description: Opaque handles returned by GET /dlq; missing or stale handles are idempotent no-ops
           items:
             type: string
 

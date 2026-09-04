@@ -105,12 +105,12 @@ func TestManager_Authorize(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		roles     []Role
-		scopes    []Permission
-		action    Permission
-		resource  string
-		expected  bool
+		name     string
+		roles    []Role
+		scopes   []Permission
+		action   Permission
+		resource string
+		expected bool
 	}{
 		{
 			name:     "Admin has all permissions",
@@ -309,6 +309,7 @@ func TestEndpointPermissions(t *testing.T) {
 	}{
 		{"GET /api/v1/stats", PermStatsRead},
 		{"GET /api/v1/stats/keys", PermStatsRead},
+		{"POST /api/v1/enqueue", PermQueueWrite},
 		{"DELETE /api/v1/queues/dlq", PermQueueDelete},
 		{"POST /api/v1/bench", PermBenchRun},
 	}

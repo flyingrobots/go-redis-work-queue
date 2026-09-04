@@ -5,6 +5,7 @@
 The Automatic Capacity Planning system transforms reactive scaling into predictive optimization by leveraging queueing theory, time-series forecasting, and cost analysis. This system provides data-driven scaling recommendations that maintain SLOs while minimizing infrastructure costs, offering both manual approval workflows and fully automated scaling through Kubernetes operators.
 
 ### Key Features
+
 - **Predictive Scaling**: Uses M/M/c and M/G/c queueing models to predict required capacity
 - **Time-Series Forecasting**: EWMA and Holt-Winters models for arrival rate prediction
 - **Safety Mechanisms**: Anti-flapping protection with cooldowns and hysteresis bands
@@ -140,6 +141,7 @@ sequenceDiagram
 ### Core Endpoints
 
 #### Planning Operations
+
 - `GET /api/v1/capacity/plan` - Generate capacity recommendation
 - `POST /api/v1/capacity/plan` - Create new capacity plan
 - `GET /api/v1/capacity/plan/{id}` - Get specific plan
@@ -147,11 +149,13 @@ sequenceDiagram
 - `DELETE /api/v1/capacity/plan/{id}` - Cancel plan
 
 #### Simulation Operations
+
 - `POST /api/v1/capacity/simulate` - Run what-if simulation
 - `GET /api/v1/capacity/simulate/{id}` - Get simulation results
 - `POST /api/v1/capacity/simulate/{id}/compare` - Compare scenarios
 
 #### Policy Management
+
 - `GET /api/v1/capacity/policies` - List scaling policies
 - `POST /api/v1/capacity/policies` - Create scaling policy
 - `GET /api/v1/capacity/policies/{id}` - Get policy details
@@ -159,6 +163,7 @@ sequenceDiagram
 - `DELETE /api/v1/capacity/policies/{id}` - Delete policy
 
 #### Metrics and Monitoring
+
 - `GET /api/v1/capacity/metrics` - Current capacity metrics
 - `GET /api/v1/capacity/metrics/history` - Historical metrics
 - `GET /api/v1/capacity/health` - System health status
@@ -208,6 +213,7 @@ ScalingPolicy:
 ### Core Data Structures
 
 #### Capacity Metrics
+
 ```json
 {
   "timestamp": "2025-09-14T19:00:00Z",
@@ -224,6 +230,7 @@ ScalingPolicy:
 ```
 
 #### Scaling Plan
+
 ```json
 {
   "id": "plan-2025-09-14-001",
@@ -279,6 +286,7 @@ ScalingPolicy:
 ```
 
 #### SLO Configuration
+
 ```json
 {
   "p95_latency": "5s",
@@ -292,6 +300,7 @@ ScalingPolicy:
 ### Queueing Models
 
 #### M/M/c Implementation
+
 ```go
 type MMcModel struct {
     arrivalRate  float64 // λ
@@ -326,6 +335,7 @@ func (m *MMcModel) CalculateMetrics() QueueMetrics {
 ```
 
 #### Forecasting Models
+
 ```go
 type HoltWintersForecaster struct {
     alpha      float64 // level smoothing
@@ -353,12 +363,14 @@ func (hw *HoltWintersForecaster) Forecast(steps int) []float64 {
 ### Authentication and Authorization
 
 #### API Security
+
 - **Authentication**: JWT tokens with 24-hour expiration
 - **Authorization**: RBAC with roles: viewer, operator, admin
 - **Rate Limiting**: 100 requests/minute per user
 - **Input Validation**: JSON schema validation on all endpoints
 
 #### Permission Model
+
 ```yaml
 roles:
   capacity_viewer:
@@ -385,12 +397,14 @@ roles:
 ### Data Protection
 
 #### Sensitive Data Handling
+
 - **Metrics**: Aggregated only, no raw job payloads
 - **Audit Logs**: Encrypted at rest, 90-day retention
 - **Cost Data**: Access restricted to finance role
 - **Forecasts**: Cached with 15-minute TTL
 
 #### Compliance Requirements
+
 - **SOX Compliance**: All scaling decisions audited
 - **GDPR**: No personal data in metrics or logs
 - **PCI**: Separate scaling policies for payment queues
@@ -398,6 +412,7 @@ roles:
 ### Threat Model
 
 #### Identified Threats
+
 1. **Malicious Scaling**: Unauthorized capacity changes
    - Mitigation: Multi-factor approval for large changes
 2. **Data Poisoning**: Fake metrics to trigger scaling
@@ -408,6 +423,7 @@ roles:
    - Mitigation: Role-based access and data aggregation
 
 #### Security Controls
+
 ```go
 type SecurityManager struct {
     auditLogger    AuditLogger
@@ -447,6 +463,7 @@ func (sm *SecurityManager) ValidateScalingRequest(req ScalingRequest) error {
 ## Performance Requirements
 
 ### Throughput Targets
+
 - **Plan Generation**: < 500ms for standard plans
 - **Simulation**: < 2s for 24-hour horizon
 - **API Response**: < 100ms for read operations
@@ -454,12 +471,14 @@ func (sm *SecurityManager) ValidateScalingRequest(req ScalingRequest) error {
 - **Concurrent Users**: 50 simultaneous operators
 
 ### Scalability Limits
+
 - **Worker Pools**: Up to 1000 pools per cluster
 - **Historical Data**: 90 days of metrics (10GB)
 - **Concurrent Plans**: 100 active plans
 - **Forecast Horizon**: Up to 7 days ahead
 
 ### Resource Requirements
+
 ```yaml
 capacity_planner:
   cpu:
@@ -482,6 +501,7 @@ redis:
 ```
 
 ### Performance Monitoring
+
 ```go
 // Prometheus metrics
 capacity_planner_plan_generation_duration_seconds{percentile="50|95|99"}
@@ -495,24 +515,28 @@ capacity_planner_cpu_usage_percent
 ## Testing Strategy
 
 ### Unit Testing
+
 - **Queueing Models**: Verify mathematical accuracy against known results
 - **Forecasting**: Test with synthetic time series data
 - **Safety Logic**: Validate cooldown and hysteresis behavior
 - **Cost Calculations**: Ensure accurate pricing models
 
 ### Integration Testing
+
 - **End-to-End Flows**: Complete planning and execution cycles
 - **API Testing**: All endpoints with various scenarios
 - **Database Integration**: Redis operations and data consistency
 - **External Services**: Kubernetes API and metrics collection
 
 ### Load Testing
+
 - **Stress Testing**: 1000 concurrent plan generations
 - **Endurance Testing**: 24-hour continuous operation
 - **Chaos Testing**: Failure injection during scaling events
 - **Performance Testing**: Response time under various loads
 
 ### Simulation Testing
+
 ```go
 func TestCapacityPlanningAccuracy(t *testing.T) {
     // Historical trace replay
@@ -552,6 +576,7 @@ func TestScalingStability(t *testing.T) {
 ```
 
 ### Validation Framework
+
 ```go
 type ValidationSuite struct {
     realWorldScenarios []Scenario
@@ -588,6 +613,7 @@ func (vs *ValidationSuite) ValidateAgainstProduction() ValidationResult {
 ### Infrastructure Requirements
 
 #### Kubernetes Deployment
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -638,6 +664,7 @@ spec:
 ```
 
 #### Redis Configuration
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -657,24 +684,28 @@ data:
 ### Rollout Strategy
 
 #### Phase 1: Read-Only Deployment (Week 1)
+
 - Deploy capacity planner in monitoring mode
 - Collect metrics and generate plans without execution
 - Validate plan accuracy against manual decisions
 - Test TUI and API endpoints
 
 #### Phase 2: Manual Mode (Week 2-3)
+
 - Enable manual plan approval and execution
 - Train operators on new interface
 - Compare automated vs manual decisions
 - Collect feedback and refine algorithms
 
 #### Phase 3: Advisory Mode (Week 4-5)
+
 - Enable automatic plan generation with notifications
 - Operators can review and approve via TUI
 - Monitor system behavior and stability
 - Adjust safety parameters based on results
 
 #### Phase 4: Full Automation (Week 6+)
+
 - Enable auto-apply for low-risk scenarios
 - Implement graduated automation (start small)
 - Monitor SLO achievement and cost impact
@@ -683,6 +714,7 @@ data:
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 ```yaml
 alerts:
   - name: CapacityPlannerDown
@@ -712,6 +744,7 @@ alerts:
 ```
 
 #### Dashboards
+
 - **Executive Dashboard**: SLO achievement, cost savings, automation rate
 - **Operator Dashboard**: Current plans, pending approvals, system health
 - **Technical Dashboard**: Performance metrics, error rates, resource usage

@@ -73,9 +73,11 @@ Authorization: Bearer <your-jwt-token>
 ### Statistics
 
 #### GET /api/v1/stats
+
 Returns queue statistics including queue lengths, processing lists, and worker heartbeats.
 
 **Response:**
+
 ```json
 {
   "queues": {
@@ -91,9 +93,11 @@ Returns queue statistics including queue lengths, processing lists, and worker h
 ```
 
 #### GET /api/v1/stats/keys
+
 Returns detailed information about all managed Redis keys.
 
 **Response:**
+
 ```json
 {
   "queue_lengths": {
@@ -112,9 +116,11 @@ Returns detailed information about all managed Redis keys.
 ### Queue Management
 
 #### GET /api/v1/queues/{queue}/peek
+
 View jobs in a queue without removing them.
 
 **Parameters:**
+
 - `queue`: Queue identifier. Accepts either one of the configured aliases or a fully-qualified Redis key.
   - Default aliases resolve against the worker config:
 
@@ -129,11 +135,13 @@ View jobs in a queue without removing them.
 - `count`: Number of items to peek (1-100, default 10)
 
 **Example:**
+
 ```http
 GET /api/v1/queues/high/peek?count=5
 ```
 
 **Response:**
+
 ```json
 {
   "queue": "jobqueue:high",
@@ -147,9 +155,11 @@ GET /api/v1/queues/high/peek?count=5
 ```
 
 #### DELETE /api/v1/queues/dlq
+
 Purge the dead letter queue. Requires confirmation and an audit reason.
 
 **Request Body:**
+
 ```json
 {
   "confirmation": "CONFIRM_DELETE",
@@ -167,6 +177,7 @@ Purge the dead letter queue. Requires confirmation and an audit reason.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -177,9 +188,11 @@ Purge the dead letter queue. Requires confirmation and an audit reason.
 ```
 
 #### DELETE /api/v1/queues/all
+
 Purge ALL queues. Requires double confirmation and enforces the same minimum reason length.
 
 **Request Body:**
+
 ```json
 {
   "confirmation": "CONFIRM_DELETE_ALL",
@@ -190,6 +203,7 @@ Purge ALL queues. Requires double confirmation and enforces the same minimum rea
 Requests with `reason` shorter than 10 characters receive the same `HTTP 400` + `REASON_REQUIRED` response shown above.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -202,9 +216,11 @@ Requests with `reason` shorter than 10 characters receive the same `HTTP 400` + 
 ### Benchmarking
 
 #### POST /api/v1/bench
+
 Run a performance benchmark by enqueuing test jobs.
 
 **Request Body:**
+
 ```json
 {
   "count": 1000,
@@ -218,6 +234,7 @@ Run a performance benchmark by enqueuing test jobs.
 `payload_size_bytes` is optional; when omitted the server defaults to 1024 bytes per job.
 
 **Response:**
+
 ```json
 {
   "count": 1000,

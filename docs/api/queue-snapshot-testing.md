@@ -327,6 +327,7 @@ func loadCustomScenario(ctx context.Context) error {
 ### Capture Performance
 
 Typical capture times:
+
 - Small (< 100 jobs): < 100ms
 - Medium (1000 jobs): 200-500ms
 - Large (10000 jobs): 1-2 seconds
@@ -335,6 +336,7 @@ Typical capture times:
 ### Comparison Performance
 
 Diff operations are O(n) where n is the number of items:
+
 - Small snapshots: < 50ms
 - Large snapshots: 100-500ms
 - Semantic analysis adds ~10-20% overhead
@@ -344,6 +346,7 @@ Diff operations are O(n) where n is the number of items:
 ### Snapshot Naming
 
 Use descriptive, consistent naming:
+
 ```go
 // Good
 "pre-v2.0-deployment"
@@ -359,6 +362,7 @@ Use descriptive, consistent naming:
 ### Tagging Strategy
 
 Use tags for categorization:
+
 ```go
 tags := []string{
     "environment:production",
@@ -371,6 +375,7 @@ tags := []string{
 ### Ignore Configuration
 
 Configure ignores based on test needs:
+
 ```go
 // For functional tests
 config.IgnoreTimestamps = true
@@ -391,6 +396,7 @@ config.CustomIgnores = []string{
 ### Version Control
 
 Store snapshots in git for team sharing:
+
 ```bash
 # Add snapshot directory to git
 git add testdata/snapshots/
@@ -404,6 +410,7 @@ git lfs track "*.snapshot.gz"
 ### Snapshot Assertion Failures
 
 1. Check if snapshot exists:
+
 ```go
 if !storage.Exists(snapshotID) {
     // Run with UPDATE_SNAPSHOTS=true to create
@@ -411,6 +418,7 @@ if !storage.Exists(snapshotID) {
 ```
 
 2. Review differences:
+
 ```go
 for _, diff := range result.Differences {
     log.Printf("Path: %s, Type: %s, Impact: %s",
@@ -419,6 +427,7 @@ for _, diff := range result.Differences {
 ```
 
 3. Update if legitimate change:
+
 ```bash
 UPDATE_SNAPSHOTS=true go test
 ```
@@ -426,12 +435,14 @@ UPDATE_SNAPSHOTS=true go test
 ### Storage Issues
 
 1. Check disk space:
+
 ```go
 info, _ := os.Stat(config.StoragePath)
 fmt.Printf("Storage size: %d bytes\n", info.Size())
 ```
 
 2. Clean old snapshots:
+
 ```go
 filter := &SnapshotFilter{
     CreatedBefore: time.Now().Add(-30 * 24 * time.Hour),
@@ -445,17 +456,20 @@ for _, snap := range old {
 ### Performance Problems
 
 1. Reduce captured data:
+
 ```go
 config.MaxJobsPerSnapshot = 1000
 config.SampleRate = 0.1  // Sample 10%
 ```
 
 2. Enable compression:
+
 ```go
 config.CompressLevel = gzip.BestSpeed
 ```
 
 3. Use parallel capture for multiple queues:
+
 ```go
 var wg sync.WaitGroup
 for _, queue := range queues {
@@ -504,6 +518,7 @@ audit.Log("snapshot.captured", map[string]interface{}{
 ### From Manual Testing
 
 Before:
+
 ```go
 // Manual state verification
 jobs := getJobs()
@@ -512,6 +527,7 @@ assert.Equal(t, "pending", jobs[0].Status)
 ```
 
 After:
+
 ```go
 // Snapshot-based verification
 helper.AssertSnapshot(t, "expected-state")
@@ -520,12 +536,14 @@ helper.AssertSnapshot(t, "expected-state")
 ### From Custom Comparison
 
 Before:
+
 ```go
 // Custom comparison logic
 differences := compareStates(before, after)
 ```
 
 After:
+
 ```go
 // Built-in intelligent diffing
 diff, _ := manager.CompareSnapshots(beforeID, afterID)

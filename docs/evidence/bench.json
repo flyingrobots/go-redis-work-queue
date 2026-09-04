@@ -1,7 +1,0 @@
-{
-  "count": 1000,
-  "duration": 62125591875,
-  "throughput_jobs_per_sec": 16.096426123586127,
-  "p50_latency": 252446328000,
-  "p95_latency": 252878289000
-}

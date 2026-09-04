@@ -18,6 +18,7 @@ This document presents a comprehensive security threat model for the Automatic C
 The Automatic Capacity Planning system uses queueing theory and predictive analytics to automatically scale worker capacity. It processes sensitive operational data, makes scaling decisions that impact infrastructure costs, and has the capability to modify production systems.
 
 ### Key Security Concerns
+
 - **High-privilege operations**: System can scale infrastructure autonomously
 - **Cost impact**: Malicious scaling decisions could result in significant financial damage
 - **Operational data**: Access to queue metrics, worker performance, and business patterns
@@ -61,6 +62,7 @@ graph TD
 ### S - Spoofing Identity
 
 #### Threat: Impersonation of Legitimate Users
+
 - **Description**: Attackers impersonate authorized users to access scaling controls
 - **Attack Vectors**:
   - JWT token theft/replay
@@ -77,6 +79,7 @@ graph TD
   - Anomaly detection for unusual access patterns
 
 #### Threat: Service Account Compromise
+
 - **Description**: Kubernetes service accounts or API credentials are compromised
 - **Attack Vectors**:
   - Container escape
@@ -94,6 +97,7 @@ graph TD
 ### T - Tampering with Data
 
 #### Threat: Malicious Scaling Policy Modification
+
 - **Description**: Attackers modify scaling policies to cause operational or financial damage
 - **Attack Vectors**:
   - API manipulation
@@ -110,6 +114,7 @@ graph TD
   - Cost limit safeguards
 
 #### Threat: Metrics Data Poisoning
+
 - **Description**: Injection of false metrics to trigger inappropriate scaling
 - **Attack Vectors**:
   - Redis injection
@@ -125,6 +130,7 @@ graph TD
   - Write-only metrics endpoints
 
 #### Threat: Forecast Model Manipulation
+
 - **Description**: Tampering with forecasting algorithms to create biased predictions
 - **Attack Vectors**:
   - Training data poisoning
@@ -142,6 +148,7 @@ graph TD
 ### R - Repudiation
 
 #### Threat: Scaling Action Denial
+
 - **Description**: Users deny performing scaling actions that caused issues
 - **Attack Vectors**:
   - Shared account usage
@@ -157,6 +164,7 @@ graph TD
   - Log integrity monitoring
 
 #### Threat: Cost Responsibility Denial
+
 - **Description**: Denial of responsibility for cost-impacting decisions
 - **Attack Vectors**:
   - Anonymous API usage
@@ -174,6 +182,7 @@ graph TD
 ### I - Information Disclosure
 
 #### Threat: Sensitive Metrics Exposure
+
 - **Description**: Unauthorized access to business-sensitive capacity and performance data
 - **Attack Vectors**:
   - API enumeration
@@ -190,6 +199,7 @@ graph TD
   - Memory protection
 
 #### Threat: Cost Data Leakage
+
 - **Description**: Exposure of infrastructure costs and financial patterns
 - **Attack Vectors**:
   - API response inspection
@@ -205,6 +215,7 @@ graph TD
   - Export controls
 
 #### Threat: Forecasting Intelligence Exposure
+
 - **Description**: Leakage of business patterns and predictive insights
 - **Attack Vectors**:
   - Model inference attacks
@@ -221,6 +232,7 @@ graph TD
 ### D - Denial of Service
 
 #### Threat: API Resource Exhaustion
+
 - **Description**: Overwhelming the capacity planning API to disrupt operations
 - **Attack Vectors**:
   - Request flooding
@@ -236,6 +248,7 @@ graph TD
   - Horizontal scaling
 
 #### Threat: Computational DoS
+
 - **Description**: Triggering expensive operations to exhaust system resources
 - **Attack Vectors**:
   - Complex simulation requests
@@ -251,6 +264,7 @@ graph TD
   - Graceful degradation
 
 #### Threat: Storage Exhaustion
+
 - **Description**: Filling storage with excessive data to cause system failure
 - **Attack Vectors**:
   - Log flooding
@@ -268,6 +282,7 @@ graph TD
 ### E - Elevation of Privilege
 
 #### Threat: Horizontal Privilege Escalation
+
 - **Description**: Users accessing resources outside their authorized scope
 - **Attack Vectors**:
   - IDOR (Insecure Direct Object Reference)
@@ -282,6 +297,7 @@ graph TD
   - Least privilege principles
 
 #### Threat: Vertical Privilege Escalation
+
 - **Description**: Users gaining administrative privileges
 - **Attack Vectors**:
   - Token manipulation
@@ -296,6 +312,7 @@ graph TD
   - Privileged access management (PAM)
 
 #### Threat: Kubernetes Cluster Privilege Escalation
+
 - **Description**: Escaping container boundaries to access cluster resources
 - **Attack Vectors**:
   - Container escape
@@ -513,24 +530,28 @@ governance_framework:
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - [ ] Authentication & authorization framework
 - [ ] Basic encryption implementation
 - [ ] Core audit logging
 - [ ] Network security controls
 
 ### Phase 2: Monitoring (Weeks 3-4)
+
 - [ ] Security monitoring & alerting
 - [ ] Anomaly detection
 - [ ] Incident response procedures
 - [ ] Vulnerability scanning
 
 ### Phase 3: Advanced Controls (Weeks 5-6)
+
 - [ ] Advanced threat detection
 - [ ] Behavioral analytics
 - [ ] Automated response
 - [ ] Compliance reporting
 
 ### Phase 4: Testing & Validation (Weeks 7-8)
+
 - [ ] Penetration testing
 - [ ] Red team exercises
 - [ ] Security assessments
@@ -593,6 +614,7 @@ api_security_tests:
 This threat model provides a comprehensive security framework for the Automatic Capacity Planning system. The identified threats and corresponding controls ensure that the system can operate securely while maintaining its core functionality of intelligent capacity management.
 
 Key security principles implemented:
+
 - **Defense in Depth**: Multiple layers of security controls
 - **Least Privilege**: Minimal access rights for users and services
 - **Zero Trust**: Continuous verification of all access requests
@@ -603,6 +625,7 @@ Regular updates to this threat model are essential as the system evolves and new
 ---
 
 **Document Control**
+
 - Created: 2025-09-14
 - Version: 1.0.0
 - Next Review: 2025-12-14

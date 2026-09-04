@@ -3,6 +3,7 @@ package workerfleetcontrols
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -560,6 +561,10 @@ func (s *RedisSignalHandler) ReceiveSignals(workerID string) (<-chan WorkerSigna
 				continue
 			}
 			if err != nil {
+				if errors.Is(err, redis.ErrClosed) || errors.Is(err, context.Canceled) {
+					s.logger.Debug("Signal receiver stopping", "worker_id", workerID, "reason", err)
+					return
+				}
 				s.logger.Error("Failed to receive signal", "worker_id", workerID, "error", err)
 				continue
 			}

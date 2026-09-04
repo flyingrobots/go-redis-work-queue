@@ -171,7 +171,7 @@ sequenceDiagram
 
 ### Namespace Design
 
-```
+```text
 # Queue Resources
 t:{tenant_id}:{queue_name}           # Queue metadata
 t:{tenant_id}:{queue_name}:jobs      # Job list
@@ -474,26 +474,31 @@ scenarios:
 ## Migration Plan
 
 ### Phase 1: Foundation (Week 1-2)
+
 - Implement tenant ID validation
 - Add namespace prefixing to keys
 - Create tenant configuration storage
 
 ### Phase 2: Access Control (Week 3-4)
+
 - Integrate with RBAC system
 - Add tenant context to API
 - Implement permission validation
 
 ### Phase 3: Quotas (Week 5-6)
+
 - Build quota tracking system
 - Add rate limiting per tenant
 - Implement soft/hard limits
 
 ### Phase 4: Encryption (Week 7-8)
+
 - Integrate with KMS
 - Implement envelope encryption
 - Add key rotation mechanism
 
 ### Phase 5: Audit & Monitoring (Week 9-10)
+
 - Deploy audit logging
 - Add tenant metrics
 - Build compliance reports
@@ -501,18 +506,21 @@ scenarios:
 ## Compliance Considerations
 
 ### SOC 2 Type II
+
 - Logical access controls per tenant
 - Encryption of sensitive data
 - Comprehensive audit logging
 - Change management procedures
 
 ### GDPR
+
 - Data isolation by tenant
 - Right to erasure (crypto-shredding)
 - Data portability via export
 - Processing activity records
 
 ### HIPAA
+
 - Encryption at rest and in transit
 - Access controls and audit logs
 - Business Associate Agreements

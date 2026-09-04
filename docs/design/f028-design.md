@@ -5,6 +5,7 @@
 The DLQ Remediation UI is a comprehensive interface for managing dead letter queues (DLQs) within the go-redis-work-queue system. This feature transforms DLQ management from a manual, error-prone process into an intelligent, streamlined operation that significantly reduces Mean Time to Remediation (MTTR) and improves operational efficiency.
 
 ### Key Capabilities
+
 - **Intelligent Pattern Analysis**: Automatically clusters similar failures and suggests remediation actions
 - **Bulk Operations**: Safe, auditable bulk retry and purge operations with rollback capability
 - **Advanced Filtering**: Multi-dimensional filtering with saved presets and live preview
@@ -12,6 +13,7 @@ The DLQ Remediation UI is a comprehensive interface for managing dead letter que
 - **Historical Analysis**: Learn from past incidents with pattern libraries and success tracking
 
 ### Business Impact
+
 - **50% reduction** in MTTR for DLQ incidents
 - **80% automated categorization** of failure types
 - **Zero data loss** with comprehensive audit trails and safety checks
@@ -216,10 +218,13 @@ erDiagram
 ### Core Endpoints
 
 #### List DLQ Items
+
 ```http
 GET /api/v1/dlq/list
 ```
+
 **Query Parameters:**
+
 - `page`: Page number (default: 1)
 - `limit`: Items per page (default: 50, max: 1000)
 - `filter`: JSON filter criteria
@@ -227,6 +232,7 @@ GET /api/v1/dlq/list
 - `include_patterns`: Include pattern analysis (default: true)
 
 **Response:**
+
 ```json
 {
   "items": [
@@ -267,10 +273,13 @@ GET /api/v1/dlq/list
 ```
 
 #### Bulk Retry Operation
+
 ```http
 POST /api/v1/dlq/bulk-retry
 ```
+
 **Request Body:**
+
 ```json
 {
   "target": {
@@ -296,10 +305,13 @@ POST /api/v1/dlq/bulk-retry
 ```
 
 #### Pattern Analysis
+
 ```http
 GET /api/v1/dlq/patterns
 ```
+
 **Response:**
+
 ```json
 {
   "patterns": [
@@ -337,10 +349,13 @@ GET /api/v1/dlq/patterns
 ### Advanced Operations
 
 #### Payload Surgery
+
 ```http
 POST /api/v1/dlq/transform-payload
 ```
+
 **Request Body:**
+
 ```json
 {
   "job_id": "job_12345",
@@ -368,10 +383,13 @@ POST /api/v1/dlq/transform-payload
 ```
 
 #### Historical Analysis
+
 ```http
 GET /api/v1/dlq/analytics/timeline
 ```
+
 **Query Parameters:**
+
 - `start_time`: Analysis start time
 - `end_time`: Analysis end time
 - `resolution`: Time bucket resolution (1m, 5m, 1h, 1d)
@@ -382,6 +400,7 @@ GET /api/v1/dlq/analytics/timeline
 ### Threat Analysis
 
 #### High-Risk Scenarios
+
 1. **Unauthorized DLQ Access**: Sensitive payload data exposure
 2. **Bulk Operation Abuse**: Mass job deletion or modification
 3. **Privilege Escalation**: Normal users gaining admin access
@@ -434,6 +453,7 @@ graph TB
 ### Permission Model
 
 #### Role Definitions
+
 ```yaml
 roles:
   dlq_viewer:
@@ -470,6 +490,7 @@ roles:
 ```
 
 #### Resource-Level Security
+
 ```go
 type SecurityContext struct {
     UserID      string
@@ -499,6 +520,7 @@ type BulkLimits struct {
 ### Scalability Targets
 
 #### Load Characteristics
+
 - **DLQ Size**: 1M+ items per queue
 - **Concurrent Users**: 50+ operators
 - **Read Operations**: 1000+ QPS
@@ -506,6 +528,7 @@ type BulkLimits struct {
 - **Bulk Operations**: 10,000 items/operation
 
 #### Performance SLAs
+
 - **Page Load Time**: < 500ms for 50 items
 - **Search Response**: < 200ms for filtered queries
 - **Pattern Analysis**: < 2s for 100k items
@@ -515,6 +538,7 @@ type BulkLimits struct {
 ### Optimization Strategies
 
 #### Caching Architecture
+
 ```mermaid
 graph TB
     subgraph "Cache Layers"
@@ -548,12 +572,14 @@ graph TB
 ```
 
 #### Database Optimization
+
 - **Indexing Strategy**: Composite indexes on (failed_at, error_type, job_type)
 - **Partitioning**: Time-based partitioning for large DLQs
 - **Archiving**: Automatic archival of old DLQ items
 - **Connection Pooling**: Optimized connection management
 
 #### Query Optimization
+
 ```sql
 -- Optimized DLQ listing query
 SELECT
@@ -617,6 +643,7 @@ graph TB
 ### Test Categories
 
 #### Unit Tests (70% coverage target)
+
 ```go
 func TestDLQManager_ListItems(t *testing.T) {
     tests := []struct {
@@ -655,12 +682,14 @@ func TestDLQManager_ListItems(t *testing.T) {
 ```
 
 #### Integration Tests
+
 - **API Integration**: Test all REST endpoints
 - **Database Integration**: Test Redis operations
 - **Cache Integration**: Test cache behavior
 - **WebSocket Integration**: Test real-time updates
 
 #### Performance Tests
+
 ```yaml
 load_tests:
   dlq_list_performance:
@@ -684,6 +713,7 @@ load_tests:
 ```
 
 #### Security Tests
+
 - **Authentication Testing**: JWT validation, token expiry
 - **Authorization Testing**: Role-based access control
 - **Input Validation**: SQL injection, XSS prevention
@@ -693,6 +723,7 @@ load_tests:
 ### Test Data Management
 
 #### Synthetic Data Generation
+
 ```go
 type DLQTestDataGenerator struct {
     ErrorPatterns []ErrorPattern
@@ -724,24 +755,28 @@ func (g *DLQTestDataGenerator) GenerateRealisticDLQ(size int) []DLQEntry {
 ### Rollout Strategy
 
 #### Phase 1: Core Infrastructure (Week 1-2)
+
 - Deploy DLQ storage layer
 - Implement basic API endpoints
 - Add authentication and authorization
 - Deploy monitoring and logging
 
 #### Phase 2: Basic UI (Week 3-4)
+
 - Implement TUI DLQ tab
 - Add list and peek functionality
 - Basic filtering and search
 - Single-item operations
 
 #### Phase 3: Advanced Features (Week 5-6)
+
 - Pattern analysis engine
 - Bulk operations
 - Payload surgery mode
 - Advanced filtering
 
 #### Phase 4: Intelligence Layer (Week 7-8)
+
 - Historical analysis
 - Automated suggestions
 - Performance optimizations
@@ -802,6 +837,7 @@ graph TB
 ### Configuration Management
 
 #### Environment-Specific Configs
+
 ```yaml
 production:
   dlq:
@@ -836,6 +872,7 @@ staging:
 ### Monitoring and Alerting
 
 #### Key Metrics
+
 - **DLQ Growth Rate**: Items added per minute
 - **Remediation Rate**: Items resolved per minute
 - **Pattern Detection Accuracy**: % of patterns correctly identified
@@ -844,6 +881,7 @@ staging:
 - **Error Rates**: 4xx, 5xx response rates
 
 #### Alert Definitions
+
 ```yaml
 alerts:
   dlq_growth_spike:
@@ -867,16 +905,19 @@ alerts:
 ### With Existing TUI Features
 
 #### JSON Payload Studio Integration
+
 - **Edit in Studio**: Opens payload in advanced JSON editor
 - **Template Application**: Apply Studio templates to fix common issues
 - **Schema Validation**: Validate against job schemas before retry
 
 #### Time Travel Debugger Integration
+
 - **Debug this Failure**: Load execution history for failed job
 - **Comparative Analysis**: Compare with successful job executions
 - **Root Cause Identification**: Pinpoint exact failure location
 
 #### Queue Dashboard Integration
+
 - **Job Tracing**: Follow job journey from enqueue to DLQ
 - **Impact Analysis**: Show DLQ impact on queue metrics
 - **Capacity Planning**: Estimate retry impact on queue depth
@@ -884,6 +925,7 @@ alerts:
 ### With External Systems
 
 #### Observability Platform Integration
+
 ```yaml
 integrations:
   datadog:
@@ -901,6 +943,7 @@ integrations:
 ```
 
 #### Incident Management Integration
+
 ```yaml
 incident_management:
   pagerduty:
