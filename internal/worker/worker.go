@@ -437,18 +437,12 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 				return false
 			}
 		}
-		// Mark span as successful
-		obs.SetSpanSuccess(ctx)
-		obs.AddEvent(ctx, "job.processing.completed",
-			obs.KeyValue("job.id", job.ID),
-			obs.KeyValue("duration_ms", processingDuration.Milliseconds()),
-		)
-
 		if next.ordered == nil {
 			// complete
 			if err := w.rdb.LPush(ctx, w.cfg.Worker.CompletedList, payload).Err(); err != nil {
 				w.log.Error("LPUSH completed failed", obs.Err(err))
 				obs.RecordError(ctx, err)
+				return false
 			}
 			if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 				w.log.Error("LREM processing failed", obs.Err(err))
@@ -457,6 +451,12 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 				w.log.Error("DEL heartbeat failed", obs.Err(err))
 			}
 		}
+		// Mark span as successful only after the durable completion transition.
+		obs.SetSpanSuccess(ctx)
+		obs.AddEvent(ctx, "job.processing.completed",
+			obs.KeyValue("job.id", job.ID),
+			obs.KeyValue("duration_ms", processingDuration.Milliseconds()),
+		)
 		obs.JobsCompleted.Inc()
 		w.log.Info("job completed", obs.String("id", job.ID), obs.String("trace_id", job.TraceID), obs.String("span_id", job.SpanID), obs.String("worker_id", workerID))
 		return true

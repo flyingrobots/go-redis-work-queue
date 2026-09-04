@@ -468,6 +468,40 @@ func TestRetryEnqueueFailureLeavesJobInProcessing(t *testing.T) {
 	}
 }
 
+func TestCompletionAppendFailureLeavesJobInProcessing(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	w.Handle(Handler(func(_ context.Context, _ queue.Job) error { return nil }))
+	ctx := context.Background()
+	workerID := w.baseID + "-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+
+	job := queue.NewJob("preserve-on-completion-error", "", 0, "low", "", "")
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.LPush(ctx, processing, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.Set(ctx, cfg.Worker.CompletedList, "wrong-type-completed", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if completed := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], processing, heartbeat, payload); completed {
+		t.Fatal("failed completed-list append reported successful completion")
+	}
+	if got := rdb.LRange(ctx, processing, 0, -1).Val(); !slices.Equal(got, []string{payload}) {
+		t.Fatalf("processing after failed completion append = %#v, want original envelope", got)
+	}
+	if got := rdb.Get(ctx, cfg.Worker.CompletedList).Val(); got != "wrong-type-completed" {
+		t.Fatalf("completed key after rejected append = %q, want wrong-type value preserved", got)
+	}
+	if exists := rdb.Exists(ctx, heartbeat).Val(); exists != 1 {
+		t.Fatalf("heartbeat after failed completion append exists = %d, want natural-expiry handoff", exists)
+	}
+}
+
 func TestHandlerPayloadMutationDoesNotChangeRetryEnvelope(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 1, 1, nil)
 	wantPayload := []byte{0x00, 0x01, 0x7f, 0x80, 0xfe, 0xff}
