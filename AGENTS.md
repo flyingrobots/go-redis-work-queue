@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Twenty exact-head
-  review passes produced 68 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Twenty-one
+  exact-head review passes produced 70 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -45,14 +45,17 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   processing occupied stops that worker loop before another claim. Successful
   completion also requires removing exactly one matching processing envelope;
   cleanup failure retains the heartbeat and enters the same safe stop path.
+  Safe stops return `ErrUnsettledDelivery` and cancel sibling consumers so
+  supervisors cannot mistake a degraded or empty worker pool for success.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
   `queue:write`. CLI file and stdin reads stop at the configured limit plus one
-  byte. HTTP request bodies must contain exactly one JSON value. Duplicate IDs
-  remain separate deliveries. Repository queue mappings must already be
-  canonical without surrounding whitespace, so internal and public clients
-  cannot trim into different Redis layouts.
+  byte. HTTP request bodies must contain exactly one JSON value and reject raw
+  non-UTF-8 bytes or unpaired surrogate escapes before decoding ordering keys.
+  Duplicate IDs remain separate deliveries. Repository queue mappings must
+  already be canonical without surrounding whitespace, so internal and public
+  clients cannot trim into different Redis layouts.
 - DLQ listings expose an opaque handle for each list entry, including
   duplicate-ID and byte-identical envelopes. Handles bind a constant-time
   mutation generation, list length, exact position, and envelope; requeue and
@@ -255,6 +258,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 eighteenth review: stop unsettled workers and canonicalize discovery/config
 - [x] Queue core PR #6 nineteenth review: clean; harden failed completion cleanup
 - [x] Queue core PR #6 twentieth review: clean; stop after failed claim restoration
+- [x] Queue core PR #6 twenty-first review: reject malformed Unicode and propagate safe stops
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -765,6 +769,41 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Twenty-First Review Remediated
+>
+> Closed both findings from the twenty-first exact-head review as separate
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Rejected raw non-UTF-8 request bytes and unpaired `ordering_key` surrogate
+>   escapes before JSON decoding can normalize them to U+FFFD.
+> - Propagated a typed `ErrUnsettledDelivery` from safe-stopped consumers,
+>   canceling sibling workers and exposing the same sentinel publicly.
+>
+> Validation
+>
+> - Unicode RED returned 201 and mutated Redis for an invalid raw byte plus lone
+>   high and low surrogates. GREEN returns typed 400 with zero mutation while a
+>   valid surrogate pair enqueues successfully; the Admin API passed five
+>   race-enabled repetitions and vet.
+> - Safe-stop RED returned nil after failed restoration, an occupied processing
+>   list, and failed completion cleanup. GREEN returns the typed error, cancels
+>   a blocked sibling, and exposes it to a standalone external module; internal
+>   and public worker packages passed five race-enabled repetitions and vet.
+>
+> Publication
+>
+> - Commits `0e23ba8b` and `9f465285` are published on PR #6.
+> - All 70 review threads have evidence replies and are resolved.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request a twenty-second review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
