@@ -20,7 +20,7 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Nineteen exact-head
+- All six queue core ROADMAP items are complete on ready PR #6. Twenty exact-head
   review passes produced 68 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
@@ -32,7 +32,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   the legacy benchmark handler is explicitly enabled with `--bench-worker`.
   Clearing a live handler pauses new consumption until a replacement is
   installed. Claims that complete after handler removal are restored to their
-  ordinary source or ordered per-key FIFO. Long calls renew heartbeats, while
+  ordinary source or ordered per-key FIFO; a failed or ownership-lost restore
+  stops that worker before another claim. Long calls renew heartbeats, while
   heartbeat values contain only the compact worker ownership marker. Shutdown
   leaves work in processing for at-least-once reaping. Ordered claims also keep
   a durable processing-list-to-digest marker, so malformed envelopes remain
@@ -253,6 +254,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 seventeenth review: filter Stats scans, validate ready digests, and require DLQ keys
 - [x] Queue core PR #6 eighteenth review: stop unsettled workers and canonicalize discovery/config
 - [x] Queue core PR #6 nineteenth review: clean; harden failed completion cleanup
+- [x] Queue core PR #6 twentieth review: clean; stop after failed claim restoration
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -763,6 +765,42 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Twentieth Review and Claim Restore Hardened
+>
+> The twentieth exact-head review reported no major issues at `5c67e38f`.
+> A broader invariant audit then closed one handler-removal restoration gap as
+> an isolated RED/GREEN/VERIFY commit.
+>
+> Changes
+>
+> - Distinguished a claimed delivery that could not be restored after handler
+>   removal from ordinary transient dequeue errors.
+> - Stopped unordered and ordered worker paths immediately on that ambiguous
+>   ownership condition while retaining normal Redis retry behavior elsewhere.
+>
+> Validation
+>
+> - RED registered a replacement handler after an injected restore failure;
+>   the worker consumed the second job, emptied its source, stacked two
+>   processing envelopes, and recorded a completion.
+> - GREEN leaves the first envelope in processing, the second in its source,
+>   and the completed list empty while the affected worker exits safely.
+> - The focused regression and adjacent handler-removal restore tests passed
+>   ten race-enabled repetitions; internal and public worker packages passed
+>   five race-enabled repetitions with vet.
+>
+> Publication
+>
+> - Hardening commit `2e05787a` is published on PR #6.
+> - All 68 review threads remain resolved; the twentieth pass added none.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request a twenty-first review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
