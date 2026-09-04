@@ -2,6 +2,7 @@
 package adminapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/flyingrobots/go-redis-work-queue/internal/admin"
 	"github.com/flyingrobots/go-redis-work-queue/internal/config"
@@ -95,9 +97,24 @@ func (h *Handler) GetStatsKeys(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
 	bodyLimit := enqueueRequestBodyLimit(h.cfg.Queue.MaxPayloadSize)
 	r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		var bodyTooLarge *http.MaxBytesError
+		if errors.As(err, &bodyTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE",
+				fmt.Sprintf("request body exceeds %d bytes", bodyTooLarge.Limit))
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
+	if err := validateEnqueueRequestUnicode(body); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", fmt.Sprintf("Invalid request body: %v", err))
+		return
+	}
 
 	var req EnqueueRequest
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
 		var bodyTooLarge *http.MaxBytesError
@@ -171,6 +188,60 @@ func (h *Handler) EnqueueJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, EnqueueResponse{ID: id, Timestamp: time.Now().UTC()})
+}
+
+func validateEnqueueRequestUnicode(body []byte) error {
+	if !utf8.Valid(body) {
+		return errors.New("request body must be valid UTF-8")
+	}
+
+	var raw struct {
+		OrderingKey json.RawMessage `json:"ordering_key"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		// The authoritative decoder reports JSON syntax and type errors.
+		return nil
+	}
+	return validateJSONStringSurrogates(raw.OrderingKey)
+}
+
+func validateJSONStringSurrogates(raw []byte) error {
+	if len(raw) < 2 || raw[0] != '"' || raw[len(raw)-1] != '"' {
+		return nil
+	}
+	for index := 1; index < len(raw)-1; index++ {
+		if raw[index] != '\\' {
+			continue
+		}
+		index++
+		if index >= len(raw)-1 || raw[index] != 'u' {
+			continue
+		}
+		if index+4 >= len(raw) {
+			return nil
+		}
+		value, err := strconv.ParseUint(string(raw[index+1:index+5]), 16, 16)
+		if err != nil {
+			return nil
+		}
+		index += 4
+
+		switch {
+		case value >= 0xdc00 && value <= 0xdfff:
+			return errors.New("ordering_key contains an unpaired low surrogate")
+		case value >= 0xd800 && value <= 0xdbff:
+			pairStart := index + 1
+			if pairStart+5 >= len(raw) || raw[pairStart] != '\\' || raw[pairStart+1] != 'u' {
+				return errors.New("ordering_key contains an unpaired high surrogate")
+			}
+			pair, pairErr := strconv.ParseUint(string(raw[pairStart+2:pairStart+6]), 16, 16)
+			if pairErr != nil || pair < 0xdc00 || pair > 0xdfff {
+				return errors.New("ordering_key contains an unpaired high surrogate")
+			}
+			index = pairStart + 5
+		}
+	}
+	return nil
 }
 
 func enqueueRequestBodyLimit(maxPayloadSize int) int64 {

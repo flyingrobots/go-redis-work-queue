@@ -195,6 +195,64 @@ func TestEnqueueJobRejectsTrailingJSONWithoutQueueChange(t *testing.T) {
 	}
 }
 
+func TestEnqueueJobRejectsMalformedOrderingKeyUnicodeWithoutQueueChange(t *testing.T) {
+	invalidUTF8 := append(
+		[]byte(`{"payload":"YQ==","priority":"low","ordering_key":"bad`),
+		0xff,
+	)
+	invalidUTF8 = append(invalidUTF8, []byte(`"}`)...)
+
+	for _, tc := range []struct {
+		name string
+		body []byte
+	}{
+		{name: "invalid raw UTF-8", body: invalidUTF8},
+		{name: "lone high surrogate", body: []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\ud800"}`)},
+		{name: "lone low surrogate", body: []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\udc00"}`)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, mr, cleanup := setupHandlerTest(t)
+			defer cleanup()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(tc.body))
+			response := httptest.NewRecorder()
+
+			handler.EnqueueJob(response, req)
+
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", response.Code, response.Body.String())
+			}
+			var failure ErrorResponse
+			if err := json.NewDecoder(response.Body).Decode(&failure); err != nil {
+				t.Fatal(err)
+			}
+			if failure.Code != "INVALID_REQUEST" {
+				t.Fatalf("error code = %q, want INVALID_REQUEST", failure.Code)
+			}
+			if keys := mr.Keys(); len(keys) != 0 {
+				t.Fatalf("rejected ordering key mutated Redis keys: %v", keys)
+			}
+		})
+	}
+}
+
+func TestEnqueueJobAcceptsPairedOrderingKeySurrogates(t *testing.T) {
+	handler, mr, cleanup := setupHandlerTest(t)
+	defer cleanup()
+	body := []byte(`{"payload":"YQ==","priority":"low","ordering_key":"\ud83d\ude80"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/enqueue", bytes.NewReader(body))
+	response := httptest.NewRecorder()
+
+	handler.EnqueueJob(response, req)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201: %s", response.Code, response.Body.String())
+	}
+	orderedQueue := queuekeys.Format(queuekeys.DefaultOrderedQueuePattern, queuekeys.OrderingDigest("🚀"))
+	if items, err := mr.List(orderedQueue); err != nil || len(items) != 1 {
+		t.Fatalf("ordered queue = %v (err=%v), want one job", items, err)
+	}
+}
+
 func TestEnqueueJobOversizedPayloadReturnsTypedMessageWithoutQueueChange(t *testing.T) {
 	handler, mr, cleanup := setupHandlerTest(t)
 	defer cleanup()
