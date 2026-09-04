@@ -507,7 +507,7 @@ func Workers(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         cursor = cur
         for _, k := range keys {
             id, ok := queuekeys.Extract(hbFormat, k)
-            if !ok || id == "" {
+            if !ok || !queuekeys.IsWorkerID(id) {
                 continue
             }
             wi := workerMap[id]
@@ -532,7 +532,7 @@ func Workers(ctx context.Context, cfg *config.Config, rdb *redis.Client, namespa
         cursor = cur
         for _, k := range keys {
             id, ok := queuekeys.Extract(plFormat, k)
-            if !ok || id == "" {
+            if !ok || !queuekeys.IsWorkerID(id) {
                 continue
             }
             wi := workerMap[id]

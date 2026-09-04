@@ -211,6 +211,35 @@ func TestStatsIgnoresUnprovenWorkerPatternMatches(t *testing.T) {
 	}
 }
 
+func TestWorkersIgnoreUnprovenWorkerPatternMatches(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "heartbeat:%s"
+	if err := config.Validate(cfg); err != nil {
+		t.Fatalf("broad worker-pattern fixture is invalid: %v", err)
+	}
+
+	const workerID = "workers-test-host-123-456-abcd-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+	mr.Lpush(processing, `{"id":"in-flight"}`)
+	mr.Set(heartbeat, workerID)
+	mr.Lpush("tenant:cache", `{"id":"application-data"}`)
+	mr.Set("tenant:settings", "application-data")
+	mr.Set("heartbeat:settings", "application-data")
+
+	workers, err := Workers(context.Background(), cfg, rdb, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(workers) != 1 || workers[0].ID != workerID || workers[0].JobID != "in-flight" {
+		t.Fatalf("workers = %#v, want only canonical worker %q", workers, workerID)
+	}
+}
+
 func TestPurgeAllWithoutConfiguredDLQDoesNotCreateMetadata(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
