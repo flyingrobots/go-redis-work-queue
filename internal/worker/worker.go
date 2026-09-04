@@ -531,6 +531,7 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 			if err := w.rdb.LPush(ctx, srcQueue, payload2).Err(); err != nil {
 				w.log.Error("LPUSH retry failed", obs.Err(err))
 				obs.RecordError(ctx, err)
+				return false
 			}
 			if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 				w.log.Error("LREM processing failed", obs.Err(err))
