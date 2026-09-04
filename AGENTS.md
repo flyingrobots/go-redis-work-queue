@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Fourteen exact-head
-  review passes produced 56 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Fifteen exact-head
+  review passes produced 59 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -36,7 +36,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   heartbeat values contain only the compact worker ownership marker. Shutdown
   leaves work in processing for at-least-once reaping. Ordered claims also keep
   a durable processing-list-to-digest marker, so malformed envelopes remain
-  recoverable if their immediate discard fails.
+  recoverable if their immediate discard fails. Handler payload bytes are
+  isolated from the durable envelope, so application mutation cannot alter
+  retries or completion records.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -56,8 +58,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Non-empty `OrderingKey` values use a hashed per-key FIFO, round-robin ready
   ring, compare-owned lease, and existing reaper path. Ordering wins over
   priority within a key; different keys remain parallel. Invalid UTF-8 keys are
-  rejected before encoding or hashing. Renewal uncertainty or proven lease
-  loss cancels the handler-scoped context before redelivery.
+  rejected before encoding or hashing. Heartbeat write uncertainty or proven
+  lease loss cancels the handler-scoped context before redelivery. Ordered
+  claims defer without mutation while a worker processing list is occupied.
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
@@ -70,7 +73,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   are removed only when the inspected tail bytes still match atomically;
   malformed ordered claims retain their digest through failed discard and are
   settled by the reaper after ownership expires. Broad ordered cleanup patterns
-  delete only keys containing canonical SHA-256 ordering digests.
+  delete only keys containing canonical SHA-256 ordering digests. Broad worker
+  cleanup patterns delete only keys containing canonical worker identities.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
@@ -230,6 +234,8 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 twelfth review: separate worker keyspaces and compact heartbeat values
 - [x] Queue core PR #6 thirteenth review: bind reaper tails, restore DLQ priority, and version cursors
 - [x] Queue core PR #6 fourteenth review: compact claims, preserve poison recovery, and reject pattern overlap
+- [x] Queue core PR #6 fifteenth review: restrict purge scans, cancel uncertain handlers, and isolate payloads
+- [x] Queue core hardening: defer ordered claims while a worker processing list is occupied
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -740,6 +746,45 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Fifteenth Review Remediated
+>
+> Closed all three findings from the fifteenth exact-head review and hardened
+> the ordered-claim registry against occupied worker lists.
+>
+> Changes
+>
+> - Restricted broad purge scans to processing and heartbeat keys containing
+>   canonical generated worker identities, preserving unrelated matching keys.
+> - Treated every heartbeat write failure as ownership uncertainty: the worker
+>   now cancels the handler-scoped context and leaves the delivery for reaping.
+> - Cloned payload bytes at the handler boundary so application mutation cannot
+>   alter retry or completed envelopes.
+> - Deferred ordered claims atomically when the target processing list already
+>   contains a delivery, preserving the ready ring, queue, lease, heartbeat,
+>   and durable claim registry.
+>
+> Validation
+>
+> - Captured deterministic RED regressions for broad worker-pattern deletion,
+>   heartbeat-refresh failure, payload mutation across retry, and an ordered
+>   claim attempted on an occupied processing list.
+> - Repeated affected queue, worker, reaper, and public-wrapper suites under the
+>   race detector; all passed with `go vet` clean.
+> - All eight real-Redis per-key FIFO E2Es passed; the 10,000-key run measured
+>   1.554 seconds to enqueue and 273 microseconds to claim.
+>
+> Publication
+>
+> - Commits `4c5b95d5`, `e656cf07`, `c33ca013`, and `d6a8aab0` are published.
+> - All 59 review threads are resolved with evidence replies.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix, refresh PR #6, and request another
+>   exact-head review before considering merge readiness.
 >
 > [!NOTE]
 >
