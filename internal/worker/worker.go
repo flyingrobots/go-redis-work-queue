@@ -211,6 +211,21 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 		if prev != curr && curr == breaker.Open {
 			obs.CircuitBreakerTrips.Inc()
 		}
+		if !ok {
+			processingCount, err := w.rdb.LLen(ctx, procList).Result()
+			if err != nil {
+				if ctx.Err() == nil {
+					w.log.Error("inspect processing list after failed transition", obs.Err(err))
+				}
+				return
+			}
+			if processingCount != 0 {
+				w.log.Warn("processing list remains occupied; stopping worker for reaper",
+					obs.String("worker_id", workerID),
+				)
+				return
+			}
+		}
 	}
 }
 

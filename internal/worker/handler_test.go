@@ -502,6 +502,72 @@ func TestCompletionAppendFailureLeavesJobInProcessing(t *testing.T) {
 	}
 }
 
+func TestRunDoesNotDequeueOntoUnsettledProcessingList(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	started := make(chan string, 2)
+	releaseFirst := make(chan struct{})
+	w.Handle(Handler(func(ctx context.Context, job queue.Job) error {
+		started <- job.ID
+		if job.ID == "first" {
+			select {
+			case <-releaseFirst:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		return nil
+	}))
+
+	ctx := context.Background()
+	for _, id := range []string{"first", "second"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		if err := queue.Enqueue(ctx, rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := rdb.Set(ctx, cfg.Worker.CompletedList, "wrong-type-completed", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(cancel)
+	if got := <-started; got != "first" {
+		t.Fatalf("first handler call = %q, want first", got)
+	}
+	close(releaseFirst)
+
+	select {
+	case got := <-started:
+		t.Errorf("worker dequeued %q while the first job remained in processing", got)
+		cancel()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("worker stopped with error: %v", err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after cancellation")
+		}
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("worker stopped with error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker neither stopped nor attempted the second job")
+	}
+
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
+	if got := rdb.LLen(ctx, processing).Val(); got != 1 {
+		t.Errorf("processing length = %d, want only the unsettled first job", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.Queues["low"]).Val(); got != 1 {
+		t.Errorf("source length = %d, want the second job untouched", got)
+	}
+	if got := rdb.Get(ctx, cfg.Worker.CompletedList).Val(); got != "wrong-type-completed" {
+		t.Errorf("completed key = %q, want wrong-type fixture preserved", got)
+	}
+}
+
 func TestHandlerPayloadMutationDoesNotChangeRetryEnvelope(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 1, 1, nil)
 	wantPayload := []byte{0x00, 0x01, 0x7f, 0x80, 0xfe, 0xff}
