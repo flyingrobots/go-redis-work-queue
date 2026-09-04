@@ -794,10 +794,13 @@ Notes
 >   list, and failed completion cleanup. GREEN returns the typed error, cancels
 >   a blocked sibling, and exposes it to a standalone external module; internal
 >   and public worker packages passed five race-enabled repetitions and vet.
+> - The first full-suite pass exposed one stale reaper assertion that raced
+>   explicit cancellation against the new safe-stop result. The corrected
+>   fixture passed ten focused and five full-package race repetitions with vet.
 >
 > Publication
 >
-> - Commits `0e23ba8b` and `9f465285` are published on PR #6.
+> - Commits `0e23ba8b`, `9f465285`, and `9a96689a` are published on PR #6.
 > - All 70 review threads have evidence replies and are resolved.
 >
 > Follow-ups
