@@ -285,6 +285,9 @@ local digest = redis.call('LINDEX', KEYS[1], -1)
 if not digest then
   return nil
 end
+if string.len(digest) ~= 64 or not string.match(digest, '^[0-9a-f]+$') then
+  return redis.error_reply('invalid ordered digest in ready ring')
+end
 
 local queue_key = ARGV[1] .. digest .. ARGV[2]
 local lease_key = ARGV[3] .. digest .. ARGV[4]

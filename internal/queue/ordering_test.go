@@ -392,6 +392,58 @@ func TestClaimOrderedWrongTypeKeyPreservesReadyJob(t *testing.T) {
 	}
 }
 
+func TestClaimOrderedRejectsMalformedReadyDigestBeforeDerivedKeyAccess(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+	layout.QueuePattern = "tenant:%s"
+	layout.LeasePattern = "lease:%s"
+	const malformedDigest = "settings"
+	const unrelatedPayload = "application-data"
+	const processingKey = "test:processing"
+	const heartbeatKey = "test:heartbeat"
+
+	if err := rdb.LPush(ctx, layout.ReadyList, malformedDigest).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.SAdd(ctx, layout.ActiveSet, malformedDigest).Err(); err != nil {
+		t.Fatal(err)
+	}
+	unrelatedKey := queuekeys.Format(layout.QueuePattern, malformedDigest)
+	if err := rdb.LPush(ctx, unrelatedKey, unrelatedPayload).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, processingKey, heartbeatKey, "worker-1", time.Second)
+	if err == nil {
+		t.Error("claim accepted a non-digest token from the ordered ready ring")
+	}
+	if ok || delivery != (OrderedDelivery{}) {
+		t.Errorf("claim = (%#v, %v), want no delivery", delivery, ok)
+	}
+	if ready := rdb.LRange(ctx, layout.ReadyList, 0, -1).Val(); !slices.Equal(ready, []string{malformedDigest}) {
+		t.Errorf("ready ring after rejected claim = %#v, want malformed token preserved", ready)
+	}
+	if !rdb.SIsMember(ctx, layout.ActiveSet, malformedDigest).Val() {
+		t.Error("rejected claim removed the malformed active token")
+	}
+	if got := rdb.LRange(ctx, unrelatedKey, 0, -1).Val(); !slices.Equal(got, []string{unrelatedPayload}) {
+		t.Errorf("unrelated broad-pattern list after rejected claim = %#v", got)
+	}
+	for _, key := range []string{
+		queuekeys.Format(layout.LeasePattern, malformedDigest),
+		processingKey,
+		heartbeatKey,
+		queuekeys.OrderedClaimsKey(layout.ActiveSet),
+	} {
+		if rdb.Exists(ctx, key).Val() != 0 {
+			t.Errorf("rejected claim created derived key %q", key)
+		}
+	}
+}
+
 func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
