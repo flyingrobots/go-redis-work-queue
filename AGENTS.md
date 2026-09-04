@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Sixteen exact-head
-  review passes produced 61 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Seventeen exact-head
+  review passes produced 64 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -77,9 +77,12 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   settled by the reaper after ownership expires. Broad ordered cleanup patterns
   delete only keys containing canonical SHA-256 ordering digests. Broad worker
   cleanup and reaper scans accept only keys containing canonical worker
-  identities.
-- Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
-  ordered queue keys containing real SHA-256 digests. The release changelog,
+  identities. Ready-ring claims reject non-canonical digest tokens before
+  deriving queue or lease keys, and the configured dead-letter key must be
+  non-empty.
+- Stats deduplicates Redis `SCAN` pages, admits only canonical worker IDs for
+  processing and heartbeat counts, and counts only ordered queue keys containing
+  real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
   Extractor and worksheet regressions cover paginated comments; extractor
   coverage also spans comment types, prompts, and bare output paths. The Event
@@ -241,6 +244,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core hardening: defer ordered claims while a worker processing list is occupied
 - [x] Queue core PR #6 sixteenth review: filter reaper scans and retain failed DLQ transfers
 - [x] Queue core hardening: retain processing jobs on failed retry and completion writes
+- [x] Queue core PR #6 seventeenth review: filter Stats scans, validate ready digests, and require DLQ keys
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -751,6 +755,43 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Seventeenth Review Remediated
+>
+> Closed all three exact-head P2 findings as isolated RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Filtered internal and public processing and heartbeat statistics to keys
+>   containing canonical generated worker IDs, with SCAN-page de-duplication.
+> - Rejected malformed ordered ready-ring tokens before deriving, inspecting,
+>   or mutating a configured queue or lease key.
+> - Required a non-empty `worker.dead_letter_list` during configuration
+>   validation so terminal failures always have a durable destination.
+>
+> Validation
+>
+> - RED proved broad Stats patterns reported unrelated lists and turned an
+>   unrelated string into a public `WRONGTYPE` failure.
+> - RED proved a malformed ready token drained `tenant:settings` and created
+>   lease, processing, heartbeat, and claim state.
+> - RED proved an empty dead-letter key passed configuration validation.
+> - Each focused regression passed ten times; the affected admin, public
+>   client, ordered queue, and config packages passed five race-enabled
+>   repetitions with `go vet` clean.
+>
+> Publication
+>
+> - Review fixes `9d5afe70`, `4c1fa2ab`, and `a3080a5a` are published with
+>   verified replies.
+> - All 64 review threads are resolved.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request an eighteenth review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
