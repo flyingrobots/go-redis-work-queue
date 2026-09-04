@@ -22,6 +22,33 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
+type failProcessingRemovalOnceHook struct {
+	key  string
+	once sync.Once
+}
+
+func (*failProcessingRemovalOnceHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (h *failProcessingRemovalOnceHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		args := cmd.Args()
+		if cmd.Name() == "lrem" && len(args) > 1 && fmt.Sprint(args[1]) == h.key {
+			fail := false
+			h.once.Do(func() { fail = true })
+			if fail {
+				return errors.New("injected processing removal failure")
+			}
+		}
+		return next(ctx, cmd)
+	}
+}
+
+func (*failProcessingRemovalOnceHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+
 func newHandlerTestWorker(t *testing.T, count, maxRetries int, log *zap.Logger) (*Worker, *config.Config, *redis.Client) {
 	t.Helper()
 	w, cfg, rdb, _ := newHandlerTestWorkerWithServer(t, count, maxRetries, log)
@@ -565,6 +592,66 @@ func TestRunDoesNotDequeueOntoUnsettledProcessingList(t *testing.T) {
 	}
 	if got := rdb.Get(ctx, cfg.Worker.CompletedList).Val(); got != "wrong-type-completed" {
 		t.Errorf("completed key = %q, want wrong-type fixture preserved", got)
+	}
+}
+
+func TestRunStopsAfterCompletionCleanupFailure(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, w.baseID+"-0")
+	rdb.AddHook(&failProcessingRemovalOnceHook{key: processing})
+
+	started := make(chan string, 2)
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		started <- job.ID
+		return nil
+	}))
+
+	ctx := context.Background()
+	for _, id := range []string{"first", "second"} {
+		job := queue.NewJob(id, "", 0, "low", "", "")
+		if err := queue.Enqueue(ctx, rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(cancel)
+	if got := <-started; got != "first" {
+		t.Fatalf("first handler call = %q, want first", got)
+	}
+
+	select {
+	case got := <-started:
+		t.Errorf("worker dequeued %q after completion cleanup failed", got)
+		cancel()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("worker stopped with error: %v", err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after cancellation")
+		}
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("worker stopped with error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker neither stopped nor attempted the second job")
+	}
+
+	if got := rdb.LLen(ctx, processing).Val(); got != 1 {
+		t.Errorf("processing length = %d, want the unsettled first job", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.Queues["low"]).Val(); got != 1 {
+		t.Errorf("source length = %d, want the second job untouched", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.CompletedList).Val(); got != 1 {
+		t.Errorf("completed length = %d, want the first append retained", got)
+	}
+	if exists := rdb.Exists(ctx, heartbeat).Val(); exists != 1 {
+		t.Errorf("heartbeat exists = %d, want natural-expiry reaper handoff", exists)
 	}
 }
 

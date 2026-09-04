@@ -38,6 +38,9 @@ func TestProcessJobSuccess(t *testing.T) {
 	job := queue.NewJob("id1", "/tmp/ok.txt", 10, "low", "", "")
 	payload, _ := job.Marshal()
 	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
 	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
 	if !ok {
 		t.Fatalf("expected success")
@@ -60,7 +63,11 @@ func TestProcessJobPayloadContainingFailStillSucceeds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ok := w.processJob(context.Background(), workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
+	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
+	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
 	if !ok {
 		t.Fatal("payload text must not trigger the legacy filepath failure oracle")
 	}
@@ -79,6 +86,9 @@ func TestProcessJobRetryThenDLQ(t *testing.T) {
 	job := queue.NewJob("id1", "/tmp/fail.txt", 10, "low", "", "")
 	payload, _ := job.Marshal()
 	ctx := context.Background()
+	if err := rdb.LPush(ctx, procList, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
 	ok := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], procList, hbKey, payload)
 	if ok {
 		t.Fatalf("expected failure")

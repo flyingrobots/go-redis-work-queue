@@ -459,8 +459,18 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 				obs.RecordError(ctx, err)
 				return false
 			}
-			if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
+			removed, err := w.rdb.LRem(ctx, procList, 1, payload).Result()
+			if err != nil {
 				w.log.Error("LREM processing failed", obs.Err(err))
+				obs.RecordError(ctx, err)
+				return false
+			}
+			if removed != 1 {
+				w.log.Warn("completed job was not removed from processing",
+					obs.String("id", job.ID),
+					obs.String("worker_id", workerID),
+				)
+				return false
 			}
 			if err := w.rdb.Del(ctx, hbKey).Err(); err != nil {
 				w.log.Error("DEL heartbeat failed", obs.Err(err))
