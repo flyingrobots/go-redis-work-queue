@@ -20,7 +20,7 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Eighteen exact-head
+- All six queue core ROADMAP items are complete on ready PR #6. Nineteen exact-head
   review passes produced 68 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
@@ -41,7 +41,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   retries or completion records. Rejected completion, retry, or dead-letter
   destination writes leave the original processing envelope and expiring
   heartbeat in place for reaper handoff. An unsuccessful outcome that leaves
-  processing occupied stops that worker loop before another claim.
+  processing occupied stops that worker loop before another claim. Successful
+  completion also requires removing exactly one matching processing envelope;
+  cleanup failure retains the heartbeat and enters the same safe stop path.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -250,6 +252,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core hardening: retain processing jobs on failed retry and completion writes
 - [x] Queue core PR #6 seventeenth review: filter Stats scans, validate ready digests, and require DLQ keys
 - [x] Queue core PR #6 eighteenth review: stop unsettled workers and canonicalize discovery/config
+- [x] Queue core PR #6 nineteenth review: clean; harden failed completion cleanup
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -760,6 +763,43 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Nineteenth Review and Completion Cleanup Hardened
+>
+> The nineteenth exact-head review reported no major issues at `a0c2488b`.
+> A follow-on self-audit then closed one adjacent processing-safety gap as an
+> isolated RED/GREEN/VERIFY commit.
+>
+> Changes
+>
+> - Required unordered completion cleanup to remove exactly one matching
+>   processing envelope before reporting success.
+> - Returned cleanup errors and zero-removal results through the existing
+>   occupied-processing stop guard while retaining the expiring heartbeat.
+> - Updated direct `processJob` fixtures to seed the processing list, matching
+>   the real dequeue contract they exercise.
+>
+> Validation
+>
+> - RED invoked the second handler, drained its source queue, and stacked two
+>   envelopes in one processing list after an injected `LREM` failure.
+> - GREEN leaves only the first envelope in processing, the second in its
+>   source queue, the completed append intact, and the heartbeat available for
+>   natural-expiry reaper handoff.
+> - The focused regression and related completion boundaries passed ten
+>   race-enabled repetitions; internal and public worker packages passed five.
+>
+> Publication
+>
+> - Hardening commit `55837933` is published on PR #6.
+> - All 68 review threads remain resolved; the nineteenth pass added none.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request a twentieth review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
