@@ -391,6 +391,46 @@ func TestHandlerErrorRetriesThenDeadLetters(t *testing.T) {
 	}
 }
 
+func TestDeadLetterAppendFailureLeavesJobInProcessing(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 0, nil)
+	w.Handle(Handler(func(_ context.Context, _ queue.Job) error {
+		return errors.New("terminal handler failure")
+	}))
+	ctx := context.Background()
+	workerID := w.baseID + "-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+
+	job := queue.NewJob("preserve-on-dlq-error", "", 0, "low", "", "")
+	payload, err := job.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.LPush(ctx, processing, payload).Err(); err != nil {
+		t.Fatal(err)
+	}
+	generationKey := queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
+	if err := rdb.Set(ctx, generationKey, "invalid", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if completed := w.processJob(ctx, workerID, cfg.Worker.Queues["low"], processing, heartbeat, payload); completed {
+		t.Fatal("terminal handler failure reported successful completion")
+	}
+	if got := rdb.LRange(ctx, processing, 0, -1).Val(); !slices.Equal(got, []string{payload}) {
+		t.Fatalf("processing after failed DLQ append = %#v, want original envelope", got)
+	}
+	if got := rdb.LRange(ctx, cfg.Worker.DeadLetterList, 0, -1).Val(); len(got) != 0 {
+		t.Fatalf("DLQ after rejected append = %#v, want empty", got)
+	}
+	if got := rdb.Get(ctx, generationKey).Val(); got != "invalid" {
+		t.Fatalf("DLQ generation after rejected append = %q, want invalid value preserved", got)
+	}
+	if exists := rdb.Exists(ctx, heartbeat).Val(); exists != 1 {
+		t.Fatalf("heartbeat after failed DLQ append exists = %d, want natural-expiry handoff", exists)
+	}
+}
+
 func TestHandlerPayloadMutationDoesNotChangeRetryEnvelope(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 1, 1, nil)
 	wantPayload := []byte{0x00, 0x01, 0x7f, 0x80, 0xfe, 0xff}

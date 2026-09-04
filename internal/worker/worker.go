@@ -585,6 +585,7 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 		if err := queue.AppendDeadLetter(ctx, w.rdb, w.cfg.Worker.DeadLetterList, payload); err != nil {
 			w.log.Error("append DLQ failed", obs.Err(err))
 			obs.RecordError(ctx, err)
+			return false
 		}
 		if err := w.rdb.LRem(ctx, procList, 1, payload).Err(); err != nil {
 			w.log.Error("LREM processing failed", obs.Err(err))
