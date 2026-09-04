@@ -255,19 +255,19 @@ func TestReaperAdvancesOrderedKeyAfterMalformedDiscardFailure(t *testing.T) {
 	w := worker.New(cfg, rdb, zap.NewNop())
 	w.Handle(worker.Handler(func(context.Context, queue.Job) error { return nil }))
 	workerCtx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
 	done := make(chan error, 1)
 	go func() { done <- w.Run(workerCtx) }()
 	select {
 	case <-hook.failed:
-		cancel()
 	case <-time.After(2 * time.Second):
 		cancel()
 		t.Fatal("worker did not attempt to discard malformed ordered job")
 	}
 	select {
 	case err := <-done:
-		if err != nil {
-			t.Fatalf("worker stopped with error: %v", err)
+		if !errors.Is(err, worker.ErrUnsettledDelivery) {
+			t.Fatalf("worker stopped with error %v, want ErrUnsettledDelivery", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("worker did not stop after cancellation")
