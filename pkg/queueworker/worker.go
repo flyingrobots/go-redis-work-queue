@@ -23,6 +23,9 @@ var (
 	ErrHandlerRequired = internalworker.ErrHandlerRequired
 	// ErrBenchJobFailed identifies the explicit legacy benchmark failure case.
 	ErrBenchJobFailed = internalworker.ErrBenchJobFailed
+	// ErrUnsettledDelivery reports that the worker pool stopped because a
+	// claimed delivery could not be proven safely settled or restored.
+	ErrUnsettledDelivery = internalworker.ErrUnsettledDelivery
 )
 
 // Handler executes one durable job. Multiple worker goroutines may call it
@@ -147,8 +150,10 @@ func newWithClient(rdb *redis.Client, cfg *internalconfig.Config, handler Handle
 	return &Worker{inner: inner, reaper: internalreaper.New(cfg, rdb, logger), rdb: rdb, owned: owned}
 }
 
-// Run consumes jobs until ctx is canceled. The same Worker must not be run
-// more than once concurrently.
+// Run consumes jobs until ctx is canceled. It returns ErrUnsettledDelivery if
+// any consumer cannot prove its claimed delivery was safely settled or
+// restored; callers should restart the worker after handling that error. The
+// same Worker must not be run more than once concurrently.
 func (w *Worker) Run(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

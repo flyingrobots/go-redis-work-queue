@@ -360,8 +360,8 @@ func TestFailedHandlerRemovalRestoreStopsWorker(t *testing.T) {
 			t.Fatal("worker did not stop after cancellation")
 		}
 	case err := <-done:
-		if err != nil {
-			t.Fatalf("worker stopped with error: %v", err)
+		if !errors.Is(err, ErrUnsettledDelivery) {
+			t.Fatalf("worker stopped with error %v, want ErrUnsettledDelivery", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("worker neither stopped nor invoked the replacement handler")
@@ -676,8 +676,8 @@ func TestRunDoesNotDequeueOntoUnsettledProcessingList(t *testing.T) {
 			t.Fatal("worker did not stop after cancellation")
 		}
 	case err := <-done:
-		if err != nil {
-			t.Fatalf("worker stopped with error: %v", err)
+		if !errors.Is(err, ErrUnsettledDelivery) {
+			t.Fatalf("worker stopped with error %v, want ErrUnsettledDelivery", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("worker neither stopped nor attempted the second job")
@@ -734,8 +734,8 @@ func TestRunStopsAfterCompletionCleanupFailure(t *testing.T) {
 			t.Fatal("worker did not stop after cancellation")
 		}
 	case err := <-done:
-		if err != nil {
-			t.Fatalf("worker stopped with error: %v", err)
+		if !errors.Is(err, ErrUnsettledDelivery) {
+			t.Fatalf("worker stopped with error %v, want ErrUnsettledDelivery", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("worker neither stopped nor attempted the second job")
@@ -752,6 +752,38 @@ func TestRunStopsAfterCompletionCleanupFailure(t *testing.T) {
 	}
 	if exists := rdb.Exists(ctx, heartbeat).Val(); exists != 1 {
 		t.Errorf("heartbeat exists = %d, want natural-expiry reaper handoff", exists)
+	}
+}
+
+func TestRunCancelsSiblingConsumersAfterUnsettledDelivery(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 2, 0, nil)
+	if err := rdb.Set(context.Background(), cfg.Worker.CompletedList, "wrong-type-completed", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	called := make(chan struct{}, 1)
+	w.Handle(Handler(func(_ context.Context, _ queue.Job) error {
+		called <- struct{}{}
+		return nil
+	}))
+	job := queue.NewJob("pool-safe-stop", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(cancel)
+	select {
+	case <-called:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler was not called")
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrUnsettledDelivery) {
+			t.Fatalf("worker pool stopped with error %v, want ErrUnsettledDelivery", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker pool did not cancel the sibling consumer")
 	}
 }
 
@@ -1002,6 +1034,7 @@ func TestOrderedLeaseLossCancelsRunningHandler(t *testing.T) {
 	}
 
 	cancelWorker, done := startHandlerTestWorker(w)
+	t.Cleanup(cancelWorker)
 	select {
 	case <-started:
 	case <-time.After(2 * time.Second):
@@ -1033,7 +1066,15 @@ func TestOrderedLeaseLossCancelsRunningHandler(t *testing.T) {
 		t.Fatal("ordered handler continued after losing its lease")
 	}
 
-	stopHandlerTestWorker(t, cancelWorker, done)
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrUnsettledDelivery) {
+			t.Fatalf("worker stopped with error %v, want ErrUnsettledDelivery", err)
+		}
+	case <-time.After(2 * time.Second):
+		cancelWorker()
+		t.Fatal("worker did not report the unsettled lease-lost delivery")
+	}
 	processing := fmt.Sprintf(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
 	if got, err := rdb.LLen(context.Background(), processing).Result(); err != nil || got != 1 {
 		t.Fatalf("lease-lost delivery should remain in processing: length=%d err=%v", got, err)

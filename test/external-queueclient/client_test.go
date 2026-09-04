@@ -7,6 +7,7 @@ package queueclientsmoke
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -110,5 +111,55 @@ func TestExternalModuleCanRunApplicationHandler(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("worker did not stop")
+	}
+}
+
+func TestExternalWorkerReportsUnsettledDelivery(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	queueCfg := queueclient.DefaultConfig()
+	queueCfg.Queues = map[string]string{"low": "external:safe-stop:low"}
+	queueCfg.DefaultPriority = "low"
+	queueCfg.CompletedList = "external:safe-stop:completed"
+	queueCfg.DeadLetterList = "external:safe-stop:dead-letter"
+	queueCfg.ProcessingListPattern = "external:safe-stop:worker:%s:processing"
+	queueCfg.HeartbeatKeyPattern = "external:safe-stop:worker:%s:heartbeat"
+	client, err := queueclient.NewWithClient(rdb, queueCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	workerCfg := queueworker.DefaultConfig()
+	workerCfg.Count = 1
+	workerCfg.Priorities = []string{"low"}
+	workerCfg.QueueConfig = queueCfg
+	workerCfg.BRPopLPushTimeout = 10 * time.Millisecond
+	wrk, err := queueworker.NewWithClient(rdb, workerCfg, func(context.Context, queueclient.Job) error {
+		return nil
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.Set(context.Background(), queueCfg.CompletedList, "wrong-type-completed", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	done := make(chan error, 1)
+	go func() { done <- wrk.Run(ctx) }()
+	if _, err := client.Enqueue(context.Background(), queueclient.Job{Payload: []byte("safe-stop")}); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, queueworker.ErrUnsettledDelivery) {
+			t.Fatalf("Run error = %v, want ErrUnsettledDelivery", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("public worker did not report its safe stop")
 	}
 }
