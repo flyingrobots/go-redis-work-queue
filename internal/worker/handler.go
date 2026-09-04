@@ -2,6 +2,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +15,8 @@ import (
 )
 
 // Handler executes one job. A Worker may invoke a Handler concurrently, so
-// handlers must protect mutable state and honor context cancellation.
+// handlers must protect mutable state and honor context cancellation. Each
+// invocation receives an isolated Payload copy; mutations are not persisted.
 type Handler func(ctx context.Context, job queue.Job) error
 
 // ErrHandlerRequired prevents a production worker from acknowledging jobs
@@ -113,5 +115,6 @@ func (w *Worker) invokeHandler(ctx context.Context, job queue.Job, handler Handl
 			err = fmt.Errorf("job handler panicked: %v", recovered)
 		}
 	}()
+	job.Payload = bytes.Clone(job.Payload)
 	return handler(ctx, job)
 }

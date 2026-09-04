@@ -391,6 +391,65 @@ func TestHandlerErrorRetriesThenDeadLetters(t *testing.T) {
 	}
 }
 
+func TestHandlerPayloadMutationDoesNotChangeRetryEnvelope(t *testing.T) {
+	w, cfg, rdb := newHandlerTestWorker(t, 1, 1, nil)
+	wantPayload := []byte{0x00, 0x01, 0x7f, 0x80, 0xfe, 0xff}
+	var mu sync.Mutex
+	var attempts [][]byte
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		mu.Lock()
+		attempts = append(attempts, bytes.Clone(job.Payload))
+		attempt := len(attempts)
+		mu.Unlock()
+
+		for i := range job.Payload {
+			job.Payload[i] ^= 0xff
+		}
+		if attempt == 1 {
+			return errors.New("retry without persisting handler mutation")
+		}
+		return nil
+	}))
+
+	job := queue.NewJob("mutates-payload", "", 0, "low", "", "")
+	job.Payload = bytes.Clone(wantPayload)
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], job, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+
+	cancel, done := startHandlerTestWorker(w)
+	waitForListLength(t, rdb, cfg.Worker.CompletedList, 1)
+	waitForNoProcessingJobs(t, rdb)
+	stopHandlerTestWorker(t, cancel, done)
+
+	mu.Lock()
+	gotAttempts := append([][]byte(nil), attempts...)
+	mu.Unlock()
+	if len(gotAttempts) != 2 {
+		t.Fatalf("handler attempts = %d, want initial attempt plus one retry", len(gotAttempts))
+	}
+	for i, got := range gotAttempts {
+		if !bytes.Equal(got, wantPayload) {
+			t.Fatalf("attempt %d payload = %v, want original %v", i+1, got, wantPayload)
+		}
+	}
+
+	encoded, err := rdb.LIndex(context.Background(), cfg.Worker.CompletedList, 0).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, err := queue.UnmarshalJob(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.Retries != 1 {
+		t.Fatalf("completed retries = %d, want 1", completed.Retries)
+	}
+	if !bytes.Equal(completed.Payload, wantPayload) {
+		t.Fatalf("completed payload = %v, want original %v", completed.Payload, wantPayload)
+	}
+}
+
 func TestOrderedHandlerRetryRunsBeforeLaterSameKeyJob(t *testing.T) {
 	w, cfg, rdb := newHandlerTestWorker(t, 2, 1, nil)
 	var mu sync.Mutex
