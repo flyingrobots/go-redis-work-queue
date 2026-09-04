@@ -271,7 +271,13 @@ func Validate(cfg *Config) error {
 			return fmt.Errorf("worker.queues missing entry for priority %q", p)
 		}
 	}
-	for alias := range cfg.Worker.Queues {
+	for alias, key := range cfg.Worker.Queues {
+		if alias == "" || alias != strings.TrimSpace(alias) {
+			return fmt.Errorf("worker queue alias %q must be non-empty without surrounding whitespace", alias)
+		}
+		if key == "" || key != strings.TrimSpace(key) {
+			return fmt.Errorf("worker queue %q Redis key must be non-empty without surrounding whitespace", alias)
+		}
 		if queuekeys.IsReservedQueueAlias(alias) {
 			return fmt.Errorf("worker queue alias %q is reserved", alias)
 		}

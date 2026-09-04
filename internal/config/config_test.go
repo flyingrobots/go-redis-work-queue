@@ -113,6 +113,60 @@ func TestValidateRejectsReservedWorkerQueueAliases(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsWhitespaceAlteredQueueMappings(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*Config)
+	}{
+		{
+			name: "alias with surrounding whitespace",
+			configure: func(cfg *Config) {
+				key := cfg.Worker.Queues["low"]
+				delete(cfg.Worker.Queues, "low")
+				cfg.Worker.Queues[" low "] = key
+				cfg.Worker.Priorities[1] = " low "
+			},
+		},
+		{
+			name: "blank alias",
+			configure: func(cfg *Config) {
+				key := cfg.Worker.Queues["low"]
+				delete(cfg.Worker.Queues, "low")
+				cfg.Worker.Queues[" "] = key
+				cfg.Worker.Priorities[1] = " "
+			},
+		},
+		{
+			name: "aliases collide after trimming",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues[" low"] = "jobqueue:low-shadow"
+			},
+		},
+		{
+			name: "key with surrounding whitespace",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues["low"] = " jobqueue:low "
+			},
+		},
+		{
+			name: "blank key",
+			configure: func(cfg *Config) {
+				cfg.Worker.Queues["low"] = " "
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := defaultConfig()
+			tt.configure(cfg)
+			if err := Validate(cfg); err == nil {
+				t.Fatal("expected non-canonical queue mapping to fail validation")
+			}
+		})
+	}
+}
+
 func TestValidateRejectsEmptyDeadLetterList(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.Worker.DeadLetterList = ""
