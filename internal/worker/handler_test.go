@@ -49,6 +49,32 @@ func (*failProcessingRemovalOnceHook) ProcessPipelineHook(next redis.ProcessPipe
 	return next
 }
 
+type failUnorderedRestoreOnceHook struct {
+	once sync.Once
+}
+
+func (*failUnorderedRestoreOnceHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (h *failUnorderedRestoreOnceHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		args := cmd.Args()
+		if cmd.Name() == "evalsha" && len(args) > 1 && fmt.Sprint(args[1]) == restoreUnorderedDeliveryScript.Hash() {
+			fail := false
+			h.once.Do(func() { fail = true })
+			if fail {
+				return errors.New("injected handler-removal restore failure")
+			}
+		}
+		return next(ctx, cmd)
+	}
+}
+
+func (*failUnorderedRestoreOnceHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+
 func newHandlerTestWorker(t *testing.T, count, maxRetries int, log *zap.Logger) (*Worker, *config.Config, *redis.Client) {
 	t.Helper()
 	w, cfg, rdb, _ := newHandlerTestWorkerWithServer(t, count, maxRetries, log)
@@ -276,6 +302,80 @@ func TestClearingHandlerRestoresDeliveryFromBlockedDequeue(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("replacement handler did not receive restored job")
+	}
+}
+
+func TestFailedHandlerRemovalRestoreStopsWorker(t *testing.T) {
+	w, cfg, rdb, mr := newHandlerTestWorkerWithServer(t, 1, 0, nil)
+	blocked := make(chan struct{})
+	var blockedOnce sync.Once
+	mr.Server().SetPreHook(func(_ *miniredisserver.Peer, command string, _ ...string) bool {
+		if command == "BRPOPLPUSH" {
+			blockedOnce.Do(func() { close(blocked) })
+		}
+		return false
+	})
+	rdb.AddHook(&failUnorderedRestoreOnceHook{})
+
+	called := make(chan queue.Job, 1)
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		called <- job
+		return nil
+	}))
+	cancel, done := startHandlerTestWorker(w)
+	t.Cleanup(cancel)
+	select {
+	case <-blocked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not enter blocking dequeue")
+	}
+
+	w.Handle(nil)
+	first := queue.NewJob("restore-failed", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], first, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, w.baseID+"-0")
+	waitForListLength(t, rdb, processing, 1)
+
+	second := queue.NewJob("must-stay-queued", "", 0, "low", "", "")
+	if err := queue.Enqueue(context.Background(), rdb, cfg.Worker.Queues["low"], second, cfg.Queue.MaxPayloadSize); err != nil {
+		t.Fatal(err)
+	}
+	w.Handle(Handler(func(_ context.Context, job queue.Job) error {
+		called <- job
+		return nil
+	}))
+
+	select {
+	case got := <-called:
+		t.Errorf("replacement handler received %q after the prior restore failed", got.ID)
+		cancel()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("worker stopped with error: %v", err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after cancellation")
+		}
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("worker stopped with error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker neither stopped nor invoked the replacement handler")
+	}
+
+	ctx := context.Background()
+	if got := rdb.LLen(ctx, processing).Val(); got != 1 {
+		t.Errorf("processing length = %d, want the unrestored first job", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.Queues["low"]).Val(); got != 1 {
+		t.Errorf("source length = %d, want the second job untouched", got)
+	}
+	if got := rdb.LLen(ctx, cfg.Worker.CompletedList).Val(); got != 0 {
+		t.Errorf("completed length = %d, want no post-failure processing", got)
 	}
 }
 

@@ -60,6 +60,8 @@ redis.call('RPUSH', KEYS[2], ARGV[1])
 return 1
 `)
 
+var errUnsettledDelivery = errors.New("claimed delivery remains unsettled")
+
 func New(cfg *config.Config, rdb *redis.Client, log *zap.Logger) *Worker {
 	if log == nil {
 		log = zap.NewNop()
@@ -146,6 +148,11 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 				if ctx.Err() != nil {
 					return
 				}
+				if errors.Is(err, errUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
+					return
+				}
 				w.log.Warn("RPOPLPUSH error", obs.Err(err))
 				time.Sleep(50 * time.Millisecond)
 				continue
@@ -160,6 +167,11 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 			unorderedBurst = 0
 			if err != nil {
 				if ctx.Err() != nil {
+					return
+				}
+				if errors.Is(err, errUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
 					return
 				}
 				w.log.Warn("ordered claim error", obs.Err(err))
@@ -179,6 +191,11 @@ func (w *Worker) runOne(ctx context.Context, workerID string) {
 			next, found, err = w.dequeueUnordered(ctx, workerID, procList, hbKey, true)
 			if err != nil {
 				if ctx.Err() != nil {
+					return
+				}
+				if errors.Is(err, errUnsettledDelivery) {
+					w.log.Error("delivery restore failed; stopping worker",
+						obs.String("worker_id", workerID), obs.Err(err))
 					return
 				}
 				w.log.Warn("BRPOPLPUSH error", obs.Err(err))
@@ -257,10 +274,10 @@ func (w *Worker) claimOrdered(ctx context.Context, workerID, procList, hbKey str
 			queue.OrderedRetry,
 		)
 		if restoreErr != nil {
-			return delivery{}, false, fmt.Errorf("restore ordered job after handler removal: %w", restoreErr)
+			return delivery{}, false, fmt.Errorf("%w: restore ordered job after handler removal: %w", errUnsettledDelivery, restoreErr)
 		}
 		if !restored {
-			return delivery{}, false, errors.New("restore ordered job after handler removal: lease ownership changed")
+			return delivery{}, false, fmt.Errorf("%w: restore ordered job after handler removal: lease ownership changed", errUnsettledDelivery)
 		}
 		return delivery{}, false, nil
 	}
@@ -305,11 +322,11 @@ func (w *Worker) dequeueUnordered(ctx context.Context, workerID, procList, hbKey
 			if restoreErr != nil {
 				obs.RecordError(deqCtx, restoreErr)
 				deqSpan.End()
-				return delivery{}, false, restoreErr
+				return delivery{}, false, fmt.Errorf("%w: %w", errUnsettledDelivery, restoreErr)
 			}
 			deqSpan.End()
 			if !restored {
-				return delivery{}, false, nil
+				return delivery{}, false, fmt.Errorf("%w: restore job after handler removal changed ownership", errUnsettledDelivery)
 			}
 			return delivery{}, false, nil
 		}
