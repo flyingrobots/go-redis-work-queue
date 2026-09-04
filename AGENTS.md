@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Seventeen exact-head
-  review passes produced 64 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Eighteen exact-head
+  review passes produced 68 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -40,13 +40,16 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   isolated from the durable envelope, so application mutation cannot alter
   retries or completion records. Rejected completion, retry, or dead-letter
   destination writes leave the original processing envelope and expiring
-  heartbeat in place for reaper handoff.
+  heartbeat in place for reaper handoff. An unsuccessful outcome that leaves
+  processing occupied stops that worker loop before another claim.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
   `queue:write`. CLI file and stdin reads stop at the configured limit plus one
   byte. HTTP request bodies must contain exactly one JSON value. Duplicate IDs
-  remain separate deliveries.
+  remain separate deliveries. Repository queue mappings must already be
+  canonical without surrounding whitespace, so internal and public clients
+  cannot trim into different Redis layouts.
 - DLQ listings expose an opaque handle for each list entry, including
   duplicate-ID and byte-identical envelopes. Handles bind a constant-time
   mutation generation, list length, exact position, and envelope; requeue and
@@ -78,12 +81,13 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   delete only keys containing canonical SHA-256 ordering digests. Broad worker
   cleanup and reaper scans accept only keys containing canonical worker
   identities. Ready-ring claims reject non-canonical digest tokens before
-  deriving queue or lease keys, and the configured dead-letter key must be
-  non-empty.
+  deriving queue or lease keys, and the configured completed and dead-letter
+  destinations must be non-empty.
 - Stats deduplicates Redis `SCAN` pages, admits only canonical worker IDs for
   processing and heartbeat counts, and counts only ordered queue keys containing
-  real SHA-256 digests. The release changelog,
-  PR-comment extractor, and review-worksheet generator are tracked again.
+  real SHA-256 digests. Worker listings apply the same identity boundary. The
+  release changelog, PR-comment extractor, and review-worksheet generator are
+  tracked again.
   Extractor and worksheet regressions cover paginated comments; extractor
   coverage also spans comment types, prompts, and bare output paths. The Event
   Hooks test plan now distinguishes its seven live tests and 11.6% observed
@@ -245,6 +249,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 sixteenth review: filter reaper scans and retain failed DLQ transfers
 - [x] Queue core hardening: retain processing jobs on failed retry and completion writes
 - [x] Queue core PR #6 seventeenth review: filter Stats scans, validate ready digests, and require DLQ keys
+- [x] Queue core PR #6 eighteenth review: stop unsettled workers and canonicalize discovery/config
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -755,6 +760,47 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Eighteenth Review Remediated
+>
+> Closed one P1 and three P2 exact-head findings as isolated
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Required canonical worker IDs in the Admin API worker-discovery scans so
+>   broad patterns cannot create phantom workers from unrelated Redis keys.
+> - Stopped a worker loop when an unsuccessful outcome leaves its processing
+>   list occupied, preserving one-envelope reaper handoff before another claim.
+> - Rejected blank or surrounding-whitespace queue aliases and Redis keys so
+>   repository workers and trimming public clients cannot diverge.
+> - Required a non-empty completed-list destination during configuration
+>   validation, matching the ordered transition contract.
+>
+> Validation
+>
+> - RED reported phantom `cache` and `settings` workers plus unrelated JSON as
+>   an active job; GREEN returns only the canonical generated worker.
+> - RED executed a second job after the first completion append failed and left
+>   both envelopes stacked in processing; GREEN stops with the second job still
+>   in its source queue.
+> - Five queue-mapping RED cases and the empty-completed-list RED all passed
+>   internal validation before their field-specific checks were added.
+> - Each focused regression passed ten times; affected config, admin, worker,
+>   and public queue packages passed five race-enabled repetitions with vet.
+>
+> Publication
+>
+> - Review fixes `9c70b322`, `af2f3d96`, `2c369420`, and `f6ac2f70` are
+>   published with verified replies.
+> - All 68 review threads are resolved.
+>
+> Follow-ups
+>
+> - Run the full exact-head gate matrix and request a nineteenth review before
+>   considering merge readiness.
 >
 > [!NOTE]
 >
