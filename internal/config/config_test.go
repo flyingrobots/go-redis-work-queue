@@ -164,6 +164,22 @@ func TestValidateRejectsStaticKeysMatchedByProcessingPattern(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsOrderedClaimRegistryMatchedByProcessingPattern(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.ProcessingListPattern = cfg.Queue.OrderedActiveSet + ":%s"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected ordered claim registry matched by processing pattern to fail")
+	}
+}
+
+func TestValidateRejectsStaticKeyAliasedToOrderedClaimRegistry(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Worker.Queues["high"] = queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet)
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to ordered claim registry to fail")
+	}
+}
+
 func TestValidateRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string

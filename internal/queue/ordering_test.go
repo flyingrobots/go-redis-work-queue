@@ -101,6 +101,10 @@ func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
 	if got, err := rdb.LLen(ctx, "test:processing").Result(); err != nil || got != 1 {
 		t.Fatalf("processing length = %d (err=%v)", got, err)
 	}
+	claimsKey := queuekeys.OrderedClaimsKey(layout.ActiveSet)
+	if got, err := rdb.HGet(ctx, claimsKey, "test:processing").Result(); err != nil || got != digest {
+		t.Fatalf("durable claim digest = %q (err=%v), want %q", got, err, digest)
+	}
 
 	owned, err := RenewOrderedLease(ctx, rdb, leaseKey, "worker-1", 2*time.Second)
 	if err != nil || !owned {
@@ -113,7 +117,7 @@ func TestOrderedEnqueueClaimAndComplete(t *testing.T) {
 	if got, err := rdb.LLen(ctx, "test:completed").Result(); err != nil || got != 1 {
 		t.Fatalf("completed length = %d (err=%v)", got, err)
 	}
-	for _, key := range []string{queueKey, leaseKey, layout.ReadyList, layout.ActiveSet, "test:processing", "test:heartbeat"} {
+	for _, key := range []string{queueKey, leaseKey, layout.ReadyList, layout.ActiveSet, claimsKey, "test:processing", "test:heartbeat"} {
 		if mr.Exists(key) {
 			t.Errorf("completed transition left key %q", key)
 		}
@@ -281,7 +285,7 @@ func TestOrderedIntakeRejectsPerJobKeyAliasesBeforeWriting(t *testing.T) {
 }
 
 func TestClaimOrderedWrongTypeKeyPreservesReadyJob(t *testing.T) {
-	for _, target := range []string{"processing", "queue", "lease"} {
+	for _, target := range []string{"processing", "queue", "lease", "claims"} {
 		t.Run(target, func(t *testing.T) {
 			mr := miniredis.RunT(t)
 			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -309,6 +313,10 @@ func TestClaimOrderedWrongTypeKeyPreservesReadyJob(t *testing.T) {
 				}
 			case "lease":
 				if err := rdb.LPush(ctx, leaseKey, "not-a-string").Err(); err != nil {
+					t.Fatal(err)
+				}
+			case "claims":
+				if err := rdb.Set(ctx, queuekeys.OrderedClaimsKey(layout.ActiveSet), "not-a-hash", 0).Err(); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -367,8 +375,44 @@ func TestTransitionOrderedWrongTypeDestinationPreservesProcessingDelivery(t *tes
 	}
 }
 
+func TestTransitionOrderedWrongTypeClaimRegistryPreservesProcessingDelivery(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	ctx := context.Background()
+	layout := testOrderingLayout()
+
+	job := NewJob("wrong-type-claim-registry", "", 0, "low", "", "")
+	job.OrderingKey = "account:claim-registry"
+	if err := EnqueueWithOrdering(ctx, rdb, "ignored", job, DefaultMaxPayloadSize, layout); err != nil {
+		t.Fatal(err)
+	}
+	delivery, ok, err := ClaimOrdered(ctx, rdb, layout, "test:processing", "test:heartbeat", "worker-1", time.Second)
+	if err != nil || !ok {
+		t.Fatalf("claim = (%#v, %v, %v)", delivery, ok, err)
+	}
+	claimsKey := queuekeys.OrderedClaimsKey(layout.ActiveSet)
+	if err := rdb.Del(ctx, claimsKey).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.Set(ctx, claimsKey, "not-a-hash", 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	transitioned, err := TransitionOrdered(ctx, rdb, layout, delivery, "test:processing", "test:heartbeat", "worker-1", "", "", OrderedDiscard)
+	if err == nil || transitioned {
+		t.Fatalf("discard = (%v, %v), want wrong-type error", transitioned, err)
+	}
+	if got := rdb.LRange(ctx, "test:processing", 0, -1).Val(); !slices.Equal(got, []string{delivery.Payload}) {
+		t.Fatalf("processing delivery after failed transition = %#v", got)
+	}
+	if owner := rdb.Get(ctx, delivery.LeaseKey).Val(); owner != "worker-1" {
+		t.Fatalf("lease owner after failed transition = %q", owner)
+	}
+}
+
 func TestRecoverOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testing.T) {
-	for _, target := range []string{"queue", "ready", "active"} {
+	for _, target := range []string{"queue", "ready", "active", "claims"} {
 		t.Run(target, func(t *testing.T) {
 			mr := miniredis.RunT(t)
 			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -397,6 +441,11 @@ func TestRecoverOrderedWrongTypeDestinationPreservesProcessingDelivery(t *testin
 				corruptKey = layout.ReadyList
 			case "active":
 				corruptKey = layout.ActiveSet
+				if err := rdb.Del(ctx, corruptKey).Err(); err != nil {
+					t.Fatal(err)
+				}
+			case "claims":
+				corruptKey = queuekeys.OrderedClaimsKey(layout.ActiveSet)
 				if err := rdb.Del(ctx, corruptKey).Err(); err != nil {
 					t.Fatal(err)
 				}

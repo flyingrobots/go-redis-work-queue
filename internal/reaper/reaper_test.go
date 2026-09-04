@@ -3,6 +3,7 @@ package reaper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -24,6 +25,36 @@ type competingUnorderedReaperHook struct {
 	processing  string
 	destination string
 	err         error
+}
+
+type failOrderedDiscardOnceHook struct {
+	once   sync.Once
+	failed chan struct{}
+}
+
+func (*failOrderedDiscardOnceHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (h *failOrderedDiscardOnceHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		args := cmd.Args()
+		if len(args) > 0 && fmt.Sprint(args[len(args)-1]) == string(queue.OrderedDiscard) {
+			failed := false
+			h.once.Do(func() {
+				failed = true
+				close(h.failed)
+			})
+			if failed {
+				return errors.New("injected ordered discard failure")
+			}
+		}
+		return next(ctx, cmd)
+	}
+}
+
+func (*failOrderedDiscardOnceHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
 }
 
 func (*competingUnorderedReaperHook) DialHook(next redis.DialHook) redis.DialHook {
@@ -156,6 +187,94 @@ func TestRemoveMalformedTailDoesNotPopReplacement(t *testing.T) {
 	}
 	if string(remaining) != string(validPayload) {
 		t.Fatalf("remaining payload = %q, want %q", remaining, validPayload)
+	}
+}
+
+func TestReaperAdvancesOrderedKeyAfterMalformedDiscardFailure(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	ctx := context.Background()
+
+	const orderingKey = "account:malformed-discard"
+	digest := queuekeys.OrderingDigest(orderingKey)
+	queueKey := queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest)
+	malformed := `{"id":`
+	later := queue.NewJob("after-malformed", "", 0, "low", "", "")
+	later.OrderingKey = orderingKey
+	laterRaw, err := later.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.RPush(ctx, queueKey, laterRaw, malformed).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.SAdd(ctx, cfg.Queue.OrderedActiveSet, digest).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rdb.LPush(ctx, cfg.Queue.OrderedReadyList, digest).Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := &failOrderedDiscardOnceHook{failed: make(chan struct{})}
+	rdb.AddHook(hook)
+	w := worker.New(cfg, rdb, zap.NewNop())
+	w.Handle(worker.Handler(func(context.Context, queue.Job) error { return nil }))
+	workerCtx, cancel := context.WithCancel(ctx)
+	done := make(chan error, 1)
+	go func() { done <- w.Run(workerCtx) }()
+	select {
+	case <-hook.failed:
+		cancel()
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("worker did not attempt to discard malformed ordered job")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("worker stopped with error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not stop after cancellation")
+	}
+	processingKeys := rdb.Keys(ctx, queuekeys.ScanPattern(cfg.Worker.ProcessingListPattern)).Val()
+	if len(processingKeys) != 1 {
+		t.Fatalf("processing keys after failed discard = %#v, want one", processingKeys)
+	}
+	claimsKey := queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet)
+	if got, err := rdb.HGet(ctx, claimsKey, processingKeys[0]).Result(); err != nil || got != digest {
+		t.Fatalf("durable claim digest = %q (err=%v), want %q", got, err, digest)
+	}
+
+	mr.FastForward(cfg.Worker.HeartbeatTTL + time.Millisecond)
+	New(cfg, rdb, zap.NewNop()).scanOnce(ctx)
+	if got, err := rdb.HLen(ctx, claimsKey).Result(); err != nil || got != 0 {
+		t.Fatalf("ordered claim registry size after recovery = %d (err=%v), want 0", got, err)
+	}
+
+	delivery, ok, err := queue.ClaimOrdered(
+		ctx,
+		rdb,
+		cfg.OrderingLayout(),
+		"test:recovered:processing",
+		"test:recovered:heartbeat",
+		"recovered-worker",
+		time.Second,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("next same-key job remained stranded after malformed discard failure")
+	}
+	claimed, err := queue.UnmarshalJob(delivery.Payload)
+	if err != nil {
+		t.Fatalf("claimed next job is invalid: %v", err)
+	}
+	if claimed.ID != later.ID {
+		t.Fatalf("claimed job = %q, want %q", claimed.ID, later.ID)
 	}
 }
 

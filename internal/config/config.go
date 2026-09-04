@@ -332,7 +332,7 @@ func validateStaticQueueKeys(cfg *Config) error {
 	}
 	sort.Strings(aliases)
 
-	roles := make([]keyRole, 0, len(aliases)+6)
+	roles := make([]keyRole, 0, len(aliases)+7)
 	for _, alias := range aliases {
 		roles = append(roles, keyRole{name: fmt.Sprintf("worker queue %q", alias), key: cfg.Worker.Queues[alias]})
 	}
@@ -342,6 +342,7 @@ func validateStaticQueueKeys(cfg *Config) error {
 		keyRole{name: "worker dead-letter generation", key: queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)},
 		keyRole{name: "ordered ready list", key: cfg.Queue.OrderedReadyList},
 		keyRole{name: "ordered active set", key: cfg.Queue.OrderedActiveSet},
+		keyRole{name: "ordered claim registry", key: queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet)},
 		keyRole{name: "producer rate limiter", key: cfg.Producer.RateLimitKey},
 	)
 

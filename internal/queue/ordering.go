@@ -68,6 +68,7 @@ func (l OrderingLayout) keysForDigest(digest string) (queueKey, leaseKey string,
 	}{
 		{name: "ready list", key: l.ReadyList},
 		{name: "active set", key: l.ActiveSet},
+		{name: "claim registry", key: l.claimsKey()},
 		{name: "per-key queue", key: queueKey},
 		{name: "per-key lease", key: leaseKey},
 	}
@@ -79,6 +80,10 @@ func (l OrderingLayout) keysForDigest(digest string) (queueKey, leaseKey string,
 		seen[role.key] = role.name
 	}
 	return queueKey, leaseKey, nil
+}
+
+func (l OrderingLayout) claimsKey() string {
+	return queuekeys.OrderedClaimsKey(l.ActiveSet)
 }
 
 // OrderedDelivery is the ownership record returned by an atomic key claim.
@@ -283,7 +288,7 @@ end
 
 local queue_key = ARGV[1] .. digest .. ARGV[2]
 local lease_key = ARGV[3] .. digest .. ARGV[4]
-local claim_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], queue_key, lease_key}
+local claim_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], queue_key, lease_key}
 for i = 1, #claim_keys do
   for j = i + 1, #claim_keys do
     if claim_keys[i] == claim_keys[j] then
@@ -298,10 +303,15 @@ problem = require_type(KEYS[3], 'list')
 if problem then return redis.error_reply(problem) end
 problem = require_type(KEYS[4], 'string')
 if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[5], 'hash')
+if problem then return redis.error_reply(problem) end
 problem = require_type(queue_key, 'list')
 if problem then return redis.error_reply(problem) end
 problem = require_type(lease_key, 'string')
 if problem then return redis.error_reply(problem) end
+if redis.call('HEXISTS', KEYS[5], KEYS[3]) == 1 then
+  return redis.error_reply('processing list already has ordered claim metadata')
+end
 
 local acquired = redis.call('SET', lease_key, ARGV[5], 'NX', 'PX', ARGV[6])
 if not acquired then
@@ -318,6 +328,7 @@ end
 
 redis.call('LPUSH', KEYS[3], payload)
 redis.call('PSETEX', KEYS[4], ARGV[7], ARGV[5])
+redis.call('HSET', KEYS[5], KEYS[3], digest)
 return {digest, payload}
 `)
 
@@ -342,6 +353,11 @@ local transition = ARGV[5]
 if transition ~= 'retry' and transition ~= 'complete' and transition ~= 'dead_letter' and transition ~= 'discard' then
   return redis.error_reply('unknown ordered transition')
 end
+for i = 1, 8 do
+  if KEYS[9] == KEYS[i] then
+    return redis.error_reply('ordered claim registry must differ from queue state keys')
+  end
+end
 
 local problem = require_type(KEYS[1], 'list')
 if problem then return redis.error_reply(problem) end
@@ -352,6 +368,8 @@ if problem then return redis.error_reply(problem) end
 problem = require_type(KEYS[5], 'list')
 if problem then return redis.error_reply(problem) end
 problem = require_type(KEYS[6], 'set')
+if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[9], 'hash')
 if problem then return redis.error_reply(problem) end
 if transition == 'complete' or transition == 'dead_letter' then
   problem = require_type(KEYS[7], 'list')
@@ -372,6 +390,10 @@ if transition == 'dead_letter' then
   end
 end
 
+local claim_digest = redis.call('HGET', KEYS[9], KEYS[1])
+if claim_digest and claim_digest ~= ARGV[4] then
+  return redis.error_reply('ordered claim metadata digest mismatch')
+end
 if redis.call('GET', KEYS[3]) ~= ARGV[1] then
   return 0
 end
@@ -390,6 +412,7 @@ end
 
 redis.call('DEL', KEYS[2])
 redis.call('DEL', KEYS[3])
+redis.call('HDEL', KEYS[9], KEYS[1])
 if redis.call('LLEN', KEYS[4]) > 0 then
   redis.call('SADD', KEYS[6], ARGV[4])
   redis.call('LPUSH', KEYS[5], ARGV[4])
@@ -400,7 +423,11 @@ end
 return 1
 `)
 
-var recoverOrderedScript = redis.NewScript(`
+var settleAbandonedOrderedScript = redis.NewScript(`
+local mode = ARGV[3]
+if mode ~= 'recover' and mode ~= 'discard' then
+  return redis.error_reply('unknown abandoned ordered settlement')
+end
 if redis.call('EXISTS', KEYS[2]) == 1 then
   return 0
 end
@@ -408,7 +435,7 @@ if redis.call('EXISTS', KEYS[3]) == 1 then
   return 0
 end
 
-local recovery_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6]}
+local recovery_keys = {KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6], KEYS[7]}
 for i = 1, #recovery_keys do
   for j = i + 1, #recovery_keys do
     if recovery_keys[i] == recovery_keys[j] then
@@ -433,14 +460,32 @@ problem = require_type(KEYS[5], 'list')
 if problem then return redis.error_reply(problem) end
 problem = require_type(KEYS[6], 'set')
 if problem then return redis.error_reply(problem) end
+problem = require_type(KEYS[7], 'hash')
+if problem then return redis.error_reply(problem) end
+
+local claim_digest = redis.call('HGET', KEYS[7], KEYS[1])
+if mode == 'discard' and not claim_digest then
+  return 0
+end
+if claim_digest and claim_digest ~= ARGV[2] then
+  return redis.error_reply('ordered claim metadata digest mismatch')
+end
 
 if redis.call('LREM', KEYS[1], 1, ARGV[1]) ~= 1 then
   return 0
 end
 
-redis.call('RPUSH', KEYS[4], ARGV[1])
-redis.call('SADD', KEYS[6], ARGV[2])
-redis.call('LPUSH', KEYS[5], ARGV[2])
+redis.call('HDEL', KEYS[7], KEYS[1])
+if mode == 'recover' then
+  redis.call('RPUSH', KEYS[4], ARGV[1])
+end
+if redis.call('LLEN', KEYS[4]) > 0 then
+  redis.call('SADD', KEYS[6], ARGV[2])
+  redis.call('LPUSH', KEYS[5], ARGV[2])
+else
+  redis.call('SREM', KEYS[6], ARGV[2])
+  redis.call('DEL', KEYS[4])
+end
 return 1
 `)
 
@@ -582,7 +627,7 @@ func ClaimOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLayout,
 	leasePrefix, leaseSuffix, _ := queuekeys.SplitPattern(layout.LeasePattern)
 	ttlMillis := durationMillis(ttl)
 	result, err := claimOrderedScript.Eval(ctx, rdb,
-		[]string{layout.ReadyList, layout.ActiveSet, processingList, heartbeatKey},
+		[]string{layout.ReadyList, layout.ActiveSet, processingList, heartbeatKey, layout.claimsKey()},
 		queuePrefix, queueSuffix, leasePrefix, leaseSuffix, owner, ttlMillis, ttlMillis,
 	).Result()
 	if err == redis.Nil {
@@ -651,6 +696,7 @@ func TransitionOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLa
 		layout.ActiveSet,
 		destination,
 		generationKey,
+		layout.claimsKey(),
 	}, owner, delivery.Payload, retryPayload, delivery.Digest, string(transition)).Int64()
 	if err != nil {
 		return false, fmt.Errorf("transition ordered job: %w", err)
@@ -665,16 +711,64 @@ func RecoverOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLayou
 	if err := layout.Validate(); err != nil {
 		return false, err
 	}
-	result, err := recoverOrderedScript.Eval(ctx, rdb, []string{
+	result, err := settleAbandonedOrderedScript.Eval(ctx, rdb, []string{
 		processingList,
 		heartbeatKey,
 		delivery.LeaseKey,
 		delivery.QueueKey,
 		layout.ReadyList,
 		layout.ActiveSet,
-	}, delivery.Payload, delivery.Digest).Int64()
+		layout.claimsKey(),
+	}, delivery.Payload, delivery.Digest, "recover").Int64()
 	if err != nil {
 		return false, fmt.Errorf("recover ordered job: %w", err)
+	}
+	return result == 1, nil
+}
+
+// OrderedDeliveryFromClaim reconstructs recovery metadata for an in-flight
+// ordered envelope even when the envelope itself is malformed. ClaimOrdered
+// records the digest by processing list before returning the delivery.
+func OrderedDeliveryFromClaim(ctx context.Context, rdb redis.Cmdable, layout OrderingLayout, processingList, payload string) (OrderedDelivery, bool, error) {
+	if err := layout.Validate(); err != nil {
+		return OrderedDelivery{}, false, err
+	}
+	digest, err := rdb.HGet(ctx, layout.claimsKey(), processingList).Result()
+	if err == redis.Nil {
+		return OrderedDelivery{}, false, nil
+	}
+	if err != nil {
+		return OrderedDelivery{}, false, fmt.Errorf("read ordered claim metadata: %w", err)
+	}
+	if !queuekeys.IsOrderingDigest(digest) {
+		return OrderedDelivery{}, false, fmt.Errorf("invalid ordered claim digest %q", digest)
+	}
+	return OrderedDelivery{
+		Digest:   digest,
+		Payload:  payload,
+		QueueKey: queuekeys.Format(layout.QueuePattern, digest),
+		LeaseKey: queuekeys.Format(layout.LeasePattern, digest),
+	}, true, nil
+}
+
+// DiscardAbandonedOrdered removes a malformed ordered envelope after its
+// worker heartbeat and lease have expired, then advances the same-key FIFO.
+// The durable claim registry binds the opaque payload to its ordering digest.
+func DiscardAbandonedOrdered(ctx context.Context, rdb redis.Cmdable, layout OrderingLayout, delivery OrderedDelivery, processingList, heartbeatKey string) (bool, error) {
+	if err := layout.Validate(); err != nil {
+		return false, err
+	}
+	result, err := settleAbandonedOrderedScript.Eval(ctx, rdb, []string{
+		processingList,
+		heartbeatKey,
+		delivery.LeaseKey,
+		delivery.QueueKey,
+		layout.ReadyList,
+		layout.ActiveSet,
+		layout.claimsKey(),
+	}, delivery.Payload, delivery.Digest, "discard").Int64()
+	if err != nil {
+		return false, fmt.Errorf("discard abandoned ordered job: %w", err)
 	}
 	return result == 1, nil
 }

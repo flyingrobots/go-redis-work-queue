@@ -335,7 +335,18 @@ func (w *Worker) processDelivery(ctx context.Context, workerID, procList, hbKey 
 	if err != nil {
 		w.log.Error("invalid job payload", obs.Err(err))
 		if next.ordered != nil {
-			_, _ = queue.TransitionOrdered(ctx, w.rdb, w.cfg.OrderingLayout(), *next.ordered, procList, hbKey, workerID, "", "", queue.OrderedDiscard)
+			transitioned, transitionErr := queue.TransitionOrdered(ctx, w.rdb, w.cfg.OrderingLayout(), *next.ordered, procList, hbKey, workerID, "", "", queue.OrderedDiscard)
+			if transitionErr != nil {
+				w.log.Error("ordered malformed-job discard failed; leaving claim for reaper",
+					obs.String("ordering_digest", next.ordered.Digest),
+					obs.Err(transitionErr),
+				)
+				obs.RecordError(ctx, transitionErr)
+			} else if !transitioned {
+				w.log.Warn("ordered malformed-job discard lost lease; leaving claim for reaper",
+					obs.String("ordering_digest", next.ordered.Digest),
+				)
+			}
 		} else {
 			// remove from processing to avoid poison pill loop
 			_ = w.rdb.LRem(ctx, procList, 1, payload).Err()

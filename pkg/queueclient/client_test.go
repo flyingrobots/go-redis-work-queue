@@ -148,6 +148,24 @@ func TestNormalizeConfigRejectsStaticKeysMatchedByProcessingPattern(t *testing.T
 	}
 }
 
+func TestNormalizeConfigRejectsOrderedClaimRegistryMatchedByProcessingPattern(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.OrderedActiveSet = "custom:ordered:active"
+	cfg.ProcessingListPattern = cfg.OrderedActiveSet + ":%s"
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected ordered claim registry matched by processing pattern to fail")
+	}
+}
+
+func TestNormalizeConfigRejectsStaticKeyAliasedToOrderedClaimRegistry(t *testing.T) {
+	cfg := testClientConfig()
+	cfg.OrderedActiveSet = "custom:ordered:active"
+	cfg.Queues["high"] = queuekeys.OrderedClaimsKey(cfg.OrderedActiveSet)
+	if _, err := queueclient.NormalizeConfig(cfg); err == nil {
+		t.Fatal("expected priority queue aliased to ordered claim registry to fail")
+	}
+}
+
 func TestNormalizeConfigRejectsAliasedStaticQueueKeys(t *testing.T) {
 	type keyRole struct {
 		name string

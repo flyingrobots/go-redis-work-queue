@@ -339,9 +339,9 @@ func StatsKeys(ctx context.Context, cfg *config.Config, rdb *redis.Client) (Keys
 }
 
 // PurgeAll deletes common test keys used by this system, including
-// priority queues, ordered queues/leases, completed/dead_letter, rate limiter
-// key, and per-worker processing lists and heartbeats. Returns number of keys
-// deleted.
+// priority queues, ordered queues/leases/claims, completed/dead_letter, rate
+// limiter key, and per-worker processing lists and heartbeats. Returns number
+// of keys deleted.
 func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64, error) {
 	var deleted int64
 	dlqGenerationKey := ""
@@ -354,12 +354,15 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 		deleted += dlqDeleted
 	}
 	// Explicit keys
-	keys := make([]string, 0, len(cfg.Worker.Queues)+5)
+	keys := make([]string, 0, len(cfg.Worker.Queues)+6)
 	for _, key := range cfg.Worker.Queues {
 		keys = append(keys, key)
 	}
 	keys = append(keys, cfg.Worker.CompletedList)
 	keys = append(keys, cfg.Queue.OrderedReadyList, cfg.Queue.OrderedActiveSet)
+	if cfg.Queue.OrderedActiveSet != "" {
+		keys = append(keys, queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet))
+	}
 	if cfg.Producer.RateLimitKey != "" {
 		keys = append(keys, cfg.Producer.RateLimitKey)
 	}

@@ -112,6 +112,38 @@ func (r *Reaper) scanOnce(ctx context.Context) {
 				}
 				job, err := queue.UnmarshalJob(payload)
 				if err != nil {
+					delivery, ordered, claimErr := queue.OrderedDeliveryFromClaim(
+						ctx,
+						r.rdb,
+						r.cfg.OrderingLayout(),
+						plist,
+						payload,
+					)
+					if claimErr != nil {
+						r.log.Error("read malformed ordered claim metadata failed", obs.Err(claimErr))
+						break
+					}
+					if ordered {
+						discarded, discardErr := queue.DiscardAbandonedOrdered(
+							ctx,
+							r.rdb,
+							r.cfg.OrderingLayout(),
+							delivery,
+							plist,
+							hbKey,
+						)
+						if discardErr != nil {
+							r.log.Error("malformed ordered recovery failed", obs.Err(discardErr))
+							break
+						}
+						if !discarded {
+							break
+						}
+						r.log.Warn("discarded abandoned malformed ordered job",
+							obs.String("ordering_digest", delivery.Digest),
+						)
+						continue
+					}
 					if _, removeErr := removeTailIfEqual(ctx, r.rdb, plist, []byte(payload)); removeErr != nil {
 						r.log.Warn("reaper malformed tail removal error", obs.Err(removeErr))
 						break

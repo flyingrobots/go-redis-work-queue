@@ -26,7 +26,10 @@ const (
 	DefaultOrderedLeasePattern   = Namespace + "ordered:lease:%s"
 )
 
-const dlqGenerationSuffix = ":generation"
+const (
+	dlqGenerationSuffix = ":generation"
+	orderedClaimsSuffix = ":claims"
+)
 
 // IsReservedQueueAlias reports names owned by terminal queue views rather
 // than configurable priority queues.
@@ -103,10 +106,16 @@ func PatternsOverlap(first, second string) bool {
 // canonical lowercase SHA-256 token used for an ordering key.
 func MatchesOrderingDigest(pattern, key string) bool {
 	identifier, ok := Extract(pattern, key)
-	if !ok || len(identifier) != sha256.Size*2 {
+	return ok && IsOrderingDigest(identifier)
+}
+
+// IsOrderingDigest reports whether value is a canonical lowercase SHA-256
+// token produced by OrderingDigest.
+func IsOrderingDigest(value string) bool {
+	if len(value) != sha256.Size*2 {
 		return false
 	}
-	for _, char := range identifier {
+	for _, char := range value {
 		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
 			return false
 		}
@@ -119,6 +128,13 @@ func MatchesOrderingDigest(pattern, key string) bool {
 // versions so unsupported size-changing writes invalidate existing handles.
 func DLQGenerationKey(deadLetterList string) string {
 	return deadLetterList + dlqGenerationSuffix
+}
+
+// OrderedClaimsKey returns the hash that durably maps worker processing lists
+// to their in-flight ordering digest. Deriving it from the active-set key keeps
+// custom ordered layouts self-contained without another configuration field.
+func OrderedClaimsKey(orderedActiveSet string) string {
+	return orderedActiveSet + orderedClaimsSuffix
 }
 
 // OrderingDigest maps exact ordering-key bytes to a bounded Redis-safe token.

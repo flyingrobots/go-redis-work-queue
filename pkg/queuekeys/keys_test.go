@@ -51,11 +51,25 @@ func TestOrderingDigestIsStableAndRedisSafe(t *testing.T) {
 	if got := len(OrderingDigest(key)); got != 64 {
 		t.Fatalf("digest length = %d, want 64", got)
 	}
+	if !IsOrderingDigest(OrderingDigest(key)) {
+		t.Fatal("canonical ordering digest was rejected")
+	}
+	for _, invalid := range []string{"", strings.Repeat("a", 63), strings.Repeat("A", 64), strings.Repeat("g", 64)} {
+		if IsOrderingDigest(invalid) {
+			t.Fatalf("invalid ordering digest %q was accepted", invalid)
+		}
+	}
 }
 
 func TestDLQGenerationKeyFollowsConfiguredList(t *testing.T) {
 	if got, want := DLQGenerationKey("tenant:{jobs}:dead"), "tenant:{jobs}:dead:generation"; got != want {
 		t.Fatalf("DLQ generation key = %q, want %q", got, want)
+	}
+}
+
+func TestOrderedClaimsKeyFollowsConfiguredActiveSet(t *testing.T) {
+	if got, want := OrderedClaimsKey("tenant:{jobs}:ordered:active"), "tenant:{jobs}:ordered:active:claims"; got != want {
+		t.Fatalf("ordered claims key = %q, want %q", got, want)
 	}
 }
 

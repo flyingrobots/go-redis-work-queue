@@ -447,7 +447,7 @@ func validateStaticQueueKeys(cfg Config) error {
 		name string
 		key  string
 	}
-	roles := make([]keyRole, 0, len(cfg.Queues)+5)
+	roles := make([]keyRole, 0, len(cfg.Queues)+6)
 	for _, name := range sortedKeys(cfg.Queues) {
 		roles = append(roles, keyRole{name: fmt.Sprintf("priority queue %q", name), key: cfg.Queues[name]})
 	}
@@ -457,6 +457,7 @@ func validateStaticQueueKeys(cfg Config) error {
 		keyRole{name: "dead-letter generation", key: queuekeys.DLQGenerationKey(cfg.DeadLetterList)},
 		keyRole{name: "ordered ready list", key: cfg.OrderedReadyList},
 		keyRole{name: "ordered active set", key: cfg.OrderedActiveSet},
+		keyRole{name: "ordered claim registry", key: queuekeys.OrderedClaimsKey(cfg.OrderedActiveSet)},
 	)
 
 	seen := make(map[string]string, len(roles))

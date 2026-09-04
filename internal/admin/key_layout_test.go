@@ -73,6 +73,7 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 	for _, key := range []string{
 		cfg.Queue.OrderedReadyList,
 		cfg.Queue.OrderedActiveSet,
+		queuekeys.OrderedClaimsKey(cfg.Queue.OrderedActiveSet),
 		queuekeys.Format(cfg.Queue.OrderedQueuePattern, digest),
 		queuekeys.Format(cfg.Queue.OrderedLeasePattern, digest),
 	} {
@@ -83,7 +84,7 @@ func TestPurgeAllRemovesOrderedQueueState(t *testing.T) {
 		t.Fatal(err)
 	}
 	generationKey := queuekeys.DLQGenerationKey(cfg.Worker.DeadLetterList)
-	if deleted != 4 || len(mr.Keys()) != 1 || !mr.Exists(generationKey) {
+	if deleted != 5 || len(mr.Keys()) != 1 || !mr.Exists(generationKey) {
 		t.Fatalf("purge deleted %d ordered keys; remaining=%v", deleted, mr.Keys())
 	}
 	if generation, err := mr.Get(generationKey); err != nil || generation != "1" {
