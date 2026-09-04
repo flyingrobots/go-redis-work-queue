@@ -20,8 +20,8 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 
 ### What You Should Know
 
-- All six queue core ROADMAP items are complete on ready PR #6. Thirteen exact-head
-  review passes produced 53 findings; every finding has a published,
+- All six queue core ROADMAP items are complete on ready PR #6. Fourteen exact-head
+  review passes produced 56 findings; every finding has a published,
   individually committed fix and a resolved thread.
 - Core jobs carry opaque payload bytes plus an optional schema. JSON stores the
   bytes as base64, and `queue.max_payload_size` defaults to 1 MiB.
@@ -34,7 +34,9 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
   installed. Claims that complete after handler removal are restored to their
   ordinary source or ordered per-key FIFO. Long calls renew heartbeats, while
   heartbeat values contain only the compact worker ownership marker. Shutdown
-  leaves work in processing for at-least-once reaping.
+  leaves work in processing for at-least-once reaping. Ordered claims also keep
+  a durable processing-list-to-digest marker, so malformed envelopes remain
+  recoverable if their immediate discard fails.
 - External callers enqueue through `pkg/queueclient`, the `enqueue` CLI
   subcommand, or `POST /api/v1/enqueue`; all share the same payload guard and
   Redis key layout. In deny-by-default auth mode, HTTP enqueue also requires
@@ -59,14 +61,16 @@ It is **CRITICAL** to keep the following sections of this document up-to-date as
 - Ordered enqueue, claim, recovery, transition, and DLQ-requeue scripts
   validate fallible Redis types before mutation. Priority, terminal, and
   ordered-control keys must be pairwise distinct; worker processing and
-  heartbeat keyspaces must be disjoint; managed static keys cannot match the
+  heartbeat keyspaces must be mutually disjoint and cannot overlap generated
+  ordered queue or lease keyspaces; managed static keys cannot match the
   processing-list or heartbeat pattern or resolve to generated per-digest
   queue or lease keys; per-digest roles cannot alias; scan patterns escape
   fixed glob text; trimmed priority aliases cannot collide; and public enqueue
-  resets worker-owned retry counters. Malformed processing entries are removed
-  only when the inspected tail bytes still match atomically. Broad ordered
-  cleanup patterns delete only keys containing canonical SHA-256 ordering
-  digests.
+  resets worker-owned retry counters. Ordinary malformed processing entries
+  are removed only when the inspected tail bytes still match atomically;
+  malformed ordered claims retain their digest through failed discard and are
+  settled by the reaper after ownership expires. Broad ordered cleanup patterns
+  delete only keys containing canonical SHA-256 ordering digests.
 - Stats deduplicates heartbeat keys across Redis `SCAN` pages and counts only
   ordered queue keys containing real SHA-256 digests. The release changelog,
   PR-comment extractor, and review-worksheet generator are tracked again.
@@ -225,6 +229,7 @@ Use this checklist to track work. Keep it prioritized, update statuses, and refe
 - [x] Queue core PR #6 eleventh review: restore cleared-handler claims and bound DLQ versions
 - [x] Queue core PR #6 twelfth review: separate worker keyspaces and compact heartbeat values
 - [x] Queue core PR #6 thirteenth review: bind reaper tails, restore DLQ priority, and version cursors
+- [x] Queue core PR #6 fourteenth review: compact claims, preserve poison recovery, and reject pattern overlap
 - [x] GitHub issue audit: reconcile open issues against the ROADMAP (zero open issues on 2026-09-03)
 - [x] TUI: Charts expand-on-click (Charts 2/3 vs Queues 1/3; toggle back on Queues click)
 - [x] TUI: Keep selection decoration synchronized with mouse-wheel movement
@@ -735,6 +740,40 @@ Notes
 ---
 
 ## Daily Activity Logs
+>
+> [!NOTE]
+>
+> ### 2026-09-03 – Queue Core Fourteenth Review Remediated
+>
+> Closed all three exact-head ordered-claim and keyspace findings as isolated
+> RED/GREEN/VERIFY commits.
+>
+> Changes
+>
+> - Made the initial ordered-claim heartbeat store only the compact worker owner
+>   marker instead of duplicating the complete encoded job.
+> - Added a durable processing-list-to-digest registry for ordered claims. Every
+>   terminal transition and recovery clears it atomically; after a failed
+>   malformed-job discard, the reaper uses it to advance the exact same-key FIFO.
+> - Rejected processing and heartbeat patterns that overlap generated ordered
+>   queue or lease keyspaces at internal and public configuration boundaries.
+>
+> Validation
+>
+> - A legal 1 MiB payload RED measured a 1,398,309-byte initial heartbeat; GREEN
+>   stores the worker owner marker.
+> - A deterministic Redis hook fails poison-envelope discard before execution,
+>   stops the worker, expires ownership, and proves the reaper makes the next
+>   same-key job claimable without losing ordered metadata.
+> - All four worker/ordered pattern intersections and the public defaulting path
+>   are covered. Affected packages pass focused race, vet, and lint gates; all
+>   eight real-Redis per-key FIFO E2Es pass, including the 10,000-key canary.
+> - Commits `e99e7eb3`, `3ded1a0b`, and `cf22c76f` are published, and all 56
+>   review threads have commit-specific replies and are resolved.
+>
+> Guardrails
+>
+> - Do not merge PR #6 without explicit authorization.
 >
 > [!NOTE]
 >
