@@ -27,23 +27,27 @@ func (w *Worker) maintainHeartbeat(ctx context.Context, key, leaseKey, owner str
 
 	handlerCtx, cancelHandler := context.WithCancel(ctx)
 	heartbeatCtx, stopRenewal := context.WithCancel(ctx)
-	loseLease := func() {
+	loseOwnership := func() {
 		cancelHandler()
 		stopRenewal()
 	}
 	set := func() bool {
-		if err := w.rdb.Set(heartbeatCtx, key, owner, ttl).Err(); err != nil && heartbeatCtx.Err() == nil {
-			w.log.Warn("heartbeat refresh failed", obs.String("key", key), obs.Err(err))
+		if err := w.rdb.Set(heartbeatCtx, key, owner, ttl).Err(); err != nil {
+			if heartbeatCtx.Err() == nil {
+				w.log.Warn("heartbeat refresh failed", obs.String("key", key), obs.Err(err))
+				loseOwnership()
+			}
+			return false
 		}
 		if leaseKey != "" {
 			owned, err := queue.RenewOrderedLease(heartbeatCtx, w.rdb, leaseKey, owner, ttl)
 			if err != nil && heartbeatCtx.Err() == nil {
 				w.log.Warn("ordered lease refresh failed", obs.String("key", leaseKey), obs.Err(err))
-				loseLease()
+				loseOwnership()
 				return false
 			} else if !owned && heartbeatCtx.Err() == nil {
 				w.log.Warn("ordered lease ownership lost", obs.String("key", leaseKey))
-				loseLease()
+				loseOwnership()
 				return false
 			}
 		}
