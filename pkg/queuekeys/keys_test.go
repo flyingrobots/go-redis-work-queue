@@ -61,6 +61,36 @@ func TestOrderingDigestIsStableAndRedisSafe(t *testing.T) {
 	}
 }
 
+func TestIsWorkerIDRecognizesOnlyCanonicalGeneratedShape(t *testing.T) {
+	for _, valid := range []string{
+		"host-123-456-1a2b-0",
+		"host-with-hyphens-1-9223372036854775807-0000-15",
+		"host:port-42-123456789-ffff-0",
+	} {
+		if !IsWorkerID(valid) {
+			t.Errorf("canonical worker ID %q was rejected", valid)
+		}
+	}
+	for _, invalid := range []string{
+		"",
+		"w1",
+		"-1-2-abcd-0",
+		"host-0-2-abcd-0",
+		"host-01-2-abcd-0",
+		"host-1-0-abcd-0",
+		"host-1-02-abcd-0",
+		"host-1-2-ABCd-0",
+		"host-1-2-abc-0",
+		"host-1-2-abcz-0",
+		"host-1-2-abcd-00",
+		"host-1-2-abcd--1",
+	} {
+		if IsWorkerID(invalid) {
+			t.Errorf("non-canonical worker ID %q was accepted", invalid)
+		}
+	}
+}
+
 func TestDLQGenerationKeyFollowsConfiguredList(t *testing.T) {
 	if got, want := DLQGenerationKey("tenant:{jobs}:dead"), "tenant:{jobs}:dead:generation"; got != want {
 		t.Fatalf("DLQ generation key = %q, want %q", got, want)

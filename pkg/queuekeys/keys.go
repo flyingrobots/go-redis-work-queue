@@ -6,6 +6,7 @@ package queuekeys
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"strconv"
 	"strings"
 )
 
@@ -112,15 +113,42 @@ func MatchesOrderingDigest(pattern, key string) bool {
 // IsOrderingDigest reports whether value is a canonical lowercase SHA-256
 // token produced by OrderingDigest.
 func IsOrderingDigest(value string) bool {
-	if len(value) != sha256.Size*2 {
+	return len(value) == sha256.Size*2 && isLowerHex(value)
+}
+
+// IsWorkerID reports whether value has the canonical identifier shape emitted
+// by Worker: hostname-pid-startUnixNano-randomHex-index. Parsing from the right
+// preserves hostnames containing hyphens.
+func IsWorkerID(value string) bool {
+	parts := strings.Split(value, "-")
+	if len(parts) < 5 {
 		return false
 	}
+	suffix := len(parts) - 4
+	if strings.Join(parts[:suffix], "-") == "" {
+		return false
+	}
+	return isCanonicalUnsigned(parts[suffix], false) &&
+		isCanonicalUnsigned(parts[suffix+1], false) &&
+		len(parts[suffix+2]) == 4 && isLowerHex(parts[suffix+2]) &&
+		isCanonicalUnsigned(parts[suffix+3], true)
+}
+
+func isLowerHex(value string) bool {
 	for _, char := range value {
 		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
 			return false
 		}
 	}
 	return true
+}
+
+func isCanonicalUnsigned(value string, allowZero bool) bool {
+	if value == "" || (len(value) > 1 && value[0] == '0') {
+		return false
+	}
+	number, err := strconv.ParseUint(value, 10, 64)
+	return err == nil && (allowZero || number > 0)
 }
 
 // DLQGenerationKey returns the metadata key that advances on every supported

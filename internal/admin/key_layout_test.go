@@ -28,22 +28,25 @@ func TestAdminUsesConfiguredWorkerKeyPatterns(t *testing.T) {
 		},
 	}
 
-	mr.Lpush("custom:{worker:alpha:one}:active", `{"id":"in-flight"}`)
-	mr.Set("custom:{heartbeat:alpha:one}", "1")
+	const workerID = "alpha:one-123-456-1a2b-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+	mr.Lpush(processing, `{"id":"in-flight"}`)
+	mr.Set(heartbeat, workerID)
 	mr.Lpush("custom:urgent", `{"id":"urgent"}`)
 
 	stats, err := Stats(context.Background(), cfg, rdb)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.ProcessingLists["custom:{worker:alpha:one}:active"] != 1 || stats.Heartbeats != 1 {
+	if stats.ProcessingLists[processing] != 1 || stats.Heartbeats != 1 {
 		t.Fatalf("configured patterns were not used: %#v", stats)
 	}
 	workers, err := Workers(context.Background(), cfg, rdb, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(workers) != 1 || workers[0].ID != "alpha:one" || workers[0].JobID != "in-flight" {
+	if len(workers) != 1 || workers[0].ID != workerID || workers[0].JobID != "in-flight" {
 		t.Fatalf("configured pattern extraction failed: %#v", workers)
 	}
 
@@ -119,6 +122,46 @@ func TestPurgeAllPreservesNonDigestKeysMatchedByOrderedPatterns(t *testing.T) {
 	}
 	if mr.Exists(queueKey) || mr.Exists(leaseKey) {
 		t.Fatalf("generated ordered state remains: %v", mr.Keys())
+	}
+}
+
+func TestPurgeAllPreservesUnprovenWorkerPatternMatches(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := config.Default()
+	cfg.Worker.ProcessingListPattern = "tenant:%s"
+	cfg.Worker.HeartbeatKeyPattern = "heartbeat:%s"
+	if err := config.Validate(cfg); err != nil {
+		t.Fatalf("broad worker-pattern fixture is invalid: %v", err)
+	}
+
+	const workerID = "test-host-123-456-1a2b-0"
+	processing := queuekeys.Format(cfg.Worker.ProcessingListPattern, workerID)
+	heartbeat := queuekeys.Format(cfg.Worker.HeartbeatKeyPattern, workerID)
+	const unrelatedProcessingMatch = "tenant:settings"
+	const unrelatedHeartbeatMatch = "heartbeat:settings"
+	mr.Lpush(processing, `{"id":"in-flight"}`)
+	mr.Set(heartbeat, workerID)
+	mr.Lpush(unrelatedProcessingMatch, "application-data")
+	mr.Set(unrelatedHeartbeatMatch, "application-data")
+
+	deleted, err := PurgeAll(context.Background(), cfg, rdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if deleted != 2 {
+		t.Fatalf("purge deleted %d keys, want only the proven worker pair", deleted)
+	}
+	for _, key := range []string{unrelatedProcessingMatch, unrelatedHeartbeatMatch} {
+		if !mr.Exists(key) {
+			t.Fatalf("purge deleted unrelated broad-pattern match %q", key)
+		}
+	}
+	for _, key := range []string{processing, heartbeat} {
+		if mr.Exists(key) {
+			t.Fatalf("purge left proven worker key %q", key)
+		}
 	}
 }
 

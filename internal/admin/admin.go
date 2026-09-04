@@ -388,23 +388,41 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 	}
 	// Patterns: processing lists, heartbeats, and digest-shaped ordered state.
 	type purgePattern struct {
-		scan             string
-		generatedPattern string
+		scan    string
+		include func(string) bool
 	}
+	processingPattern := processingKeyPattern(cfg)
+	heartbeatPattern := heartbeatKeyPattern(cfg)
 	patterns := []purgePattern{
-		{scan: processingScanPattern(cfg)},
-		{scan: heartbeatScanPattern(cfg)},
+		{
+			scan: processingScanPattern(cfg),
+			include: func(key string) bool {
+				workerID, ok := queuekeys.Extract(processingPattern, key)
+				return ok && queuekeys.IsWorkerID(workerID)
+			},
+		},
+		{
+			scan: heartbeatScanPattern(cfg),
+			include: func(key string) bool {
+				workerID, ok := queuekeys.Extract(heartbeatPattern, key)
+				return ok && queuekeys.IsWorkerID(workerID)
+			},
+		},
 	}
 	if cfg.Queue.OrderedQueuePattern != "" {
 		patterns = append(patterns, purgePattern{
-			scan:             queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern),
-			generatedPattern: cfg.Queue.OrderedQueuePattern,
+			scan: queuekeys.ScanPattern(cfg.Queue.OrderedQueuePattern),
+			include: func(key string) bool {
+				return queuekeys.MatchesOrderingDigest(cfg.Queue.OrderedQueuePattern, key)
+			},
 		})
 	}
 	if cfg.Queue.OrderedLeasePattern != "" {
 		patterns = append(patterns, purgePattern{
-			scan:             queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern),
-			generatedPattern: cfg.Queue.OrderedLeasePattern,
+			scan: queuekeys.ScanPattern(cfg.Queue.OrderedLeasePattern),
+			include: func(key string) bool {
+				return queuekeys.MatchesOrderingDigest(cfg.Queue.OrderedLeasePattern, key)
+			},
 		})
 	}
 	for _, pattern := range patterns {
@@ -420,7 +438,7 @@ func PurgeAll(ctx context.Context, cfg *config.Config, rdb *redis.Client) (int64
 				if key == dlqGenerationKey {
 					continue
 				}
-				if pattern.generatedPattern != "" && !queuekeys.MatchesOrderingDigest(pattern.generatedPattern, key) {
+				if !pattern.include(key) {
 					continue
 				}
 				matched = append(matched, key)
